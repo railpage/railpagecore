@@ -1,0 +1,402 @@
+<?php
+	/**
+	 * Where on Earth is this place?
+	 * Geolookup
+	 * @since Version 3.8.7
+	 * @package Railpage
+	 * @author Michael Greenhill
+	 */
+	
+	namespace Railpage; 
+	
+	use Railpage\Locations\Locations;
+	use Railpage\Locations\Country;
+	use Railpage\Locations\Region;
+	use Railpage\Locations\Location;
+	
+	use Railpage\GTFS\AU\TFNSW;
+	use Railpage\GTFS\AU\PTV;
+	
+	use Exception;
+	use stdClass;
+	use flickr_railpage;
+	use DateTime;
+	use DateTimeZone;
+	use Zend\Http\Client;
+	
+	/**
+	 * Place class
+	 */
+	
+	class Place extends AppCore {
+		
+		/**
+		 * Name
+		 * @var string $name
+		 */
+		
+		public $name;
+		
+		/**
+		 * Latitude
+		 * @var float $lat
+		 */
+		
+		public $lat;
+		
+		/**
+		 * Longitude
+		 * @var float $lon
+		 */
+		
+		public $lon;
+		
+		/**
+		 * Radius around this location to limit adjacent searches to
+		 * @var float $radius
+		 */
+		
+		public $radius;
+		
+		/**
+		 * Country
+		 * @var object $Country
+		 */
+		
+		public $Country;
+		
+		/**
+		 * Region
+		 * @var object $Region
+		 */
+		
+		public $Region;
+		
+		/**
+		 * Bounding box
+		 * @var object $boundingBox
+		 */
+		
+		public $boundingBox;
+		
+		/**
+		 * Constructor
+		 * @param float $lat
+		 * @param float $lon
+		 * @param float $radius
+		 */
+		
+		public function __construct($lat, $lon, $radius = 0.1) {
+			parent::__construct(); 
+			
+			$this->lat = $lat;
+			$this->lon = $lon;
+			$this->radius = $radius;
+			$this->url = sprintf("/place?lat=%s&lon=%s", $this->lat, $this->lon);
+			
+			/**
+			 * Start the debug timer
+			 */
+			
+			if (RP_DEBUG) {
+				global $site_debug;
+				$debug_timer_start = microtime(true);
+			}
+				
+			debug_recordInstance(__CLASS__);
+			
+			/**
+			 * Fetch the WOE (Where On Earth) data from Yahoo
+			 */
+			
+			$woe = getWOEData($this->lat . "," . $this->lon);
+			
+			if (!isset($woe['places']['place'][0])) {
+				#printArray($woe);die;
+				throw new Exception("Could not find a place matching coordinates " . $this->lat . "," . $this->lon);
+			}
+			
+			/**
+			 * End the debug timer
+			 */
+				
+			if (RP_DEBUG) {
+				$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : fetched WOE data from Yahoo in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+			}
+			
+			/**
+			 * Simple enough - create the country object
+			 */
+			
+			$this->Country = new Country($woe['places']['place'][0]['country']);
+			
+			/**
+			 * Bit trickier - find the region, ie, the next geographical location down from a country
+			 */
+			
+			foreach ($woe['places']['place'][0] as $key => $val) {
+				if (isset($val['type']) && strtolower($val['type']) != "country") {
+					$this->Region = new Region($val['woeid']);
+					break;
+				}
+			}
+			
+			/**
+			 * Set the place name
+			 */
+			
+			if (empty($this->name)) {
+				$this->name = $woe['places']['place'][0]['locality1'];
+			}
+			
+			/**
+			 * Set the bounding box
+			 */
+			
+			$this->boundingBox = new stdClass;
+			$this->boundingBox->northEast = new stdClass;
+			$this->boundingBox->northEast->lat = floatval($woe['places']['place'][0]['boundingBox']['northEast']['latitude']);
+			$this->boundingBox->northEast->lon = floatval($woe['places']['place'][0]['boundingBox']['northEast']['longitude']);
+			
+			$this->boundingBox->southWest = new stdClass;
+			$this->boundingBox->southWest->lat = floatval($woe['places']['place'][0]['boundingBox']['southWest']['latitude']);
+			$this->boundingBox->southWest->lon = floatval($woe['places']['place'][0]['boundingBox']['southWest']['longitude']);
+		}
+		
+		/**
+		 * Get locations adjacent to this place
+		 * @return array
+		 */
+		
+		public function getLocations() {
+			$Locations = new Locations;
+			
+			return $Locations->nearby($this->lat, $this->lon, $this->radius);
+		}
+		
+		/**
+		 * Get photos within or adjacent to this place
+		 * @return array
+		 * @param int $num
+		 */
+		
+		public function getPhotos($num = 10) {
+			$lat = $this->lat;
+			$lon = $this->lon;
+			
+			$query = "SELECT flickr_geodata.*, 3956 * 2 * ASIN(SQRT(POWER(SIN((" . $lat . " - flickr_geodata.lat) * pi() / 180 / 2), 2) + COS(" . $lat . " * pi() / 180) * COS(" . $lat . " * pi() / 180) * POWER(SIN((" . $lon . " - flickr_geodata.lon) * pi() / 180 / 2), 2))) AS distance 
+				FROM flickr_geodata 
+				WHERE flickr_geodata.lon BETWEEN (
+						" . $lon . " - " . $this->radius . " / abs(cos(radians(" . $lat . ")) * 69)
+					) AND (
+						" . $lon . " + " . $this->radius . " / abs(cos(radians(" . $lat . ")) * 69)
+					)
+					AND flickr_geodata.lat BETWEEN (
+						" . $lat . " - (" . $this->radius . " / 69) 
+					) AND (
+						" . $lat . " + (" . $this->radius . " / 69) 
+					)
+				HAVING distance < " . $this->radius . "
+				ORDER BY distance
+				LIMIT ?";
+				
+			$params = array(
+				$num
+			);
+			
+			$return = array(); 
+			$square_size = 180;
+			
+			foreach ($this->db->fetchAll($query, $params) as $data) {
+				$key = $data['photo_id'];
+				
+				$return[$key]['size_sq'] = RP_PROTOCOL . "://" . $_SERVER['HTTP_HOST'] . "/image_resize.php?q=90&w=" . $square_size . "&h=" . $square_size . "&square=true&image=" . str_replace("?zz=1", "", $data['size4']);
+				$return[$key]['size_sq_w'] = $square_size;
+				$return[$key]['size_sq_h'] = $square_size;
+				
+				$data['id'] = $data['photo_id'];
+				
+				$data['url_sq']		= $data['size0'];
+				$data['width_sq']	= $data['size0_w'];
+				$data['height_sq']	= $data['size0_h'];
+				
+				$data['url_t']		= $data['size1'];
+				$data['width_t']	= $data['size1_w'];
+				$data['height_t']	= $data['size1_h'];
+				
+				$data['url_s']		= $data['size2'];
+				$data['width_s']	= $data['size2_w'];
+				$data['height_s']	= $data['size2_h'];
+				
+				$data['url_q']		= NULL;
+				$data['width_q']	= NULL;
+				$data['height_q']	= NULL;
+				
+				$data['url_m']		= $data['size3'];
+				$data['width_m']	= $data['size3_w'];
+				$data['height_m']	= $data['size3_h'];
+				
+				$data['url_n']		= $data['size6'];
+				$data['width_n']	= $data['size6_w'];
+				$data['height_n']	= $data['size6_h'];
+				
+				$data['url_z']		= $data['size4'];
+				$data['width_z']	= $data['size4_w'];
+				$data['height_z']	= $data['size4_h'];
+				
+				$data['url_l']		= $data['size5'];
+				$data['width_l']	= $data['size5_w'];
+				$data['height_l']	= $data['size5_h'];
+				
+				$data['url_c']		= $data['size7'];
+				$data['width_c']	= $data['size7_w'];
+				$data['height_c']	= $data['size7_h'];
+				
+				$data['url_o']		= $data['size8'];
+				$data['width_c']	= $data['size8_w'];
+				$data['height_c']	= $data['size8_h'];
+				
+				$data['nicetags'] = explode(" ", $data['tags']);
+				
+				$return[$key] = $data;
+			}
+			
+			
+			return $return;
+		}
+		
+		/**
+		 * Get GTFS places near this place
+		 * @since Version 3.8.7
+		 * @return array
+		 */
+		
+		public function getGTFSPlaces() {
+	
+			$providers = array(
+				"AU" => array(
+					"PTV", 
+					"TFNSW",
+					"TransPerth"
+				)
+			);
+			
+			$places = array();
+			
+			foreach ($providers as $country => $data) {
+				foreach ($data as $provider) {
+					$class = "Railpage\\GTFS\\$country\\$provider\\$provider";
+					$GTFS = new $class;
+					
+					$places[$country][$GTFS->provider] = $GTFS->StopsNearLocation($this->lat, $this->lon);
+				}
+			}
+			
+			return $places;
+		}
+		
+		/**
+		 * Get the street address of this place
+		 * @since Version 3.8.7
+		 * @return array
+		 */
+		
+		public function getAddress() {
+			$mckey = sprintf("railpage.place.address.lat=%s&lon=%s", $this->lat, $this->lon);
+			
+			if ($address = getMemcacheObject($mckey)) {
+				return $address; 
+			} else {
+				$url = sprintf("https://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s&sensor=false", $this->lat, $this->lon);
+				
+				$config = array(
+					'adapter' => 'Zend\Http\Client\Adapter\Curl',
+					'curloptions' => array(CURLOPT_FOLLOWLOCATION => true),
+				);
+				
+				$client = new Client($url, $config);
+				$response = $client->send();
+				
+				$content = $response->getContent();
+				$result = json_decode($content, true);
+				
+				if (isset($result['results'][0]['formatted_address'])) {
+					$return['address'] = $result['results'][0]['formatted_address'];
+					
+					foreach ($result['results'] as $row) {
+						if ($row['types'][0] == "street_address") {
+							$return['street_address'] = $row['formatted_address'];
+						}
+						
+						if ($row['types'][0] == "locality") {
+							$return['locality'] = $row['formatted_address'];
+						}
+						
+						if ($row['types'][0] == "administrative_area_level_1") {
+							$return['region'] = $row['formatted_address'];
+						}
+					}
+				}
+				
+				setMemcacheObject($mckey, $return, strtotime("+12 hours"));
+				
+				return $return;
+			}
+		}
+		
+		/**
+		 * Get weather forecast for this place
+		 * @since Version 3.8.7
+		 * @return array
+		 * @param int $days
+		 */
+		
+		public function getWeatherForecast($days = 14) {
+			$weather = array();
+			
+			if ($days instanceof DateTime) {
+				$Date = $days;
+				$url = "http://api.openweathermap.org/data/2.5/forecast/daily?lat=" . $this->lat . "&lon=" . $this->lon . "&units=metric&cnt=14";
+				
+				$Now = new DateTime;
+				$diff = $Now->diff($Date);
+				
+				if ($diff->format("%R") != "+" || $diff->format("%a") > 14) {
+					return $weather;
+				}
+			} else {
+				$url = "http://api.openweathermap.org/data/2.5/forecast/daily?lat=" . $this->lat . "&lon=" . $this->lon . "&units=metric&cnt=" . $days;
+			}
+				
+			$config = array(
+				'adapter' => 'Zend\Http\Client\Adapter\Curl',
+				'curloptions' => array(CURLOPT_FOLLOWLOCATION => true),
+			);
+			
+			$client = new Client($url, $config);
+			$response = $client->send();
+			
+			$content = $response->getContent();
+			$forecast = json_decode($content, true);
+			
+			foreach ($forecast['list'] as $row) {
+				$ForecastDate = new DateTime("@" . $row['dt']);
+				
+				$weather[$ForecastDate->format("Y-m-d")]['forecast'] = array(
+					"min" => round($row['temp']['min']),
+					"max" => round($row['temp']['max']),
+					"weather" => array(
+						"title" => $row['weather'][0]['main'],
+						"icon" => getWeatherIcon($row['weather'][0]['description'])
+					)
+				);
+			}
+			
+			if (isset($Date) && $Date instanceof DateTime) {
+				return $weather[$Date->format("Y-m-d")];
+			}
+			
+			return $weather;
+		}
+	}
+?>
