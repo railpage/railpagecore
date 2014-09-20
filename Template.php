@@ -374,6 +374,10 @@
 		
 		public function resolveTemplate($template) {
 			
+			if (pathinfo($template, PATHINFO_EXTENSION) == "tpl" && file_exists($template)) {
+				return $template;
+			}
+			
 			$tpl = str_replace(".tpl", "", $template); 
 			
 			/**
