@@ -222,6 +222,12 @@
 						$this->name = "Users";
 						$this->url = "/user";
 						break;
+					
+					case "reminders" : 
+						$this->name = "Reminders";
+						$this->url = "/reminders";
+						break;
+						
 				}
 				
 				/**
