@@ -146,6 +146,14 @@
 			
 			$this->StatsD = new stdClass;
 			$this->StatsD->target = new stdClass;
+			
+			/**
+			 * Load the config
+			 */
+			
+			if (function_exists("getRailpageConfig")) {
+				$this->Config = getRailpageConfig();
+			}
 		}
 		
 		/**
