@@ -28,7 +28,7 @@
 		{
 			"type" : "composer",
 			"url" : "https://packages.zendframework.com/"
-		},
+		}
 	],
 	"require" : {
 		"php" : ">=5.4.0",
