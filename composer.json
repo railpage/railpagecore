@@ -1,6 +1,5 @@
 { 
 	"name" : "railpage/railpagecore",
-	"version" : "3.8.7",
 	"description" : "Railpage core code classes. More information available at https://github.com/doctorjbeam/railpagecore",
 	"keywords" : [
 		"railpage"
@@ -47,6 +46,6 @@
 		"timoh6/GenPhrase" : "master@dev",
 		"facebook/php-sdk" : "dev-master",
 		"google/apiclient" : "master@dev",
-		"swiftmailer/swiftmailer" : "5.2.*@dev",
+		"swiftmailer/swiftmailer" : "5.2.*@dev"
 	}
 }
