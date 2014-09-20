@@ -1,0 +1,52 @@
+{ 
+	"name" : "railpage/railpagecore",
+	"version" : "3.8.7",
+	"description" : "Railpage core code classes. More information available at https://github.com/doctorjbeam/railpagecore",
+	"keywords" : [
+		"railpage"
+	],
+	"homepage" : "http://www.railpage.com.au",
+	"license" : "MIT",
+	"authors" : [
+		{
+			"name" : "Michael Greenhill",
+			"email" : "michael@railpage.com.au",
+			"role" : "Lead"
+		},
+		{
+			"name" : "James Morgan",
+			"role" : "Developer"
+		}
+	],
+	"support" : {
+		"email" : "michael+rpcore@railpage.com.au",
+		"issues" : "http://redmine.railpage.org/redmine/projects/rp3",
+		"source" : "https://github.com/doctorjbeam/railpagecore"
+	},
+	"type" : "library",
+	"repositories" : [
+		{
+			"type" : "composer",
+			"url" : "https://packages.zendframework.com/"
+		},
+	],
+	"require" : {
+		"php" : ">=5.4.0",
+		"pear/pear_exception": "1.0.*@dev",
+		"pear/http_request2" : "dev-trunk",
+		"pear/mail_mime" : "dev-master",
+		"pear/calendar" : "dev-trunk",
+		"zendframework/zend-http" : "2.3.*",
+		"zendframework/zend-config" : "2.3.*",
+		"zendframework/zend-uri" : "2.3.*",
+		"zendframework/zend-db" : "2.3.*",
+		"zendframework/zend-feed" : "2.3.*",
+		"zendframework/ZendService_Flickr" : "master@dev",
+		"zendframework/zendservice-twitter" : ">=2.0.0",
+		"zendframework/zendservice-recaptcha" : ">=2.0.0",
+		"timoh6/GenPhrase" : "master@dev",
+		"facebook/php-sdk" : "dev-master",
+		"google/apiclient" : "master@dev",
+		"swiftmailer/swiftmailer" : "5.2.*@dev",
+	}
+}
