@@ -44,7 +44,7 @@
 				throw new Exception("Can't find reminders because we don't know which user to look up");
 			}
 			
-			$query = "SELECT id FROM reminders WHERE user_id = ? AND reminder >= ?";
+			$query = "SELECT id FROM reminders WHERE user_id = ? AND reminder >= ? ORDER BY reminder";
 			
 			foreach ($this->db->fetchAll($query, array($this->User->id, date("Y-m-d"))) as $row) {
 				yield new Reminder($row['id']);
