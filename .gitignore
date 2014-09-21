@@ -1,4 +1,4 @@
-lib/composer.phar
-lib/composer.lock
+composer.phar
+composer.lock
 lib/vendor
 

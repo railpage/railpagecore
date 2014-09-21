@@ -23,6 +23,9 @@
 		"source" : "https://github.com/doctorjbeam/railpagecore"
 	},
 	"type" : "library",
+	"config": {
+        "vendor-dir": "lib/vendor"
+    },
 	"repositories" : [
 		{
 			"type" : "composer",
