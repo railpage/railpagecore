@@ -31,6 +31,58 @@
 		{
 			"type" : "pear",
 			"url" : "http://pear.php.net"
+		},
+		{
+			"type" : "package",
+			"package" : {
+				"name" : "smarty/smarty",
+				"version" : "3.1.9",
+				"dist" : {
+					"url" : "http://www.smarty.net/files/Smarty-3.1.17.zip",
+					"type" : "zip"
+				},
+				"source" : {
+					"url" : "http://smarty-php.googlecode.com/svn/",
+					"type" : "svn",
+					"reference" : "tags/Smarty_3_1_17/distribution/"
+				}
+			}
+		},
+		{
+			"type" : "package",
+			"package" : {
+				"name" : "timoh6/GenPhrase",
+				"version" : "master",
+				"source" : {
+					"url" : "https://github.com/timoh6/GenPhrase.git",
+					"type" : "git",
+					"reference" : "master"
+				}
+			}
+		},
+		{
+			"type" : "package",
+			"package" : {
+				"name" : "zendframework/ZendService_Flickr",
+				"version" : "master",
+				"source" : {
+					"url" : "https://github.com/zendframework/ZendService_Flickr.git",
+					"type" : "git",
+					"reference" : "master"
+				}
+			}
+		},
+		{
+			"type" : "package",
+			"package" : {
+				"name" : "google/apiclient",
+				"version" : "master",
+				"source" : {
+					"url" : "https://github.com/google/google-api-php-client.git",
+					"type" : "git",
+					"reference" : "master"
+				}
+			}
 		}
 	],
 	"require" : {
