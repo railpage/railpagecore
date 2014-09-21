@@ -14,12 +14,24 @@
 		define("RP_DEBUG", false);
 	}
 	
+	if (!defined("DS")) {
+		define("DS", DIRECTORY_SEPARATOR);
+	}
+	
 	/**
 	 * Check if PHPUnit is running. Flag it if it is running, so we can set the appropriate DB settings
 	 */
 	
 	if (class_exists("PHPUnit_Framework_TestCase")) {
 		$PHPUnitTest = true;
+		
+		/**
+		 * Load the composer autoloader
+		 */
+		
+		if (file_exists(__DIR__ . DS . "vendor" . DS . "autoload.php")) {
+			require(__DIR__ . DS . "vendor" . DS . "autoload.php");
+		}
 	} else {
 		$PHPUnitTest = false;
 	}
