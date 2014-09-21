@@ -9,6 +9,7 @@
 	namespace Railpage; 
 	
 	use stdClass;
+	use Exception;
 	use Railpage\Users\User;
 	
 	/**
@@ -99,35 +100,51 @@
 		 */
 		
 		public function __construct() {
-			global $ZendDB, $ZendDB_ReadOnly; 
+			global $ZendDB, $ZendDB_ReadOnly, $PHPUnitTest;
 			
-			if (isset($ZendDB)) {
-				$this->db = $ZendDB; 
-			} elseif (file_exists("db" . DS . "zend_db.php")) {
-				require("db" . DS . "zend_db.php"); 
+			if (isset($PHPUnitTest) && $PHPUnitTest == true) {
+				
+				require("db.dist" . DS . "zend_db.php"); 
 				$this->db = $ZendDB;
 				$this->destroy = true;
-			} elseif (file_exists(".." . DS . "db" . DS . "zend_db.php")) {
-				require(".." . DS . "db" . DS . "zend_db.php"); 
-				$this->db = $ZendDB;
-				$this->destroy = true;
+				
+				$ZendDB_ReadOnly = $ZendDB;
+				
 			} else {
-				require("db" . DS . "connect.php"); 
-				throw new \Exception(__CLASS__." needs a database object");
-				$this->db = $db;
-				$this->destroy = true;
-			}
 			
-			if (isset($ZendDB_ReadOnly)) {
-				$this->db_readonly = $ZendDB_ReadOnly; 
-			} elseif (file_exists("db" . DS . "zend_db.php")) {
-				require("db" . DS . "zend_db.php"); 
-				$this->db_readonly = $ZendDB_ReadOnly;
-				$this->destroy = true;
-			} elseif (file_exists(".." . DS . "db" . DS . "zend_db.php")) {
-				require(".." . DS . "db" . DS . "zend_db.php"); 
-				$this->db_readonly = $ZendDB_ReadOnly;
-				$this->destroy = true;
+				if (isset($ZendDB)) {
+					$this->db = $ZendDB; 
+				} elseif (file_exists("db" . DS . "zend_db.php")) {
+					require("db" . DS . "zend_db.php"); 
+					$this->db = $ZendDB;
+					$this->destroy = true;
+				} elseif (file_exists(".." . DS . "db" . DS . "zend_db.php")) {
+					require(".." . DS . "db" . DS . "zend_db.php"); 
+					$this->db = $ZendDB;
+					$this->destroy = true;
+				} else {
+					
+					// Attempt to resolve the DB connection to a stream path. If it can't be resolved, assume this is a CI environment and load a test DB connector
+					
+					if (stream_resolve_include_path("db" . DS . "connect.php")) {
+						require("db" . DS . "connect.php"); 
+						throw new Exception(__CLASS__." needs a database object");
+						$this->db = $db;
+						$this->destroy = true;
+					}
+				}
+				
+				if (isset($ZendDB_ReadOnly)) {
+					$this->db_readonly = $ZendDB_ReadOnly; 
+				} elseif (file_exists("db" . DS . "zend_db.php")) {
+					require("db" . DS . "zend_db.php"); 
+					$this->db_readonly = $ZendDB_ReadOnly;
+					$this->destroy = true;
+				} elseif (file_exists(".." . DS . "db" . DS . "zend_db.php")) {
+					require(".." . DS . "db" . DS . "zend_db.php"); 
+					$this->db_readonly = $ZendDB_ReadOnly;
+					$this->destroy = true;
+				}
 			}
 			
 			/** 

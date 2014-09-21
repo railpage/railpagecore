@@ -97,7 +97,9 @@
 				 * Pre-rendering
 				 */
 				
-				$Smarty->prerender($url);
+				if ($Smarty instanceof \Railpage\Template) {
+					$Smarty->prerender($url);
+				}
 				
 			}
 			
