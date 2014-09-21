@@ -7,3 +7,4 @@ before_script:
  - mysql -e 'create database myapp_test;'
 script: 
  - composer install
+ - phpunit
