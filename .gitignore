@@ -1,3 +1,4 @@
-composer.phar
-composer.lock
-vendor
+lib/composer.phar
+lib/composer.lock
+lib/vendor
+
