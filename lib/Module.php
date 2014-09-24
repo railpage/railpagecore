@@ -79,6 +79,11 @@
 						$this->url = "/assets";
 						break;
 					
+					case "chronicle" : 
+						$this->name = "Chronicle";
+						$this->url = "/chronicle";
+						break;
+					
 					case "diagnostics" : 
 						$this->name = "Diagnostics";
 						$this->url = "/diagnostics";
