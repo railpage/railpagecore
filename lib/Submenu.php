@@ -183,5 +183,15 @@
 			
 			return $this;
 		}
+		
+		/**
+		 * Add a section but don't switch to it
+		 * @since Version 3.8.7
+		 * @param string $section
+		 */
+		
+		public function AddSection($title = NULL) {
+			return $this->AddGrouping($title);
+		}
 	}
 ?>
