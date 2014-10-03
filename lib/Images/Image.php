@@ -377,7 +377,7 @@
 		 */
 		
 		public function populate($force = false) {
-			$RailpageAPI = new API;
+			$RailpageAPI = new API($this->Config->API->Key, $this->Config->API->Secret);
 			
 			if ($force === false && !$this->isStale()) {
 				return $this;
