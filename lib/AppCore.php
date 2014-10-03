@@ -272,6 +272,21 @@
 		}
 		
 		/**
+		 * Set the author for this object
+		 * @since Version 3.8.7
+		 * @param \Railpage\Users\User $User
+		 * @returns $this
+		 */
+		
+		public function setAuthor(User $User) {
+			
+			$this->Author = $User;
+			
+			return $this;
+			
+		}
+		
+		/**
 		 * Set the object string for this object
 		 * @since Version 3.8.7
 		 * @param object $object
