@@ -106,7 +106,16 @@
 				}
 				
 				$this->AddGrouping($grouping);
+				
 				$i = count($this->menu[$grouping]['menu']); 
+				
+				// Check if this already exists
+				foreach ($this->menu[$grouping]['menu'] as $k => $menu) {
+					if ($menu['title'] == $title) {
+						$i = $k;
+						break;
+					}
+				}
 				
 				$this->menu[$grouping]['menu'][$i]['title'] = $title; 
 				
