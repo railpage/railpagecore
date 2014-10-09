@@ -11,6 +11,7 @@
 	
 	use Exception;
 	use DateTime;
+	use Railpage\Url;
 	
 	/**
 	 * Content
@@ -152,6 +153,9 @@
 			$this->hits			= $row['counter']; 
 			$this->langauge		= isset($row['language']) ? $row['language'] : NULL;
 			$this->permalink	= $row['shortname']; 
+			
+			$this->url = new Url(sprintf("/static-%s.htm", $this->permalink));
+			$this->url->edit = sprintf("/admin/pages/edit/%d", $this->id);
 			
 			return true;
 		}
