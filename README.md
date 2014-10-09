@@ -1,7 +1,7 @@
 Railpage Core Code
 ==================
 
-[![Build Status](https://travis-ci.org/doctorjbeam/railpagecore.svg?branch=master)](https://travis-ci.org/doctorjbeam/railpagecore)
+[![Build Status](https://travis-ci.org/railpage/railpagecore.svg?branch=master)](https://travis-ci.org/railpage/railpagecore)
 
 This repository contains the core Railpage PHP objects formerly located under their respective modules. 
 
