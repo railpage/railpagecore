@@ -165,6 +165,7 @@
 				 */
 				
 				$woe = getWOEData($row['name'] . "," . $this->code); 
+				$shortname = $row['name'];
 				
 				if (isset($woe['places']['place'][0]['name'])) {
 					$row['name'] = $woe['places']['place'][0]['name'];
@@ -176,6 +177,87 @@
 				
 				if (isset($woe['places']['place'][0]['timezone'])) {
 					$row['timezone'] = $woe['places']['place'][0]['timezone'];
+				}
+				
+				$row['glyph'] = strtolower(sprintf("map-%s", $this->code));
+				
+				/**
+				 * Assign a map glyph
+				 */
+				
+				switch (strtolower($this->code)) {
+					
+					case "au" :
+						$row['glyph'] = strtolower(sprintf("map-%s-%s", $this->code, str_replace(array("ACT", "NSW", "QLD", "TAS", "VIC"), array("AC", "NW", "QL", "TS", "VC"), strtoupper($shortname))));
+						break;
+					
+					case "gb" :
+						$row['glyph'] = "map-uk";
+						break;
+					
+					case "us" :
+						$find = array(
+							"alaska",
+							"alabama",
+							"arizona",
+							"arkansas",
+							"california",
+							"colorado",
+							"Connecticut",
+							"delaware",
+							"district of columbia",
+							"florida",
+							"georgia",
+							"hawaii",
+							"idaho",
+							"illinois",
+							"indiana",
+							"iowa",
+							"kansas",
+							"kentucky",
+							"louisiana",
+							"maine",
+							"maryland",
+							"massachusetts",
+							"michigan",
+							"minnesota",
+							"mississippi",
+							"missouri",
+							"montana",
+							"nebraska",
+							"nevada",
+							"new hampshire",
+							"new jersey",
+							"new mexico",
+							"new york",
+							"north carolina",
+							"north dakota",
+							"ohio",
+							"oklahoma",
+							"oregon",
+							"pennsylvania",
+							"rhode island",
+							"south carolina",
+							"south dakota",
+							"tennessee",
+							"texas",
+							"utah",
+							"vermont",
+							"virginia",
+							"washington",
+							"west virginia",
+							"wisconsin",
+							"wyoming"
+						);
+						
+						$replace = array(
+							"ak", "al", "az", "ar", "ca", "co", "ct", "de", "dc", "fl", "ga", "hi", "id", "il", "in", "ia", "ks", "ky", 
+							"la", "me", "md", "ma", "mi", "mn", "ms", "mo", "mt", "ne", "nv", "nh", "nj", "nm", "ny", "nc", "nd", "oh",
+							"ok", "or", "pa", "ri", "sc", "sd", "tn", "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy"
+						);
+						
+						$row['glyph'] = strtolower(sprintf("map-%s-%s", $this->code, str_ireplace($find, $replace, $shortname)));
+						break;
 				}
 				
 				$regions[] = $row;
