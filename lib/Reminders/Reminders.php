@@ -44,9 +44,29 @@
 				throw new Exception("Can't find reminders because we don't know which user to look up");
 			}
 			
-			$query = "SELECT id FROM reminders WHERE user_id = ? AND reminder >= ? ORDER BY reminder";
+			$query = "SELECT id FROM reminders WHERE user_id = ? AND reminder >= ? AND sent = ? ORDER BY reminder";
 			
-			foreach ($this->db->fetchAll($query, array($this->User->id, date("Y-m-d"))) as $row) {
+			foreach ($this->db->fetchAll($query, array($this->User->id, date("Y-m-d"), 0)) as $row) {
+				yield new Reminder($row['id']);
+			}
+			
+		}
+		
+		/**
+		 * Find past reminders for this user
+		 * @since Version 3.8.7
+		 * @yield new \Railpage\Reminders\Reminder
+		 */
+		
+		public function getPastRemindersForUser() {
+			
+			if (!$this->User instanceof User) {
+				throw new Exception("Can't find reminders because we don't know which user to look up");
+			}
+			
+			$query = "SELECT id FROM reminders WHERE user_id = ? AND (reminder < ? OR sent = ?) ORDER BY reminder";
+			
+			foreach ($this->db->fetchAll($query, array($this->User->id, date("Y-m-d"), 1)) as $row) {
 				yield new Reminder($row['id']);
 			}
 			

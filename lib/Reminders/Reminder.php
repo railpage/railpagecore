@@ -10,6 +10,7 @@
 	
 	use DateTime;
 	use DateTimeZone;
+	use DateInterval;
 	use Exception;
 	use Railpage\AppCore;
 	use Railpage\Module;
@@ -115,6 +116,14 @@
 		public $Date;
 		
 		/**
+		 * Date on which the reminder was sent
+		 * @since Version 3.8.7
+		 * @var \DateTime $Dispatched
+		 */
+		
+		public $Dispatched;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.8.7
 		 * @param int $id
@@ -146,6 +155,7 @@
 					$this->title = $row['title'];
 					$this->text = $row['text'];
 					$this->sent = (boolean) $row['sent'];
+					$this->Dispatched = new DateTime($row['dispatched']);
 					
 					$this->url = new Url;
 					$this->url->send = sprintf("/reminders?id=%d&mode=send", $this->id);
@@ -206,7 +216,8 @@
 				"reminder" => $this->Date->format("Y-m-d H:i:s"),
 				"title" => $this->title,
 				"text" => $this->text,
-				"sent" => $this->sent
+				"sent" => $this->sent,
+				"dispatched" => $this->Dispatched instanceof DateTime ? $this->Dispatched->format("Y-m-d H:i:s") : "0000-00-00 00:00:00"
 			);
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
@@ -246,8 +257,8 @@
 				throw new Exception("Can't lookup a reminder because no object ID was specified");
 			}
 			
-			$query = "SELECT id FROM reminders WHERE user_id = ? AND object = ? AND object_id = ? AND reminder >= ?";
-			$params = array($this->User->id, $this->object, $this->object_id, date("Y-m-d"));
+			$query = "SELECT id FROM reminders WHERE user_id = ? AND object = ? AND object_id = ? AND reminder >= ? AND sent = ?";
+			$params = array($this->User->id, $this->object, $this->object_id, date("Y-m-d"), 0);
 			
 			$id = $this->db->fetchOne($query, $params);
 			
@@ -304,9 +315,62 @@
 			if ($result = $mailer->send($message)) {
 				if ($markAsSent) {
 					$this->sent = true;
+					$this->Dispatched = new DateTime;
 					$this->commit();
 				}
 			}
+			
+			return $this;
+		}
+		
+		/**
+		 * Set the reminder date
+		 * 
+		 * Checks if the date of the reminder is still in the future, and sets it to a more useful date if not
+		 * @sice Version 3.8.7
+		 * @param \DateTime $Reminder
+		 * @param \DateTime $Event
+		 * @return $this
+		 */
+		
+		public function setReminderDate(DateTime $Reminder, DateTime $EventDate) {
+			
+			$Now = new DateTime;
+			
+			if ($EventDate <= $Now) {
+				// Event date is in the past - error out
+				throw new Exception(sprintf("Won't add a reminder because the event date is in the past (%s < %s)", $EventDate->format("Y-m-d H:i:s"), $Now->format("Y-m-d H:i:s")));
+			}
+			
+			if ($Reminder <= $Now) {
+				// Set the reminder to now, just to normalise it
+				$Reminder = clone $EventDate;
+			}
+			
+			if ($Reminder >= $EventDate) {
+				// Reminder is after event date - set reminder to date - 2 days
+				$Reminder = clone $EventDate;
+				$Reminder->sub(new DateInterval("P2D"));
+				
+				if ($Reminder <= $Now) {
+					// Reminder is in the past - set reminder to date - 1 day
+					$Reminder = clone $EventDate;
+					$Reminder->sub(new DateInterval("P1D"));
+					
+					if ($Reminder <= $Now) {
+						// Reminder is in the past - set reminder to date - 2 hours
+						$Reminder = clone $EventDate;
+						$Reminder->sub(new DateInterval("PT2H"));
+						
+						if ($Reminder <= $Now) {
+							// Reminder is in the past - error out
+							throw new Exception("Won't add a reminder because the proposed time is in the past");
+						}
+					}
+				}
+			}
+			
+			$this->Date = $Reminder;
 			
 			return $this;
 		}
