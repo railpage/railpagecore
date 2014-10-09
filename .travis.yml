@@ -5,6 +5,8 @@ php:
   - hhvm
 before_script:
  - mysql -e 'create database myapp_test;'
+ - sudo apt-get update -qq
+ - sudo apt-get install -qq zend-framework
 script: 
  - composer install
  - phpunit
