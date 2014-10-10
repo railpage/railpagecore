@@ -29,6 +29,8 @@
 	if (class_exists("PHPUnit_Framework_TestCase")) {
 		$PHPUnitTest = true;
 		
+		require_once(dirname(__DIR__) . DS . "tests" . DS . "inc.memcache.php");
+		
 		/**
 		 * Load the composer autoloader
 		 */
