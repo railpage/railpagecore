@@ -355,7 +355,7 @@
 		 */
 		
 		public function getWeatherForecast($days = 14) {
-			$weather = array();
+			$weather = false;
 			
 			if ($days instanceof DateTime) {
 				$Date = $days;
@@ -382,6 +382,10 @@
 			$content = $response->getContent();
 			$forecast = json_decode($content, true);
 			
+			if (is_array($forecast)) {
+				$weather = array(); 
+			}
+			
 			foreach ($forecast['list'] as $row) {
 				$ForecastDate = new DateTime("@" . $row['dt']);
 				
@@ -390,7 +394,7 @@
 					"max" => round($row['temp']['max']),
 					"weather" => array(
 						"title" => $row['weather'][0]['main'],
-						"icon" => getWeatherIcon($row['weather'][0]['description'])
+						"icon" => function_exists("getWeatherIcon") ? getWeatherIcon($row['weather'][0]['description']) : ""
 					)
 				);
 			}
