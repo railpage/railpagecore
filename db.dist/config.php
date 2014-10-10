@@ -9,6 +9,6 @@
 	$dbhost		= "127.0.0.1";
 	$dbuname	= "travis";
 	$dbpass		= "";
-	$dbname		= "sparta";
+	$dbname		= "sparta_unittest";
 	$dbadapter	= "Mysqli"; // Case-sensitive!
 ?>
