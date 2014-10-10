@@ -1,12 +1,12 @@
 <?php
-	use Railpage\Locos\Operator
+	use Railpage\Locos\Operator;
 	
 	class OperatorTest extends PHPUnit_Framework_TestCase {
 		
 		public function testAdd() {
 			$Operator = new Operator;
 			
-			$this->assertInstanceOf("Railpage\\Operator", $Operator);
+			$this->assertInstanceOf("Railpage\\Locos\\Operator", $Operator);
 			
 			$Operator->name = "Test Operator";
 			$Operator->commit(); 
