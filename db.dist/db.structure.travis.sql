@@ -406,7 +406,7 @@ CREATE TABLE `flickr_cache` (
   `response` longtext NOT NULL,
   `expiration` datetime NOT NULL,
   KEY `request` (`request`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=0;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -474,7 +474,7 @@ CREATE TABLE `flickr_geodata` (
   KEY `lat` (`lat`),
   KEY `lon` (`lon`),
   KEY `owner` (`owner`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=0;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1263,7 +1263,7 @@ CREATE TABLE `log_downloads` (
   `user_id` int(11) NOT NULL,
   `username` varchar(128) NOT NULL,
   KEY `download_id` (`download_id`,`date`,`ip`,`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=0;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1604,7 +1604,7 @@ CREATE TABLE `nuke_bbarcade` (
   `arcade_name` varchar(255) NOT NULL DEFAULT '',
   `arcade_value` varchar(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`arcade_name`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1621,7 +1621,7 @@ CREATE TABLE `nuke_bbarcade_categories` (
   `arcade_catorder` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `arcade_catauth` tinyint(2) NOT NULL DEFAULT '0',
   KEY `arcade_catid` (`arcade_catid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1634,7 +1634,7 @@ DROP TABLE IF EXISTS `nuke_bbarcade_comments`;
 CREATE TABLE `nuke_bbarcade_comments` (
   `game_id` mediumint(8) NOT NULL DEFAULT '0',
   `comments_value` varchar(255) NOT NULL DEFAULT ''
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1648,7 +1648,7 @@ CREATE TABLE `nuke_bbarcade_fav` (
   `order` mediumint(8) NOT NULL DEFAULT '0',
   `user_id` mediumint(8) NOT NULL DEFAULT '0',
   `game_id` mediumint(8) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1690,7 +1690,7 @@ CREATE TABLE `nuke_bbauth_arcade_access` (
   `arcade_catid` mediumint(8) unsigned NOT NULL DEFAULT '0',
   KEY `group_id` (`group_id`),
   KEY `arcade_catid` (`arcade_catid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1766,7 +1766,7 @@ CREATE TABLE `nuke_bbdisallow` (
   `disallow_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `disallow_username` varchar(25) DEFAULT NULL,
   PRIMARY KEY (`disallow_id`)
-) ENGINE=Aria DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1835,7 +1835,7 @@ CREATE TABLE `nuke_bbgamehash` (
   `game_id` mediumint(8) NOT NULL DEFAULT '0',
   `user_id` mediumint(8) NOT NULL DEFAULT '0',
   `hash_date` int(11) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1862,7 +1862,7 @@ CREATE TABLE `nuke_bbgames` (
   `game_set` mediumint(8) NOT NULL DEFAULT '0',
   `arcade_catid` mediumint(8) NOT NULL DEFAULT '1',
   KEY `game_id` (`game_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1898,7 +1898,7 @@ CREATE TABLE `nuke_bbhackgame` (
   `user_id` mediumint(8) NOT NULL DEFAULT '0',
   `game_id` mediumint(8) NOT NULL DEFAULT '0',
   `date_hack` int(11) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2080,7 +2080,7 @@ CREATE TABLE `nuke_bbscores` (
   `score_set` mediumint(8) NOT NULL DEFAULT '0',
   KEY `game_id` (`game_id`),
   KEY `user_id` (`user_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2129,7 +2129,7 @@ CREATE TABLE `nuke_bbsearch_wordlist` (
   `word_common` tinyint(1) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`word_text`),
   KEY `word_id` (`word_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2145,7 +2145,7 @@ CREATE TABLE `nuke_bbsearch_wordmatch` (
   `title_match` tinyint(1) NOT NULL DEFAULT '0',
   KEY `word_id` (`word_id`),
   KEY `post_id` (`post_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2166,7 +2166,7 @@ CREATE TABLE `nuke_bbsessions` (
   PRIMARY KEY (`session_id`),
   KEY `session_user_id` (`session_user_id`),
   KEY `session_id_ip_user_id` (`session_id`,`session_ip`,`session_user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2182,7 +2182,7 @@ CREATE TABLE `nuke_bbsmilies` (
   `smile_url` varchar(100) DEFAULT NULL,
   `emoticon` varchar(75) DEFAULT NULL,
   PRIMARY KEY (`smilies_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2237,7 +2237,7 @@ CREATE TABLE `nuke_bbthemes` (
   `img_size_poll` smallint(5) unsigned DEFAULT NULL,
   `img_size_privmsg` smallint(5) unsigned DEFAULT NULL,
   PRIMARY KEY (`themes_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2280,7 +2280,7 @@ CREATE TABLE `nuke_bbthemes_name` (
   `span_class2_name` char(50) DEFAULT NULL,
   `span_class3_name` char(50) DEFAULT NULL,
   PRIMARY KEY (`themes_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2329,7 +2329,7 @@ CREATE TABLE `nuke_bbtopics_watch` (
   KEY `topic_id` (`topic_id`),
   KEY `user_id` (`user_id`),
   KEY `notify_status` (`notify_status`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2349,7 +2349,7 @@ CREATE TABLE `nuke_bbuser_group` (
   KEY `group_id` (`group_id`),
   KEY `user_id` (`user_id`),
   KEY `user_pending` (`user_pending`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2367,7 +2367,7 @@ CREATE TABLE `nuke_bbvote_desc` (
   `vote_length` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`vote_id`),
   KEY `topic_id` (`topic_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2384,7 +2384,7 @@ CREATE TABLE `nuke_bbvote_results` (
   `vote_result` int(11) NOT NULL DEFAULT '0',
   KEY `vote_option_id` (`vote_option_id`),
   KEY `vote_id` (`vote_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2401,7 +2401,7 @@ CREATE TABLE `nuke_bbvote_voters` (
   KEY `vote_id` (`vote_id`),
   KEY `vote_user_id` (`vote_user_id`),
   KEY `vote_user_ip` (`vote_user_ip`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2416,7 +2416,7 @@ CREATE TABLE `nuke_bbwords` (
   `word` char(100) NOT NULL DEFAULT '',
   `replacement` char(100) NOT NULL DEFAULT '',
   PRIMARY KEY (`word_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2443,7 +2443,7 @@ CREATE TABLE `nuke_blocks` (
   PRIMARY KEY (`bid`),
   KEY `bid` (`bid`),
   KEY `title` (`title`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2470,7 +2470,7 @@ CREATE TABLE `nuke_comments` (
   KEY `tid` (`tid`),
   KEY `pid` (`pid`),
   KEY `sid` (`sid`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2536,7 +2536,7 @@ CREATE TABLE `nuke_config` (
   `CensorReplace` varchar(10) NOT NULL DEFAULT '',
   `copyright` text NOT NULL,
   `Version_Num` varchar(10) NOT NULL DEFAULT ''
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2565,7 +2565,7 @@ CREATE TABLE `nuke_contactbook` (
   PRIMARY KEY (`contactid`),
   KEY `uid` (`uid`),
   KEY `contactid` (`contactid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2579,7 +2579,7 @@ CREATE TABLE `nuke_counter` (
   `type` varchar(80) NOT NULL DEFAULT '',
   `var` varchar(80) NOT NULL DEFAULT '',
   `count` int(10) unsigned NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2597,7 +2597,7 @@ CREATE TABLE `nuke_downloads_categories` (
   PRIMARY KEY (`cid`),
   KEY `cid` (`cid`),
   KEY `title` (`title`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2634,7 +2634,7 @@ CREATE TABLE `nuke_downloads_downloads` (
   KEY `cid` (`cid`),
   KEY `sid` (`sid`),
   KEY `title` (`title`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2652,7 +2652,7 @@ CREATE TABLE `nuke_downloads_editorials` (
   `editorialtitle` varchar(100) NOT NULL DEFAULT '',
   PRIMARY KEY (`downloadid`),
   KEY `downloadid` (`downloadid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2679,7 +2679,7 @@ CREATE TABLE `nuke_downloads_modrequest` (
   `homepage` varchar(200) NOT NULL DEFAULT '',
   PRIMARY KEY (`requestid`),
   UNIQUE KEY `requestid` (`requestid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2708,7 +2708,7 @@ CREATE TABLE `nuke_downloads_newdownload` (
   KEY `cid` (`cid`),
   KEY `sid` (`sid`),
   KEY `title` (`title`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2728,7 +2728,7 @@ CREATE TABLE `nuke_downloads_votedata` (
   `ratingtimestamp` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
   PRIMARY KEY (`ratingdbid`),
   KEY `ratingdbid` (`ratingdbid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2746,7 +2746,7 @@ CREATE TABLE `nuke_encyclopedia` (
   `active` int(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`eid`),
   KEY `eid` (`eid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2766,7 +2766,7 @@ CREATE TABLE `nuke_encyclopedia_text` (
   KEY `tid` (`tid`),
   KEY `eid` (`eid`),
   KEY `title` (`title`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2785,7 +2785,7 @@ CREATE TABLE `nuke_ephem` (
   `elanguage` varchar(30) NOT NULL DEFAULT '',
   PRIMARY KEY (`eid`),
   KEY `eid` (`eid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2803,7 +2803,7 @@ CREATE TABLE `nuke_externalsearch` (
   `linkurl` text NOT NULL,
   KEY `linkid` (`linkid`),
   FULLTEXT KEY `linktitle` (`linktitle`,`linktext`,`linkurl`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2856,7 +2856,7 @@ CREATE TABLE `nuke_g2config` (
   `showSidebar` tinyint(1) DEFAULT NULL,
   `g2configurationDone` tinyint(1) DEFAULT NULL,
   `embedVersion` varchar(255) DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2874,7 +2874,7 @@ CREATE TABLE `nuke_gallery` (
   `cached_photos` int(11) NOT NULL DEFAULT '0',
   `mod_date` int(11) NOT NULL DEFAULT '0',
   UNIQUE KEY `album_name` (`album_name`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2896,7 +2896,7 @@ CREATE TABLE `nuke_hallfame_queue` (
   `qaccept` int(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`qid`),
   FULLTEXT KEY `hofreason` (`hofreason`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2912,7 +2912,7 @@ CREATE TABLE `nuke_headlines` (
   `headlinesurl` varchar(200) NOT NULL DEFAULT '',
   PRIMARY KEY (`hid`),
   KEY `hid` (`hid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2936,7 +2936,7 @@ CREATE TABLE `nuke_journal` (
   PRIMARY KEY (`jid`),
   KEY `jid` (`jid`),
   KEY `aid` (`aid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2957,7 +2957,7 @@ CREATE TABLE `nuke_journal_comments` (
   KEY `cid` (`cid`),
   KEY `rid` (`rid`),
   KEY `aid` (`aid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2976,7 +2976,7 @@ CREATE TABLE `nuke_journal_stats` (
   `micro` varchar(128) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   KEY `id` (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2993,7 +2993,7 @@ CREATE TABLE `nuke_links_categories` (
   `parentid` int(11) NOT NULL DEFAULT '0',
   `slug` varchar(128) CHARACTER SET latin1 NOT NULL,
   PRIMARY KEY (`cid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3011,7 +3011,7 @@ CREATE TABLE `nuke_links_editorials` (
   `editorialtitle` varchar(100) CHARACTER SET latin1 NOT NULL DEFAULT '',
   PRIMARY KEY (`linkid`),
   KEY `linkid` (`linkid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3045,7 +3045,7 @@ CREATE TABLE `nuke_links_links` (
   KEY `cid` (`cid`),
   KEY `sid` (`sid`),
   KEY `user_id` (`user_id`,`link_broken`,`link_approved`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3068,7 +3068,7 @@ CREATE TABLE `nuke_links_modrequest` (
   `brokenlink` int(3) NOT NULL DEFAULT '0',
   PRIMARY KEY (`requestid`),
   UNIQUE KEY `requestid` (`requestid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3093,7 +3093,7 @@ CREATE TABLE `nuke_links_newlink` (
   KEY `lid` (`lid`),
   KEY `cid` (`cid`),
   KEY `sid` (`sid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3110,7 +3110,7 @@ CREATE TABLE `nuke_links_settings` (
   `scroll_direction` tinyint(1) NOT NULL DEFAULT '0',
   `scroll_height` int(4) NOT NULL DEFAULT '0',
   `num_line_breaks` tinyint(1) NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3130,7 +3130,7 @@ CREATE TABLE `nuke_links_votedata` (
   `ratingtimestamp` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
   PRIMARY KEY (`ratingdbid`),
   KEY `ratingdbid` (`ratingdbid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3142,7 +3142,7 @@ DROP TABLE IF EXISTS `nuke_main`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `nuke_main` (
   `main_module` varchar(255) NOT NULL DEFAULT ''
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3163,7 +3163,7 @@ CREATE TABLE `nuke_message` (
   `mlanguage` varchar(30) NOT NULL DEFAULT '',
   PRIMARY KEY (`mid`),
   UNIQUE KEY `mid` (`mid`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3185,7 +3185,7 @@ CREATE TABLE `nuke_modules` (
   KEY `mid` (`mid`),
   KEY `title` (`title`),
   KEY `custom_title` (`custom_title`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3202,7 +3202,7 @@ CREATE TABLE `nuke_modules_categories` (
   PRIMARY KEY (`mcid`),
   KEY `mcid` (`mcid`),
   KEY `mcname` (`mcname`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3246,7 +3246,7 @@ CREATE TABLE `nuke_msanalysis_admin` (
   `copyright` varchar(25) NOT NULL DEFAULT 'Maty Scripts',
   `version` varchar(25) NOT NULL DEFAULT 'MS-Analysis v1.1',
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3267,7 +3267,7 @@ CREATE TABLE `nuke_msanalysis_browsers` (
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `ibrowser` (`ibrowser`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3290,7 +3290,7 @@ CREATE TABLE `nuke_msanalysis_countries` (
   KEY `id` (`id`),
   KEY `domain` (`domain`),
   KEY `description` (`description`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3308,7 +3308,7 @@ CREATE TABLE `nuke_msanalysis_domains` (
   KEY `id` (`id`),
   KEY `domain` (`domain`),
   KEY `description` (`description`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3329,7 +3329,7 @@ CREATE TABLE `nuke_msanalysis_modules` (
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `modulename` (`modulename`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3354,7 +3354,7 @@ CREATE TABLE `nuke_msanalysis_online` (
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `time` (`time`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3375,7 +3375,7 @@ CREATE TABLE `nuke_msanalysis_os` (
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `ios` (`ios`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3396,7 +3396,7 @@ CREATE TABLE `nuke_msanalysis_referrals` (
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `referral` (`referral`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3417,7 +3417,7 @@ CREATE TABLE `nuke_msanalysis_scr` (
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `scr_res` (`scr_res`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3438,7 +3438,7 @@ CREATE TABLE `nuke_msanalysis_search` (
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `words` (`words`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3465,7 +3465,7 @@ CREATE TABLE `nuke_msanalysis_users` (
   PRIMARY KEY (`uid`),
   KEY `uid` (`uid`),
   KEY `uname` (`uname`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3483,7 +3483,7 @@ CREATE TABLE `nuke_newscomau` (
   `bodytext` text NOT NULL,
   PRIMARY KEY (`sid`),
   KEY `sid` (`sid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3507,7 +3507,7 @@ CREATE TABLE `nuke_nsndownloads_config` (
   `show_hits` int(1) NOT NULL DEFAULT '1',
   `show_date` int(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3521,7 +3521,7 @@ CREATE TABLE `nuke_nucal_attendees` (
   `event_id` int(10) NOT NULL,
   `user_id` int(10) NOT NULL,
   KEY `event_id` (`event_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3537,7 +3537,7 @@ CREATE TABLE `nuke_nucal_categories` (
   `description` text NOT NULL,
   `showinblock` tinyint(1) NOT NULL DEFAULT '1',
   KEY `id` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3611,7 +3611,7 @@ CREATE TABLE `nuke_nucal_options` (
   `month_today_color` varchar(6) NOT NULL DEFAULT 'FFFFFF',
   `month_hover_color` varchar(6) NOT NULL DEFAULT 'C0C0C0',
   `show_mdy` tinyint(1) NOT NULL DEFAULT '1'
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3623,7 +3623,7 @@ DROP TABLE IF EXISTS `nuke_optimize_gain`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `nuke_optimize_gain` (
   `gain` decimal(10,3) DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3650,7 +3650,7 @@ CREATE TABLE `nuke_pages` (
   PRIMARY KEY (`pid`),
   KEY `pid` (`pid`),
   KEY `cid` (`cid`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3666,7 +3666,7 @@ CREATE TABLE `nuke_pages_categories` (
   `description` text NOT NULL,
   PRIMARY KEY (`cid`),
   KEY `cid` (`cid`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3682,7 +3682,7 @@ CREATE TABLE `nuke_poll_check` (
   `pollID` int(10) NOT NULL DEFAULT '0',
   KEY `ip` (`ip`),
   KEY `pollID` (`pollID`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3698,7 +3698,7 @@ CREATE TABLE `nuke_poll_data` (
   `optionCount` int(11) NOT NULL DEFAULT '0',
   `voteID` int(11) NOT NULL DEFAULT '0',
   KEY `pollID` (`pollID`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3717,7 +3717,7 @@ CREATE TABLE `nuke_poll_desc` (
   `artid` int(10) NOT NULL DEFAULT '0',
   PRIMARY KEY (`pollID`),
   KEY `artid` (`artid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3744,7 +3744,7 @@ CREATE TABLE `nuke_pollcomments` (
   KEY `tid` (`tid`),
   KEY `pid` (`pid`),
   KEY `pollID` (`pollID`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3769,7 +3769,7 @@ CREATE TABLE `nuke_popsettings` (
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `uid` (`uid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3792,7 +3792,7 @@ CREATE TABLE `nuke_priv_msgs` (
   KEY `msg_id` (`msg_id`),
   KEY `to_userid` (`to_userid`),
   KEY `from_userid` (`from_userid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3809,7 +3809,7 @@ CREATE TABLE `nuke_public_messages` (
   `who` varchar(25) NOT NULL DEFAULT '',
   PRIMARY KEY (`mid`),
   KEY `mid` (`mid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3835,7 +3835,7 @@ CREATE TABLE `nuke_queue` (
   PRIMARY KEY (`qid`),
   KEY `uid` (`uid`),
   KEY `uname` (`uname`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3854,7 +3854,7 @@ CREATE TABLE `nuke_quiz_admin` (
   `cid` int(11) NOT NULL DEFAULT '1',
   PRIMARY KEY (`quizID`),
   KEY `quizzID` (`quizID`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3870,7 +3870,7 @@ CREATE TABLE `nuke_quiz_categories` (
   `comment` varchar(255) DEFAULT NULL,
   `image` varchar(50) DEFAULT NULL,
   PRIMARY KEY (`cid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3889,7 +3889,7 @@ CREATE TABLE `nuke_quiz_check` (
   `score` tinyint(2) NOT NULL DEFAULT '0',
   `answers` varchar(255) NOT NULL DEFAULT '',
   KEY `qid` (`qid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3904,7 +3904,7 @@ CREATE TABLE `nuke_quiz_data` (
   `optionText` char(150) NOT NULL DEFAULT '',
   `optionCount` int(11) NOT NULL DEFAULT '0',
   `voteID` int(11) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3927,7 +3927,7 @@ CREATE TABLE `nuke_quiz_desc` (
   `comment` text,
   `image` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`pollID`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3951,7 +3951,7 @@ CREATE TABLE `nuke_quiz_index` (
   `quizcat` int(5) NOT NULL DEFAULT '1',
   KEY `quizid` (`quizid`),
   FULLTEXT KEY `quiztitle` (`quiztitle`,`quizdesc`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3983,7 +3983,7 @@ CREATE TABLE `nuke_quizz_admin` (
   `conditions` text,
   PRIMARY KEY (`quizzID`),
   KEY `quizzID` (`quizzID`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3999,7 +3999,7 @@ CREATE TABLE `nuke_quizz_categories` (
   `comment` varchar(255) DEFAULT NULL,
   `image` varchar(50) DEFAULT NULL,
   PRIMARY KEY (`cid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4018,7 +4018,7 @@ CREATE TABLE `nuke_quizz_check` (
   `score` tinyint(2) NOT NULL DEFAULT '0',
   `answers` varchar(255) NOT NULL DEFAULT '',
   KEY `qid` (`qid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4033,7 +4033,7 @@ CREATE TABLE `nuke_quizz_data` (
   `optionText` char(50) NOT NULL DEFAULT '',
   `optionCount` int(11) NOT NULL DEFAULT '0',
   `voteID` int(11) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4048,7 +4048,7 @@ CREATE TABLE `nuke_quizz_datacontrib` (
   `optionText` char(50) NOT NULL DEFAULT '',
   `optionCount` int(11) NOT NULL DEFAULT '0',
   `voteID` int(11) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4071,7 +4071,7 @@ CREATE TABLE `nuke_quizz_desc` (
   `comment` text,
   `image` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`pollID`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4094,7 +4094,7 @@ CREATE TABLE `nuke_quizz_descontrib` (
   `comment` text,
   `image` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`pollID`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4109,7 +4109,7 @@ CREATE TABLE `nuke_quotes` (
   `quote` text,
   PRIMARY KEY (`qid`),
   KEY `qid` (`qid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4124,7 +4124,7 @@ CREATE TABLE `nuke_referer` (
   `url` varchar(100) NOT NULL DEFAULT '',
   PRIMARY KEY (`rid`),
   KEY `rid` (`rid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4142,7 +4142,7 @@ CREATE TABLE `nuke_related` (
   PRIMARY KEY (`rid`),
   KEY `rid` (`rid`),
   KEY `tid` (`tid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4167,7 +4167,7 @@ CREATE TABLE `nuke_reviews` (
   `rlanguage` varchar(30) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   KEY `id` (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4190,7 +4190,7 @@ CREATE TABLE `nuke_reviews_add` (
   `rlanguage` varchar(30) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   KEY `id` (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4211,7 +4211,7 @@ CREATE TABLE `nuke_reviews_comments` (
   KEY `cid` (`cid`),
   KEY `rid` (`rid`),
   KEY `userid` (`userid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4224,7 +4224,7 @@ DROP TABLE IF EXISTS `nuke_reviews_main`;
 CREATE TABLE `nuke_reviews_main` (
   `title` varchar(100) DEFAULT NULL,
   `description` text
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4244,7 +4244,7 @@ CREATE TABLE `nuke_seccont` (
   PRIMARY KEY (`artid`),
   KEY `artid` (`artid`),
   KEY `secid` (`secid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4260,7 +4260,7 @@ CREATE TABLE `nuke_sections` (
   `image` varchar(50) NOT NULL DEFAULT '',
   PRIMARY KEY (`secid`),
   KEY `secid` (`secid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4277,7 +4277,7 @@ CREATE TABLE `nuke_session` (
   `guest` int(1) NOT NULL DEFAULT '0',
   KEY `time` (`time`),
   KEY `guest` (`guest`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4298,7 +4298,7 @@ CREATE TABLE `nuke_sommaire` (
   `invisible` int(1) DEFAULT NULL,
   `class` tinytext,
   PRIMARY KEY (`groupmenu`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4316,7 +4316,7 @@ CREATE TABLE `nuke_sommaire_categories` (
   `url_text` text NOT NULL,
   `image` varchar(50) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4333,7 +4333,7 @@ CREATE TABLE `nuke_spelling_words` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `word` (`word`),
   KEY `sound` (`sound`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4353,7 +4353,7 @@ CREATE TABLE `nuke_staff` (
   `photo` varchar(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`sid`),
   UNIQUE KEY `sid` (`sid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4368,7 +4368,7 @@ CREATE TABLE `nuke_staff_cat` (
   `name` varchar(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4383,7 +4383,7 @@ CREATE TABLE `nuke_stats_date` (
   `month` tinyint(4) NOT NULL DEFAULT '0',
   `date` tinyint(4) NOT NULL DEFAULT '0',
   `hits` bigint(20) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4399,7 +4399,7 @@ CREATE TABLE `nuke_stats_hour` (
   `date` tinyint(4) NOT NULL DEFAULT '0',
   `hour` tinyint(4) NOT NULL DEFAULT '0',
   `hits` int(11) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4413,7 +4413,7 @@ CREATE TABLE `nuke_stats_month` (
   `year` smallint(6) NOT NULL DEFAULT '0',
   `month` tinyint(4) NOT NULL DEFAULT '0',
   `hits` bigint(20) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4426,7 +4426,7 @@ DROP TABLE IF EXISTS `nuke_stats_year`;
 CREATE TABLE `nuke_stats_year` (
   `year` smallint(6) NOT NULL DEFAULT '0',
   `hits` bigint(20) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4497,7 +4497,7 @@ CREATE TABLE `nuke_stories_cat` (
   `counter` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`catid`),
   KEY `catid` (`catid`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4532,7 +4532,7 @@ CREATE TABLE `nuke_upermissions` (
   `pmodule` varchar(255) NOT NULL DEFAULT '',
   KEY `pid` (`pid`),
   FULLTEXT KEY `pmodule` (`pmodule`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4697,7 +4697,7 @@ CREATE TABLE `nuke_users_groups` (
   `gid` int(11) NOT NULL AUTO_INCREMENT,
   `gname` varchar(32) NOT NULL DEFAULT '',
   PRIMARY KEY (`gid`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4714,7 +4714,7 @@ CREATE TABLE `nuke_users_groups_users` (
   `email` varchar(255) NOT NULL DEFAULT '',
   `sdate` date NOT NULL DEFAULT '0000-00-00',
   `edate` date NOT NULL DEFAULT '0000-00-00'
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4767,7 +4767,7 @@ CREATE TABLE `nuke_users_temp` (
   `time` varchar(14) NOT NULL DEFAULT '',
   `email_sent` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4787,7 +4787,7 @@ CREATE TABLE `oauth_consumer` (
   KEY `consumer_key` (`consumer_key`),
   KEY `consumer_secret` (`consumer_secret`),
   KEY `active` (`active`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4803,7 +4803,7 @@ CREATE TABLE `oauth_consumer_nonce` (
   `timestamp` bigint(20) NOT NULL,
   `nonce` varchar(250) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4823,7 +4823,7 @@ CREATE TABLE `oauth_token` (
   `verifier` varchar(250) NOT NULL,
   `user_id` int(11) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4837,7 +4837,7 @@ CREATE TABLE `oauth_token_type` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `type` varchar(50) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4932,7 +4932,7 @@ CREATE TABLE `phpbb_reports_actions` (
   KEY `report_id` (`report_id`),
   KEY `action_user_id` (`action_user_id`),
   KEY `action_status` (`action_status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4946,7 +4946,7 @@ CREATE TABLE `phpbb_reports_config` (
   `config_name` varchar(255) CHARACTER SET latin1 NOT NULL DEFAULT '',
   `config_value` varchar(255) CHARACTER SET latin1 NOT NULL DEFAULT '',
   PRIMARY KEY (`config_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4965,7 +4965,7 @@ CREATE TABLE `phpbb_reports_data` (
   `data_code` tinyint(1) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`data_id`),
   KEY `data_code` (`data_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -4990,7 +4990,7 @@ CREATE TABLE `phpbb_reports_posts` (
   KEY `report_status` (`report_status`),
   KEY `post_id` (`post_id`),
   KEY `poster_id` (`poster_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -5050,7 +5050,7 @@ CREATE TABLE `popover_viewed` (
   `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `user_id` int(11) NOT NULL,
   KEY `popover_id` (`popover_id`,`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -5065,7 +5065,7 @@ CREATE TABLE `privmsgs_hidelist` (
   `user_id` int(11) NOT NULL,
   `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY `privmsgs_id` (`privmsgs_id`,`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -5135,7 +5135,7 @@ CREATE TABLE `rating_loco` (
   `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`rating_id`),
   KEY `rating_id` (`rating_id`,`loco_id`,`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -5270,7 +5270,7 @@ CREATE TABLE `sighting_locos` (
   `loco_id` int(11) NOT NULL,
   KEY `loco_id` (`loco_id`),
   KEY `sighting_id` (`sighting_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -5316,7 +5316,7 @@ CREATE TABLE `tag` (
   `tag` varchar(128) NOT NULL,
   PRIMARY KEY (`tag_id`),
   UNIQUE KEY `tag` (`tag`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -5339,7 +5339,7 @@ CREATE TABLE `tag_link` (
   KEY `topic_id` (`topic_id`),
   KEY `post_id` (`post_id`),
   KEY `photo_id` (`photo_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -5372,7 +5372,7 @@ CREATE TABLE `timetable_entries` (
   KEY `point_id` (`point_id`),
   KEY `monday` (`monday`,`tuesday`,`wednesday`,`thursday`,`friday`,`saturday`,`sunday`),
   KEY `train_id` (`train_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -5444,7 +5444,7 @@ CREATE TABLE `viewed_threads` (
   KEY `time` (`time`),
   KEY `user_id` (`user_id`),
   KEY `topic_id` (`topic_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
