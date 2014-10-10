@@ -13,7 +13,7 @@
 		define("RP_MEMCACHE_PORT", 11211);
 	}
 	
-	if (class_exists("Memcached")) {
+	if (class_exists("Memcached") && (!isset($PHPUnitTest) || $PHPUnitTest === false)) {
 		$memcache = new Memcached();
 		$memcache->addServer(RP_MEMCACHE_HOST, RP_MEMCACHE_PORT);
 		
