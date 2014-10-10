@@ -4,7 +4,7 @@ php:
   - 5.6
   - hhvm
 before_script:
- - mysql -e 'create database myapp_test;'
+ - mysql < db.dist/db.structure.sql
  - sudo apt-get update -qq
  - sudo apt-get install -qq zend-framework
 script: 
