@@ -23,6 +23,7 @@
 	use DateTime;
 	use DateTimeZone;
 	use Zend\Http\Client;
+	use HTTP_Request2;
 	
 	/**
 	 * Place class
@@ -102,14 +103,16 @@
 				global $site_debug;
 				$debug_timer_start = microtime(true);
 			}
-				
-			debug_recordInstance(__CLASS__);
+			
+			if (function_exists("debug_recordInstance")) {
+				debug_recordInstance(__CLASS__);
+			}
 			
 			/**
 			 * Fetch the WOE (Where On Earth) data from Yahoo
 			 */
 			
-			$woe = getWOEData($this->lat . "," . $this->lon);
+			$woe = $this->getWOEData($this->lat . "," . $this->lon);
 			
 			if (!isset($woe['places']['place'][0])) {
 				#printArray($woe);die;
@@ -398,5 +401,96 @@
 			
 			return $weather;
 		}
+	
+		/**
+		 * Get WOE (Where On Earth) data from Yahoo's GeoPlanet API
+		 *
+		 * Ported from [master]/includes/functions.php
+		 * @since Version 3.8.7
+		 * @param string $lookup
+		 * @return array
+		 */
+		
+		public static function getWOEData($lookup = false) {
+			if ($lookup === false) {
+				return false;
+			}
+			
+			$return = array();
+			
+			$mckey = "railpage:woe=" . $lookup;
+			#deleteMemcacheObject($mckey);
+			
+			if (!$return = getMemcacheObject($mckey)) {
+				global $RailpageConfig;
+				
+				if (preg_match("@[a-zA-Z]+@", $lookup) || strpos($lookup, ",")) {
+					$lookup = sprintf("places.q('%s')", $lookup);
+				} else {
+					$lookup = sprintf("place/%s", $lookup);
+				}
+				
+				$url = sprintf("http://where.yahooapis.com/v1/%s?lang=en&appid=%s&format=json", $lookup, $RailpageConfig->Yahoo->ApplicationID);
+				
+				/**
+				 * Load PEAR HTTP/Request2
+				 */
+				
+				#require_once("HTTP/Request2.php");
+				
+				/**
+				 * Fetch from Yahoo's GeoPlanet API
+				 */
+				
+				$request = new HTTP_Request2($url, HTTP_Request2::METHOD_GET);
+				
+				$response = $request->send();
+				
+				switch ($response->getStatus()) {
+					case 200 :
+						$return = json_decode($response->getBody(), true);
+						break;
+					
+					case 503 : 
+						throw new Exception("Your call to Yahoo Web Services failed and returned an HTTP status of 503. That means: Service unavailable. An internal problem prevented us from returning data to you.");
+						break;
+					
+					case 403 : 
+						throw new Exception("Your call to Yahoo Web Services failed and returned an HTTP status of 403. That means: Forbidden. You do not have permission to access this resource, or are over your rate limit.");
+						break;
+					
+					case 400 : 
+						throw new Exception("Your call to Yahoo Web Services failed and returned an HTTP status of 400. That means:  Bad request. The parameters passed to the service did not match as expected. The exact error is returned in the XML/JSON response.");
+						break;
+					
+					default : 
+						throw new Exception("Your call to Yahoo Web Services returned an unexpected HTTP status of: " . $response->getStatus());
+						
+				}
+				
+				$return['url'] = $url;
+				
+				/*
+				// Zend\Http\Client code messes with the URL and tries to encode the brackets. This breaks Yahoo's API, because they're too shit to urldecode() anything
+				$client = new Zend\Http\Client;
+				$client->setAdapter("Zend\Http\Client\Adapter\Curl");
+				$client->setUri($url);
+				$client->setEncType(Zend\Http\Client::ENC_URLENCODED);
+				$result = $client->send();
+				
+				#if ($result->isSuccess()) {
+					$return = json_decode($result->getBody(), true);
+					$return['url'] = $url;
+				#}
+				*/
+			}
+			
+			if ($return !== false) {
+				setMemcacheObject($mckey, $return, strtotime("+24 hours")); 
+			}
+			
+			return $return;
+		}
+
 	}
 ?>

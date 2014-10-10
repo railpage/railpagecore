@@ -11,7 +11,7 @@
 	use stdClass;
 	use Exception;
 	use DateTime;
-	
+	use Railpage\Place;
 	
 	/**
 	 * Class
@@ -88,7 +88,9 @@
 			 * Record this in the debug log
 			 */
 				
-			debug_recordInstance(__CLASS__);
+			if (function_exists("debug_recordInstance")) {
+				debug_recordInstance(__CLASS__);
+			}
 			
 			/**
 			 * Start the debug timer
@@ -105,9 +107,9 @@
 			
 			if ($region == false && !preg_match("@[a-zA-Z]+@", $country)) {
 				// Assume a WOE ID
-				$woe = getWOEData($country);
+				$woe = Place::getWOEData($country);
 			} else {
-				$woe = getWOEData($region . ", " . strtoupper($country));
+				$woe = Place::getWOEData($region . ", " . strtoupper($country));
 			}
 			
 			/**

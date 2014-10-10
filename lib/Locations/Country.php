@@ -11,6 +11,7 @@
 	use stdClass;
 	use Exception;
 	use DateTime;
+	use Railpage\Place;
 	
 	
 	/**
@@ -77,7 +78,9 @@
 			 * Record this in the debug log
 			 */
 				
-			debug_recordInstance(__CLASS__);
+			if (function_exists("debug_recordInstance")) {
+				debug_recordInstance(__CLASS__);
+			}
 			
 			/**
 			 * Start the debug timer
@@ -92,7 +95,7 @@
 			 * Fetch the WOE (Where On Earth) data from Yahoo
 			 */
 			
-			$woe = getWOEData(strtoupper($code));
+			$woe = Place::getWOEData(strtoupper($code));
 			
 			/**
 			 * End the debug timer
