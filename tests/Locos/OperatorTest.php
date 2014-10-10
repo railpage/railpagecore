@@ -28,7 +28,7 @@
 			$updated_name = $Operator->name;
 			$updated_org_id = $Operator->organisation_id;
 			
-			$this->commit();
+			$Operator->commit(); 
 			
 			// Reload the operator
 			$Operator = new Operator(1);
