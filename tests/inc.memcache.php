@@ -19,6 +19,8 @@
 		
 		$memcache->setOption(Memcached::OPT_NO_BLOCK, true);
 		$memcache->setOption(Memcached::OPT_TCP_NODELAY, true);
+	} elseif (isset($PHPUnitTest) && $PHPUnitTest === true) {
+		$memcache = false;
 	} else {
 		trigger_error("Could not start Memcached - Memcached class does not exist!");
 		$memcache = false;
