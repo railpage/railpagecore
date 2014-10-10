@@ -406,7 +406,7 @@ CREATE TABLE `flickr_cache` (
   `response` longtext NOT NULL,
   `expiration` datetime NOT NULL,
   KEY `request` (`request`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=0;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -474,7 +474,7 @@ CREATE TABLE `flickr_geodata` (
   KEY `lat` (`lat`),
   KEY `lon` (`lon`),
   KEY `owner` (`owner`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=0;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1263,7 +1263,7 @@ CREATE TABLE `log_downloads` (
   `user_id` int(11) NOT NULL,
   `username` varchar(128) NOT NULL,
   KEY `download_id` (`download_id`,`date`,`ip`,`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=0;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
