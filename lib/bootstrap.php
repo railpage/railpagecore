@@ -18,6 +18,10 @@
 		define("DS", DIRECTORY_SEPARATOR);
 	}
 	
+	if (!defined("RP_SITE_ROOT")) {
+		define("RP_SITE_ROOT", __DIR__);
+	}
+	
 	/**
 	 * Check if PHPUnit is running. Flag it if it is running, so we can set the appropriate DB settings
 	 */

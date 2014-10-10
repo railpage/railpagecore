@@ -69,10 +69,10 @@
 		 * @param int $operator_id
 		 */
 		
-		public function __construct($operator_id) {
+		public function __construct($operator_id = false) {
 			parent::__construct(); 
 			
-			if (!empty($operator_id)) {
+			if (filter_var($operator_id, FILTER_VALIDATE_INT)) {
 				try {
 					$this->fetch($operator_id); 
 				} catch (Exception $e) {
