@@ -134,12 +134,16 @@
 		 * @return boolean
 		 */
 		
-		public function verify() {
+		public function validate() {
 			if (empty($this->name)) {
-				return false;
-			} else {
-				return true;
+				throw new Exception("Cannot validate Operator: the operator name cannot be empty");
 			}
+			
+			if (!filter_var($this->organisation_id)) {
+				$this->organisation_id = 0;
+			}
+			
+			return true;
 		}
 		
 		/**
@@ -150,9 +154,8 @@
 		 */
 		
 		public function commit() {
-			if (!$this->verify()) {
-				return false;
-			}
+			
+			$this->validate();
 			
 			if ($this->db instanceof \sql_db) {
 				$dataArray = array(); 
