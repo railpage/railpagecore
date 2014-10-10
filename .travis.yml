@@ -10,7 +10,7 @@ before_script:
  - sudo apt-get update -qq
  - sudo apt-get install -qq zend-framework php5-memcached
  - mysql < db.dist/db.structure.travis.sql
- - pecl install memcached
+ - yes | pecl install memcached
 script: 
  - composer install
  - phpunit
