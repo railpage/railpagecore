@@ -11,6 +11,8 @@
 	use stdClass;
 	use Exception;
 	use Railpage\Users\User;
+	use Foolz\SphinxQL\SphinxQL;
+	use Foolz\SphinxQL\Connection;
 	
 	/**
 	 * App Core
@@ -287,6 +289,21 @@
 		}
 		
 		/**
+		 * Set the staff user object for this object
+		 * @since Version 3.8.7
+		 * @param \Railpage\Users\User $User
+		 * @returns $this
+		 */
+		
+		public function setStaff(User $User) {
+			
+			$this->Staff = $User;
+			
+			return $this;
+			
+		}
+		
+		/**
 		 * Set the object string for this object
 		 * @since Version 3.8.7
 		 * @param object $object
@@ -301,6 +318,17 @@
 			
 			return $this;
 			
+		}
+		
+		/**
+		 * Create and connect to Sphinx
+		 */
+		
+		public function getSphinx() {
+			$conn = new Connection();
+			$conn->setConnectionParams($this->Config->Sphinx->Host, $this->Config->Sphinx->Port);
+			
+			return SphinxQL::create($conn);
 		}
 	}
 ?>
