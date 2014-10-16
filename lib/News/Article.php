@@ -344,26 +344,24 @@
 				$this->blurb_clean	= format_post($this->blurb, false, false, true, true, true);
 				$this->body_clean	= format_post($this->body, false, false, true, true, true);
 				
-				$ThisUser = new User($this->user_id); 
-				$this->username = $ThisUser->username;
+				$this->setAuthor(new User($this->user_id));
+				$this->username = $this->Author->username;
 				
-				$ThisUser = new User($this->staff_user_id);
-				$this->staff_username = $ThisUser->username;
-				
-				unset($ThisUser);
+				$this->setStaff(new User($this->staff_user_id));
+				$this->staff_username = $this->Staff->username;
 				
 				// Rest of this shit is for backwards compatibility
 				$whitespace_find = array("<p> </p>", "<p></p>", "<p>&nbsp;</p>");
 				$whitespace_replace = array("", "", ""); 
-		
-				$return['hometext'] = format_post(str_replace($whitespace_find, $whitespace_replace, $return['hometext'])); 
-				$return['bodytext'] = format_post(str_replace($whitespace_find, $whitespace_replace, $return['bodytext'])); 
 				
-				$return['hometext'] = convert_to_utf8($return['hometext']);
-				$return['bodytext'] = convert_to_utf8($return['bodytext']);
+				#$return['hometext'] = format_post(str_replace($whitespace_find, $whitespace_replace, $return['hometext'])); 
+				#$return['bodytext'] = format_post(str_replace($whitespace_find, $whitespace_replace, $return['bodytext'])); 
 				
-				$return['hometext'] = wpautop($return['hometext']);
-				$return['bodytext'] = process_multimedia(wpautop($return['bodytext']));
+				#$return['hometext'] = convert_to_utf8($return['hometext']);
+				#$return['bodytext'] = convert_to_utf8($return['bodytext']);
+				
+				#$return['hometext'] = wpautop($return['hometext']);
+				#$return['bodytext'] = process_multimedia(wpautop($return['bodytext']));
 				
 				try {
 					$this->fwlink = new \Railpage\fwlink($this->url);
@@ -378,7 +376,8 @@
 					$Error->save($e); 
 				}
 			} else {
-				throw new Exception($this->db->error."\n\n".$query);
+				#throw new Exception($this->db->error."\n\n".$query);
+				throw new Exception(sprintf("Cannot find news article #%d", $this->id));
 				return false;
 			}
 			
@@ -563,11 +562,8 @@
 		 */
 		
 		public function commit() {
-			try {
-				$this->validate(); 
-			} catch (Exception $e) {
-				throw new Exception($e->getMessage()); 
-			} 
+			
+			$this->validate();
 				
 			// Format the article blurb
 			try {
@@ -614,51 +610,26 @@
 				$dataArray['informant'] = $this->username;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				foreach ($dataArray as $key => $val) {
-					$dataArray[$key] = $this->db->real_escape_string($val); 
-				}
+			/**
+			 * Save changes
+			 */
+			
+			if (!empty($this->id) && $this->id > 0) {
+				$where = array(
+					"sid = ?" => $this->id
+				);
 				
-				if ($this->id > 0) {
-					$where = array("sid" => $this->db->real_escape_string($this->id)); 
-					$query = $this->db->buildQuery($dataArray, "nuke_stories", $where); 
-				} else {
-					$query = $this->db->buildQuery($dataArray, "nuke_stories"); 
-				}
-				
-				if ($rs = $this->db->query($query)) {
-					if ($this->id < 1) {
-						$this->id = $this->db->insert_id; 
-					}
-					
-					return true; 
-				} else {
-					throw new Exception("Could not commit changes to article\n\n".$this->db->error."\n\n".$query); 
-					return false;
-				}
+				$this->db->update("nuke_stories", $dataArray, $where); 
 			} else {
-				if (!empty($this->id) && $this->id > 0) {
-					$where = array(
-						"sid = ?" => $this->id
-					);
-					
-					$result = $this->db->update("nuke_stories", $dataArray, $where); 
-					
-					if ($result === 0) {
-						return true;
-					}
-					
-					return $result;
-				} else {
-					if ($this->db->insert("nuke_stories", $dataArray)) {
-						$this->id = $this->db->lastInsertId();
-						
-						return true;
-					} else {
-						return false;
-					}
-				}
+				$this->db->insert("nuke_stories", $dataArray);
+				$this->id = $this->db->lastInsertId();
 			}
+			
+			/**
+			 * Update Memcached
+			 */
+			
+			$this->makeJSON();
 		}
 		
 		/**
@@ -683,6 +654,10 @@
 				return false;
 			}
 			
+			if (!isset($this->Author) || !$this->Author instanceof User) {
+				$this->Author = new User($this->user_id);
+			}
+			
 			/**
 			 * Try to get the featured image from OpenGraph tags
 			 */
@@ -702,6 +677,88 @@
 			}
 			
 			return true;
+		}
+		
+		/**
+		 * Generate JSON object for this article
+		 * @since Version 3.8.7
+		 * @return string
+		 */
+		
+		public function makeJSON() {
+			
+			$timezone = $this->date->getTimezone();
+			
+			$response = array(
+				"namespace" => $this->Module->namespace,
+				"module" => $this->Module->name,
+				"article" => array(
+					"id" => $this->id,
+					"title" => $this->title,
+					"hits" => $this->hits,
+					"blub" => is_object($this->blurb) ? $this->blurb->__toString() : $this->blurb,
+					"body" => is_object($this->body) ? $this->body->__toString() : $this->body,
+					"image" => $this->featured_image,
+					"approved" => $this->approved,
+					
+					"url" => $this->url->getURLs(),
+					
+					"topic" => array(
+						"id" => $this->Topic->id,
+						"title" => $this->Topic->title,
+						"url" => $this->Topic->url->getURLs(),
+					),
+					
+					"thread" => array(
+						"id" => $this->topic_id,
+						"url" => array(
+							"view" => filter_var($this->topic_id, FILTER_VALIDATE_INT) ? sprintf("/f-t%d.htm", $this->topic_id) : ""
+						)
+					),
+					
+					"date" => array(
+						"absolute" => $this->date->format("Y-m-d H:i:s"),
+						"timezone" => $timezone->getName(),
+						"unixtime" => $this->date->getTimestamp()
+					),
+					
+					"author" => array(
+						"id" => $this->Author->id,
+						"username" => $this->Author->username,
+						"url" => array(
+							"view" => $this->Author->url->url
+						)
+					),
+					
+					"staff" => array(
+						"id" => $this->Staff->id,
+						"username" => $this->Staff->username,
+						"url" => array(
+							"view" => $this->Staff->url->url
+						)
+					),
+				)
+			);
+			
+			$response = json_encode($response);
+			
+			setMemcacheObject(sprintf("json:railpage.news.article=%d", $this->id), $response);
+			
+			return $response;
+		}
+		
+		/**
+		 * Get JSON object
+		 * @since Version 3.8.7
+		 * @return string
+		 */
+		
+		public function getJSON() {
+			if ($json = getMemacheObject(sprintf("json:railpage.news.article=%d", $this->id))) {
+				return $json;
+			} else {
+				return $this->makeJSON();
+			}
 		}
 	}
 ?>
