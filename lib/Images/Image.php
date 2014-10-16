@@ -233,8 +233,29 @@
 					}
 				
 					foreach ($this->sizes as $size) {
-						if ($size['width'] > 1900) {
+						if ($size['width'] >= 1920) {
 							$this->sizes['fullscreen'] = $size;
+							break;
+						}
+					}
+				
+					foreach ($this->sizes as $size) {
+						if ($size['width'] > 1024 && $size['width'] <= 1920) {
+							$this->sizes['larger'] = $size;
+							break;
+						}
+					}
+				
+					foreach ($this->sizes as $size) {
+						if ($size['width'] == 1024) {
+							$this->sizes['large'] = $size;
+							break;
+						}
+					}
+				
+					foreach ($this->sizes as $size) {
+						if ($size['width'] == 800) {
+							$this->sizes['medium'] = $size;
 							break;
 						}
 					}
