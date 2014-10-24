@@ -119,6 +119,11 @@
 						$this->url = "/f.htm";
 						break;
 					
+					case "gallery" : 
+						$this->name = "Gallery";
+						$this->url = "/gallery";
+						break;
+					
 					case "glossary" : 
 						$this->name = "Glossary";
 						$this->url = "/glossary";
