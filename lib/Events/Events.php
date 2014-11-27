@@ -12,6 +12,7 @@
 	use Railpage\Module;
 	use DateTime;
 	use DateTimeZone;
+	use Railpage\Organisations\Organisation;
 	
 	/**
 	 * Events
@@ -84,6 +85,32 @@
 		
 		public function getCategories() {
 			return $this->db->fetchAll("SELECT * FROM event_categories ORDER BY title");
+		}
+		
+		/**
+		 * Get upcoming events for an organisation
+		 * @since Version 3.8.7
+		 * @return array
+		 */
+		
+		public function getUpcomingEventsForOrganisation(Organisation $Org) {
+			if (!filter_var($Org->id, FILTER_VALIDATE_INT)) {
+				throw new Exception("Cannot fetch upcoming events because the specified organisation is invalid or doesn't exist");
+			}
+			
+			$query = "SELECT id, event_id, date FROM event_dates WHERE date >= ?";
+			
+			$return = array(); 
+			
+			foreach ($this->db->fetchAll($query, date("Y-m-d")) as $row) {
+				$Event = new Event($row['event_id']);
+				$return[$row['date']][] = array(
+					"id" => $Event->id,
+					"name" => $Event->name,
+				);
+			}
+			
+			return $return;
 		}
 	}
 ?>
