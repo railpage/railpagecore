@@ -132,7 +132,7 @@
 				$this->mckey = getMemcacheObject(sprintf("railpage:events.event=%s", $id));
 			}
 			
-			if (!$row = getMemcacheObject($this->mckey)) {
+			if (!empty($this->mckey) && !$row = getMemcacheObject($this->mckey)) {
 				if (isset($query)) {	
 					$row = $this->db->fetchRow($query, $id);
 					$this->mckey = sprintf("railpage:events.event=%d", $row['id']);
