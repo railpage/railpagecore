@@ -202,5 +202,21 @@
 		public function AddSection($title = NULL) {
 			return $this->AddGrouping($title);
 		}
+		
+		/**
+		 * Check if there's anything in this menu
+		 * @since Version 3.9
+		 * @return boolean
+		 */
+		
+		public function HasItems() {
+			foreach ($this->menu as $section) {
+				if (isset($section['menu']) && count($section['menu'])) {
+					return true;
+				}
+			}
+			
+			return false;
+		}
 	}
 ?>
