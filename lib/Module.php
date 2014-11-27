@@ -11,6 +11,7 @@
 	use Exception;
 	use stdClass;
 	use Railpage\AppCore;
+	use Railpage\Url;
 	
 	/**
 	 * Railpage module information
@@ -236,6 +237,11 @@
 					case "reminders" : 
 						$this->name = "Reminders";
 						$this->url = "/reminders";
+						break;
+					
+					case "timetables" : 
+						$this->name = "Timetables";
+						$this->url = "/timetables";
 						break;
 						
 				}
