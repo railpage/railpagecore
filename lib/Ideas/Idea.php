@@ -12,6 +12,7 @@
 	use Railpage\AppCore;
 	use Railpage\Module;
 	use Railpage\SiteEvent;
+	use Railpage\Url;
 	use Exception;
 	use DateTime;
 	
@@ -64,6 +65,13 @@
 		private $votes = array();
 		
 		/**
+		 * Status of this idea
+		 * @var int $status
+		 */
+		
+		public $status = 1;
+		
+		/**
 		 * Author of this idea
 		 * @var \Railpage\Users\User $Author
 		 */
@@ -107,8 +115,9 @@
 					$this->Author = new User($row['author']);
 					$this->Date = new DateTime($row['date']);
 					$this->Category = new Category($row['category_id']);
+					$this->status = $row['status'];
 					
-					$this->url = sprintf("%s/%s", $this->Category->url, $this->slug);
+					$this->url = new Url(sprintf("%s/%s", $this->Category->url, $this->slug));
 				}
 			} elseif (is_string($id) && strlen($id) > 1) {
 				$this->slug = $id;
@@ -122,13 +131,16 @@
 					$this->Author = new User($row['author']);
 					$this->Date = new DateTime($row['date']);
 					$this->Category = new Category($row['category_id']);
+					$this->status = $row['status'];
 					
-					$this->url = sprintf("%s/%s", $this->Category->url, $this->slug);
+					$this->url = new Url(sprintf("%s/%s", $this->Category->url, $this->slug));
 				}
 			}
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
 				$this->fetchVotes();
+				$this->url->implemented = sprintf("%s?id=%d&mode=idea.implemented", $this->Module->url, $this->id);
+				$this->url->vote = sprintf("%s?mode=idea.vote&id=%d", $this->Module->url, $this->id);
 			}
 			
 		}
@@ -217,7 +229,8 @@
 				"votes" => $this->votes,
 				"author" => $this->Author->id,
 				"category_id" => $this->Category->id,
-				"date" => $this->Date->format("Y-m-d H:i:s")
+				"date" => $this->Date->format("Y-m-d H:i:s"),
+				"status" => $this->status
 			);
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
@@ -307,6 +320,10 @@
 		 */
 		
 		public function canVote(User $User) {
+			
+			if ($this->status != 1) {
+				return false;
+			}
 			
 			if ($User->id === 0 || $User->guest === true) {
 				return false;

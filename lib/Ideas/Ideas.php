@@ -20,6 +20,27 @@
 	class Ideas extends AppCore {
 		
 		/**
+		 * Status: Deleted
+		 * @const STATUS_DELETED
+		 */
+		
+		const STATUS_DELETED = 0;
+		
+		/**
+		 * Status: Active
+		 * @const STATUS_ACTIVE
+		 */
+		
+		const STATUS_ACTIVE = 1;
+		
+		/**
+		 * Status: Implemented
+		 * @const STATUS_IMPLEMENTED
+		 */
+		
+		const STATUS_IMPLEMENTED = 3;
+		
+		/**
 		 * Constructor
 		 */
 		
