@@ -229,5 +229,55 @@
 				}
 			}
 		}
+		
+		/**
+		 * Get previous image in album
+		 * @since Version 3.8.7
+		 * @return \Railpage\Gallery\Image
+		 */
+		
+		public function getPreviousImage() {
+			$query = "SELECT id FROM gallery_mig_image WHERE album_id = ? AND hidden = ? AND id < ? ORDER BY id DESC";
+			$Album = $this->getAlbum();
+			
+			$params = array(
+				$Album->id,
+				0,
+				$this->id
+			);
+			
+			$id = $this->db->fetchOne($query, $params); 
+			
+			if (filter_var($id, FILTER_VALIDATE_INT)) {
+				return new Image($id);
+			} else {
+				return false;
+			}
+		}
+		
+		/**
+		 * Get next image in album
+		 * @since Version 3.8.7
+		 * @return \Railpage\Gallery\Image
+		 */
+		
+		public function getNextImage() {
+			$query = "SELECT id FROM gallery_mig_image WHERE album_id = ? AND hidden = ? AND id > ? ORDER BY id ASC";
+			$Album = $this->getAlbum();
+			
+			$params = array(
+				$Album->id,
+				0,
+				$this->id
+			);
+			
+			$id = $this->db->fetchOne($query, $params); 
+			
+			if (filter_var($id, FILTER_VALIDATE_INT)) {
+				return new Image($id);
+			} else {
+				return false;
+			}
+		}
 	}
 ?>

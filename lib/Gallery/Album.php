@@ -46,6 +46,14 @@
 		public $name;
 		
 		/**
+		 * URL slug
+		 * @since Version 3.8.7
+		 * @var string $slug
+		 */
+		
+		public $slug;
+		
+		/**
 		 * Album meta data
 		 * @since Version 3.8.7
 		 * @var array $meta
@@ -102,50 +110,16 @@
 				$this->name = $data['title'];
 				$this->meta = json_decode($data['meta'], true);
 				$this->owner = $data['owner'];
+				$this->slug = $data['name'];
+				$this->featured_photo_id = $data['featured_photo'];
 				
 				$this->url = new Url(sprintf("%s?album=%s", $this->Module->url, $data['name']));
 				
 				if (self::UPDATE_PHOTO) {
-				
-					/**
-					 * Update the featured photo by album images
-					 */
-					
-					if (!isset($data['featured_photo']) || !filter_var($data['featured_photo'], FILTER_VALIDATE_INT)) {
-						foreach ($this->getImages() as $Image) {
-							if (!$Image->hidden) {
-								$data['featured_photo'] = $Image->id;
-								
-								$this->db->update("gallery_mig_album", $data, array("id = ?" => $this->id));
-								setMemcacheObject($this->mckey, $data, strtotime("+1 year"));
-								break;
-							}
-						}
-					}
-					
-					/**
-					 * Update the featured photo by sub-album images
-					 */
-					
-					if (!isset($data['featured_photo']) || !filter_var($data['featured_photo'], FILTER_VALIDATE_INT)) {
-						foreach ($this->getAlbums() as $Album) {
-							foreach ($Album->getImages() as $Image) {
-								if (!$Image->hidden) {
-									$data['featured_photo'] = $Image->id;
-									
-									$this->db->update("gallery_mig_album", $data, array("id = ?" => $this->id));
-									setMemcacheObject($this->mckey, $data, strtotime("+1 year"));
-									break;
-								}
-							}
-							
-							if (isset($data['featured_photo']) && filter_var($data['featured_photo'], FILTER_VALIDATE_INT)) {
-								break;
-							}
-						}
-					}
+					$data['featured_photo'] = $this->updateFeaturedImage(); 
+					setMemcacheObject($this->mckey, $data, strtotime("+1 year"));
 				}
-				
+			
 				if (isset($data['featured_photo']) && filter_var($data['featured_photo'], FILTER_VALIDATE_INT)) {
 					$this->FeaturedImage = new Image($data['featured_photo']);
 				}
@@ -159,7 +133,7 @@
 		 */
 		
 		public function getImages() {
-			$query = "SELECT id FROM gallery_mig_image WHERE album_id = ? AND hidden = ?";
+			$query = "SELECT id FROM gallery_mig_image WHERE album_id = ? AND hidden = ? ORDER BY id";
 			
 			$results = $this->db->fetchAll($query, array($this->id, 0));
 			
@@ -169,17 +143,74 @@
 		}
 		
 		/**
+		 * Get a single image from this album
+		 * @since Version 3.9
+		 * @yield new \Railpage\Gallery\Image
+		 * @param string $image_id
+		 */
+		
+		public function getImage($image_id) {
+			if (!filter_var($image_id, FILTER_VALIDATE_INT)) {
+				$query = "SELECT id FROM gallery_mig_image WHERE album_id = ? AND meta LIKE ?";
+				
+				$image_id = $this->db->fetchOne($query, array($this->id, "%" . $image_id . "%"));
+			}
+			
+			return new Image($image_id);
+		}
+		
+		/**
 		 * List the albums available
 		 * @since Version 3.8.7
 		 * @yield \Railpage\Gallery\Album
 		 */
 		
-		public function getAlbums() {
+		public function yieldAlbums() {
 			$query = "SELECT id FROM gallery_mig_album WHERE parent_id = ? ORDER BY title";
 			
 			foreach ($this->db->fetchAll($query, $this->id) as $album) {
 				yield new Album($album['id']);
 			}
+		}
+		
+		/**
+		 * Get all child albums as an array
+		 * @since Version 3.8.7
+		 * @return array
+		 */
+		
+		public function getAlbums($page, $limit = 25) {
+			if (!$return = getMemcacheObject(sprintf("railpage:gallery.old.album=%d.subalbums.page=%d.perpage=%d", $this->id, $page, $limit))) {
+				$Sphinx = $this->getSphinx(); 
+				
+				$query = $Sphinx->select("*")
+						->from("idx_gallery_album")
+						->where("parent_id", "=", $this->id)
+						->orderBy("album_title", "ASC")
+						->limit(($page - 1) * $limit, $limit);
+				
+				$matches = $query->execute(); 
+				
+				$meta = $Sphinx->query("SHOW META");
+				$meta = $meta->execute();
+				
+				foreach ($matches as $id => $row) {
+					$row['album_meta'] = json_decode($row['album_meta'], true);
+					
+					$matches[$id] = $row;
+				}
+				
+				$return = array(
+					"total" => $meta[1]['Value'],
+					"page" => $page,
+					"perpage" => $limit,
+					"albums" => $matches
+				);
+				
+				setMemcacheObject(sprintf("railpage:gallery.old.album=%d.subalbums.page=%d.perpage=%d", $this->id, $page, $limit), $return);
+			}
+			
+			return $return;
 		}
 		
 		/**
@@ -213,7 +244,63 @@
 				} catch (Exception $e) {
 					// Don't care
 				}
+			
 			}
+		}
+		
+		/**
+		 * Update the featured image for this album
+		 * @since Version 3.8.7
+		 * @return int
+		 */
+		
+		public function updateFeaturedImage() {
+			
+			$data = array(
+				"featured_photo" => $this->featured_photo_id
+			);
+			
+			/*
+			 * Update the featured photo by album images
+			 */
+			
+			if (!isset($data['featured_photo']) || !filter_var($data['featured_photo'], FILTER_VALIDATE_INT) || $data['featured_photo'] == 1) {
+				foreach ($this->getImages() as $Image) {
+					if (!$Image->hidden) {
+						$data['featured_photo'] = $Image->id;
+						
+						$this->db->update("gallery_mig_album", $data, array("id = ?" => $this->id));
+						deleteMemcacheObject($this->mckey);
+						#setMemcacheObject($this->mckey, $data, strtotime("+1 year"));
+						break;
+					}
+				}
+			}
+			
+			/**
+			 * Update the featured photo by sub-album images
+			 */
+			
+			if (!isset($data['featured_photo']) || !filter_var($data['featured_photo'], FILTER_VALIDATE_INT) || $data['featured_photo'] == 1) {
+				foreach ($this->yieldAlbums() as $Album) {
+					foreach ($Album->getImages() as $Image) {
+						if (!$Image->hidden) {
+							$data['featured_photo'] = $Image->id;
+							
+							$this->db->update("gallery_mig_album", $data, array("id = ?" => $this->id));
+							deleteMemcacheObject($this->mckey);
+							#setMemcacheObject($this->mckey, $data, strtotime("+1 year"));
+							break;
+						}
+					}
+					
+					if (isset($data['featured_photo']) && filter_var($data['featured_photo'], FILTER_VALIDATE_INT)) {
+						break;
+					}
+				}
+			}
+			
+			return $data['featured_photo'];
 		}
 	}
 ?>
