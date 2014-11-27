@@ -16,6 +16,7 @@
 	use Railpage\Locos\LocoClass;
 	use Railpage\Locos\Liveries\Livery;
 	use Railpage\Module;
+	use Railpage\Url;
 	use Exception;
 	use DateTime;
 	use DateTimeZone;
@@ -196,7 +197,16 @@
 				$this->sizes = $row['meta']['sizes'];
 				$this->links = $row['meta']['links'];
 				$this->meta = $row['meta']['data'];
-				$this->url = "/image?id=" . $this->id;
+				$this->url = new Url("/image?id=" . $this->id);
+				
+				if ($this->provider == "rpoldgallery") {
+					$GalleryImage = new \Railpage\Gallery\Image($this->photo_id);
+					$this->url->source = $GalleryImage->url->url;
+					
+					if (empty($this->meta['source'])) {
+						$this->meta['source'] = $this->url->source; 
+					}
+				}
 				
 				/**
 				 * Normalize some sizes
@@ -284,7 +294,7 @@
 				 */
 				
 				if (isset($this->meta['source'])) {
-					$this->source = $this->meta['data']['source'];
+					$this->source = $this->meta['source'];
 				} else {
 					switch ($this->provider) {
 						case "flickr" :
@@ -418,6 +428,102 @@
 			 */
 			
 			switch ($this->provider) {
+				
+				case "picasaweb" : 
+					
+					if (empty($this->meta) && isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
+						$album = preg_replace("@(http|https)://picasaweb.google.com/([a-zA-Z\-\.]+)/(.+)@", "$2", $_SERVER['HTTP_REFERER']);
+						
+						if (is_string($album)) {
+							$update_url = sprintf("https://picasaweb.google.com/data/feed/api/user/%s/photoid/%s?alt=json", $album, $this->photo_id);
+						}
+					}
+					
+					if (isset($update_url)) {
+						$data = file_get_contents($update_url);
+						$json = json_decode($data, true);
+						
+						$this->meta = array(
+							"title" => $json['feed']['subtitle']['$t'],
+							"description" => $json['feed']['title']['$t'],
+							"dates" => array(
+								"posted" => date("Y-m-d H:i:s", $json['feed']['gphoto$timestamp']['$t']),
+							),
+							"sizes" => array(
+								"original" => array(
+									"width" => $json['feed']['gphoto$width']['$t'],
+									"height" => $json['feed']['gphoto$height']['$t'],
+									"source" => str_replace(
+													sprintf("/s%d/", $json['feed']['media$group']['media$thumbnail'][0]['width']), 
+													sprintf("/s%d/", $json['feed']['gphoto$width']['$t']),
+													$json['feed']['media$group']['media$thumbnail'][0]['url']
+									),
+								),
+								"largest" => array(
+									"width" => $json['feed']['gphoto$width']['$t'],
+									"height" => $json['feed']['gphoto$height']['$t'],
+									"source" => str_replace(
+													sprintf("/s%d/", $json['feed']['media$group']['media$thumbnail'][0]['width']), 
+													sprintf("/s%d/", $json['feed']['gphoto$width']['$t']),
+													$json['feed']['media$group']['media$thumbnail'][0]['url']
+									),
+								),
+							),
+							"photo_id" => $json['feed']['gphoto$id']['$t'],
+							"album_id" => $json['feed']['gphoto$albumid']['$t'],
+							"updateurl" => sprintf("%s?alt=json", $json['feed']['id']['$t'])
+						);
+						
+						foreach ($json['feed']['media$group']['media$thumbnail'] as $size) {
+							if ($size['width'] <= 500 && $size['width'] > 200) {
+								$this->meta['sizes']['small'] = array(
+									"width" => $size['width'],
+									"height" => $size['height'],
+									"source" => $size['url']
+								);
+							}
+							
+							if ($size['width'] <= 200) {
+								$this->meta['sizes']['small'] = array(
+									"width" => $size['width'],
+									"height" => $size['height'],
+									"source" => $size['url']
+								);
+							}
+							
+							if ($size['width'] <= 1024 && $size['width'] > 500) {
+								$this->meta['sizes']['large'] = array(
+									"width" => $size['width'],
+									"height" => $size['height'],
+									"source" => $size['url']
+								);
+							}
+						}
+						
+						foreach ($json['feed']['link'] as $link) {
+							if ($link['rel'] == "alternate" && $link['type'] == "text/html") {
+								$this->meta['source'] = $link['href'];
+							}
+						}
+						
+						if (isset($json['feed']['georss$where']['gml$Point']) && is_array($json['feed']['georss$where']['gml$Point'])) {
+							$pos = explode(" ", $json['feed']['georss$where']['gml$Point']['gml$pos']['$t']);
+							$this->Place = new Place($pos[0], $pos[1]);
+						}
+						
+						$this->title = $this->meta['title'];
+						$this->description = $this->meta['description'];
+						
+						$this->author = new stdClass;
+						$this->author->username = $album;
+						$this->author->id = $album;
+						$this->author->url = sprintf("%s/%s", $json['feed']['generator']['uri'], $album);
+					}
+					
+					$this->sizes = $this->meta['sizes'];
+					
+					$this->commit();
+					break;
 				
 				case "flickr" : 
 					
@@ -662,6 +768,14 @@
 									
 									if (filter_var($Loco->id, FILTER_VALIDATE_INT)) {
 										$this->addLink($Loco->namespace, $Loco->id);
+										
+										if (!$Loco->hasCoverImage()) {
+											$Loco->setCoverImage($this);
+										}
+										
+										if (!$Loco->Class->hasCoverImage()) {
+											$Loco->Class->setCoverImage($this);
+										}
 									}
 								}
 							}
@@ -690,6 +804,10 @@
 								
 								if (filter_var($LocoClass->id, FILTER_VALIDATE_INT)) {
 									$this->addLink($LocoClass->namespace, $LocoClass->id);
+										
+									if (!$LocoClass->hasCoverImage()) {
+										$LocoClass->setCoverImage($this);
+									}
 								}
 							}
 						}
