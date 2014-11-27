@@ -11,6 +11,7 @@
 	namespace Railpage\News;
 	
 	use DateTime;
+	use DateTimeZone;
 	use Exception;
 	use Railpage\Users\User;
 	use Railpage\Url;
@@ -548,9 +549,12 @@
 				} else {
 					$this->approved = 1; 
 					$this->staff_user_id = $user_id;
+					$this->setStaff(new User($this->staff_user_id));
 					$this->date = new DateTime;
 					
-					return $this->commit(); 
+					$this->commit(); 
+					
+					return true;
 				}
 			}
 		}
@@ -630,6 +634,8 @@
 			 */
 			
 			$this->makeJSON();
+			
+			return true;
 		}
 		
 		/**
@@ -687,7 +693,15 @@
 		
 		public function makeJSON() {
 			
-			$timezone = $this->date->getTimezone();
+			if ($this->date instanceof DateTime) {
+				$timezone = $this->date->getTimezone();
+			} else {
+				$timezone = new DateTimeZone("Australia/Melbourne");
+			}
+			
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
+				throw new Exception("Cannot make a JSON object for the requested news article beacuse no valid article ID was found. Something's wrong....");
+			}
 			
 			$response = array(
 				"namespace" => $this->Module->namespace,
@@ -701,12 +715,12 @@
 					"image" => $this->featured_image,
 					"approved" => $this->approved,
 					
-					"url" => $this->url->getURLs(),
+					"url" => $this->url instanceof Url ? $this->url->getURLs() : array("url" => sprintf("/news/article-%d", $this->id)),
 					
 					"topic" => array(
 						"id" => $this->Topic->id,
 						"title" => $this->Topic->title,
-						"url" => $this->Topic->url->getURLs(),
+						"url" => $this->Topic->url instanceof Url ? $this->Topic->url->getURLs() : array("url" => sprintf("/news/topic-%d", $this->Topic->id)),
 					),
 					
 					"thread" => array(
@@ -726,7 +740,7 @@
 						"id" => $this->Author->id,
 						"username" => $this->Author->username,
 						"url" => array(
-							"view" => $this->Author->url->url
+							"view" => $this->Author->url instanceof Url ? $this->Author->url->url : $this->Author->url
 						)
 					),
 					
@@ -734,7 +748,7 @@
 						"id" => $this->Staff->id,
 						"username" => $this->Staff->username,
 						"url" => array(
-							"view" => $this->Staff->url->url
+							"view" => $this->Staff->url instanceof Url ? $this->Staff->url->url : $this->Staff->url
 						)
 					),
 				)
