@@ -233,7 +233,7 @@
 			$Message->setAuthor($this->Resolution->User);
 			$Message->setRecipient($this->User);
 			$Message->subject = "Your Locomotives database correction has been accepted";
-			$Message->body = "Your suggested correction for " . $this->Loco->number . " in " . $this->Loco->Class->name . " has been accepted by " . $this->Resolution->User->username . ".";
+			$Message->body = "Your suggested correction for [url=" . $this->Loco->url->url . "]" . $this->Loco->number . "[/url] in [url=" . $this->Loco->Class->url->url . "]" . $this->Loco->Class->name . "[/url] has been accepted by " . $this->Resolution->User->username . ".";
 			
 			if (!empty($this->text)) {
 				$Message->body .= "\n\n[quote=Your suggestion]" . $this->text . "[/quote]";
@@ -285,7 +285,7 @@
 			$Message->setAuthor($this->Resolution->User);
 			$Message->setRecipient($this->User);
 			$Message->subject = "Your Locomotives database correction was not accepted";
-			$Message->body = "Your suggested correction for " . $this->Loco->number . " in " . $this->Loco->Class->name . " was not accepted by " . $this->Resolution->User->username . ".";
+			$Message->body = "Your suggested correction for [url=" . $this->Loco->url->url . "]" . $this->Loco->number . "[/url] in [url=" . $this->Loco->Class->url->url . "]" . $this->Loco->Class->name . "[/url] was not accepted by " . $this->Resolution->User->username . ".";
 			
 			if (!empty($this->text)) {
 				$Message->body .= "\n\n[quote=Your suggestion]" . $this->text . "[/quote]";
