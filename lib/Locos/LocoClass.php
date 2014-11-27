@@ -13,6 +13,11 @@
 	use DateTime;
 	use stdClass;
 	use Railpage\Url;
+	use Railpage\Images\Images;
+	use Railpage\Images\Image;
+	use Railpage\Assets\Asset;
+	use Railpage\Locos\Liveries\Livery;
+	use Railpage\Users\User;
 		
 	/**
 	 * Locomotive class (eg X class or 92 class) class
@@ -304,7 +309,7 @@
 					$debug_timer_start = microtime(true);
 				}
 				
-				$query = "SELECT c.id, c.asset_id, c.slug, c.download_id, c.date_added, c.date_modified, c.model, c.axle_load, c.tractive_effort, c.weight, c.length, c.parent AS parent_class_id, c.source_id AS source, c.id AS class_id, c.flickr_tag, c.flickr_image_id, c.introduced AS class_introduced, c.name AS class_name, c.loco_type_id AS loco_type_id, c.desc AS class_desc, c.manufacturer_id AS class_manufacturer_id, m.manufacturer_name AS class_manufacturer, w.arrangement AS wheel_arrangement, w.id AS wheel_arrangement_id, t.title AS loco_type
+				$query = "SELECT c.id, c.meta, c.asset_id, c.slug, c.download_id, c.date_added, c.date_modified, c.model, c.axle_load, c.tractive_effort, c.weight, c.length, c.parent AS parent_class_id, c.source_id AS source, c.id AS class_id, c.flickr_tag, c.flickr_image_id, c.introduced AS class_introduced, c.name AS class_name, c.loco_type_id AS loco_type_id, c.desc AS class_desc, c.manufacturer_id AS class_manufacturer_id, m.manufacturer_name AS class_manufacturer, w.arrangement AS wheel_arrangement, w.id AS wheel_arrangement_id, t.title AS loco_type
 							FROM loco_class AS c
 							LEFT JOIN loco_type AS t ON c.loco_type_id = t.id
 							LEFT JOIN wheel_arrangements AS w ON c.wheel_arrangement_id = w.id
@@ -377,6 +382,7 @@
 				}
 				
 				$this->url = new Url($this->makeClassURL($this->slug));
+				$this->url->view = $this->url->url;
 				$this->url->edit = sprintf("%s?mode=class.edit&id=%d", $this->Module->url, $this->id);
 				$this->url->addLoco = sprintf("%s?mode=loco.edit&class_id=%d", $this->Module->url, $this->id);
 				$this->url->sightings = sprintf("%s/sightings", $this->url->url);
@@ -386,6 +392,16 @@
 				$this->url->bulkedit_buildersnumbers = sprintf("%s?mode=class.bulkedit.buildersnumbers&id=%d", $this->Module->url, $this->id);
 				$this->url->bulkedit_status = sprintf("%s?mode=class.bulkedit.status&id=%d", $this->Module->url, $this->id);
 				$this->url->bulkedit_gauge = sprintf("%s?mode=class.bulkedit.gauge&id=%d", $this->Module->url, $this->id);
+				
+				/**
+				 * Set the meta data
+				 */
+				
+				if (isset($row['meta'])) {
+					$this->meta = json_decode($row['meta'], true); 
+				} else {
+					$this->meta = array(); 
+				}
 				
 				/**
 				 * If an asset ID exists and is greater than 0, create the asset object
@@ -652,7 +668,8 @@
 				"tractive_effort" => $this->tractive_effort,
 				"model" => $this->model,
 				"download_id" => empty($this->download_id) ? 0 : $this->download_id,
-				"slug" => empty($this->slug) ? "" : $this->slug
+				"slug" => empty($this->slug) ? "" : $this->slug,
+				"meta" => json_encode($this->meta)
 			);
 			
 			if (empty($this->date_added)) {
@@ -1205,6 +1222,199 @@
 			$Sightings = new \Railpage\Sightings\Base;
 			
 			return $Sightings->findLocoClass($this->id); 
+		}
+		
+		/**
+		 * Check if this loco class has a cover image
+		 * @since Version 3.9
+		 * @return boolean
+		 */
+		
+		public function hasCoverImage() {
+			
+			/**
+			 * Image stored in meta data
+			 */
+			
+			if (isset($this->meta['coverimage']) && isset($this->meta['coverimage']['id']) && !empty($this->meta['coverimage']['id'])) {
+				return true;
+			}
+			
+			/**
+			 * Asset
+			 */
+			
+			if ($this->Asset instanceof Asset) {
+				return true;
+			}
+			
+			/**
+			 * Ordinary Flickr image
+			 */
+			
+			if (filter_var($this->flickr_image_id, FILTER_VALIDATE_INT) && $this->flickr_image_id > 0) {
+				return true;
+			}
+			
+			/**
+			 * No cover image!
+			 */
+			
+			return false;
+		}
+		
+		/**
+		 * Get the cover photo for this locomotive class
+		 * @since Version 3.9
+		 * @return array
+		 * @todo Set the AssetProvider (requires creating AssetProvider)
+		 */
+		
+		public function getCoverImage() {
+			
+			/**
+			 * Image stored in meta data
+			 */
+			
+			if (isset($this->meta['coverimage'])) {
+				$Image = new Image($this->meta['coverimage']['id']);
+				
+				return array(
+					"type" => "image",
+					"provider" => $Image->provider,
+					"title" => $Image->title,
+					"author" => array(
+						"id" => $Image->author->id,
+						"username" => $Image->author->username,
+						"realname" => isset($Image->author->realname) ? $Image->author->realname : $Image->author->username,
+						"url" => $Image->author->url
+					),
+					"image" => array(
+						"id" => $Image->id,
+					),
+					"sizes" => $Image->sizes,
+					"url" => $Image->url->getURLs()
+				);
+			}
+			
+			/**
+			 * Asset
+			 */
+			
+			if ($this->Asset instanceof Asset) {
+				return array(
+					"type" => "asset",
+					"provider" => "", // Set this to AssetProvider soon
+					"title" => $Asset->meta['title'],
+					"author" => array(
+						"id" => "",
+						"username" => "",
+						"realname" => "",
+						"url" => ""
+					),
+					"sizes" => array(
+						"large" => array(
+							"source" => $Asset->meta['image'],
+						),
+						"original" => array(
+							"source" => $Asset->meta['original'],
+						)
+					),
+					"url" => array(
+						"url" => $Asset['meta']['image'],
+					)
+				);
+			}
+			
+			/**
+			 * Ordinary Flickr image
+			 */
+			
+			if (filter_var($this->flickr_image_id, FILTER_VALIDATE_INT) && $this->flickr_image_id > 0) {
+				$Images = new Images;
+				$Image = $Images->findImage("flickr", $this->flickr_image_id);
+				
+				return array(
+					"type" => "image",
+					"provider" => $Image->provider,
+					"title" => $Image->title,
+					"author" => array(
+						"id" => $Image->author->id,
+						"username" => $Image->author->username,
+						"realname" => isset($Image->author->realname) ? $Image->author->realname : $Image->author->username,
+						"url" => $Image->author->url
+					),
+					"image" => array(
+						"id" => $Image->id,
+					),
+					"sizes" => $Image->sizes,
+					"url" => $Image->url->getURLs()
+				);
+			}
+			
+			/**
+			 * No cover image!
+			 */
+			
+			return false;
+		}
+		
+		/**
+		 * Set the cover photo for this locomotive class
+		 * @since Version 3.9
+		 * @param $Image Either an instance of \Railpage\Images\Image or \Railpage\Assets\Asset
+		 * @return $this
+		 */
+		
+		public function setCoverImage($Image) {
+			
+			/**
+			 * Zero out any existing images
+			 */
+			
+			$this->photo_id = NULL;
+			$this->Asset = NULL;
+			
+			if (isset($this->meta['coverimage'])) {
+				unset($this->meta['coverimage']);
+			}
+			
+			/**
+			 * $Image is a Flickr image
+			 */
+			
+			if ($Image instanceof Image && $Image->provider == "flickr") {
+				$this->flickr_image_id = $Image->photo_id;
+				$this->commit(); 
+				
+				return $this;
+			}
+			
+			/**
+			 * Image is a site asset
+			 */
+			
+			if ($Image instanceof Asset) {
+				$this->Asset = clone $Image;
+				$this->commit(); 
+				
+				return $this;
+			}
+			
+			/**
+			 * Image is a generic image, so we'll just store the Image ID and fetch it later with $this->getCoverImage()
+			 */
+			
+			$this->meta['coverimage'] = array(
+				"id" => $Image->id,
+				"title" => $Image->title,
+				"sizes" => $Image->sizes,
+				"url" => $Image->url->getURLs()
+			);
+			
+			$this->commit(); 
+			
+			return $this;
 		}
 	}
 ?>

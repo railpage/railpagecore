@@ -37,6 +37,22 @@
 	class Locos extends AppCore {
 		
 		/**
+		 * Find : Locos classes with no photos
+		 * @since Version 3.9
+		 * @const FIND_CLASS_NOPHOTO
+		 */
+		
+		const FIND_CLASS_NOPHOTO = "class_nophoto";
+		
+		/**
+		 * Find : Locos with no photos
+		 * @since Version 3.9
+		 * @const FIND_LOCO_NOPHOTO
+		 */
+		
+		const FIND_LOCO_NOPHOTO = "loco_nophoto";
+		
+		/**
 		 * Status : Operational
 		 * @since Version 3.8.7
 		 * @const STATUS_OPERATIONAL
@@ -162,7 +178,35 @@
 				return false;
 			}
 			
-			if ($search_type == LOCOS_FIND_CLASS_NOPHOTO) {
+			
+			/**
+			 * Find loco classes without a cover photo
+			 */
+			
+			if ($search_type == LOCOS_FIND_CLASS_NOPHOTO || $search_type == self::FIND_CLASS_NOPHOTO) {
+				
+				$return = array(); 
+				
+				$classes = $this->listClasses();
+				
+				foreach ($classes['class'] as $row) {
+					
+					$LocoClass = new LocoClass($row['class_id']);
+					
+					if (!$LocoClass->hasCoverImage()) {
+						$return[$LocoClass->id] = array(
+							"id" => $LocoClass->id,
+							"name" => $LocoClass->name,
+							"flickr_tag" => $LocoClass->flickr_tag,
+							"url" => $LocoClass->url->getURLs()
+						);
+					}
+				}
+				
+				return $return;
+				
+				/*
+				
 				// Find classes without a photo
 				
 				$query = "SELECT id, name, flickr_tag FROM loco_class WHERE flickr_image_id = '' ORDER BY name ASC";
@@ -189,7 +233,14 @@
 					
 					return $return;
 				}
-			} elseif ($search_type == LOCOS_FIND_LOCO_NOPHOTO) {
+				*/
+			}
+			
+			/**
+			 * Find locomotives without a cover photo
+			 */
+			
+			if ($search_type == LOCOS_FIND_LOCO_NOPHOTO || $search_type == self::FIND_LOCO_NOPHOTO) {
 				// Locos without a photo
 				
 				$query = "SELECT l.loco_id, l.loco_num, l.loco_status_id, s.name AS loco_status, c.id AS class_id, c.name AS class_name 
@@ -221,7 +272,13 @@
 					
 					return $return;
 				}
-			} elseif ($search_type == LOCOS_FIND_FROM_NUMBERS && $args) {
+			}
+			
+			/**
+			 * Find locomotives from a comma-separated list of numbers
+			 */
+			
+			if ($search_type == LOCOS_FIND_FROM_NUMBERS && $args) {
 				// Find locomotives from a comma-separated list of numbers
 				
 				$numbers = explode(",", $args); 
@@ -1355,7 +1412,7 @@
 		 * @param string $arrangement
 		 */
 		
-		public function addWheelArrangement($title = false, $arrangement = false) {
+		public function addWheelArrangement($title = "", $arrangement = false) {
 			deleteMemcacheObject("railpage:loco.wheelarrangements");
 
 			$data = array(

@@ -11,6 +11,9 @@
 	
 	use Railpage\Locos\Liveries\Livery;
 	use Railpage\Users\User;
+	use Railpage\Images\Images;
+	use Railpage\Images\Image;
+	use Railpage\Assets\Asset;
 	use Railpage\Url;
 	use DateTime;
 	use Exception;
@@ -275,6 +278,14 @@
 		public $liveries;
 		
 		/**
+		 * Loco meta data
+		 * @since Version 3.8.7
+		 * @var array $meta
+		 */
+		
+		public $meta;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.2
 		 * @param int $id
@@ -423,8 +434,18 @@
 				$this->url->edit = sprintf("%s?mode=loco.edit&id=%d", $this->Module->url, $this->id);
 				$this->url->sightings = sprintf("%s/sightings", $this->url->url);
 				
+				/**
+				 * Set the meta data
+				 */
+				
+				if (isset($row['meta'])) {
+					$this->meta = json_decode($row['meta'], true); 
+				} else {
+					$this->meta = array(); 
+				}
+				
 				// Fetch the gauge data
-				if ($this->gauge = $this->getCache("railpage:locos.gauge_id=" . $row['loco_gauge_id'])) {
+				if ($this->gauge = getMemcacheObject(sprintf("railpage:locos.gauge_id=%d", $row['loco_gauge_id']))) {
 					// Do nothing
 				} elseif ($this->db instanceof \sql_db) {
 					$query = "SELECT * FROM loco_gauge WHERE gauge_id = '".$this->db->real_escape_string($row['loco_gauge_id'])."'";
@@ -712,9 +733,12 @@
 				$dataArray['photo_id']			= $this->db->real_escape_string($this->photo_id);
 				$dataArray['manufacturer_id']	= $this->db->real_escape_string($this->manufacturer_id);
 				$dataArray['loco_name']			= $this->db->real_escape_string($this->name);
+				$dataArray['meta'] = $this->db->real_escape_string(json_encode($this->meta));
 				
-				if ($this->Asset instanceof \Railpage\Assets\Asset) {
+				if ($this->Asset instanceof Asset) {
 					$dataArray['asset_id'] = $this->db->real_escape_string($this->Asset->id);
+				} else {
+					$dataArray['asset_id'] = 0;
 				}
 				
 				if (empty($this->date_added)) {
@@ -755,7 +779,8 @@
 					"builders_number" => empty($this->builders_num) ? "" : $this->builders_num,
 					"photo_id" => empty($this->photo_id) ? 0 : $this->photo_id,
 					"manufacturer_id" => empty($this->manufacturer_id) ? 0 : $this->manufacturer_id,
-					"loco_name" => empty($this->name) ? "" : $this->name
+					"loco_name" => empty($this->name) ? "" : $this->name,
+					"meta" => json_encode($this->meta)
 				);
 				
 				if (empty($this->date_added)) {
@@ -766,6 +791,8 @@
 				
 				if ($this->Asset instanceof \Railpage\Assets\Asset) {
 					$data['asset_id'] = $this->Asset->id;
+				} else {
+					$data['asset_id'] = 0;
 				}
 				
 				if (empty($this->id)) {
@@ -1936,6 +1963,198 @@
 					}
 				}
 			}
+		}
+		
+		/**
+		 * Set the cover photo for this locomotive
+		 * @since Version 3.8.7
+		 * @param $Image Either an instance of \Railpage\Images\Image or \Railpage\Assets\Asset
+		 * @return $this
+		 */
+		
+		public function setCoverImage($Image) {
+			
+			/**
+			 * Zero out any existing images
+			 */
+			
+			$this->photo_id = NULL;
+			$this->Asset = NULL;
+			
+			if (isset($this->meta['coverimage'])) {
+				unset($this->meta['coverimage']);
+			}
+			
+			/**
+			 * $Image is a Flickr image
+			 */
+			
+			if ($Image instanceof Image && $Image->provider == "flickr") {
+				$this->photo_id = $Image->photo_id;
+				$this->commit(); 
+				
+				return $this;
+			}
+			
+			/**
+			 * Image is a site asset
+			 */
+			
+			if ($Image instanceof Asset) {
+				$this->Asset = clone $Image;
+				$this->commit(); 
+				
+				return $this;
+			}
+			
+			/**
+			 * Image is a generic image, so we'll just store the Image ID and fetch it later with $this->getCoverImage()
+			 */
+			
+			$this->meta['coverimage'] = array(
+				"id" => $Image->id,
+				"title" => $Image->title,
+				"sizes" => $Image->sizes,
+				"url" => $Image->url->getURLs()
+			);
+			
+			$this->commit(); 
+			
+			return $this;
+		}
+		
+		/**
+		 * Get the cover photo for this locomotive
+		 * @since Version 3.8.7
+		 * @return array
+		 * @todo Set the AssetProvider (requires creating AssetProvider)
+		 */
+		
+		public function getCoverImage() {
+			
+			/**
+			 * Image stored in meta data
+			 */
+			
+			if (isset($this->meta['coverimage'])) {
+				$Image = new Image($this->meta['coverimage']['id']);
+				return array(
+					"type" => "image",
+					"provider" => $Image->provider,
+					"title" => $Image->title,
+					"author" => array(
+						"id" => $Image->author->id,
+						"username" => $Image->author->username,
+						"realname" => isset($Image->author->realname) ? $Image->author->realname : $Image->author->username,
+						"url" => $Image->author->url
+					),
+					"image" => array(
+						"id" => $Image->id,
+					),
+					"sizes" => $Image->sizes,
+					"url" => $Image->url->getURLs()
+				);
+			}
+			
+			/**
+			 * Asset
+			 */
+			
+			if ($this->Asset instanceof Asset) {
+				return array(
+					"type" => "asset",
+					"provider" => "", // Set this to AssetProvider soon
+					"title" => $Asset->meta['title'],
+					"author" => array(
+						"id" => "",
+						"username" => "",
+						"realname" => "",
+						"url" => ""
+					),
+					"sizes" => array(
+						"large" => array(
+							"source" => $Asset->meta['image'],
+						),
+						"original" => array(
+							"source" => $Asset->meta['original'],
+						)
+					),
+					"url" => array(
+						"url" => $Asset['meta']['image'],
+					)
+				);
+			}
+			
+			/**
+			 * Ordinary Flickr image
+			 */
+			
+			if (filter_var($this->photo_id, FILTER_VALIDATE_INT) && $this->photo_id > 0) {
+				$Images = new Images;
+				$Image = $Images->findImage("flickr", $this->photo_id);
+				
+				return array(
+					"type" => "image",
+					"provider" => $Image->provider,
+					"title" => $Image->title,
+					"author" => array(
+						"id" => $Image->author->id,
+						"username" => $Image->author->username,
+						"realname" => isset($Image->author->realname) ? $Image->author->realname : $Image->author->username,
+						"url" => $Image->author->url
+					),
+					"image" => array(
+						"id" => $Image->id,
+					),
+					"sizes" => $Image->sizes,
+					"url" => $Image->url->getURLs()
+				);
+			}
+			
+			/**
+			 * No cover image!
+			 */
+			
+			return false;
+		}
+		
+		/**
+		 * Check if this loco class has a cover image
+		 * @since Version 3.9
+		 * @return boolean
+		 */
+		
+		public function hasCoverImage() {
+			
+			/**
+			 * Image stored in meta data
+			 */
+			
+			if (isset($this->meta['coverimage']) && isset($this->meta['coverimage']['id']) && !empty($this->meta['coverimage']['id'])) {
+				return true;
+			}
+			
+			/**
+			 * Asset
+			 */
+			
+			if ($this->Asset instanceof Asset) {
+				return true;
+			}
+			
+			/**
+			 * Ordinary Flickr image
+			 */
+			
+			if (filter_var($this->photo_id, FILTER_VALIDATE_INT) && $this->photo_id > 0) {
+				return true;
+			}
+			
+			/**
+			 * No cover image!
+			 */
+			
+			return false;
 		}
 	}
 ?>
