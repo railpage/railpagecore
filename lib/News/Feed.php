@@ -61,14 +61,16 @@
 			$query = $Sphinx->select("*")
 					->from("idx_news_article")
 					->orderBy("story_time_unix", "DESC")
-					->limit($offset, $limit);
+					->limit($offset, $limit)
+					->where("story_active", "=", 1);
 			
 			if (!empty($this->filter_topics) && count($this->filter_topics)) {
 				$query->where("topic_id", "IN", $this->filter_topics);
 			}
 			
-			if (!empty($this->filter_words) && count($this->filter_words) && (count($this->filter_words) === 1 && $this->filter_words[0] = "")) {
+			if (!empty($this->filter_words) && count($this->filter_words) && !(count($this->filter_words) === 1 && $this->filter_words[0] == "")) {
 				$words = implode(" | ", $this->filter_words);
+				
 				$query->match("story_text", $words)->option("ranker", "matchany");
 			}
 				
