@@ -253,7 +253,7 @@
 				throw new Exception("Can't lookup a reminder because no object was specified");
 			}
 			
-			if (!filter_var($this->object_id) || $this->object_id == 0) {
+			if (!filter_var($this->object_id, FILTER_VALIDATE_INT) || $this->object_id == 0) {
 				throw new Exception("Can't lookup a reminder because no object ID was specified");
 			}
 			
