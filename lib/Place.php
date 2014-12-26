@@ -314,7 +314,10 @@
 				
 				$config = array(
 					'adapter' => 'Zend\Http\Client\Adapter\Curl',
-					'curloptions' => array(CURLOPT_FOLLOWLOCATION => true),
+					'curloptions' => array(
+						CURLOPT_FOLLOWLOCATION => true,
+						CURLOPT_SSLVERSION => 3, //cURL for Travis CI
+					),
 				);
 				
 				$client = new Client($url, $config);
