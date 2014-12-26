@@ -447,6 +447,9 @@
 				 */
 				
 				$request = new HTTP_Request2($url, HTTP_Request2::METHOD_GET);
+				$request->setConfig(array(
+					"ssl_verify_peer" => false
+				));
 				
 				$response = $request->send();
 				
