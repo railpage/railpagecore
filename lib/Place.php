@@ -317,6 +317,8 @@
 					'curloptions' => array(
 						CURLOPT_FOLLOWLOCATION => true,
 						CURLOPT_SSLVERSION => 3, //cURL for Travis CI
+						CURLOPT_SSL_VERIFYPEER => false,
+						CURLOPT_SSL_VERIFYHOST => 2,
 					),
 				);
 				
