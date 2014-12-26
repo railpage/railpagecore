@@ -249,7 +249,9 @@
 			 * Record this in the debug log
 			 */
 				
-			debug_recordInstance(__CLASS__);
+			if (function_exists("debug_recordInstance")) {
+				debug_recordInstance(__CLASS__);
+			}
 			
 			$this->Templates = new stdClass;
 			$this->Templates->view = "class";

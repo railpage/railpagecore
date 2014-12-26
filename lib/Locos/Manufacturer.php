@@ -108,7 +108,7 @@
 			
 			if (empty($this->slug)) {
 				$proposal = create_slug($this->name);
-				$proposal = substr($propoosal, 0, 30);
+				$proposal = substr($proposal, 0, 30);
 				
 				$query = "SELECT manufacturer_id FROM loco_manufacturer WHERE slug = ?";
 				$result = $this->db->fetchAll($query, $proposal);
