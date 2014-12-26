@@ -132,20 +132,31 @@
 					);
 				}
 				
-				$woe = getWoeData(sprintf("%s, %s", $location[1], $location[0]));
+				/**
+				 * Get geolocation data using Yahoo's WhereOnEarth (woe) API, if our function exists. 
+				 */
+				
 				$timezone = "Australia/Melbourne";
 				
-				if (count($woe)) {
-					$location = array(
-						"name" => $woe['places']['place'][0]['name'],
-						"lat" => $woe['places']['place'][0]['centroid']['latitude'],
-						"lon" => $woe['places']['place'][0]['centroid']['longitude']
-					);
-				} else {
+				if (!function_exists("getWoeData")) {
 					$location = array(
 						"name" => sprintf("%, %s", $location[1], $location[0])
 					);
+				} else {
+					$woe = getWoeData(sprintf("%s, %s", $location[1], $location[0]));
+					
+					if (count($woe)) {
+						$location = array(
+							"name" => $woe['places']['place'][0]['name'],
+							"lat" => $woe['places']['place'][0]['centroid']['latitude'],
+							"lon" => $woe['places']['place'][0]['centroid']['longitude']
+						);
+					}
 				}
+				
+				/**
+				 * Assemble this job into an associative array
+				 */
 				
 				$row = array(
 					"title" => $item->title,
@@ -167,6 +178,10 @@
 				
 				$row['date']['open']->setTimeZone(new DateTimeZone($timezone));
 				$row['date']['close']->setTimeZone(new DateTimeZone($timezone));
+				
+				/**
+				 * Add this job to the list of jobs found in this scrape
+				 */
 				
 				$jobs[] = $row;
 			}
