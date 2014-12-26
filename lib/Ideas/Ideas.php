@@ -94,7 +94,7 @@
 		
 		public function getMostVoted($num = 10) {
 			
-			$query = "SELECT count(v.idea_id) AS num, v.idea_id FROM idea_votes AS v JOIN idea_ideas AS i ON v.idea_id = i.id GROUP BY v.idea_id ORDER BY i.title LIMIT 0, ?";
+			$query = "SELECT count(v.idea_id) AS num, v.idea_id FROM idea_votes AS v JOIN idea_ideas AS i ON v.idea_id = i.id GROUP BY v.idea_id ORDER BY num DESC LIMIT 0, ?";
 			
 			foreach ($this->db->fetchAll($query, $num) as $row) {
 				yield new Idea($row['idea_id']);
