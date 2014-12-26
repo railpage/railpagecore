@@ -169,7 +169,7 @@
 					$this->Location = new Location($result['job_location_id']);
 					$this->Classification = new Classification($result['job_classification_id']);
 					
-					$this->url = new Url(sprintf("%s?mode=view&id=%d", $this->Module->url, $this->id));
+					$this->url = new Url(sprintf("%s/%d", $this->Module->url, $this->id));
 					
 					if (is_array(json_decode($result['job_urls'], true))) {
 						foreach (json_decode($result['job_urls'], true) as $title => $link) {
