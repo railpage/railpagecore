@@ -312,6 +312,10 @@
 			} else {
 				$url = sprintf("https://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s&sensor=false", $this->lat, $this->lon);
 				
+				/**
+				 * Travis-CI and/or Zend is fucked
+				 */
+				/*
 				$config = array(
 					'adapter' => 'Zend\Http\Client\Adapter\Curl',
 					'curloptions' => array(
@@ -327,6 +331,28 @@
 				
 				$content = $response->getContent();
 				$result = json_decode($content, true);
+				*/
+				
+				$ch = curl_init();
+
+				curl_setopt($ch, CURLOPT_URL, $url);
+				curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+				curl_setopt($ch, CURLOPT_SSLVERSION, 3);
+				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+				curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+				curl_setopt($ch, CURLOPT_HEADER, 0);
+				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+				
+				$return = curl_exec($ch);
+				
+				if (curl_exec($ch) === false) {
+					echo 'Curl error: ' . curl_error($ch);
+				}
+				
+				curl_close($ch);
+				
+				$result = json_decode($return, true);
+				$return = array();
 				
 				if (isset($result['results'][0]['formatted_address'])) {
 					$return['address'] = $result['results'][0]['formatted_address'];
