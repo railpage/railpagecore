@@ -1,0 +1,586 @@
+<?php
+	/**
+	 * Links management
+	 * @package Railpage
+	 * @since Version 3.0
+	 * @version 3.0.1
+	 * @author Michael Greenhill
+	 * @copyright Copyright (c) 2012 Michael Greenhill
+	 */ 
+	 
+	namespace Railpage\Links;
+	
+	use DateTime;
+	use Exception;
+	use Railpage\AppCore;
+	use Railpage\Url;
+	use Railpage\Module;
+	use Zend_Db_Expr;
+	 
+	/** 
+	 * Links base class
+	 * @since Version 3.0
+	 * @version 3.0.1
+	 * @author Michael Greenhill
+	 * @todo Break this up into objects
+	 */ 
+	
+	class Links extends Appcore {
+		
+		/**
+		 * Get categories
+		 */
+		
+		public function getCategories($parent = 0, $children = true) {
+			$parent = intval($parent);
+			
+			$mckey = "railpage:links.categories.parent=" . $parent . ".children=" . (bool)$children; 
+			
+			if ($return = getMemcacheObject("asdfadf")) {
+				return $return;
+			} elseif ($this->db instanceof \sql_db) {
+				$return = false;
+				$query	= "SELECT * FROM nuke_links_categories";
+				
+				if ($children == false) {
+					$query .= " WHERE cid = ".$this->db->real_escape_string($parent);
+				} elseif ($parent) {
+					$query .= " WHERE parentid = ".$this->db->real_escape_string($parent)." OR cid = ".$this->db->real_escape_string($parent); 
+				}
+				
+				if ($rs = $this->db->query($query)) {
+					$return = array(); 
+					
+					if ($children) {
+						while ($row = $rs->fetch_assoc()) {
+							if ($row['parentid'] == 0) {
+								$return[$row['cid']] = $row; 
+							} else {
+								$return[$row['parentid']]['children'][$row['cid']] = $row; 
+							}
+						}
+					} else {
+						$return = $rs->fetch_assoc(); 
+					}
+					
+					setMemcacheObject($mckey, $return, strtotime("+24 hours")); 
+				} else {
+					trigger_error("Links: Could not return categories"); 
+					trigger_error($this->db->error); 
+					trigger_error($query); 
+				}
+			
+				return $return;
+			} else {
+				$query	= "SELECT * FROM nuke_links_categories ORDER BY parentid ASC, title ASC";
+				$params = array(); 
+				
+				if ($children == false) {
+					$query .= " WHERE cid = ?";
+					$params[] = $parent;
+				} elseif ($parent) {
+					$query .= " WHERE parentid = ? OR cid = ?";
+					$params[] = $parent;
+					$params[] = $parent;
+				}
+				
+				$return = array(); 
+				
+				if ($children) {
+					foreach ($this->db->fetchAll($query, $params) as $row) {
+						if (empty($row['slug'])) {
+							$row['slug'] = $this->createSlug($row['cid']); 
+						}
+						
+						$row['url'] = $this->makePermaLink($row['cid']); 
+						
+						if ($row['parentid'] == 0) {
+							$return[$row['cid']] = $row; 
+						} else {
+							$return[$row['parentid']]['children'][$row['cid']] = $row; 
+						}
+					}
+				} else {
+					$return = $this->db->fetchRow($query, $params);
+					
+					foreach ($return as $row) {
+						if (empty($row['slug'])) {
+							$row['slug'] = $this->createSlug(); 
+						}
+						
+						$row['url'] = $this->makePermaLink($row['cid']); 
+					}
+				}
+				
+				setMemcacheObject($mckey, $return, strtotime("+24 hours")); 
+				
+				return $return;
+			}
+		}
+		
+		
+		/**
+		 *
+		 * Get links within a category
+		 *
+		 */
+		
+		public function getLinks($category_id = false, $sort = "title", $direction = "ASC") {
+			if (!$this->db || !$category_id) {
+				return false;
+			}
+			
+			$mckey = "railpage:links.category_id=" . $category_id . ".sort=" . $sort . ".direction=" . $direction;
+			
+			if ($return = getMemcacheObject($mckey)) {
+				return $return;
+			} elseif ($this->db instanceof \sql_db) {
+				$return	= false;
+				$query	= "SELECT * FROM nuke_links_links WHERE link_approved = 1 AND cid = ".$this->db->real_escape_string($category_id)." ORDER BY ".$this->db->real_escape_string($sort)." ".strtoupper(strtolower($this->db->real_escape_string($direction))); 
+				
+				if ($rs = $this->db->query($query)) {
+					$return = array(); 
+					
+					while ($row = $rs->fetch_assoc()) {
+						if (stripos($row['url'], "http") === false) {
+							$row['url'] = "http://".$row['url']; 
+						}
+						
+						$return[] = $row; 
+					}
+					
+					setMemcacheObject($mckey, $return, strtotime("+24 hours")); 
+				} else {
+					trigger_error("Links: Could not fetch links for category ".$category_id);
+					trigger_error($this->db->error);
+					trigger_error($query); 
+				}
+				
+				return $return; 
+			} else {
+				$query	= "SELECT * FROM nuke_links_links WHERE link_approved = 1 AND cid = ? ORDER BY " . $sort . " " . $direction; 
+				$params = array(
+					$category_id
+				);
+				
+				$return = array(); 
+				
+				foreach ($this->db->fetchAll($query, $params) as $row) {
+					if (stripos($row['url'], "http") === false) {
+						$row['url'] = "http://".$row['url']; 
+					}
+					
+					$return[] = $row; 
+				}
+				
+				setMemcacheObject($mckey, $return, strtotime("+24 hours")); 
+				
+				return $return;
+			}
+		}
+		
+		
+		/**
+		 *
+		 * Get an individual link
+		 *
+		 */
+		 
+		public function getLink($id = false) {
+			if (!$id || !$this->db) {
+				return false;
+			}
+			
+			if ($this->db instanceof \sql_db) {
+				$return = false; 
+				$query	= "SELECT * FROM nuke_links_links WHERE lid = ".$this->db->real_escape_string($id); 
+				
+				if ($rs = $this->db->query($query)) {
+					$row = $rs->fetch_assoc(); 
+					
+					if (stripos($row['url'], "http") === false) {
+						$row['url'] = "http://".$row['url']; 
+					}
+					
+					return $row;
+				} else {
+					trigger_error("Links: unable to fetch link data for link ID ".$id);
+					trigger_error($this->db->error); 
+					trigger_error($query); 
+				}
+				
+				return $false;
+			} else {
+				$query	= "SELECT * FROM nuke_links_links WHERE lid = ?";
+				$return = $this->db->fetchRow($query, $id); 
+					
+				if (stripos($return['url'], "http") === false) {
+					$return['url'] = "http://".$return['url']; 
+				}
+				
+				return $return;
+			}
+		}
+		
+		/**
+		 * Report a broken link
+		 */
+		 
+		public function broken($id = false, $username = false) {
+			if (!$id || !$username || !$this->db) {
+				return false;
+			}
+			
+			$link = $this->getLink($id); 
+			
+			if ($this->db instanceof \sql_db) {
+				// Has this link already been reported?
+				if ($rs = $this->db->query("SELECT * FROM nuke_links_modrequest WHERE lid = ".$link['lid'])) {
+					if ($rs->num_rows == 0) {
+					
+						$dataArray = array(); 
+						$dataArray['lid'] 				= $this->db->real_escape_string($link['lid']); 
+						$dataArray['cid'] 				= $this->db->real_escape_string($link['cid']); 
+						$dataArray['sid'] 				= $this->db->real_escape_string($link['sid']); 
+						$dataArray['title'] 			= $this->db->real_escape_string($link['title']); 
+						$dataArray['image'] 			= $this->db->real_escape_string($link['image']); 
+						$dataArray['url'] 				= $this->db->real_escape_string($link['url']); 
+						$dataArray['description']		= $this->db->real_escape_string($link['description']); 
+						$dataArray['modifysubmitter'] 	= $this->db->real_escape_string($username); 
+						$dataArray['brokenlink'] 		= $this->db->real_escape_string(1); 
+						
+						$query = $this->db->buildQuery($dataArray, "nuke_links_modrequest"); 
+						
+						if ($this->db->query($query)) {
+							return true;
+						} else {
+							trigger_error("Links: could not report broken link");
+							trigger_error($this->db->error); 
+							trigger_error($query); 
+							return false;
+						}
+					} else {
+						return false;
+					}
+				} else {
+					return false;
+				}
+			} else {
+				$query = "SELECT * FROM nuke_links_modrequest WHERE lid = ?";
+				
+				if (!$this->db->fetchRow($query, $link['lid'])) {
+					$data = array(
+						"lid" => $link['lid'],
+						"cid" => $link['cid'],
+						"sid" => $link['sid'],
+						"title" => $link['title'],
+						"image" => $link['image'],
+						"url" => $link['url'],
+						"description" => $link['description'],
+						"modifysubmitter" => $username,
+						"brokenlink" => 1
+					);
+					
+					return $this->db->insert("nuke_links_modrequest", $data); 
+				}
+			}
+		}
+		
+		/**
+		 * Add a link
+		 */
+		 
+		public function add($title = false, $desc = false, $url = false, $category_id = false, $username = false, $user_email = false, $user_realname = false) {
+			
+			throw new Exception("Railpage\\Links\\Links:add() is an old function");
+			
+			if (!$this->db || !$title || !$desc || !$url || !$category_id || !$username) {
+				return false;
+			}
+			
+			if ($this->db instanceof \sql_db) {
+				$dataArray = array(); 
+				
+				$dataArray['cid'] = $this->db->real_escape_string($category_id); 
+				$dataArray['sid'] = 0; 
+				$dataArray['title'] = $this->db->real_escape_string($title); 
+				$dataArray['url'] = $this->db->real_escape_string($url); 
+				$dataArray['description'] = $this->db->real_escape_string($desc); 
+				$dataArray['submitter'] = $this->db->real_escape_string($username); 
+				
+				if ($user_email) {
+					$dataArray['email'] = $this->db->real_escape_string($user_email); 
+				}
+				
+				if ($user_realname) {
+					$dataArray['name'] = $this->db->real_escape_string($user_realname); 
+				}
+				
+				// Build the query
+				$query = $this->db->buildQuery($dataArray, "nuke_links_newlink"); 
+				
+				if ($this->db->query($query)) {
+					return true;
+				} else {
+					return false;
+				}
+			} else {
+				$data = array(
+					"cid" => $category_id,
+					"sid" => 0,
+					"title" => $title,
+					"url" => $url,
+					"description" => $desc,
+					"submitter" => $username
+				);
+				
+				if ($user_email) {
+					$data['email'] = $user_email;
+				}
+				
+				if ($user_realname) {
+					$data['name'] = $user_realname;
+				}
+				
+				return $this->db->insert("nuke_links_newlink", $data); 
+			}
+		}
+		
+		/**
+		 * Get newest links
+		 */
+		 
+		public function getNewest($category_id = false, $limit = 20, $start = 0) {
+			if (!$this->db) {
+				return false;
+			}
+			
+			if ($this->db instanceof \sql_db) {
+				$return = false;
+				$query	= "SELECT l.*, c.title as category_title, c.cdescription as category_description FROM nuke_links_links l, nuke_links_categories c WHERE l.cid = c.cid AND l.link_approved = 1";
+				
+				if ($category_id) {
+					$query .= "AND l.cid = ".$this->db->real_escape_string($category_id); 
+				}
+				
+				$query .= " ORDER BY date DESC LIMIT ".$start.", ".$limit; 
+				
+				if ($rs = $this->db->query($query)) {
+					$return = array(); 
+					
+					while ($row = $rs->fetch_assoc()) {
+						if (stripos($row['url'], "http") === false) {
+							$row['url'] = "http://".$row['url']; 
+						}
+						
+						$return[] = $row; 
+					}
+				} else {
+					trigger_error("Links: unable to fetch newest downloads");
+					trigger_error($this->db->error); 
+					trigger_error($query); 
+				}
+				
+				return $return; 
+			} else {
+				$params = array(); 
+				$query = "SELECT l.*, c.title as category_title, c.cdescription as category_description FROM nuke_links_links l, nuke_links_categories c WHERE l.cid = c.cid AND l.link_approved = 1";
+				
+				if ($category_id) {
+					$query .= " AND l.cid = ?";
+					$params[] = $category_id;
+				}
+				
+				$query .= " ORDER BY date DESC LIMIT ?, ?";
+				$params[] = $start;
+				$params[] = $limit;
+				
+				$return = array(); 
+				
+				foreach ($this->db->fetchAll($query, $params) as $row) {
+					if (stripos($row['url'], "http") === false) {
+						$row['url'] = "http://".$row['url']; 
+					}
+					
+					$Category = new Category($row['cid']); 
+					
+					if ($Category->parent instanceof Category) {
+						$row['category_title'] = $Category->parent->name . "\\" . $row['category_title']; 
+					}
+					
+					$return[] = $row; 
+				}
+				
+				return $return;
+			}
+		}
+		
+		/**
+		 * Get pending links
+		 */
+		 
+		public function getPending() {
+			$query = "SELECT * FROM nuke_links_links WHERE link_approved = 0";
+			
+			return $this->db->fetchAll($query);
+		}
+		
+		
+		/**
+		 * Reject a pending link
+		 */
+		 
+		public function reject($id = false) {
+			$where = array(
+				"lid = ?" => $id
+			);
+			
+			$this->db->delete("nuke_links_links", $where); 
+			
+			return $this;
+		}
+		
+		/**
+		 * Approve a pending link
+		 * @since Version 3.0.1
+		 * @version 3.9
+		 * @param int $id
+		 * @return boolean
+		 */
+		
+		public function approve($id = false) { 
+			$data = array(
+				"link_approved" => "1"
+			);
+			
+			$where = array(
+				"lid = ?" => $id
+			);
+			
+			$this->db->update("nuke_links_links", $data, $where);
+			
+			return $this;
+		}
+		
+		/**
+		 * Generate the URL slug
+		 * @since Version 3.7.5
+		 * @param int $category_id
+		 * @return string
+		 */
+		
+		public function createSlug($category_id = false) {
+			if (RP_DEBUG) {
+				global $site_debug;
+				$debug_timer_start = microtime(true);
+			}
+				
+			// Assume ZendDB
+			$find = array(
+				"(",
+				")",
+				"-"
+			);
+			
+			$replace = array(); 
+			
+			foreach ($find as $item) {
+				$replace[] = "";
+			}
+			
+			if ($category_id) {
+				$title = $this->db->fetchOne("SELECT title FROM nuke_links_categories WHERE cid = ?", $category_id); 
+			} elseif (isset($this->title) && !empty($this->title)) {
+				$title = $this->title;
+				$category_id = $this->id;
+			} else {
+				return false;
+			}
+			
+			$name = str_replace($find, $replace, $title);
+			$proposal = create_slug($name);
+			
+			/**
+			 * Trim it if the slug is too long
+			 */
+			
+			if (strlen($proposal) >= 256) {
+				$proposal = substr($poposal, 0, 200); 
+			}
+			
+			/**
+			 * Check that we haven't used this slug already
+			 */
+			
+			$result = $this->db->fetchAll("SELECT cid FROM nuke_links_categories WHERE slug = ? AND cid != ?", array($proposal, $category_id)); 
+			
+			if (count($result)) {
+				$proposal .= count($result);
+			}
+			
+			if (isset($this->slug)) {
+				$this->slug = $proposal;
+			}
+			
+			/**
+			 * Add this slug to the database
+			 */
+			
+			$data = array(
+				"slug" => $proposal
+			);
+			
+			$where = array(
+				"cid = ?" => $category_id
+			);
+			
+			$rs = $this->db->update("nuke_links_categories", $data, $where); 
+			
+			if (RP_DEBUG) {
+				if ($rs === false) {
+					$site_debug[] = "Zend_DB: FAILED create url slug for link category ID " . $category_id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+				} else {
+					$site_debug[] = "Zend_DB: SUCCESS create url slug for link category ID " . $category_id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+				}
+			}
+			
+			/**
+			 * Return it
+			 */
+			
+			return $proposal;
+		}
+		
+		/**
+		 * Make a permalink
+		 * @since Version 3.7.5
+		 * @return string
+		 */
+		
+		public function makePermaLink($entity = false) {
+			if (!$entity) {
+				return false;
+			}
+			
+			if (filter_var($entity, FILTER_VALIDATE_INT)) {
+				$row = $this->db->fetchRow("SELECT slug, parentid FROM nuke_links_categories WHERE cid = ?", $entity); 
+				
+				if ($row === false || empty($row['slug'])) {
+					$row['slug'] = $this->createSlug($entity); 
+				}
+				
+				if (intval($row['parentid']) > 0) {
+					$slug = $this->db->fetchOne("SELECT slug FROM nuke_links_categories WHERE cid = ?", $row['parentid']) . "/" . $row['slug']; 
+				} else {
+					$slug = $row['slug']; 
+				}
+			} else {
+				$slug = $entity;
+			}
+			
+			$permalink = "/links/" . $slug; 
+			
+			return $permalink;
+		}
+	}
+?>
