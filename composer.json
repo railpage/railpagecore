@@ -101,7 +101,7 @@
 		"zendframework/zendservice-twitter" : ">=2.0.0",
 		"zendframework/zendservice-recaptcha" : ">=2.0.0",
 		"timoh6/GenPhrase" : "master@dev",
-		"facebook/php-sdk" : "dev-master",
+		"facebook/php-sdk-v4" : "4.1.*@dev",
 		"google/apiclient" : "master@dev",
 		"swiftmailer/swiftmailer" : "5.2.*@dev"
 	}
