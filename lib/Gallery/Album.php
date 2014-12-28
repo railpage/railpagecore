@@ -89,11 +89,17 @@
 			
 			$this->Module = new Module("Gallery");
 			
-			if (filter_var($id, FILTER_VALIDATE_INT)) {
-				$this->id = $id;
-			} elseif (is_string($id)) {
+			// Rewrite - some album titles can be all numbers (eg 639, 8203)
+			if ($id) {
+				// First, assume that the album ID is a string. Let's try to get the ID from that
 				$query = "SELECT id FROM gallery_mig_album WHERE name = ?";
 				$this->id = $this->db->fetchOne($query, $id);
+				
+				// If the value returned from the database is false, there's no album 
+				// by that name so let's assume the name provided is actually an ID
+				if (!$this->id) {
+					$this->id = $id;
+				}
 			}
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
