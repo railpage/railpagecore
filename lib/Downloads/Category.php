@@ -10,6 +10,7 @@
 	namespace Railpage\Downloads;
 	
 	use Exception;
+	use Railpage\Url;
 	
 	/**
 	 * Download category class
@@ -100,10 +101,10 @@
 			
 			$this->title = $row['category_title']; 
 			$this->desc = $row['category_description'];
-			$this->url = "/downloads?mode=category&id=" . $this->id;
+			$this->url = new Url(sprintf("/downloads?mode=category&id=%d", $this->id));
 			
 			if ($row['parentid'] > 0) {
-				$this->Parent = new Category($this->db, $row['parentid']); 
+				$this->Parent = new Category($row['parentid']); 
 			}
 		}
 		
@@ -133,6 +134,56 @@
 			}
 			
 			return $return;
+		}
+		
+		/**
+		 * Validate changes to this category
+		 * @since Version 3.9
+		 * @throws \Exception if $this->title is empty
+		 * @return boolean
+		 */
+		
+		private function validate() {
+			if (empty($this->title)) {
+				throw new Exception("Title cannot be empty");
+			}
+			
+			if (empty($this->desc)) {
+				$this->desc = "";
+			}
+			
+			return true;
+		}
+		
+		/**
+		 * Commit changes to this category
+		 * @since Version 3.9
+		 * @return $this
+		 */
+		
+		public function commit() {
+			$this->validate(); 
+			
+			$data = array(
+				"category_title" => $this->title,
+				"category_description" => $this->desc,
+				"parentid" => ($this->Parent instanceof Category) ? $this->Parent->id : 0
+			);
+			
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$where = array(
+					"category_id = ?" => $this->id
+				);
+				
+				$this->db->update("download_categories", $data, $where); 
+			} else {
+				$this->db->insert("download_categories", $data);
+				$this->id = $this->db->lastInsertId();
+			}
+			
+			$this->url = new Url(sprintf("/downloads?mode=category&id=%d", $this->id));
+			
+			return $this;
 		}
 	}
 ?>
