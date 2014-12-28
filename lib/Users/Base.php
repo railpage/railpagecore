@@ -123,11 +123,11 @@
 					if ($this->db->query($query)) {
 						return count($users); 
 					} else {
-						throw new \Exception($this->db->error); 
+						throw new Exception($this->db->error); 
 					}
 				}
 			} else {
-				throw new \Exception($this->db->error); 
+				throw new Exception($this->db->error); 
 			}
 		}
 		
