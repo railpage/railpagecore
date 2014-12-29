@@ -26,7 +26,9 @@
 	"config": {
         "vendor-dir": "lib/vendor",
 	"autoload" : {
-		"psr-4" : { "Railpage\\" : "lib/" }
+		"psr-4" : { 
+			"Railpage\\" : "lib/"
+		}
 	}
     },
 	"repositories" : [
