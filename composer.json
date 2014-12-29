@@ -24,13 +24,13 @@
 	},
 	"type" : "library",
 	"config": {
-        "vendor-dir": "lib/vendor",
+	        "vendor-dir": "lib/vendor",
+	},
 	"autoload" : {
 		"psr-4" : { 
 			"Railpage\\" : "lib/"
 		}
-	}
-    },
+	},
 	"repositories" : [
 		{
 			"type" : "composer",
