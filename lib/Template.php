@@ -356,13 +356,13 @@
 		 */
 		
 		public function getAdvertisementHTML() {
-			if (!isset($this->User->preferences->showads) || !$this->User->preferences->showads) {
-				return "";
+			if (!isset($this->User->preferences->showads) || $this->User->preferences->showads) {
+				$this->assign("ad_header", $this->RailpageConfig->AdHeader);
+			
+				return $this->fetch(RP_SITE_ROOT . DS . "content" . DS . "inc.ad.banner.tpl");
 			}
 			
-			$this->assign("ad_header", $this->RailpageConfig->AdHeader);
-			
-			return $this->fetch(RP_SITE_ROOT . DS . "content" . DS . "inc.ad.banner.tpl");
+			return "";
 		}
 		
 		/**
