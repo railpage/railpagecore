@@ -357,7 +357,7 @@
 		
 		private function createSlug() {
 			
-			$proposal = substr(create_slug($this->title), 0, 60);
+			$proposal = substr(create_slug($this->title), 0, 32);
 			
 			$result = $this->db->fetchAll("SELECT id FROM event WHERE slug = ?", $proposal); 
 			
