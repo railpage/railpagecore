@@ -45,6 +45,14 @@
 		public $title;
 		
 		/**
+		 * First line of the story
+		 * @since Version 3.9
+		 * @var string $firstline
+		 */
+		
+		public $firstline;
+		
+		/**
 		 * Story blurb
 		 * @since Version 3.3
 		 * @var string $blurb
@@ -330,6 +338,10 @@
 				$this->sent_to_fb		= isset($return['sent_to_fb']) ? (bool)$return['sent_to_fb'] : false;
 				$this->featured_image	= isset($return['featured_image']) ? $return['featured_image'] : false;
 				
+				// Match the first sentence
+				$line = explode("\n", $this->blurb); 
+				$this->firstline = preg_replace('/([^?!.]*.).*/', '\\1', strip_tags($line[0]));
+				
 				if (isset($return['geo_lat']) && !empty($return['geo_lat']) && isset($return['geo_lon']) && !empty($return['geo_lon'])) {
 					$this->lat = $return['geo_lat']; 
 					$this->lon = $return['geo_lon']; 
@@ -342,8 +354,10 @@
 				$this->slug = $return['slug'];
 				$this->url = new Url($this->makePermaLink($this->slug)); 
 				
-				$this->blurb_clean	= format_post($this->blurb, false, false, true, true, true);
-				$this->body_clean	= format_post($this->body, false, false, true, true, true);
+				if (function_exists("format_post")) {
+					$this->blurb_clean	= format_post($this->blurb, false, false, true, true, true);
+					$this->body_clean	= format_post($this->body, false, false, true, true, true);
+				}
 				
 				$this->setAuthor(new User($this->user_id));
 				$this->username = $this->Author->username;
