@@ -13,6 +13,7 @@
 	use Railpage\Module;
 	use Railpage\Url;
 	use Railpage\Users\User;
+	use Railpage\News\Article;
 	use DateTime;
 	use DateTimeZone;
 	use Exception;
@@ -750,6 +751,36 @@
 			}
 			
 			return $return;
+		}
+		
+		/**
+		 * Get the news article associated with this forum thread
+		 * @since Version 3.9
+		 * @return new \Railpage\News\Article
+		 */
+		
+		public function getNewsArticle() {
+			
+			/**
+			 * Return false if this thread isn't in the news forum
+			 */
+			
+			if ($this->forum->id != 63) {
+				return false;
+			}
+			
+			/**
+			 * Find the article
+			 */
+			
+			$query = "SELECT sid AS article_id FROM nuke_stories WHERE ForumThreadId = ?";
+			$article_id = $this->db->fetchOne($query, $this->id);
+			
+			if (!$article_id) {
+				return false;
+			}
+			
+			return new Article($article_id);
 		}
 	}
 ?>
