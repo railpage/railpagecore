@@ -40,6 +40,7 @@
 			$this->url = new Url($this->Module->url);
 			$this->url->import = sprintf("%s?mode=import", $this->url->url);
 			$this->url->location = sprintf("%s?mode=location", $this->url->url);
+			$this->url->pointnogeo = sprintf("%s?mode=point.nogeo", $this->url->url);
 		}
 		
 		/**
@@ -144,6 +145,20 @@
 			}
 			
 			return $return;
+		}
+		
+		/**
+		 * Get timetable points without any geodata
+		 * @since Version 3.9
+		 * @return array
+		 */
+		
+		public function yieldPointsWithoutGeodata() {
+			$query = "SELECT id FROM timetable_points WHERE lat = '0.0000000000000' OR lon = '0.0000000000000' ORDER BY name";
+			
+			foreach ($this->db->fetchAll($query) as $row) {
+				yield new Point($row['id']);
+			}
 		}
 	}
 ?>
