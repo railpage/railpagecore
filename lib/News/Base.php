@@ -10,6 +10,7 @@
 	 
 	namespace Railpage\News;
 	
+	use Railpage\AppCore;
 	use Railpage\Module;
 	use Exception;
 	use DateTime;
@@ -22,7 +23,7 @@
 	 * @copyright Copyright (c) 2012 Michael Greenhill
 	 */
 	
-	class Base extends \Railpage\AppCore {
+	class Base extends AppCore {
 		
 		/**
 		 * User handle
