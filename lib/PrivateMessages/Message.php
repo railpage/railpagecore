@@ -426,7 +426,14 @@
 							$smarty->assign("message_id", $pm_id);
 							$smarty->assign("pm_from_username", $User->username);
 							$smarty->assign("userdata_username", $ThisUser->username);
-							$html = $smarty->fetch(dirname(dirname(dirname(dirname(__DIR__)))) . DS ."content" . DS . "email_pm.tpl");
+							
+							if (defined("RP_SITE_ROOT")) {
+								$path = sprintf("%s%scontent%semail_pm.tpl", RP_SITE_ROOT, DS, DS);
+							} else {
+								$path = dirname(dirname(dirname(dirname(dirname(__DIR__))))) . DS ."content" . DS . "email_pm.tpl";
+							}
+							
+							$html = $smarty->fetch($path);
 							
 							$crlf = "\n";
 							$message = Swift_Message::newInstance()
