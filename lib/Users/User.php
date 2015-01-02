@@ -3402,7 +3402,7 @@
 				throw new Exception(sprintf("%s is not a valid email address", $email));
 			}
 			
-			$query = "SELECT user_id FROM nuke_user WHERE user_email = ? AND user_id != ?";
+			$query = "SELECT user_id FROM nuke_users WHERE user_email = ? AND user_id != ?";
 			
 			$result = $this->db->fetchAll($query, array($email, $this->id));
 			
