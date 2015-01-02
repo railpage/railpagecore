@@ -54,7 +54,11 @@
 				define("DS", DIRECTORY_SEPARATOR);
 			}
 			
-			$path = dirname(dirname(__DIR__)) . DS . "config" . DS . "config.railpage.json";
+			if (defined("RP_SITE_ROOT")) {
+				$path = sprintf("%s%sconfig%sconfig.railpage.json", RP_SITE_ROOT, DS, DS);
+			} else {
+				$path = dirname(dirname(dirname(__DIR__))) . DS . "config" . DS . "config.railpage.json";
+			}
 			
 			if (file_exists($path)) {
 				$Config = json_decode(file_get_contents($path));
