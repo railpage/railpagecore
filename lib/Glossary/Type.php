@@ -87,9 +87,9 @@
 		 */
 		
 		public function getEntries() {
-			$query = "SELECT id FROM glossary WHERE type = ? ORDER BY short";
+			$query = "SELECT id FROM glossary WHERE type = ? AND status = ? ORDER BY short";
 			
-			foreach ($this->db->fetchAll($query, $this->id) as $row) {
+			foreach ($this->db->fetchAll($query, array($this->id, Entry::STATUS_APPROVED)) as $row) {
 				$id = $row['id'];
 				
 				yield new Entry($id);
