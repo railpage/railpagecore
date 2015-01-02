@@ -57,9 +57,14 @@
 			$this->Memcached = new Memcached;
 			
 			if ($this->Memcached->connected()) {
-				// Temporarily disabled - code not bulletproof yet
-				//session_set_save_handler($this, true);
+				//ini_set("session.save_handler", "memcached");
+				//ini_set("session.save_path", sprintf("%s:%d", $this->Memcached->host, $this->Memcached->port));
+				
+				session_module_name('memcached');
+				session_save_path(sprintf("%s:%d", $this->Memcached->host, $this->Memcached->port));
 			}
+			
+			//echo session_module_name();die;
 			
 			session_start();
 			

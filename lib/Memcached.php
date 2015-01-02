@@ -25,7 +25,7 @@
 		 * @var string $host
 		 */
 		
-		private $host;
+		public $host;
 		
 		/**
 		 * Memcached port
@@ -33,7 +33,7 @@
 		 * @var string $port
 		 */
 		
-		private $port;
+		public $port;
 		
 		/**
 		 * Memcached connection
