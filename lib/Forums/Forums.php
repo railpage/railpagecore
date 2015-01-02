@@ -198,14 +198,6 @@
 		public $read_topics;
 		
 		/**
-		 * The user viewing this forum
-		 * @since Version 3.8.7
-		 * @var \Railpage\Users\User $User
-		 */
-		
-		protected $User;
-		
-		/**
 		 * Constructor
 		 * @since Version 3.8.7
 		 */
