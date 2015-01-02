@@ -95,6 +95,30 @@
 		public $StatsD;
 		
 		/**
+		 * User object
+		 * @since Version 3.9
+		 * @var \Railpage\Users\User $User
+		 */
+		
+		public $User;
+		
+		/**
+		 * Staff object
+		 * @since Version 3.9
+		 * @var \Railpage\Users\User $Staff
+		 */
+		
+		public $Staff;
+		
+		/**
+		 * Author object
+		 * @since Version 3.9
+		 * @var \Railpage\Users\User $Author
+		 */
+		
+		public $Author;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.7
 		 * @global object $ZendDB

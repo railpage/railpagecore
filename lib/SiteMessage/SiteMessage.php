@@ -99,5 +99,19 @@
 				}
 			}
 		}
+		
+		/**
+		 * Yield the list of available messages
+		 * @since Versio 3.9
+		 * @yield new \Railpage\SiteMessage\Message;
+		 */
+		
+		public function yieldMessages() {
+			$query = "SELECT message_id FROM messages";
+			
+			foreach ($this->db->fetchAll($query) as $row) {
+				yield new Message($row['message_id']);
+			}
+		}
 	}
 ?>

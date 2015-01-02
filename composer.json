@@ -63,6 +63,7 @@
 			"Railpage\\Reminders\\" : "lib/Reminders/",
 			"Railpage\\SiteEvent\\" : "lib/SiteEvent/",
 			"Railpage\\SiteMessage\\" : "lib/SiteMessage/",
+			"Railpage\\SiteMessages\\" : "lib/SiteMessages/",
 			"Railpage\\Statistics\\" : "lib/Statistics/",
 			"Railpage\\Timetables\\" : "lib/Timetables/",
 			"Railpage\\Users\\" : "lib/Users/",
