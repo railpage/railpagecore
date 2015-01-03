@@ -7,8 +7,11 @@
 	 */
 	
 	namespace Railpage\PrivateMessages;
+	
 	use DateTime;
 	use Exception;
+	use Railpage\Users\User;
+	use Railpage\Url;
 	
 	/** 
 	 * Private Messages - index / outbox / sentbox / savebox
@@ -61,19 +64,19 @@
 		
 		public function getContents($User = false, $page = 1, $items_per_page = 25) {
 			if (empty($this->folder)) {
-				throw new \Exception("Cannot get folder contents - no folder specified"); 
+				throw new Exception("Cannot get folder contents - no folder specified"); 
 			} 
 			
 			if (!$User || !is_object($User)) {
-				throw new \Exception("Cannot get folder contents - User object not provided"); 
+				throw new Exception("Cannot get folder contents - User object not provided"); 
 			}
 			
 			if (!$User->id) {
-				throw new \Exception("No user ID available"); 
+				throw new Exception("No user ID available"); 
 			}
 			
 			if (!$User->enable_privmsg) {
-				throw new \Exception("Private messages not available to this user"); 
+				throw new Exception("Private messages not available to this user"); 
 			}
 			
 			// Store the user object
@@ -156,7 +159,7 @@
 						return strnatcmp($b['privmsgs_date'], $a['privmsgs_date']); 
 					});
 				} else {
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 					$return['stat'] = "error";
 					$return['error'] = $this->db->error; 
 				}
@@ -185,8 +188,8 @@
 					$id = md5($row['privmsgs_subject'].$pm_from);
 					
 					if (function_exists("format_avatar")) {
-						$row['user_avatar_from'] = @format_avatar($row['user_avatar_from'], 40, 40); 
-						$row['user_avatar_to'] = @format_avatar($row['user_avatar_to'], 40, 40); 
+						//$row['user_avatar_from'] = @format_avatar($row['user_avatar_from'], 40, 40); 
+						//$row['user_avatar_to'] = @format_avatar($row['user_avatar_to'], 40, 40); 
 					}
 					
 					$return['messages'][$id] = $row;				
@@ -200,8 +203,34 @@
 				$return['total']	= count($return['messages']);
 				$return['messages'] = array_slice($return['messages'], $start, $items_per_page);
 				
+				/**
+				 * Process these after the slice otherwise we're fetching avatars for every single message sent to/from this user
+				 */
+				
+				foreach ($return['messages'] as $id => $row) {
+					$row['user_avatar_from'] = @format_avatar($row['user_avatar_from'], 40, 40); 
+					$row['user_avatar_to'] = @format_avatar($row['user_avatar_to'], 40, 40); 
+					
+					$return['messages'][$id] = $row;
+				}
+				
 				return $return;
 			}
+		}
+		
+		/**
+		 * Yield the conversation threads in this folder
+		 * @since Version 3.9
+		 * @package Railpage
+		 * @author Michael Greenhill
+		 */
+		
+		public function yieldConversations($items_per_page, $page) {
+			if (!$this->User instanceof User) {
+				throw new Exception("Cannot fetch " . __METHOD__ . " beause no user object has been set");
+			}
+			
+			
 		}
 	}
 ?>

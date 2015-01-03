@@ -10,6 +10,8 @@
 	
 	use Exception;
 	use DateTime;
+	use Railpage\Users\User;
+	use Railpage\Users\Url;
 
 	/**
 	 * Load a PM conversation
