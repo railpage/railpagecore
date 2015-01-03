@@ -1319,7 +1319,7 @@
 			}
 			
 			if (!$ignore) {
-				if ($this->provider == "railpage" && (empty($this->password) || empty($this->password_bcrypt))) {
+				if ($this->provider == "railpage" && (empty($this->password))) {
 					throw new Exception("Password is empty");
 				}
 				
@@ -1328,7 +1328,7 @@
 				}
 				
 				if (empty($this->password_bcrypt)) {
-					$this->password = "";
+					$this->password_bcrypt = "";
 				}
 			}
 			
@@ -3037,7 +3037,7 @@
 		
 		/**
 		 * Record a good event for this user
-		 * @return $this
+		 * @return \Railpage\Users\User
 		 * @param int $amt The amount to increase their reputation by
 		 * @since Version 3.8.7
 		 */
@@ -3057,7 +3057,7 @@
 		 * Record a negative event for this user. Counts towards their reputation accross the site
 		 * @param int $amt The amount to decrease their reputation by
 		 * @since Version 3.8.7
-		 * @return $this
+		 * @return \Railpage\Users\User
 		 */
 		
 		public function chaff($amt = 1) {
@@ -3074,7 +3074,7 @@
 		/**
 		 * Create URLs
 		 * @since Version 3.8.7
-		 * @return $this
+		 * @return \Railpage\Users\User
 		 */
 		
 		public function createUrls() {
@@ -3095,9 +3095,11 @@
 		
 		/**
 		 * Set the password for this user
+		 *
+		 * Updated to use PHP 5.5's password_hash(), password_verify() and password_needs_rehash() functions
 		 * @since Version 3.8.7
 		 * @param string $password
-		 * @return $this
+		 * @return \Railpage\Users\User
 		 */
 		
 		public function setPassword($password = false) {
@@ -3113,22 +3115,34 @@
 				throw new Exception("Your desired password is unsafe. Please choose a different password.");
 			}
 			
-			require_once("includes/bcrypt.class.php");
-			
-			$BCrypt = new \Bcrypt(RP_BCRYPT_ROUNDS);
-			
-			$password = trim($password);
-			$this->password = md5($password);
-			$this->password_bcrypt = $BCrypt->hash($password);
-			
-			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
-				$this->commit();
-				$this->addNote("Password changed");
+			if (function_exists("password_hash")) {
+				$this->password = password_hash($password, PASSWORD_DEFAULT);
+				$this->password_bcrypt = false; // Deliberately deprecate the bcrypt password option
+				
+				if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+					$this->commit();
+					$this->addNote("Password changed or hash updated using password_hash()");
+				}
+			} else {
+				require_once("includes/bcrypt.class.php");
+				
+				$BCrypt = new \Bcrypt(RP_BCRYPT_ROUNDS);
+				
+				$password = trim($password);
+				$this->password = md5($password);
+				$this->password_bcrypt = $BCrypt->hash($password);
+				
+				if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+					$this->commit();
+					$this->addNote("Password changed or hash updated");
+				}
 			}
 		}
 		
 		/**
 		 * Validate a password for this account
+		 *
+		 * Updated to use PHP 5.5's password_hash(), password_verify() and password_needs_rehash() functions
 		 * @since Version 3.8.7
 		 * @param string $password
 		 * @return boolean
@@ -3204,6 +3218,36 @@
 			}
 			
 			/**
+			 * Verify the password
+			 */
+			
+			if (md5($password) == $stored_password || password_verify($password, $stored_password) || password_verify($password, $stored_password_bcrypt)) {
+				$this->load($stored_user_id);
+				
+				/**
+				 * Check if the password needs rehashing
+				 */
+				
+				if (password_needs_rehash($stored_password, PASSWORD_DEFAULT) || password_needs_rehash($stored_password_bcrypt, PASSWORD_DEFAULT)) {
+					$this->setPassword($password);
+				}
+				
+				/**
+				 * Reset the InvalidAuthCounter
+				 */
+				
+				unset($this->meta['InvalidAuthCounter']);
+				unset($this->meta['InvalidAuthTimeout']);
+				$this->commit();
+				
+				return true;
+			}
+			
+			/**
+			 * Older password verification code
+			 */
+			
+			/**
 			 * Load the BCrypt class
 			 */
 			
@@ -3221,7 +3265,7 @@
 			 * Try to validate the password
 			 */
 			
-			if ((empty($stored_password_bcrypt) && $stored_password = md5($password)) || ($BCrypt->verify($password, $stored_password_bcrypt))) {
+			if ((empty($stored_password_bcrypt) && $stored_password == md5($password)) || ($BCrypt->verify($password, $stored_password_bcrypt))) {
 				
 				/**
 				 * Password validated! If we haven't populated this user object, do it now
@@ -3290,7 +3334,7 @@
 		/**
 		 * Refresh user data from the database
 		 * @since Version 3.8.7
-		 * @return $this
+		 * @return \Railpage\Users\User
 		 */
 		
 		public function refresh() {
@@ -3304,7 +3348,7 @@
 		/**
 		 * Reset this user object, for security purposes
 		 * @since Version 3.8.7
-		 * @return $this
+		 * @return \Railpage\Users\User
 		 */
 		
 		public function reset() {
@@ -3390,7 +3434,7 @@
 		 * Validate an email address
 		 * @since Version 3.8.7
 		 * @param string $email
-		 * @return $this
+		 * @return \Railpage\Users\User
 		 */
 		
 		public function validateEmail($email = false) {
