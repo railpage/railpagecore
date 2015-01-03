@@ -1,4 +1,9 @@
 { 
+	"extra" : {
+        "branch-alias": {
+            "dev-master": "1.0.x-dev"
+        }
+    },
 	"name" : "railpage/railpagecore",
 	"description" : "Railpage core code classes. More information available at https://github.com/doctorjbeam/railpagecore",
 	"keywords" : [
@@ -26,6 +31,7 @@
 	"config": {
 	        "vendor-dir": "lib/vendor"
 	},
+	
 	"autoload" : {
 		"psr-4" : {
 			"Railpage\\" : "lib/",
