@@ -82,7 +82,7 @@
 		/**
 		 * Get upcoming timetable events
 		 * @since Version 3.9
-		 * @param $Date
+		 * @param \DateTime $Date If not supplied this parameter defaults to 60 minutes from now
 		 * @return array
 		 */
 		
@@ -150,7 +150,7 @@
 		/**
 		 * Get timetable points without any geodata
 		 * @since Version 3.9
-		 * @return array
+		 * @return \Railpage\Timetables\Point
 		 */
 		
 		public function yieldPointsWithoutGeodata() {

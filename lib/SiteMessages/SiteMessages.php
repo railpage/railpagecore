@@ -18,8 +18,9 @@
 		
 		/**
 		 * Yield the list of available messages
-		 * @since Versio 3.9
-		 * @yield new \Railpage\SiteMessage\Message;
+		 * @since Version 3.9
+		 * @yield \Railpage\SiteMessage\Message
+		 * @return \Railpage\SiteMessage\Message
 		 */
 		
 		public function yieldMessages() {
@@ -32,6 +33,8 @@
 		
 		/**
 		 * Get the latest message from the database
+		 * @return \Railpage\SiteMessages\SiteMessage
+		 * @since Version 3.9
 		 */
 		
 		public function getLatest() {
@@ -50,8 +53,6 @@
 			}
 			
 			$query = sprintf($query, $user_list);
-			
-			#echo $query;die;
 			
 			$id = $this->db->fetchOne($query, $where);
 			

@@ -544,7 +544,7 @@
 		 * @version 3.8.7
 		 * @author Michael Greenhill
 		 * @param int $user_id
-		 * @return $this
+		 * @return \Railpage\Forums\Thread
 		 */
 		
 		public function viewed($user_id = false) {
@@ -615,7 +615,7 @@
 		/**
 		 * Redraw the stats for this thread (total posts, last post, etc)
 		 * @since Version 3.8.7
-		 * @return $this
+		 * @return \Railpage\Forums\Thread
 		 */
 		
 		public function reDrawStats() {
@@ -650,6 +650,7 @@
 		 * @param int $items_per_page
 		 * @param int $page
 		 * @yield \Railpage\Forums\Post
+		 * @return \Railpage\Forums\Post
 		 */
 		 
 		public function getPosts($items_per_page = 25, $page = 1) {
@@ -681,7 +682,7 @@
 		 * Set the forum that this thread belongs to
 		 * @since Version 3.8.7
 		 * @param \Railpage\Forums\Forum $Forum
-		 * @return $this
+		 * @return \Railpage\Forums\Thread
 		 */
 		
 		public function setForum(Forum $Forum) {
@@ -715,7 +716,7 @@
 		 * Set the viewer of this thread
 		 * @since Version 3.8.7
 		 * @param \Railpage\Users\User $User
-		 * @return $this
+		 * @return \Railpage\Forums\Thread
 		 * @throws \Exception if $User is not an instance of \Railpage\Users\User
 		 */
 		
@@ -756,7 +757,7 @@
 		/**
 		 * Get the news article associated with this forum thread
 		 * @since Version 3.9
-		 * @return new \Railpage\News\Article
+		 * @return \Railpage\News\Article
 		 */
 		
 		public function getNewsArticle() {

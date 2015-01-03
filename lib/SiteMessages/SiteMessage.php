@@ -136,7 +136,7 @@
 		/**
 		 * Subimt changes to this site message
 		 * @since Version 3.9
-		 * @return $this
+		 * @return \Railpage\SiteMessages\SiteMessage
 		 */
 		
 		public function commit() {
@@ -169,7 +169,7 @@
 		/**
 		 * Make URLs for this object
 		 * @since Version 3.9
-		 * @return $this
+		 * @return \Railpage\SiteMessages\SiteMessage
 		 */
 		
 		public function makeURLs() {

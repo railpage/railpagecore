@@ -28,7 +28,7 @@
 	class Point extends Timetables {
 		
 		/**
-		 * Database point ID
+		 * Timetable point ID
 		 * @since Version 3.9
 		 * @var int $id
 		 */
@@ -120,6 +120,7 @@
 		 * Validate changes to this timetabling point
 		 * @since Version 3.9
 		 * @return boolean
+		 * @throws \Exception if $this->name is empty
 		 */
 		
 		private function validate() {

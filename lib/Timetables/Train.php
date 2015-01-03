@@ -28,7 +28,7 @@
 		
 		/**
 		 * Commodity: Unknown
-		 * @since Verseion 3.9
+		 * @since Version 3.9
 		 * @const string COMMODITY_UNKNOWN
 		 */
 		
@@ -36,7 +36,7 @@
 		
 		/**
 		 * Commodity: Light engine
-		 * @since Verseion 3.9
+		 * @since Version 3.9
 		 * @const string COMMODITY_LIGHTENGINE
 		 */
 		
@@ -44,7 +44,7 @@
 		
 		/**
 		 * Commodity: Intermodal freight
-		 * @since Verseion 3.9
+		 * @since Version 3.9
 		 * @const string COMMODITY_INTERMODAL
 		 */
 		
@@ -52,7 +52,7 @@
 		
 		/**
 		 * Commodity: Steel
-		 * @since Verseion 3.9
+		 * @since Version 3.9
 		 * @const string COMMODITY_STEEL
 		 */
 		
@@ -60,7 +60,7 @@
 		
 		/**
 		 * Commodity: Passengers
-		 * @since Verseion 3.9
+		 * @since Version 3.9
 		 * @const string COMMODITY_PASS
 		 */
 		
@@ -68,7 +68,7 @@
 		
 		/**
 		 * Commodity: General freight
-		 * @since Verseion 3.9
+		 * @since Version 3.9
 		 * @const string COMMODITY_GENFREIGHT
 		 */
 		
@@ -76,7 +76,7 @@
 		
 		/**
 		 * Commodity: Grain
-		 * @since Verseion 3.9
+		 * @since Version 3.9
 		 * @const string COMMODITY_GRAIN
 		 */
 		
@@ -133,9 +133,11 @@
 		/**
 		 * Constructor
 		 * @since Version 3.9
+		 * @param int $id The database ID of this train
+		 * @param string $provider The source of this timetable (default is "artc")
 		 */
 		
-		public function __construct($id = false, $provider = false) {
+		public function __construct($id = false, $provider = "artc") {
 			parent::__construct(); 
 			
 			if ($id != false && $provider == "artc") {
@@ -192,7 +194,7 @@
 		/**
 		 * Commit changes to this timetabled train
 		 * @since Version 3.9
-		 * @return $this
+		 * @return \Railpage\Timetables\Train
 		 */
 		
 		public function commit() {
@@ -233,7 +235,12 @@
 		/**
 		 * Add a timing for this train
 		 * @since Version 3.9
-		 * @return $this
+		 * @return \Railpage\Timetables\Train
+		 * @param int|string $day Day of the week, in either integer (1) or string (Monday) format
+		 * @param string $time Time of day this timing occurs
+		 * @param string $going Direction of travel: "arr" or "dep"
+		 * @param \DateTime $commencing DateTime instance that this timing is valid from
+		 * @param \DateTime $expiring DateTime instance that this timing is valid until
 		 */
 		
 		public function addTiming($day = false, $time = false, $going = "arr", $commencing = false, $expiring = false) {
@@ -330,8 +337,8 @@
 		/**
 		 * Set the commodity that this train hauls
 		 * @since Version 3.9
-		 * @param string $commodity
-		 * @return $this
+		 * @param string $commodity Commodity (eg intermodal, pass, train) that this train carries
+		 * @return \Railpage\Timetables\Train
 		 */
 		
 		public function setCommodity($commodity) {

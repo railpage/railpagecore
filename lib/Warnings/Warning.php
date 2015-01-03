@@ -159,6 +159,11 @@
 		 * Validate this warning level adjustment
 		 * @since Version 3.8.7
 		 * @return boolean
+		 * @throws \Exception if $this->Recipient is not an instance of \Railpage\Users\User
+		 * @throws \Exception if $this->Issuer is not an instance of \Railpage\Users\User
+		 * @throws \Exception if $this->level is not a valid integer
+		 * @throws \Exception if $this->reason is empty
+		 * @throws \Exception if $this->Recipient is excluded from warnings
 		 */
 		
 		private function validate() {

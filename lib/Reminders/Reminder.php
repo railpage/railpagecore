@@ -288,7 +288,7 @@
 		/**
 		 * Send this reminder
 		 * @since Version 3.8.7
-		 * @return $this
+		 * @return \Railpage\Reminders\Reminder
 		 * @param boolean $markAsSent Flag to indicate if this is a test notification or not
 		 */
 		
@@ -330,7 +330,7 @@
 		 * @sice Version 3.8.7
 		 * @param \DateTime $Reminder
 		 * @param \DateTime $Event
-		 * @return $this
+		 * @return \Railpage\Reminers\Reminder
 		 */
 		
 		public function setReminderDate(DateTime $Reminder, DateTime $EventDate) {

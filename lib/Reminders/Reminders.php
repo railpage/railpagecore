@@ -22,6 +22,7 @@
 		
 		/**
 		 * Constructor
+		 * @since Version 3.8.7
 		 */
 		
 		public function __construct() {
@@ -35,7 +36,8 @@
 		/**
 		 * Find reminders for this user
 		 * @since Version 3.8.7
-		 * @yield new \Railpage\Reminders\Reminder
+		 * @yield \Railpage\Reminders\Reminder
+		 * @return \Railpage\Reminders\Reminder
 		 */
 		
 		public function getRemindersForUser() {
@@ -55,7 +57,8 @@
 		/**
 		 * Find past reminders for this user
 		 * @since Version 3.8.7
-		 * @yield new \Railpage\Reminders\Reminder
+		 * @yield \Railpage\Reminders\Reminder
+		 * @return \Railpage\Reminders\Reminder
 		 */
 		
 		public function getPastRemindersForUser() {
@@ -75,7 +78,8 @@
 		/**
 		 * Get all upcoming reminders
 		 * @since Version 3.8.7
-		 * @yield new \Railpage\Reminders\Reminder
+		 * @yield \Railpage\Reminders\Reminder
+		 * @return \Railpage\Reminders\Reminder
 		 */
 		
 		public function getUpcoming() {
