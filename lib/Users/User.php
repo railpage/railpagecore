@@ -18,6 +18,8 @@
 	use Railpage\Url;
 	use Railpage\Forums\Thread;
 	use Railpage\Forums\Forum;
+	use Railpage\Forums\Forums;
+	use Railpage\Forums\Index;
 	
 	/**
 	 * User class
@@ -2417,8 +2419,46 @@
 				return false;
 			}
 			
+			/**
+			 * Filter out forums this user doesn't have access to
+			 */
+			
+			if (isset($this->Guest) && $this->Guest instanceof User) {
+				$forum_post_filter_mckey = sprintf("forum.post.filter.user:%d", $this->Guest->id);
+				
+				if (!$forum_post_filter = getMemcacheObject($forum_post_filter_mckey)) {
+					$Forums = new Forums;
+					$Index = new Index;
+					
+					$acl = $Forums->setUser($this->Guest)->getACL();
+					
+					$allowed_forums = array(); 
+					
+					foreach ($Index->forums() as $row) {
+						$Forum = new Forum($row['forum_id']);
+						
+						if ($Forum->setUser($this->Guest)->isAllowed(Forums::AUTH_READ)) {
+							$allowed_forums[] = $Forum->id;
+						}
+					}
+					
+					$forum_filter = "AND p.forum_id IN (" . implode(",", $allowed_forums) . ")";
+					
+					$forum_post_filter = "AND id NOT IN (SELECT l.id AS log_id
+						FROM log_general AS l 
+						LEFT JOIN nuke_bbposts AS p ON p.post_id = l.value
+						WHERE l.key = 'post_id' 
+						" . $forum_filter . ")";
+					
+					setMemcacheObject($forum_post_filter_mckey, $forum_post_filter, strtotime("+1 week"));
+				}
+			} else {
+				$forum_post_filter = "";
+			}
+			
+			
 			if ($page && $items_per_page) {
-				$query = "SELECT SQL_CALC_FOUND_ROWS * FROM log_general WHERE user_id = ? ORDER BY timestamp DESC LIMIT ?, ?";
+				$query = "SELECT SQL_CALC_FOUND_ROWS * FROM log_general WHERE user_id = ? " . $forum_post_filter . " ORDER BY timestamp DESC LIMIT ?, ?";
 				$offset = ($page - 1) * $items_per_page; 
 				
 				$params = array(
@@ -2427,7 +2467,7 @@
 					$items_per_page
 				);
 			} else {
-				$query = "SELECT SQL_CALC_FOUND_ROWS * FROM log_general WHERE user_id = ? AND timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC";
+				$query = "SELECT SQL_CALC_FOUND_ROWS * FROM log_general WHERE user_id = ? " . $forum_post_filter . " AND timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC";
 				
 				$params = array(
 					$this->id, 

@@ -286,7 +286,7 @@
 		 * Set the user for this object
 		 * @since Version 3.8.7
 		 * @param \Railpage\Users\User $User
-		 * @returns $this
+		 * @return $this
 		 */
 		
 		public function setUser(User $User) {
@@ -301,7 +301,7 @@
 		 * Set the author for this object
 		 * @since Version 3.8.7
 		 * @param \Railpage\Users\User $User
-		 * @returns $this
+		 * @return $this
 		 */
 		
 		public function setAuthor(User $User) {
@@ -316,7 +316,7 @@
 		 * Set the staff user object for this object
 		 * @since Version 3.8.7
 		 * @param \Railpage\Users\User $User
-		 * @returns $this
+		 * @return $this
 		 */
 		
 		public function setStaff(User $User) {
@@ -331,7 +331,7 @@
 		 * Set the object string for this object
 		 * @since Version 3.8.7
 		 * @param object $object
-		 * @returns $this
+		 * @return $this
 		 */
 		
 		public function setObject($object) {
@@ -339,6 +339,21 @@
 			if (is_object($object)) {
 				$this->object = get_class($object);
 			}
+			
+			return $this;
+			
+		}
+		
+		/**
+		 * Set the guest user for this object
+		 * @since Version 3.8.7
+		 * @param \Railpage\Users\User $Guest
+		 * @return $this
+		 */
+		
+		public function setGuest(User $Guest) {
+			
+			$this->Guest = $Guest;
 			
 			return $this;
 			
