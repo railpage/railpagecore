@@ -42,6 +42,12 @@
 		if (file_exists(__DIR__ . DS . "vendor" . DS . "autoload.php")) {
 			require(__DIR__ . DS . "vendor" . DS . "autoload.php");
 		}
+		
+		/**
+		 * Add to the include path
+		 */
+		
+		set_include_path(get_include_path() . PATH_SEPARATOR . dirname(__DIR__) . DIRECTORY_SEPARATOR . "etc");
 	}
 	
 	/**
