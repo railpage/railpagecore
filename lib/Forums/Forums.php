@@ -498,19 +498,6 @@
 		}
 		
 		/**
-		 * Set the user who will be viewing the forums, for permissions purposes
-		 * @since Version 3.8.7
-		 * @param \Railpage\Users\User $User
-		 * @return $this
-		 */
-		
-		public function setUser(User $User) {
-			$this->User = $User;
-			
-			return $this;
-		}
-		
-		/**
 		 * Build the Forums ACL
 		 * @since Version 3.8.7
 		 * @param boolean $force Force an update of the ACL
