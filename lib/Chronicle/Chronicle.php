@@ -36,6 +36,7 @@
 		 * Get latest additions to the chronicle
 		 * @since Version 3.8.7
 		 * @yield \Railpage\Chronicle\Entry
+		 * @return \Railpage\Chronicle\Entry
 		 */
 		
 		public function getLatestAdditions() {
@@ -50,6 +51,7 @@
 		 * Get events for a date
 		 * @since Version 3.8.7
 		 * @yield \Railpage\Chronicle\Entry
+		 * @return \Railpage\Chronicle\Entry
 		 */
 		
 		public function getEntriesForDate($date = false) {

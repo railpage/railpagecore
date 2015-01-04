@@ -169,7 +169,7 @@
 		/**
 		 * Load the URLs for this entry
 		 * @since Version 3.8.7
-		 * @return $this
+		 * @return \Railpage\Chronicle\Entry
 		 */
 		
 		public function makeURLs() {
@@ -186,16 +186,32 @@
 		/**
 		 * Validate changes to this entry
 		 * @since Version 3.8.7
+		 * @return boolean
+		 * @throws \Exception if $this->Author is not an instance of \Railpage\Users\User
+		 * @throws \Exception if $this->Date is not an instance of \DateTime
+		 * @throws \Exception if $this->blurb is empty
 		 */
 		
 		private function validate() {
+			
+			if (!$this->Author instanceof User) {
+				throw new Exception("A valid user object must be set using " . __CLASS__ . "::setAuthor()");
+			}
+			
+			if (!$this->Date instanceof DateTime) {
+				throw new Exception("A valid instance of DateTime must be set for this chronicle entry");
+			}
+			
+			if (!$this->EntryType instanceof EntryType) {
+				throw new Exeption("A valid instance of \Railpage\Chronicle\EntryType must be set for this chronicle entry");
+			}
 			
 			if (empty($this->blurb)) {
 				throw new Exception("Cannot save changes to this chronicle entry - blurbs (short text) cannot be empty");
 			}
 			
 			if (empty($this->status)) {
-				$this->status = 0;
+				$this->status = self::STATUS_INACTIVE;
 			}
 			
 			if (empty($this->text) || trim($this->text) == "x") {
@@ -209,7 +225,7 @@
 		/**
 		 * Commit changes to this entry
 		 * @since Version 3.8.7
-		 * @return $this
+		 * @return \Railpage\Chronicle\Entry
 		 */
 		
 		public function commit() {
@@ -260,6 +276,9 @@
 		 * Link something to this entry
 		 * @since Version 3.8.7
 		 * @param object $object
+		 * @throws \Exception if $object is not an object
+		 * @throws \Exception if $object does not have a valid instance of \Railpage\Module
+		 * @return \Railpage\Chronicle\Entry
 		 */
 		
 		public function AddLink($object) {
