@@ -230,7 +230,9 @@
 					"id = ?" => $this->id
 				);
 				
-				deleteMemcacheObject($this->mckey);
+				if (isset($this->mckey) && !empty($this->mckey) && getMemcacheObject($this->mckey)) {
+					deleteMemcacheObject($this->mckey);
+				}
 				
 				$this->db->update("glossary", $data, $where);
 			} else {

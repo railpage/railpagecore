@@ -60,7 +60,7 @@
 				$Date = new DateTime;
 			}
 			
-			return $this->db->fetchAll("SELECT * FROM event_dates WHERE date = ?", $Date->format("Y-m-d"));
+			return $this->db->fetchAll("SELECT ed.* FROM event_dates AS ed LEFT JOIN event AS e ON e.id = ed.event_id WHERE ed.date = ? AND e.status = ?", array($Date->format("Y-m-d"), Event::STATUS_APPROVED));
 		}
 		
 		/**
@@ -72,9 +72,15 @@
 		
 		public function getUpcomingEvents($items_per_page = 25, $page = 1) {
 			$Now = new DateTime();
-			$args = array($Now->format("Y-m-d"), ($page - 1) * $items_per_page, $items_per_page); 
 			
-			return $this->db->fetchAll("SELECT * FROM event_dates WHERE date >= ? ORDER BY date LIMIT ?, ?", $args);
+			$args = array(
+				$Now->format("Y-m-d"),
+				Event::STATUS_APPROVED, 
+				($page - 1) * $items_per_page, 
+				$items_per_page
+			); 
+			
+			return $this->db->fetchAll("SELECT ed.* FROM event_dates AS ed LEFT JOIN event AS e ON e.id = ed.event_id WHERE ed.date >= ? AND e.status = ? ORDER BY ed.date LIMIT ?, ?", $args);
 		}
 		
 		/**
@@ -98,11 +104,11 @@
 				throw new Exception("Cannot fetch upcoming events because the specified organisation is invalid or doesn't exist");
 			}
 			
-			$query = "SELECT id, event_id, date FROM event_dates WHERE date >= ?";
+			$query = "SELECT id, event_id, date FROM event_dates WHERE date >= ? AND organisation_id = ? AND status = ?";
 			
 			$return = array(); 
 			
-			foreach ($this->db->fetchAll($query, date("Y-m-d")) as $row) {
+			foreach ($this->db->fetchAll($query, array(date("Y-m-d"), $Org->id, Event::STATUS_APPROVED)) as $row) {
 				$Event = new Event($row['event_id']);
 				$return[$row['date']][] = array(
 					"id" => $Event->id,
@@ -111,6 +117,20 @@
 			}
 			
 			return $return;
+		}
+		
+		/**
+		 * Yield events pending approval
+		 * @since Version 3.9
+		 * @yield new \Railpage\Events\Event
+		 */
+		
+		public function yieldPendingEvents() {
+			$query = "SELECT id FROM event_dates WHERE status = ?";
+			
+			foreach ($this->db->fetchAll($query, Event::STATUS_APPROVED) as $row) {
+				yield new Event($row['id']);
+			}
 		}
 	}
 ?>
