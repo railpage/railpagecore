@@ -25,6 +25,22 @@
 	class Event extends AppCore {
 		
 		/**
+		 * Status: approved
+		 * @const STATUS_APPROVED
+		 * @since Version 3.9
+		 */
+		
+		const STATUS_APPROVED = 1;
+		
+		/**
+		 * Status: unapproved
+		 * @const STATUS_UNAPPROVED
+		 * @since Version 3.9
+		 */
+		
+		const STATUS_UNAPPROVED = 0;
+		
+		/**
 		 * Event ID
 		 * @var int $id
 		 * @since Version 3.8.7
