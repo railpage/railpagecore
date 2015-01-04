@@ -57,14 +57,16 @@
 			$this->Memcached = new Memcached;
 			
 			if ($this->Memcached->connected()) {
-				//ini_set("session.save_handler", "memcached");
-				//ini_set("session.save_path", sprintf("%s:%d", $this->Memcached->host, $this->Memcached->port));
-				
 				session_module_name('memcached');
 				session_save_path(sprintf("%s:%d", $this->Memcached->host, $this->Memcached->port));
 			}
 			
-			//echo session_module_name();die;
+			if (!defined("RP_SITE_DOMAIN")) {
+				define("RP_SITE_DOMAIN", "railpage.com.au");
+			}
+			
+			// Cross-subdomain cookies n shiz
+			session_set_cookie_params(0, "/", sprintf(".%s", RP_SITE_DOMAIN)); 
 			
 			session_start();
 			
