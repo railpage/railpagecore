@@ -2458,6 +2458,10 @@
 				$forum_post_filter = "";
 			}
 			
+			if (strpos($forum_post_filter, "p.forum_id IN ())")) {
+				$forum_post_filter = "";
+			}
+			
 			
 			if ($page && $items_per_page) {
 				$query = "SELECT SQL_CALC_FOUND_ROWS * FROM log_general WHERE user_id = ? " . $forum_post_filter . " ORDER BY timestamp DESC LIMIT ?, ?";
