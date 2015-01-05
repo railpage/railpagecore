@@ -46,7 +46,12 @@
 				
 				$rp_host = defined("RP_HOST") ? RP_HOST : "www.railpage.com.au";
 				$rp_root = defined("RP_WEB_ROOT") ? RP_WEB_ROOT : "";
-				$this->canonical = sprintf("http://%s%s%s", $rp_host, $rp_root, $this->url);
+				
+				if (substr($this->url, 0, 4) == "http") {
+					$this->canonical = $this->url;
+				} else {
+					$this->canonical = sprintf("http://%s%s%s", $rp_host, $rp_root, $this->url);
+				}
 				
 			}
 			
