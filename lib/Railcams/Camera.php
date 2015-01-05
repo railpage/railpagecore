@@ -691,5 +691,26 @@
 			
 			return $return;
 		}
+		
+		/**
+		 * Get years within the camera archive
+		 * @since Version 3.9
+		 * @return array
+		 */
+		
+		public function getArchiveYears() {
+			
+		}
+		
+		/**
+		 * Get months within the camera archive for a given year
+		 * @since Version 3.9
+		 * @param int $year
+		 * @return array
+		 */
+		
+		public function getArchiveMonths($year) {
+			
+		}
 	}
 ?>
