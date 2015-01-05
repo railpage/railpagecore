@@ -27,9 +27,10 @@
 		 * Save the changes to this photo
 		 * @since Version 3.9
 		 * @return self
+		 * @param \Railpage\Railcams\Photo $Photo
 		 */
 		
-		public function setPhoto();
+		public function setPhoto(Photo $Photo);
 		
 		/**
 		 * Get a list of photos
@@ -40,6 +41,14 @@
 		 */
 		
 		public function getPhotos($page, $items_per_page);
+		
+		/**
+		 * Return the name of this provider
+		 * @since Version 3.9
+		 * @return string
+		 */
+		
+		public function getProviderName(); 
 		
 		
 	}

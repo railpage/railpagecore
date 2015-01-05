@@ -176,6 +176,14 @@
 		public $url;
 		
 		/**
+		 * Photo provider
+		 * @since Version 3.9
+		 * @var object $Provider
+		 */
+		
+		public $Provider;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.4
 		 * @param int $id
@@ -240,6 +248,18 @@
 				$this->url->live = sprintf("%s/live", $this->url->url);
 				$this->url->recent = sprintf("%s/recent", $this->url->url);
 				$this->url->photo = sprintf("%s/photo/", $this->url->url);
+				
+				switch ($row['provider']) {
+					case "Flickr" : 
+						$params = array(
+							"oauth_token" => $this->flickr_oauth_token,
+							"oauth_secret" => $this->flickr_oauth_secret,
+							"api_key" => RP_FLICKR_API_KEY
+						);
+				}
+				
+				$provider = sprintf("\\Railpage\\Railcams\\Provider\\%s", $row['provider']);
+				$this->Provider = new $provider($params);
 			}
 			
 			if (filter_var($this->type_id, FILTER_VALIDATE_INT) && $this->type_id > 0) {
@@ -344,6 +364,7 @@
 			}
 			
 			$data = array(
+				"provider" => $this->Provider->getProviderName(),
 				"permalink"	=> $this->permalink,
 				"lat" => $this->lat,
 				"lon" => $this->lon,
@@ -507,13 +528,30 @@
 		}
 		
 		/**
+		 * Return a new Railpage\Railcams\Photo object
+		 * @since Version 3.9
+		 * @param int $photo_id
+		 * @return \Railpage\Railcams\Photo
+		 */
+		
+		public function getPhoto($photo_id = false) {
+			if (!filter_var($photo_id, FILTER_VALIDATE_INT)) {
+				throw new Exception(sprintf("Cannot fetch photo from railcam because \"%s\" is not a valid photo ID", $photo_id));
+			}
+			
+			$Photo = (new Photo($photo_id))->setProvider($this->Provider)->setCamera($this)->load(); 
+			
+			return $Photo;
+		}
+		
+		/**
 		 * Get photo info and sizes
 		 * @since Version 3.5
 		 * @param int $photo_id
 		 * @return array
 		 */
 		
-		public function getPhoto($photo_id = false) {
+		public function getPhotoLegacy($photo_id = false) {
 			if (!$photo_id) {
 				throw new Exception("Cannot fetch photo info and sizes - no photo ID given"); 
 				return false;
