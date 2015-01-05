@@ -11,6 +11,11 @@
 	use Exception;
 	use DateTime;
 	use DateTimeZone;
+	use Railpage\Url;
+	
+	use Rezzza\Flickr\Metadata;
+	use Rezzza\Flickr\ApiFactory;
+	use Rezzza\Flickr\Http\GuzzleAdapter;
 	
 	/**
 	 * Railcam class
@@ -202,6 +207,10 @@
 				throw new Exception("Cannot load Railcam - empty or invalid ID given"); 
 				return false;
 			}
+			
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$this->id = $this->db->fetchOne("SELECT id FROM railcams WHERE permalink = ?", $this->id); 
+			}
 				
 			$query = "SELECT * FROM railcams WHERE id = ?"; 
 			
@@ -224,7 +233,13 @@
 				$this->right = $row['right']; 
 				$this->left = $row['left'];
 				
-				$this->url = sprintf("%s/%s", $this->Module->url, $row['permalink']);
+				$this->url = new Url(sprintf("%s/%s", $this->Module->url, $row['permalink']));
+				$this->url->edit = sprintf("%s/edit", $this->url->url);
+				$this->url->archive = sprintf("%s/archive", $this->url->url);
+				$this->url->gallery = sprintf("%s/flickr/tag/railpage:railcam=%d", RP_WEB_ROOT, $this->id);
+				$this->url->live = sprintf("%s/live", $this->url->url);
+				$this->url->recent = sprintf("%s/recent", $this->url->url);
+				$this->url->photo = sprintf("%s/photo/", $this->url->url);
 			}
 			
 			if (filter_var($this->type_id, FILTER_VALIDATE_INT) && $this->type_id > 0) {
@@ -506,14 +521,83 @@
 			
 			$mckey = "railpage:railcam.photo.id=" . $photo_id;
 			
-			deleteMemcacheObject($mckey);
+			#deleteMemcacheObject($mckey);
 			
 			if ($return = getMemcacheObject($mckey)) {
 				$return['photo']['time_relative'] = relative_date($return['photo']['dateuploaded']);
 				
 				return $return;
 			} else {
-			
+				
+				$use_rezzza = false;
+				
+				if ($use_rezzza) {
+					$metadata = new Metadata(RP_FLICKR_API_KEY, RP_FLICKR_API_SECRET);
+					$metadata->setOauthAccess($this->flickr_oauth_token, $this->flickr_oauth_secret);
+					$factory = new ApiFactory($metadata, new GuzzleAdapter());
+					
+					$photo_info = $factory->call('flickr.photos.getInfo', array(
+						'photo_id' => $photo_id,
+					));
+					
+					if ($photo_info) {
+						$photo_sizes = $factory->call('flickr.photos.getSizes', array(
+							'photo_id' => $photo_id
+						));
+					}
+					
+					/**
+					 * do stuff!
+					 */
+					
+					if ($photo_info && $photo_sizes) {
+						$return = array();
+						
+						/**
+						 * Photo info
+						 */
+						
+						foreach ($photo_info->photo->attributes() as $a => $b) {
+							$return['photo'][$a] = $b->__toString();
+						}
+						
+						foreach ($photo_info->photo->children() as $element) {
+							foreach ($element->attributes() as $a => $b) {
+								$return['photo'][$element->getName()][$a] = $b->__toString();
+							}
+							
+							foreach ($element->children() as $child) {
+								foreach ($child->attributes() as $a => $b) {
+									$return['photo'][$element->getName()][$child->getName()][$a] = $b->__toString();
+								}
+								
+								foreach ($child->children() as $blah) {
+									$return['photo'][$element->getName()][$child->getName()][$blah->getName()][$a] = $b->__toString();
+									
+									foreach ($blah->attributes() as $a => $b) {
+										$return['photo'][$element->getName()][$child->getName()][$blah->getName()][$a] = $b->__toString();
+									}
+								}
+							}
+						}
+						
+						/**
+						 * Photo sizes
+						 */
+						
+						$i = 0;
+						foreach ($photo_sizes->sizes->size as $key => $element) {
+							foreach ($element->attributes() as $a => $b) {
+								$return['photo']['sizes'][$i][$a] = $b->__toString();
+							}
+							$i++;
+							
+						}
+					}
+					
+					return $return;
+				}
+				
 				$f = new \flickr_railpage(RP_FLICKR_API_KEY);
 				$f->oauth_token 	= $this->flickr_oauth_token;
 				$f->oauth_secret 	= $this->flickr_oauth_secret;
