@@ -3158,7 +3158,8 @@
 			 */
 			
 			if (!$this->safePassword($password)) {
-				throw new Exception("Your desired password is unsafe. Please choose a different password.");
+				// MGH - 6/01/2015 commented out, people are dumb.
+				//throw new Exception("Your desired password is unsafe. Please choose a different password.");
 			}
 			
 			if (function_exists("password_hash")) {
