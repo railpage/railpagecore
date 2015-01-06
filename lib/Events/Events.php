@@ -104,7 +104,7 @@
 				throw new Exception("Cannot fetch upcoming events because the specified organisation is invalid or doesn't exist");
 			}
 			
-			$query = "SELECT id, event_id, date FROM event_dates WHERE date >= ? AND organisation_id = ? AND status = ?";
+			$query = "SELECT ed.id, ed.event_id, ed.date FROM event_dates AS ed LEFT JOIN event AS e ON e.id = ed.event_id WHERE ed.date >= ? AND e.organisation_id = ? AND e.status = ?";
 			
 			$return = array(); 
 			
@@ -112,7 +112,8 @@
 				$Event = new Event($row['event_id']);
 				$return[$row['date']][] = array(
 					"id" => $Event->id,
-					"name" => $Event->name,
+					"name" => $Event->title,
+					"event_date" => $row['id']
 				);
 			}
 			
