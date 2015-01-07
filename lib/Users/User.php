@@ -31,6 +31,14 @@
 	class User extends Base {
 		
 		/**
+		 * Set the default theme
+		 * @since Version 3.9
+		 * @const string DEFAULT_THEME
+		 */
+		
+		const DEFAULT_THEME = "jiffy_simple";
+		
+		/**
 		 * Array of group IDs this user is a member of
 		 * @since Version 3.7
 		 * @var array $groups
@@ -1085,7 +1093,7 @@
 			if (class_exists("\\smarty_railpage")) {
 				$smarty = new \smarty_railpage();
 				if (!$smarty->theme_exists($data['theme']) || $data['theme'] == "MGHTheme" || $data['theme'] == "") {
-					$data['theme'] = $this->default_theme;
+					$data['theme'] = isset($this->default_theme) && !empty($this->default_theme) ? $this->default_theme : self::DEFAULT_THEME;
 				}
 			}
 			
@@ -1112,7 +1120,7 @@
 			$this->level		= $data['user_level'];
 			$this->posts		= $data['user_posts'];
 			$this->style		= $data['user_style'];
-			$this->theme		= (!is_null($data['theme'])) ? $data['theme'] : $this->default_theme;
+			$this->theme		= (!is_null($data['theme'])) ? $data['theme'] : (isset($this->default_theme) && !empty($this->default_theme) ? $this->default_theme : self::DEFAULT_THEME);
 			$this->lang			= $data['user_lang'];
 			$this->date_format	= $data['user_dateformat'];
 			$this->rank_id		= $data['user_rank'];
@@ -1348,6 +1356,10 @@
 				$this->provider = "railpage";
 			}
 			
+			if (empty($this->default_theme)) {
+				$this->default_theme = self::DEFAULT_THEME;
+			}
+			
 			return true;
 		}
 		
@@ -1514,7 +1526,7 @@
 				
 				return $return;
 			} else {
-				if ($this->id) {
+				if (filter_var($this->id, FILTER_VALIDATE_INT)) {
 					$this->db->update("nuke_users", $dataArray, array("user_id = ?" => $this->id));
 				} else {
 					$this->db->insert("nuke_users", $dataArray);
@@ -1550,7 +1562,7 @@
 			$this->hide = 0;
 			$this->notify = 0;
 			$this->notify_privmsg = 0;
-			$this->theme = $this->default_theme;
+			$this->theme = isset($this->default_theme) && !empty($this->default_theme) ? $this->default_theme : self::DEFAULT_THEME;
 			$this->items_per_page = 25;
 			$this->enable_glossary = 0;
 			$this->sidebar_type = 2;
@@ -3537,6 +3549,46 @@
 			$ips = array_values($ips);
 			
 			return $ips;
+		}
+		
+		/**
+		 * Check if the desired username is available
+		 * @since Version 3.9
+		 * @var string $username
+		 * @return boolean
+		 */
+		
+		public function isUsernameAvailable($username = false) {
+			if (!$username && !empty($this->username)) {
+				$username = $this->username;
+			}
+			
+			if (!$username) {
+				throw new Exception("Cannot check if username is available because no username was provided");
+			}
+			
+			$Admin = new Admin;
+			return $Admin->username_available($username);
+		}
+		
+		/**
+		 * Check if the desired email address is available
+		 * @since Version 3.9
+		 * @var string $username
+		 * @return boolean
+		 */
+		
+		public function isEmailAvailable($email = false) {
+			if (!$email && !empty($this->contact_email)) {
+				$email = $this->contact_email;
+			}
+			
+			if (!$email) {
+				throw new Exception("Cannot check if username is available because no email address was provided");
+			}
+			
+			$Admin = new Admin;
+			return $Admin->email_available($email);
 		}
 	}
 ?>

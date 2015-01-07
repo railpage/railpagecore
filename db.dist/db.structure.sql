@@ -4547,7 +4547,7 @@ CREATE TABLE `nuke_users` (
   `provider` enum('railpage','facebook','twitter','google') COLLATE utf8_unicode_ci NOT NULL DEFAULT 'railpage',
   `user_active` tinyint(1) DEFAULT '1',
   `username` varchar(25) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
-  `user_password` varchar(32) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
+  `user_password` varchar(255) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `user_password_bcrypt` varchar(2048) COLLATE utf8_unicode_ci DEFAULT NULL,
   `user_session_time` int(11) NOT NULL DEFAULT '0',
   `user_session_page` smallint(5) NOT NULL DEFAULT '0',
