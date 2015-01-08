@@ -248,6 +248,7 @@
 				$this->url->live = sprintf("%s/live", $this->url->url);
 				$this->url->recent = sprintf("%s/recent", $this->url->url);
 				$this->url->photo = sprintf("%s/photo/", $this->url->url);
+				$this->url->flickr_auth = sprintf("%s/authenticate", $this->url->url);
 				
 				switch ($row['provider']) {
 					case "Flickr" : 
