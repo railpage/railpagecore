@@ -113,6 +113,8 @@
 			$Warning->commit();
 			
 			$this->assertFalse(!filter_var($Warning->id, FILTER_VALIDATE_INT));
+			
+			$this->assertEquals(54, $User->warning_level);
 		}
 	}
 ?>
