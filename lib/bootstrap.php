@@ -48,7 +48,25 @@
 		 */
 		
 		set_include_path(get_include_path() . PATH_SEPARATOR . dirname(__DIR__) . DIRECTORY_SEPARATOR . "etc");
+		
+		/**
+		 * Set some server vars to compensate for the fact that we're not interacting with the internet
+		 */
+		
+		if (!isset($_SERVER['REMOTE_ADDR'])) {
+			$_SERVER['REMOTE_ADDR'] = "127.0.0.1";
+		}
+		
+		if (!isset($_SERVER['REMOTE_HOST'])) {
+			$_SERVER['REMOTE_HOST'] = "phpunit";
+		}
 	}
+	
+	/**
+	 * Load some functions required by this library
+	 */
+	
+	require_once("includes" . DIRECTORY_SEPARATOR . "functions.php");
 	
 	/**
 	 * Load the autoloader
