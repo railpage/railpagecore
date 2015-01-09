@@ -217,17 +217,17 @@
 				"next" => false
 			);
 			
-			if (isset($rs['prevphoto'])) {
+			if (isset($rs['prevphoto']) && is_array($rs['prevphoto'])) {
 				$return['previous'] = array(
 					"id" => $rs['prevphoto']['id'],
-					"title" => $rs['prevphoto']['title']
+					"title" => isset($rs['prevphoto']['title']) ? $rs['prevphoto']['title'] : "Untitled"
 				);
 			}
 			
-			if (isset($rs['nextphoto'])) {
+			if (isset($rs['nextphoto']) && is_array($rs['nextphoto'])) {
 				$return['next'] = array(
 					"id" => $rs['nextphoto']['id'],
-					"title" => $rs['nextphoto']['title']
+					"title" => isset($rs['nextphoto']['title']) ? $rs['nextphoto']['title'] : "Untitled"
 				);
 			}
 			

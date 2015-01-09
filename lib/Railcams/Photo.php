@@ -190,7 +190,7 @@
 		public function previous() {
 			$context = $this->Provider->getPhotoContext($this);
 			
-			if ($context['previous']) {
+			if (isset($context['previous']) && isset($context['previous']['id']) && filter_var($context['previous']['id'], FILTER_VALIDATE_INT)) {
 				$Photo = (new Photo($context['previous']['id']))->setProvider($this->Provider)->setCamera($this->Camera)->load(); 
 				
 				return $Photo;
@@ -208,7 +208,7 @@
 		public function next() {
 			$context = $this->Provider->getPhotoContext($this);
 			
-			if ($context['next']) {
+			if (isset($context['next']) && isset($context['next']['id']) && filter_var($context['next']['id'], FILTER_VALIDATE_INT)) {
 				$Photo = (new Photo($context['next']['id']))->setProvider($this->Provider)->setCamera($this->Camera)->load(); 
 				
 				return $Photo;
