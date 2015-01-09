@@ -13,9 +13,12 @@
 	use Railpage\Events\Events;
 	use Railpage\Events\Event;
 	use Railpage\Events\EventDate;
+	use Railpage\Jobs\Jobs;
+	use Railpage\Jobs\Job;
 	use Railpage\AppCore;
 	use Exception;
 	use DateTime;
+	use DateInterval;
 	
 	/**
 	 * Organisation object
@@ -380,6 +383,31 @@
 				foreach ($date as $row) {
 					yield new EventDate($row['event_date']);
 				}
+			}
+		}
+		
+		/**
+		 * Yield jobs from this organisation
+		 * @since Version 3.9
+		 * @return \Railpage\Jobs\Job
+		 * @yield \Railpage\Jobs\Job
+		 * @param \DateTime|boolean $DateFrom
+		 * @param \DateTime|boolean $DateTo
+		 */
+		
+		public function yieldJobs($DateFrom = false, $DateTo = false) {
+			if (!$DateFrom instanceof DateTime) {
+				$DateFrom = new DateTime;
+			}
+			
+			if (!$DateTo instanceof DateTime) {
+				$DateTo = (new DateTime)->add(new DateInterval("P1Y"));
+			}
+			
+			$query = "SELECT job_id FROM jn_jobs WHERE organisation_id = ? AND job_added >= ? AND job_expiry <= ?";
+			
+			foreach ($this->db->fetchAll($query, array($this->id, $DateFrom->format("Y-m-d"), $DateTo->format("Y-m-d"))) as $row) {
+				yield new Job($row['job_id']);
 			}
 		}
 	}

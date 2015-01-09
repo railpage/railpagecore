@@ -10,6 +10,7 @@
 	
 	use Railpage\AppCore;
 	use Railpage\Module;
+	use Railpage\Organisations\Organisation;
 	use Exception;
 	use DateTime;
 	use Zend_Db_Expr;
@@ -135,15 +136,11 @@
 				$where[] = "j.job_expiry > ?";
 				$params[] = date("Y-m-d H:i:s");
 				
-				#printArray($where);printArray($params);die;
-				
 				if (count($where)) {
 					$query .= " WHERE " . implode(" AND " , $where); 
 				}
 				
 				$query .= " ORDER BY j.job_expiry ASC"; 
-				
-				#printArray($query);die;
 				
 				if ($result = $this->db->fetchAll($query, $params)) {
 					$return = array(); 
@@ -158,6 +155,21 @@
 					
 					return $return;
 				}
+			}
+		}
+		
+		/**
+		 * Get all job providers
+		 * @since Version 3.9
+		 * @return \Railpage\Organisations\Organisation
+		 * @yield \Railpage\Organisations\Organisation
+		 */
+		
+		public function yieldProviders() {
+			$query = "SELECT jn.organisation_id FROM jn_jobs AS jn LEFT JOIN organisation AS o ON o.organisation_id = jn.organisation_id GROUP BY jn.organisation_id ORDER BY organisation_name";
+			
+			foreach ($this->db->fetchAll($query) as $row) {
+				yield new Organisation($row['organisation_id']);
 			}
 		}
 	}

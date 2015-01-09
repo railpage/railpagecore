@@ -108,6 +108,14 @@
 		public $url;
 		
 		/**
+		 * Number of times the job has been clicked through to the application form
+		 * @since Version 3.9
+		 * @var int $conversions
+		 */
+		
+		public $conversions = 0;
+		
+		/**
 		 * Location object
 		 * @var \Railpage\Jobs\Location $Location
 		 */
@@ -145,7 +153,7 @@
 			if ($job_id) {
 				$this->id = $job_id; 
 				
-				$query = "SELECT organisation_id, job_added, reference_id, job_urls, job_location_id, job_classification_id, job_thread_id, job_title, job_description, job_expiry, DATEDIFF(job_expiry, NOW()) AS job_expiry_until, job_salary, job_special_cond, job_duration FROM jn_jobs WHERE job_id = ?";
+				$query = "SELECT organisation_id, conversions, job_added, reference_id, job_urls, job_location_id, job_classification_id, job_thread_id, job_title, job_description, job_expiry, DATEDIFF(job_expiry, NOW()) AS job_expiry_until, job_salary, job_special_cond, job_duration FROM jn_jobs WHERE job_id = ?";
 				
 				if ($result = $this->db->fetchRow($query, $this->id)) {
 					$this->title 		= $result['job_title'];
@@ -156,6 +164,7 @@
 					$this->special_cond	= $result['job_special_cond'];
 					$this->duration		= $result['job_duration']; 
 					$this->reference_id = $result['reference_id'];
+					$this->conversions = $result['conversions'];
 					
 					if (empty($this->duration) || $this->duration === 0) {
 						$this->duration = "Ongoing"; 
@@ -170,6 +179,7 @@
 					$this->Classification = new Classification($result['job_classification_id']);
 					
 					$this->url = new Url(sprintf("%s/%d", $this->Module->url, $this->id));
+					$this->url->conversion = sprintf("%s?apply", $this->url->url);
 					
 					if (is_array(json_decode($result['job_urls'], true))) {
 						foreach (json_decode($result['job_urls'], true) as $title => $link) {
@@ -279,7 +289,8 @@
 				"job_special_cond" => $this->special_cond,
 				"job_duration" => $this->duration,
 				"job_thread_id" => $this->thread_id,
-				"job_urls" => json_encode($this->url->getUrls())
+				"job_urls" => json_encode($this->url->getUrls()),
+				"conversions" => $this->conversions
 			);
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
