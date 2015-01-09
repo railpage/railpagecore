@@ -9,6 +9,10 @@
 	 */
 	
 	namespace Railpage\Organisations;
+	
+	use Railpage\Events\Events;
+	use Railpage\Events\Event;
+	use Railpage\Events\EventDate;
 	use Railpage\AppCore;
 	use Exception;
 	use DateTime;
@@ -359,6 +363,23 @@
 				$query = "SELECT operator_id FROM operators WHERE organisation_id = ?";
 				
 				return $this->db->fetchOne($query, $this->id);
+			}
+		}
+		
+		/**
+		 * Yield upcoming events for this organisation
+		 * @since Version 3.9
+		 * @return \Railpage\Events\EventDate
+		 * @yield \Railpage\Events\EventDate
+		 */
+		
+		public function yieldUpcomingEvents() {
+			$Events = new Events;
+			
+			foreach ($Events->getUpcomingEventsForOrganisation($this) as $date) {
+				foreach ($date as $row) {
+					yield new EventDate($row['event_date']);
+				}
 			}
 		}
 	}

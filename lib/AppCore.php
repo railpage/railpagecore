@@ -14,6 +14,14 @@
 	use Foolz\SphinxQL\SphinxQL;
 	use Foolz\SphinxQL\Connection;
 	
+	if (!defined("RP_SITE_ROOT")) {
+		define("RP_SITE_ROOT", "");
+	}
+	
+	if (!defined("RP_HOST")) {
+		define("RP_HOST", "www.railpage.com.au");
+	}
+	
 	/**
 	 * App Core
 	 */

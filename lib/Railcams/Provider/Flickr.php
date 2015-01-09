@@ -31,7 +31,7 @@
 		 * @const PROVIDER_NAME
 		 */
 		
-		const PROVIDER_NAME = "flickr";
+		const PROVIDER_NAME = "Flickr";
 		
 		/**
 		 * Flickr OAuth token
@@ -66,21 +66,27 @@
 		private $cn;
 		
 		/**
-		 * Constructor
+		 * The photo data as extracted from Flickr
 		 * @since Version 3.9
-		 * @param string $oauth_token
-		 * @param string $oauth_secret
-		 * @param string $flickr_api_key
+		 * @var array $photo
 		 */
 		
-		public function __construct($oauth_token = false, $oauth_secret = false, $api_key = false) {
+		private $photo;
+		
+		/**
+		 * Constructor
+		 * @since Version 3.9
+		 * @param array $params
+		 */
+		
+		public function __construct($params = false) {
 			
 			parent::__construct(); 
 			
-			if ($oauth_token && $oauth_secret && $api_key) {
-				$this->oauth_token = $oauth_token;
-				$this->oauth_secret = $oauth_secret;
-				$this->flickr_api_key = $api_key;
+			if (is_array($params) && isset($params['oauth_token']) && isset($params['oauth_secret']) && isset($params['api_key'])) {
+				$this->oauth_token = $params['oauth_token'];
+				$this->oauth_secret = $params['oauth_secret'];
+				$this->flickr_api_key = $params['api_key'];
 				
 				$this->cn = new flickr_railpage($this->flickr_api_key);
 				$this->cn->oauth_token = $this->oauth_token;
@@ -98,23 +104,22 @@
 		 */
 		
 		public function getPhoto($id) {
-			$mckey = sprintf("railpage.railcam.provider=%s;railcam.image=%d", self::PROVIDER_NAME, $id);
+			$mckey = sprintf("railpage:railcam.provider=%s;railcam.image=%d", self::PROVIDER_NAME, $id);
 			
-			if (function_exists("getMemcacheObject") && $return = getMemcacheObject($mckey)) {
-				return $return;
+			if (function_exists("getMemcacheObject") && $this->photo = getMemcacheObject($mckey)) {
+				return $this->photo;
 			} else {
 				$return = array(); 
 				
 				if ($return = $this->cn->photos_getInfo($id)) {
 					$return['photo']['sizes'] = $this->cn->photos_getSizes($id);
-					
 				}
 				
 				/**
 				 * Transform Flickr's result into our standard data format
 				 */
 				
-				$transform = array(
+				$this->photo = array(
 					"provider" => self::PROVIDER_NAME,
 					"id" => $id,
 					"dates" => array(
@@ -135,10 +140,10 @@
 				);
 				
 				if (function_exists("setMemcacheObject")) {
-					setMemcacheObject($mckey, $transform, strtotime("+2 hours"));
+					setMemcacheObject($mckey, $this->photo, strtotime("+2 hours"));
 				}
 				
-				return $transform;
+				return $this->photo;
 			}
 		}
 		
@@ -146,10 +151,34 @@
 		 * Save the changes to this photo
 		 * @since Version 3.9
 		 * @return self
+		 * @param \Railpage\Railcams\Photo $Photo
 		 */
 		
-		public function setPhoto() {
+		public function setPhoto(Photo $Photo) {
 			
+			/** 
+			 * Flush Memcache
+			 */
+			
+			$mckey = sprintf("railpage:railcam.provider=%s;railcam.image=%d", self::PROVIDER_NAME, $Photo->id);
+			
+			if (function_exists("removeMemcacheObject")) {
+				removeMemcacheObject($mckey);
+			}
+			
+			/**
+			 * Check if the title and/or description have changed
+			 */
+			
+			if ($Photo->title != $this->photo['title'] || $Photo->description != $this->photo['description']) {
+				$result = $this->cn->photos_setMeta($Photo->id, $Photo->title, $Photo->description);
+				
+				if (!$result) {
+					throw new Exception(sprintf("Could not update photo. The error returned from %s is: (%d) %s", self::PROVIDER_NAME, $this->cn->getErrorCode(), $this->cn->getErrorMsg()));
+				}
+			}
+			
+			return $this;
 		}
 		
 		/**
@@ -162,6 +191,47 @@
 		
 		public function getPhotos($page, $items_per_page) {
 			
+		}
+		
+		/**
+		 * Return the name of this provider
+		 * @since Version 3.9
+		 * @return string
+		 */
+		
+		public function getProviderName() {
+			return self::PROVIDER_NAME;
+		}
+		
+		/**
+		 * Return the context of the supplied photo
+		 * @since Version 3.9
+		 * @return array
+		 */
+		
+		public function getPhotoContext(Photo $Photo) {
+			$rs = $this->cn->photos_getContext($Photo->id);
+			
+			$return = array(
+				"previous" => false,
+				"next" => false
+			);
+			
+			if (isset($rs['prevphoto']) && is_array($rs['prevphoto'])) {
+				$return['previous'] = array(
+					"id" => $rs['prevphoto']['id'],
+					"title" => isset($rs['prevphoto']['title']) ? $rs['prevphoto']['title'] : "Untitled"
+				);
+			}
+			
+			if (isset($rs['nextphoto']) && is_array($rs['nextphoto'])) {
+				$return['next'] = array(
+					"id" => $rs['nextphoto']['id'],
+					"title" => isset($rs['nextphoto']['title']) ? $rs['nextphoto']['title'] : "Untitled"
+				);
+			}
+			
+			return $return;
 		}
 		
 	}

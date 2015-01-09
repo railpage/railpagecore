@@ -11,6 +11,7 @@
 	namespace Railpage\News;
 	
 	use DateTime;
+	use Exception;
 		
 	/**
 	 * Find a news article from its URL slug
@@ -29,9 +30,22 @@
 			
 			$mckey = "railpage:news.article_slug=" . $slug; 
 			
+			$loaded = false;
+			
 			if ($story_id = getMemcacheObject($mckey)) {
-				parent::__construct($story_id);
-			} else {
+				try {
+					parent::__construct($story_id);
+					$loaded = true;
+				} catch (Exception $e) {
+					
+				}
+			}
+			
+			/**
+			 * Fall back to a database query if we can't load the news article from Memcached
+			 */
+			
+			if (!$loaded) {
 				$story_id = $ZendDB_ReadOnly->fetchOne("SELECT sid FROM nuke_stories WHERE slug = ?", $slug); 
 				
 				if (filter_var($story_id, FILTER_VALIDATE_INT)) {
@@ -39,7 +53,7 @@
 					
 					parent::__construct($story_id); 
 				} else {
-					throw new \Exception("Could not find a story matching URL slug " . $slug);
+					throw new Exception("Could not find a story matching URL slug " . $slug);
 					return false;
 				}
 			}

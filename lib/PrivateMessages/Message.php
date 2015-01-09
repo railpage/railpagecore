@@ -405,7 +405,7 @@
 				$data = array(
 					"privmsgs_text_id" => $pm_id,
 					"privmsgs_bbcode_uid" => $this->bbcode_uid,
-					"privmsgs_text" => prepare_submit($this->body)
+					"privmsgs_text" => function_exists("prepare_submit") ? prepare_submit($this->body) : $this->body
 				);
 				
 				$rs = $this->db->insert("nuke_bbprivmsgs_text", $data); 

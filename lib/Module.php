@@ -13,6 +13,10 @@
 	use Railpage\AppCore;
 	use Railpage\Url;
 	
+	if (!defined("RP_SITE_ROOT")) {
+		define("RP_SITE_ROOT", "");
+	}
+	
 	/**
 	 * Railpage module information
 	 * @since Version 3.8.7
