@@ -50,6 +50,13 @@
 		
 		public function getProviderName(); 
 		
+		/**
+		 * Return the context of the supplied photo
+		 * @since Version 3.9
+		 * @return array
+		 */
+		
+		public function getPhotoContext(Photo $Photo);
 		
 	}
 ?>

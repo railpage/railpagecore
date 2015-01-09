@@ -203,5 +203,36 @@
 			return self::PROVIDER_NAME;
 		}
 		
+		/**
+		 * Return the context of the supplied photo
+		 * @since Version 3.9
+		 * @return array
+		 */
+		
+		public function getPhotoContext(Photo $Photo) {
+			$rs = $this->cn->photos_getContext($Photo->id);
+			
+			$return = array(
+				"previous" => false,
+				"next" => false
+			);
+			
+			if (isset($rs['prevphoto'])) {
+				$return['previous'] = array(
+					"id" => $rs['prevphoto']['id'],
+					"title" => $rs['prevphoto']['title']
+				);
+			}
+			
+			if (isset($rs['nextphoto'])) {
+				$return['next'] = array(
+					"id" => $rs['nextphoto']['id'],
+					"title" => $rs['nextphoto']['title']
+				);
+			}
+			
+			return $return;
+		}
+		
 	}
 ?>

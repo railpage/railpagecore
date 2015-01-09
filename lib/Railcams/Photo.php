@@ -155,6 +155,7 @@
 			
 			if ($this->Camera instanceof Camera) {
 				$this->url = new Url(sprintf("%s%d", $this->Camera->url->photo, $this->id));
+				$this->url->delete = sprintf("%s/deletephoto/%d", $this->Camera->url, $this->id);
 			}
 			
 			return $this;
@@ -178,6 +179,42 @@
 		
 		public function commit() {
 			return $this->Provider->setPhoto($this);
+		}
+		
+		/**
+		 * Get previous photo
+		 * @since Version 3.9
+		 * @return \Railpage\Railcams\Photo
+		 */
+		
+		public function previous() {
+			$context = $this->Provider->getPhotoContext($this);
+			
+			if ($context['previous']) {
+				$Photo = (new Photo($context['previous']['id']))->setProvider($this->Provider)->setCamera($this->Camera)->load(); 
+				
+				return $Photo;
+			}
+			
+			return false;
+		}
+		
+		/**
+		 * Get the next photo 
+		 * @since Version 3.9
+		 * @return \Railpage\Railcams\Photo
+		 */
+		
+		public function next() {
+			$context = $this->Provider->getPhotoContext($this);
+			
+			if ($context['next']) {
+				$Photo = (new Photo($context['next']['id']))->setProvider($this->Provider)->setCamera($this->Camera)->load(); 
+				
+				return $Photo;
+			}
+			
+			return false;
 		}
 	}
 ?>
