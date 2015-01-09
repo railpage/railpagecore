@@ -216,5 +216,23 @@
 			
 			return false;
 		}
+		
+		/**
+		 * Get a associative array of this photo data in a standardised format
+		 * @since Version 3.9
+		 * @return array
+		 */
+		
+		public function getArray() {
+			return array(
+				"id" => $this->id,
+				"title" => $this->title,
+				"description" => $this->description,
+				"provider" => $this->getProviderName(),
+				"url" => $this->url->getURLs(),
+				"sizes" => $this->sizes,
+				"dates" => $this->dates
+			);
+		}
 	}
 ?>
