@@ -12,6 +12,7 @@
 	use DateTime;
 	use flickr_railpage;
 	use Railpage\Url;
+	use Railpage\Locos\Locomotive;
 	
 	/**
 	 * Railcam photo
@@ -233,6 +234,61 @@
 				"sizes" => $this->sizes,
 				"dates" => $this->dates
 			);
+		}
+		
+		/**
+		 * Tag a locomotive in this photo
+		 * @since Version 3.9
+		 * @return \Railpage\Railcams\Photo
+		 */
+		
+		public function tagLoco(Locomotive $Loco) {
+			
+			if (!filter_var($Loco->id, FILTER_VALIDATE_INT)) {
+				throw new Exception("An invalid instance of Railpage\\Locos\\Locomotive was supplied");
+			}
+			
+			$data = array(
+				"id" => (int) str_replace(".", "", microtime(true)),
+				"railcam_id" => (int) $this->Camera->id,
+				"loco_id" => (int) $Loco->id,
+				"date" => $this->dates['taken']->format(DateTime::ISO8601),
+				"photo_id" => (int) $this->id
+			);
+			
+			#printArray($data);die;
+			
+			$Sphinx = $this->getSphinx(); 
+			
+			$Insert = $Sphinx->insert()->into("idx_railcam_locos");
+			$Insert->set($data);
+			
+			$Insert->execute();
+			
+			return $this;
+		}
+		
+		/**
+		 * Get locos tagged in this photo
+		 * @since Version 3.9
+		 * @return \Railpage\Locos\Locomotive
+		 * @yield \Railpage\Locos\Locomotive
+		 */
+		
+		public function yieldLocos() {
+			
+			$Sphinx = $this->getSphinx(); 
+			
+			$query = $Sphinx->select("*")
+					->from("idx_railcam_locos")
+					->where("photo_id", "=", (int) $this->id)
+					->where("railcam_id", "=", (int) $this->Camera->id);
+			
+			$locos = $query->execute();
+			
+			foreach ($locos as $row) {
+				yield new Locomotive($row['loco_id']);
+			}
 		}
 	}
 ?>

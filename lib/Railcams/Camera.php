@@ -244,7 +244,7 @@
 				$this->url = new Url(sprintf("%s/%s", $this->Module->url, $row['permalink']));
 				$this->url->edit = sprintf("%s/edit", $this->url->url);
 				$this->url->archive = sprintf("%s/archive", $this->url->url);
-				$this->url->gallery = sprintf("%s/flickr/tag/railpage:railcam=%d", RP_SITE_ROOT, $this->id);
+				$this->url->gallery = sprintf("%s/flickr/tag/railpage:railcam=%d", RP_WEB_ROOT, $this->id);
 				$this->url->live = sprintf("%s/live", $this->url->url);
 				$this->url->recent = sprintf("%s/recent", $this->url->url);
 				$this->url->photo = sprintf("%s/photo/", $this->url->url);

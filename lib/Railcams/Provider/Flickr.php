@@ -140,7 +140,7 @@
 				);
 				
 				if (function_exists("setMemcacheObject")) {
-					setMemcacheObject($mckey, $this->photo, strtotime("+2 hours"));
+					setMemcacheObject($mckey, $this->photo, strtotime("+2 days"));
 				}
 				
 				return $this->photo;
@@ -162,10 +162,6 @@
 			
 			$mckey = sprintf("railpage:railcam.provider=%s;railcam.image=%d", self::PROVIDER_NAME, $Photo->id);
 			
-			if (function_exists("removeMemcacheObject")) {
-				removeMemcacheObject($mckey);
-			}
-			
 			/**
 			 * Check if the title and/or description have changed
 			 */
@@ -173,9 +169,16 @@
 			if ($Photo->title != $this->photo['title'] || $Photo->description != $this->photo['description']) {
 				$result = $this->cn->photos_setMeta($Photo->id, $Photo->title, $Photo->description);
 				
+				$this->photo['title'] = $Photo->title;
+				$this->photo['description'] = $Photo->description;
+				
 				if (!$result) {
 					throw new Exception(sprintf("Could not update photo. The error returned from %s is: (%d) %s", self::PROVIDER_NAME, $this->cn->getErrorCode(), $this->cn->getErrorMsg()));
 				}
+			}
+			
+			if (function_exists("setMemcacheObject")) {
+				setMemcacheObject($mckey, $this->photo, strtotime("+2 days"));
 			}
 			
 			return $this;
