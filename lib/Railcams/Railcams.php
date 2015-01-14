@@ -115,5 +115,24 @@
 			
 			return $return;
 		}
+		
+		/**
+		 * Get photos tagged with locomotives
+		 * @since Version 3.9
+		 * @return array
+		 */
+		
+		public function getTaggedPhotos() {
+			
+			$Sphinx = $this->getSphinx(); 
+			
+			$query = $Sphinx->select("*")
+					->from("idx_railcam_locos")
+					->orderBy("id", "DESC");
+			
+			$locos = $query->execute();
+			
+			return $locos;
+		}
 	}
 ?>

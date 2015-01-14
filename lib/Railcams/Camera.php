@@ -713,5 +713,23 @@
 		public function getArchiveMonths($year) {
 			
 		}
+		
+		/**
+		 * Get a associative array of this railcam data in a standardised format
+		 * @since Version 3.9
+		 * @return array
+		 */
+		
+		public function getArray() {
+			return array(
+				"id" => $this->id,
+				"name" => $this->name,
+				"description" => $this->desc,
+				"provider" => $this->Provider->getProviderName(),
+				"url" => $this->url->getURLs(),
+				"lat" => $this->lat,
+				"lon" => $this->lon
+			);
+		}
 	}
 ?>
