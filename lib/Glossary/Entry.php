@@ -160,6 +160,7 @@
 		 * @throws \Exception if $this->text is empty
 		 * @throws \Exception if $this->Type is not an instance of \Railpage\Glossary\Type
 		 * @throws \Exception if $this->Author is not an instance of \Railpage\Users\User
+		 * @todo Entry duplication checking
 		 */
 		
 		private function validate() {
@@ -189,6 +190,14 @@
 			
 			if (empty($this->status) || !filter_var($this->status, FILTER_VALIDATE_INT)) {
 				$this->status = self::STATUS_UNAPPROVED;
+			}
+			
+			/**
+			 * Check if an entry by this title exists elsewhere
+			 */
+			
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
+				
 			}
 			
 			return true;
