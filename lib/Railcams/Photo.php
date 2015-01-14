@@ -159,6 +159,70 @@
 				$this->url->delete = sprintf("%s/deletephoto/%d", $this->Camera->url, $this->id);
 			}
 			
+			/**
+			 * Normalize some sizes
+			 */
+			
+			if (count($this->sizes)) {
+			
+				if (!isset($this->sizes['thumb'])) {
+					foreach ($this->sizes as $size) {
+						if ($size['width'] >= 280 && $size['height'] >= 150) {
+							$this->sizes['thumb'] = $size;
+							break;
+						}
+					}
+				}
+				
+				if (!isset($this->sizes['small'])) {
+					foreach ($this->sizes as $size) {
+						if ($size['width'] >= 500 && $size['height'] >= 281) {
+							$this->sizes['small'] = $size;
+							break;
+						}
+					}
+				}
+				
+				$width = 0;
+				
+				foreach ($this->sizes as $size) {
+					if ($size['width'] > $width) {
+						$this->sizes['largest'] = $size;
+					
+						$width = $size['width'];
+					}
+				}
+			
+				foreach ($this->sizes as $size) {
+					if ($size['width'] >= 1920) {
+						$this->sizes['fullscreen'] = $size;
+						break;
+					}
+				}
+			
+				foreach ($this->sizes as $size) {
+					if ($size['width'] > 1024 && $size['width'] <= 1920) {
+						$this->sizes['larger'] = $size;
+						break;
+					}
+				}
+			
+				foreach ($this->sizes as $size) {
+					if ($size['width'] == 1024) {
+						$this->sizes['large'] = $size;
+						break;
+					}
+				}
+			
+				foreach ($this->sizes as $size) {
+					if ($size['width'] == 800) {
+						$this->sizes['medium'] = $size;
+						break;
+					}
+				}
+			}
+
+			
 			return $this;
 		}
 		

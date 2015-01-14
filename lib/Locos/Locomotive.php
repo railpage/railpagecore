@@ -2158,5 +2158,30 @@
 			
 			return false;
 		}
+		
+		/**
+		 * Get locomotive data as an associative array
+		 * @since Version 3.9
+		 * @return array
+		 */
+		
+		public function getArray() {
+			return array(
+				"id" => $this->id,
+				"number" => $this->number,
+				"name" => $this->name,
+				"gauge" => $this->gauge,
+				"status" => array(
+					"id" => $this->status_id,
+					"text" => $this->status
+				),
+				"manufacturer" => array(
+					"id" => $this->manufacturer_id,
+					"text" => $this->manufacturer
+				),
+				"class" => $this->Class->getArray(),
+				"url" => $this->url->getURLs()
+			);
+		}
 	}
 ?>
