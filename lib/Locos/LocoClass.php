@@ -1418,5 +1418,31 @@
 			
 			return $this;
 		}
+		
+		/**
+		 * Get this locomotive class data as an associative array
+		 * @since Version 3.9
+		 * @return array
+		 */
+		
+		public function getArray() {
+			return array(
+				"id" => $this->id,
+				"name" => $this->name,
+				"desc" => $this->desc,
+				"type" => array(
+					"id" => $this->type_id,
+					"text" => $this->type,
+				),
+				"introduced" => $this->introduced,
+				"weight" => $this->weight,
+				"axle_load" => $this->axle_load,
+				"tractive_effort" => $this->tractive_effort,
+				"wheel_arrangement" => array(
+					"id" => $this->wheel_arrangement_id,
+					"text" => $this->wheel_arrangement
+				)
+			);
+		}
 	}
 ?>
