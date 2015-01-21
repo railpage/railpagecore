@@ -10,6 +10,7 @@
 	
 	use DateTime;
 	use Exception;
+	use Railpage\Url;
 	
 	/**
 	 * Date class
@@ -148,6 +149,8 @@
 				}
 				
 				$this->Loco = new Locomotive($row['loco_unit_id']);
+				
+				$this->url = new Url($this->Loco->url->url);
 			}
 			
 			/**

@@ -38,6 +38,7 @@
 			"Railpage\\Assets\\" : "lib/Assets/",
 			"Railpage\\Bugs\\" : "lib/Bugs/",
 			"Railpage\\Chronicle\\" : "lib/Chronicle/",
+			"Railpage\\Chronicle\\Provider\\" : "lib/Chronicle/Provider/",
 			"Railpage\\Config\\" : "lib/Config/",
 			"Railpage\\Content\\" : "lib/Content/",
 			"Railpage\\Downloads\\" : "lib/Downloads/",

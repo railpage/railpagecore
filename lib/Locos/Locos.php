@@ -1739,5 +1739,22 @@
 					break;
 			}
 		}
+		
+		/**
+		 * Get locomotive dates from a given date range
+		 * @since Version 3.9
+		 * @param \DateTime $DateFrom
+		 * @param \DateTime $DateTo
+		 * @return \Railpage\Locos\Date
+		 * @yield \Railpage\Locos\Date
+		 */
+		
+		public function yieldDatesWithinRange(DateTime $From, DateTime $To) {
+			$query = "SELECT date_id FROM loco_unit_date WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp";
+			
+			foreach ($this->db->fetchAll($query, array($From->format("Y-m-d"), $To->format("Y-m-d"))) as $row) {
+				yield new Date($row['date_id']);
+			}
+		}
 	}
 ?>

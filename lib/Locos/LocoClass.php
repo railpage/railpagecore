@@ -629,11 +629,27 @@
 		 */
 		
 		public function validate() {
-			if (empty($this->name) || empty($this->introduced) || empty($this->manufacturer_id) || empty($this->wheel_arrangement_id) || empty($this->type_id)) {
-				return false;
-			} else {
-				return true;
+			if (empty($this->name)) {
+				throw new Exception("Locomotive class name cannot be empty");
 			}
+			
+			if (empty($this->introduced)) {
+				throw new Exception("Year introduced cannot be empty");
+			}
+			
+			if (empty($this->manufacturer_id) || !filter_var($this->manufacturer_id, FILTER_VALIDATE_INT)) {
+				throw new Exception("Manufacturer ID cannot be empty");
+			}
+			
+			if (empty($this->wheel_arrangement_id) || !filter_var($this->wheel_arrangement_id, FILTER_VALIDATE_INT)) {
+				throw new Exception("Wheel arrangement ID cannot be empty");
+			}
+			
+			if (empty($this->type_id) || !filter_var($this->type_id, FILTER_VALIDATE_INT)) {
+				throw new Exception("Locomotive type ID cannot be empty");
+			}
+			
+			return true;
 		}
 		
 		/**
@@ -644,9 +660,7 @@
 		 */
 		
 		public function commit() {
-			if (!$this->validate()) {
-				return false;
-			}
+			$this->validate();
 			
 			if (RP_DEBUG) {
 				global $site_debug;
