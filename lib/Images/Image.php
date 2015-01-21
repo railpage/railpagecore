@@ -429,6 +429,10 @@
 			
 			switch ($this->provider) {
 				
+				/**
+				 * Picasa
+				 */
+				
 				case "picasaweb" : 
 					
 					if (empty($this->meta) && isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
@@ -524,6 +528,10 @@
 					
 					$this->commit();
 					break;
+				
+				/**
+				 * Flickr
+				 */
 				
 				case "flickr" : 
 					

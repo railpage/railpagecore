@@ -204,6 +204,8 @@
 			
 			if (function_exists("getRailpageConfig")) {
 				$this->Config = getRailpageConfig();
+			} elseif (file_exists(dirname(__DIR__) . DS . "config.railpage.json")) {
+				$this->Config = json_decode(file_get_contents(dirname(__DIR__) . DS . "config.railpage.json"));
 			}
 		}
 		
