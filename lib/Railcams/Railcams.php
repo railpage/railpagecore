@@ -120,15 +120,25 @@
 		 * Get photos tagged with locomotives
 		 * @since Version 3.9
 		 * @return array
+		 * @param boolean|\DateTime $DateFrom
+		 * @param boolean|\DateTime $DateTo
 		 */
 		
-		public function getTaggedPhotos() {
+		public function getTaggedPhotos($DateFrom = false, $DateTo = false) {
 			
 			$Sphinx = $this->getSphinx(); 
 			
 			$query = $Sphinx->select("*")
 					->from("idx_railcam_locos")
 					->orderBy("id", "DESC");
+			
+			if ($DateFrom instanceof DateTime) {
+				$query->where("date", ">=", $DateFrom->format(DateTime::ISO8601));
+			}
+			
+			if ($DateTo instanceof DateTime) {
+				$query->where("date", "<=", $DateTo->format(DateTime::ISO8601));
+			}
 			
 			$locos = $query->execute();
 			
