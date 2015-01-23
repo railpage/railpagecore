@@ -70,7 +70,11 @@
 			foreach ($this->getProviders() as $name) {
 				$Provider = new $name;
 				
-				$events = array_merge($events, $Provider->getEventsForDate($Date));
+				$date_events = $Provider->getEventsForDate($Date); 
+				
+				if (is_array($date_events)) {
+					$events = array_merge($events, $Provider->getEventsForDate($Date));
+				}
 			}
 			
 			return $events;
