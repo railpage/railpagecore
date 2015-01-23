@@ -1,12 +1,12 @@
 <?php
 	/**
-	 * Transport for New South Wales GTFS interface
+	 * Transport for SA AdelaideMetro GTFS interface
 	 * @since Version 3.8.7
 	 * @package Railpage
 	 * @author Michael Greenhill
 	 */
 	
-	namespace Railpage\GTFS\AU\TFNSW;
+	namespace Railpage\GTFS\AU\AdelaideMetro;
 	
 	use Exception;
 	use DateTime;
@@ -18,17 +18,17 @@
 	use Railpage\GTFS\StandardProvider;
 	
 	/**
-	 * TFNSW provider class for GTFS
+	 * AdelaideMetro class
 	 */
 	
-	class TFNSW extends StandardProvider {
+	class AdelaideMetro extends StandardProvider {
 		
 		/**
 		 * Timetable data source
-		 * @var string $provider The name of this GTFS data provider
+		 * @var string $provider
 		 */
 		
-		public $provider = "TFNSW";
+		public $provider = "AdelaideMetro";
 		
 		/**
 		 * Timetable data source as a constant
@@ -36,7 +36,7 @@
 		 * @since Version 3.9
 		 */
 		
-		const PROVIDER_NAME = "TFNSW";
+		const PROVIDER_NAME = "AdelaideMetro";
 		
 		/**
 		 * Database table prefix
@@ -44,6 +44,7 @@
 		 * @const string DB_PREFIX
 		 */
 		
-		const DB_PREFIX = "au_syd";
+		const DB_PREFIX = "au_sa_adelaidemetro";
+		
 	}
 ?>

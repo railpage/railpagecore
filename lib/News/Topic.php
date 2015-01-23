@@ -76,16 +76,30 @@
 		 * @since Version 3.0.1
 		 * @version 3.0.1
 		 * @param object $db
-		 * @param int $topic_id
+		 * @param int|string $topic_id
 		 */
 		
-		public function __construct($topic_id = false) {			
-			$this->id = $topic_id; 
-			
+		public function __construct($topic_id = false) {
 			parent::__construct();
 			
+			if (filter_var($topic_id, FILTER_VALIDATE_INT)) {
+				$this->id = $topic_id;
+			} elseif (is_string($topic_id)) {
+				if (!$id = getMemcacheObject(sprintf("railpage:news.topic.name=%s", $topic_id))) {
+					$id = $this->db->fetchOne("SELECT topicid FROM nuke_topics WHERE topicname = ?", $topic_id);
+					
+					if ($id) {
+						setMemcacheObject(sprintf("railpage:news.topic.name=%s", $topic_id), $id);
+					}
+				}
+				
+				if (isset($id) && $id !== false) {
+					$this->id = $id;
+				}
+			}
+			
 			if ($this->id) {
-				$this->mckey = "railpage:news.topic=" . $topic_id;
+				$this->mckey = sprintf("railpage:news.topic=%d", $this->id);
 				
 				if ($this->db instanceof \sql_db) {
 					$query = "SELECT * FROM nuke_topics WHERE topicid = '".$this->db->real_escape_string($this->id)."'";
@@ -153,7 +167,8 @@
 						->from("idx_news_article")
 						->orderBy("story_time_unix", "DESC")
 						->limit($page * $limit, $limit)
-						->where("topic_id", "=", $this->id);
+						->where("topic_id", "=", $this->id)
+						->where("story_active", "=", 1);
 						
 				$matches = $query->execute(); 
 				

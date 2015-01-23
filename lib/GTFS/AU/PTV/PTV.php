@@ -15,13 +15,14 @@
 	use Zend\Db\Sql\Insert;
 	use Zend\Db\Adapter\Adapter;
 	use Railpage\GTFS\GTFSInterface;
+	use Railpage\GTFS\StandardProvider;
 	
 	/**
 	 * PTV provider class for GTFS
 	 * @since Version 3.8.7
 	 */
 	
-	class PTV implements GTFSInterface {
+	class PTV extends StandardProvider {
 		
 		/**
 		 * Timetable data source
@@ -29,6 +30,22 @@
 		 */
 		
 		public $provider = "PTV";
+		
+		/**
+		 * Timetable data source as a constant
+		 * @const string PROVIDER_NAME
+		 * @since Version 3.9
+		 */
+		
+		const PROVIDER_NAME = "PTV";
+		
+		/**
+		 * Database table prefix
+		 * @since Version 3.9
+		 * @const string DB_PREFIX
+		 */
+		
+		const DB_PREFIX = "au_ptv";
 		
 		/**
 		 * API endpoint
@@ -119,6 +136,8 @@
 		 */
 		
 		public function __construct() {
+			
+			parent::__construct(); 
 			
 			if (function_exists("getRailpageConfig")) {
 				$this->Config = getRailpageConfig();
@@ -270,11 +289,11 @@
 						$row['result']['stop_id'] < 10000 &&
 						!preg_match("@#([0-9]{0,3})@", $row['result']['location_name'])
 					) {
-						$query = "SELECT stop_id FROM au_ptv_stops WHERE stop_id = " . $row['result']['stop_id'] . " LIMIT 1"; 
+						$query = sprintf("SELECT stop_id FROM %s_stops WHERE stop_id = %d LIMIT 1", self::DB_PREFIX, $row['result']['stop_id']); 
 						$result = $this->adapter->query($query, Adapter::QUERY_MODE_EXECUTE); 
 						
 						if ($result->count() === 0) {
-							$Insert = $this->db->insert("au_ptv_stops");
+							$Insert = $this->db->insert(sprintf("%s_stops", self::DB_PREFIX));
 							$Insert->values($placeData);
 							$selectString = $this->db->getSqlStringForSqlObject($Insert);
 							$results = $this->adapter->query($selectString, Adapter::QUERY_MODE_EXECUTE);

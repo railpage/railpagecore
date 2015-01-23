@@ -39,6 +39,14 @@
 		const DEFAULT_THEME = "jiffy_simple";
 		
 		/**
+		 * System user ID
+		 * @since Version 3.9
+		 * @const int SYSTEM_USER_ID
+		 */
+		
+		const SYSTEM_USER_ID = 72587;
+		
+		/**
 		 * Array of group IDs this user is a member of
 		 * @since Version 3.7
 		 * @var array $groups
@@ -1070,17 +1078,35 @@
 					$data['user_avatar'] = "http://".$_SERVER['SERVER_NAME']."/modules/Forums/images/avatars/".$data['user_avatar'];
 				}
 				
+				/**
+				 * Get user avatar dimensions. If we can't get the avatar dimensions it stands to reason that the avatar no longer exists, so we should unset it
+				 */
+				
 				if (is_null($data['user_avatar_width']) || is_null($data['user_avatar_height'])) {
-					if ($size = @getimagesize($data['user_avatar'])) {
+					if (!$size = getMemcacheObject(sprintf("rp:user.avatar.sizes=%s", $data['user_avatar']))) {
+						if ($size = @getimagesize($data['user_avatar'])) {
+							setMemcacheObject(sprintf("rp:user.avatar.sizes=%s", $data['user_avatar']), $size, strtotime("+1 year"));
+						}
+					}
+					
+					if (isset($size) && is_array($size)) {
 						$data['user_avatar_width'] = $size[0];
 						$data['user_avatar_height'] = $size[1];
+					} else {
+						$data['user_avatar'] = ""; // Empty the avatar to enforce the defaults below
 					}
 				}
 			}
 			
+			/**
+			 * Set the default avatar
+			 */
+			
 			if (empty($data['user_avatar']) || substr($data['user_avatar'], -9, 5) == "blank") {
 				$data['user_avatar'] = format_avatar("http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png", 120, 120);
 				$data['user_avatar_filename'] = format_avatar("http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png", 120, 120);
+				$data['user_avatar_width'] = 120;
+				$data['user_avatar_height'] = 120;
 			}
 			
 			// Backwards compatibility
@@ -2695,6 +2721,8 @@
 								
 								$LocoClass = new \Railpage\Locos\LocoClass($row['value']); 
 								$row['meta']['url'] = $LocoClass->url;
+				
+				#die(round(microtime(true) - RP_START_TIME, 4) . "s");
 							
 							break;
 						}
