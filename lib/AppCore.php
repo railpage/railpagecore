@@ -18,6 +18,10 @@
 		define("RP_SITE_ROOT", "");
 	}
 	
+	if (!defined("RP_WEB_ROOT")) {
+		define("RP_WEB_ROOT", "");
+	}
+	
 	if (!defined("RP_HOST")) {
 		define("RP_HOST", "www.railpage.com.au");
 	}
