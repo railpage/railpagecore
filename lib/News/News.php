@@ -135,5 +135,55 @@
 			
 			return $json;
 		}
+		
+		/**
+		 * Wild stab in the dark guess at one of our topics based on the topic sent from an RSS feed
+		 * @since Version 3.9
+		 * @param string|array $topic
+		 * @return \Railpage\News\Topic
+		 */
+		
+		public static function guessTopic($topic) {
+			
+			/**
+			 * Normalise the topic name
+			 */
+			
+			if (is_array($topic)) {
+				$topic = implode(", ", $topic);
+			}
+			
+			$topic = trim($topic);
+			
+			/**
+			 * Attempt to find the topic in our existing list
+			 */
+			
+			$Topic = new Topic($topic);
+			
+			if (filter_var($Topic->id, FILTER_VALIDATE_INT)) {
+				return $Topic;
+			}
+			
+			/**
+			 * If we don't have a valid topic ID then it didn't work. Time to approximate
+			 */
+			
+			if (preg_match("/(uk|europe|germany|france|spain|russia|c&s america|n america|s america|north america|south america|canada|usa|asia|africa|middle east|saudi arabia|india|pakistan|china)/i", $topic)) {
+				return new Topic("international");
+			}
+			
+			if (preg_match("/(passenger|business|policy|infrastructure|traction & rolling stock|freight|technology|urban|high speed)/i", $topic)) {
+				return new Topic("other-rail");
+			}
+			
+			/**
+			 * Still nothing? Go with generic
+			 */
+			
+			if (!filter_var($Topic->id, FILTER_VALIDATE_INT)) {
+				return new Topic("other-rail");
+			}
+		}
 	}
 ?>

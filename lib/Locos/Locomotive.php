@@ -322,7 +322,15 @@
 			if ((is_null($id) || $id == false) && !is_null($number)) {
 				if (!filter_var($class_id_or_slug, FILTER_VALIDATE_INT) && is_string($class_id_or_slug)) {
 					// Assume Zend_DB
-					$class_id_or_slug = $this->db->fetchOne("SELECT id FROM loco_class WHERE slug = ?", $class_id_or_slug); 
+					$slug_mckey = sprintf("railpage:loco.id;fromslug=%s;v2", $class_id_or_slug);
+					
+					if ($mcresult = getMemcacheObject($slug_mckey)) {
+						$class_id_or_slug = $mcresult;
+					} else {
+						$class_id_or_slug = $this->db->fetchOne("SELECT id FROM loco_class WHERE slug = ?", $class_id_or_slug); 
+						
+						setMemcacheObject($slug_mckey, $class_id_or_slug, strtotime("+48 hours"));
+					}
 				}
 				
 				// We are searching by loco number - we need to find it first
@@ -335,7 +343,11 @@
 						$this->id = $row['loco_id'];
 					}
 				} else {
-					$this->id = $this->db->fetchOne("SELECT loco_id FROM loco_unit WHERE class_id = ? AND loco_num = ?", array($class_id_or_slug, $number)); 
+					if (!$this->id = getMemcacheObject(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id_or_slug, $number))) {
+						$this->id = $this->db->fetchOne("SELECT loco_id FROM loco_unit WHERE class_id = ? AND loco_num = ?", array($class_id_or_slug, $number)); 
+						
+						setMemcacheObject(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id_or_slug, $number), $this->id, strtotime("+1 week"));
+					}
 				}
 			} else {
 				$this->id = $id;
@@ -360,10 +372,10 @@
 				return false;
 			}
 			
-			$this->mckey = "railpage:locos.loco_id=" . $this->id; 
+			$this->mckey = sprintf("railpage:locos.loco_id=%d", $this->id);
 			#deleteMemcacheObject($this->mckey);
 			
-			if ($row = $this->getCache($this->mckey)) {
+			if ($row = getMemcacheObject($this->mckey)) {
 				// Do nothing
 			} elseif ($this->db instanceof \sql_db) {
 				$query = "SELECT l.*, s.name AS loco_status, ow.operator_name AS owner_name, op.operator_name AS operator_name
@@ -376,7 +388,7 @@
 				if ($rs = $this->db->query($query)) {
 					$row = $rs->fetch_assoc(); 
 					
-					$this->setCache($this->mckey, $row, strtotime("+24 hours")); 
+					setMemcacheObject($this->mckey, $row, strtotime("+1 week")); 
 				}
 			} else {
 				if (RP_DEBUG) {

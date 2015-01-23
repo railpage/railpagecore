@@ -53,10 +53,20 @@
 				throw new Exception("Cannot lookup image from image provider - no provider image ID given");
 			}
 			
-			if ($id = $this->db->fetchOne("SELECT id FROM image WHERE provider = ? AND photo_id = ?", array($provider, $photo_id))) {
-				if (filter_var($id, FILTER_VALIDATE_INT)) {
-					return new Image($id);
+			$mckey = sprintf("railpage:image;provider=%s;id=%s", $provider, $photo_id);
+			
+			#printArray(" image:start " . round(microtime(true) - RP_START_TIME, 4) . "s");
+			
+			if (!$id = getMemcacheObject($mckey)) {
+				if ($id = $this->db->fetchOne("SELECT id FROM image WHERE provider = ? AND photo_id = ?", array($provider, $photo_id))) {
+					setMemcacheObject($mckey, $id, strtotime("+1 month"));
 				}
+			}
+			
+			#printArray(" image:id " . round(microtime(true) - RP_START_TIME, 4) . "s");
+			
+			if (isset($id) && filter_var($id, FILTER_VALIDATE_INT)) {
+				return new Image($id);
 			}
 			
 			$Image = new Image;

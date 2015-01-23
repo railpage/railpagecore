@@ -269,6 +269,8 @@
 				$this->id = $id_or_slug;
 				$this->fetch($recurse);
 			}
+				
+			#printArray(round(microtime(true) - RP_START_TIME, 4) . "s");
 		}
 		
 		/**
@@ -284,56 +286,66 @@
 			}
 			
 			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
-				$this->id = $this->db->fetchOne("SELECT id FROM loco_class WHERE slug = ?", $this->id);
+				$slugkey = sprintf("railpage:locos.class.id;fromslug=%s", $this->id);
+				
+				if ($id = getMemcacheObject($slugkey)) {
+					$this->id = $id;
+				} else {
+					$this->id = $this->db->fetchOne("SELECT id FROM loco_class WHERE slug = ?", $this->id);
+					
+					setMemcacheObject($slugkey, $this->id, strtotime("+1 week"));
+				}
 			}
 			
-			$this->mckey = "railpage:locos.class_id=" . $this->id; 
+			$this->mckey = sprintf("railpage:locos.class_id=%d", $this->id); 
 			$key = "id";
 			
-			if ($row = $this->getCache($this->mckey)) {
-				// Do nothing
-			} elseif ($this->db instanceof \sql_db) {
-				$query = "SELECT c.id, c.asset_id, c.slug, c.download_id, c.date_added, c.date_modified, c.model, c.axle_load, c.tractive_effort, c.weight, c.length, c.parent AS parent_class_id, c.source_id AS source, c.id AS class_id, c.flickr_tag, c.flickr_image_id, c.introduced AS class_introduced, c.name AS class_name, c.loco_type_id AS loco_type_id, c.desc AS class_desc, c.manufacturer_id AS class_manufacturer_id, m.manufacturer_name AS class_manufacturer, w.arrangement AS wheel_arrangement, w.id AS wheel_arrangement_id, t.title AS loco_type
-							FROM loco_class AS c
-							LEFT JOIN loco_type AS t ON c.loco_type_id = t.id
-							LEFT JOIN wheel_arrangements AS w ON c.wheel_arrangement_id = w.id
-							LEFT JOIN loco_manufacturer AS m ON m.manufacturer_id = c.manufacturer_id
-							WHERE c.".$key." = ".$this->db->real_escape_string($this->id);
-				
-				if ($rs = $this->db->query($query)) {
-					$row = $rs->fetch_assoc();
+			if (!$row = getMemcacheObject($this->mckey)) {
+				if ($this->db instanceof \sql_db) {
+					$query = "SELECT c.id, c.asset_id, c.slug, c.download_id, c.date_added, c.date_modified, c.model, c.axle_load, c.tractive_effort, c.weight, c.length, c.parent AS parent_class_id, c.source_id AS source, c.id AS class_id, c.flickr_tag, c.flickr_image_id, c.introduced AS class_introduced, c.name AS class_name, c.loco_type_id AS loco_type_id, c.desc AS class_desc, c.manufacturer_id AS class_manufacturer_id, m.manufacturer_name AS class_manufacturer, w.arrangement AS wheel_arrangement, w.id AS wheel_arrangement_id, t.title AS loco_type
+								FROM loco_class AS c
+								LEFT JOIN loco_type AS t ON c.loco_type_id = t.id
+								LEFT JOIN wheel_arrangements AS w ON c.wheel_arrangement_id = w.id
+								LEFT JOIN loco_manufacturer AS m ON m.manufacturer_id = c.manufacturer_id
+								WHERE c.".$key." = ".$this->db->real_escape_string($this->id);
 					
-					$this->setCache($this->mckey, $row, strtotime("+24 hours")); 
-				}
-			} else {
-				if (RP_DEBUG) {
-					global $site_debug;
-					$debug_timer_start = microtime(true);
-				}
-				
-				$query = "SELECT c.id, c.meta, c.asset_id, c.slug, c.download_id, c.date_added, c.date_modified, c.model, c.axle_load, c.tractive_effort, c.weight, c.length, c.parent AS parent_class_id, c.source_id AS source, c.id AS class_id, c.flickr_tag, c.flickr_image_id, c.introduced AS class_introduced, c.name AS class_name, c.loco_type_id AS loco_type_id, c.desc AS class_desc, c.manufacturer_id AS class_manufacturer_id, m.manufacturer_name AS class_manufacturer, w.arrangement AS wheel_arrangement, w.id AS wheel_arrangement_id, t.title AS loco_type
-							FROM loco_class AS c
-							LEFT JOIN loco_type AS t ON c.loco_type_id = t.id
-							LEFT JOIN wheel_arrangements AS w ON c.wheel_arrangement_id = w.id
-							LEFT JOIN loco_manufacturer AS m ON m.manufacturer_id = c.manufacturer_id
-							WHERE c.".$key." = ?";
-				
-				$row = $this->db->fetchRow($query, $this->id);
-				
-				if (RP_DEBUG) {
-					if ($row === false) {
-						$site_debug[] = "Zend_DB: FAILED select loco class ID/slug " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-					} else {
-						$site_debug[] = "Zend_DB: SUCCESS select loco class ID/slug " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+					if ($rs = $this->db->query($query)) {
+						$row = $rs->fetch_assoc();
+						
+						setMemcacheObject($this->mckey, $row, strtotime("+1 week")); 
 					}
+				} else {
+					if (RP_DEBUG) {
+						global $site_debug;
+						$debug_timer_start = microtime(true);
+					}
+					
+					$query = "SELECT c.id, c.meta, c.asset_id, c.slug, c.download_id, c.date_added, c.date_modified, c.model, c.axle_load, c.tractive_effort, c.weight, c.length, c.parent AS parent_class_id, c.source_id AS source, c.id AS class_id, c.flickr_tag, c.flickr_image_id, c.introduced AS class_introduced, c.name AS class_name, c.loco_type_id AS loco_type_id, c.desc AS class_desc, c.manufacturer_id AS class_manufacturer_id, m.manufacturer_name AS class_manufacturer, w.arrangement AS wheel_arrangement, w.id AS wheel_arrangement_id, t.title AS loco_type
+								FROM loco_class AS c
+								LEFT JOIN loco_type AS t ON c.loco_type_id = t.id
+								LEFT JOIN wheel_arrangements AS w ON c.wheel_arrangement_id = w.id
+								LEFT JOIN loco_manufacturer AS m ON m.manufacturer_id = c.manufacturer_id
+								WHERE c.".$key." = ?";
+					
+					$row = $this->db->fetchRow($query, $this->id);
+					
+					if (RP_DEBUG) {
+						if ($row === false) {
+							$site_debug[] = "Zend_DB: FAILED select loco class ID/slug " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+						} else {
+							$site_debug[] = "Zend_DB: SUCCESS select loco class ID/slug " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+						}
+					}
+					
+					foreach ($row as $key => $val) {
+						$row[$key] = convert_to_utf8($val);
+					}
+					
+					setMemcacheObject($this->mckey, $row, strtotime("+1 week")); 
 				}
-				
-				foreach ($row as $key => $val) {
-					$row[$key] = convert_to_utf8($val);
-				}
-				
-				$this->setCache($this->mckey, $row, strtotime("+24 hours")); 
 			}
+			
+			#printArray(" - " . round(microtime(true) - RP_START_TIME, 4) . "s");
 			
 			if (isset($row) && is_array($row)) {
 				
@@ -423,9 +435,8 @@
 				 */
 				
 				if (filter_var($row['flickr_image_id'], FILTER_VALIDATE_INT)) {
-					$Images = new \Railpage\Images\Images;
-					$this->Image = $Images->findImage("flickr", $row['flickr_image_id']);
-					$this->Image->addLink($this->namespace, $this->id);
+					$this->Image = (new \Railpage\Images\Images)->findImage("flickr", $row['flickr_image_id']);
+					#$this->Image->addLink($this->namespace, $this->id);
 				}
 				
 				/** 
@@ -471,6 +482,8 @@
 				
 				$this->StatsD->target->view = sprintf("%s.%d.view", $this->namespace, $this->id);
 				$this->StatsD->target->edit = sprintf("%s.%d.view", $this->namespace, $this->id);
+				
+				#printArray(round(microtime(true) - RP_START_TIME, 4) . "s");
 				
 				/*
 				// Child classes

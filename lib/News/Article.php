@@ -28,6 +28,22 @@
 	class Article extends Base {
 		
 		/**
+		 * Status: Approved
+		 * @since Version 3.9
+		 * @const STATUS_APPROVED
+		 */
+		
+		const STATUS_APPROVED = 1;
+		
+		/**
+		 * Status: Unapproved
+		 * @since Version 3.9
+		 * @const STATUS_UNAPPROVED
+		 */
+		
+		const STATUS_UNAPPROVED = 0;
+		
+		/**
 		 * Story ID
 		 * @since Version 3.0.1
 		 * @version 3.0.1
@@ -558,7 +574,6 @@
 						$this->db->delete("nuke_queue", array("qid = ?" => $this->id));
 						
 						$this->id = $id;
-						return true;
 					}
 				} else {
 					$this->approved = 1; 
@@ -566,10 +581,18 @@
 					$this->setStaff(new User($this->staff_user_id));
 					$this->date = new DateTime;
 					
-					$this->commit(); 
-					
-					return true;
+					$this->commit();
 				}
+				
+				/**
+				 * Flush the Memcache store for the news topic
+				 */
+				
+				if ($this->Topic instanceof Topic) {
+					deleteMemcacheObject($this->Topic->mckey);
+				}
+				
+				return true;
 			}
 		}
 		
@@ -608,10 +631,10 @@
 			$dataArray['approved'] 	= $this->approved; 
 			$dataArray['title']		= $this->title;
 			$dataArray['hometext']	= $this->blurb->__toString(); 
-			$dataArray['bodytext']	= $this->body->__toString(); 
+			$dataArray['bodytext']	= is_object($this->body) ? $this->body->__toString() : $this->body;
 			$dataArray['ForumThreadID']		= $this->topic_id; 
 			$dataArray['source']	= $this->source; 
-			$dataArray['user_id']	= $this->user_id; 
+			$dataArray['user_id']	= $this->Author instanceof User ? $this->Author->id : $this->user_id; 
 			$dataArray['staff_id']	= empty($this->staff_user_id) ? 0 : $this->staff_user_id;
 			$dataArray['geo_lat']	 	= empty($this->lat) ? 0 : $this->lat; 
 			$dataArray['geo_lon']		= empty($this->lon) ? 0 : $this->lon;  
@@ -620,12 +643,14 @@
 			$dataArray['slug'] = $this->createSlug();
 			$dataArray['topic'] = $this->Topic->id;
 			
+			#ssprintArray($dataArray);die;
+			
 			if ($this->featured_image !== false) {
 				$dataArray['featured_image'] = $this->featured_image;
 			}
 			
-			if (!empty($this->username)) {
-				$dataArray['informant'] = $this->username;
+			if (!empty($this->username) || $this->Author instanceof User) {
+				$dataArray['informant'] = $this->Author instanceof User ? $this->Author->username : $this->username;
 			}
 			
 			/**
@@ -669,13 +694,25 @@
 				return false;
 			}
 			
-			if (empty($this->body)) {
+			if (empty($this->body) && empty($this->source)) {
 				throw new Exception("Validation failed: body is empty"); 
 				return false;
 			}
 			
+			if (is_null($this->body)) {
+				$this->body = "";
+			}
+			
 			if (!isset($this->Author) || !$this->Author instanceof User) {
 				$this->Author = new User($this->user_id);
+			}
+			
+			if (!$this->date instanceof DateTime) {
+				$this->date = new DateTime;
+			}
+			
+			if (!filter_var($this->approved)) {
+				$this->approved = self::STATUS_UNAPPROVED;
 			}
 			
 			/**
@@ -787,6 +824,19 @@
 			} else {
 				return $this->makeJSON();
 			}
+		}
+		
+		/**
+		 * Set the article topic
+		 * @since Version 3.9
+		 * @param \Railpage\News\Topic $Topic
+		 * @return \Railpage\News\Article
+		 */
+		
+		public function setTopic(Topic $Topic) {
+			$this->Topic = $Topic;
+			
+			return $this;
 		}
 	}
 ?>
