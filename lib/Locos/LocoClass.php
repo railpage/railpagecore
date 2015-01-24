@@ -341,7 +341,7 @@
 						$row[$key] = convert_to_utf8($val);
 					}
 					
-					setMemcacheObject($this->mckey, $row, strtotime("+1 week")); 
+					setMemcacheObject($this->mckey, $row, strtotime("+1 month")); 
 				}
 			}
 			
@@ -428,15 +428,6 @@
 						global $Error; 
 						$Error->save($e); 
 					}
-				}
-				
-				/**
-				 * Try to load the Image object
-				 */
-				
-				if (filter_var($row['flickr_image_id'], FILTER_VALIDATE_INT)) {
-					$this->Image = (new \Railpage\Images\Images)->findImage("flickr", $row['flickr_image_id']);
-					#$this->Image->addLink($this->namespace, $this->id);
 				}
 				
 				/** 
@@ -1301,6 +1292,12 @@
 		
 		public function getCoverImage() {
 			
+			$mckey = sprintf("railpage:locos.class.coverimage;id=%d", $this->id);
+			
+			if ($result = getMemcacheObject($mckey)) {
+				return $result;
+			}
+			
 			/**
 			 * Image stored in meta data
 			 */
@@ -1308,7 +1305,7 @@
 			if (isset($this->meta['coverimage'])) {
 				$Image = new Image($this->meta['coverimage']['id']);
 				
-				return array(
+				$return = array(
 					"type" => "image",
 					"provider" => $Image->provider,
 					"title" => $Image->title,
@@ -1324,6 +1321,10 @@
 					"sizes" => $Image->sizes,
 					"url" => $Image->url->getURLs()
 				);
+				
+				setMemcacheObject($mckey, $return, strtotime("+1 month"));
+				
+				return $return;
 			}
 			
 			/**
@@ -1331,7 +1332,7 @@
 			 */
 			
 			if ($this->Asset instanceof Asset) {
-				return array(
+				$return = array(
 					"type" => "asset",
 					"provider" => "", // Set this to AssetProvider soon
 					"title" => $Asset->meta['title'],
@@ -1353,6 +1354,10 @@
 						"url" => $Asset['meta']['image'],
 					)
 				);
+				
+				setMemcacheObject($mckey, $return, strtotime("+1 month"));
+				
+				return $return;
 			}
 			
 			/**
@@ -1363,7 +1368,7 @@
 				$Images = new Images;
 				$Image = $Images->findImage("flickr", $this->flickr_image_id);
 				
-				return array(
+				$return = array(
 					"type" => "image",
 					"provider" => $Image->provider,
 					"title" => $Image->title,
@@ -1379,6 +1384,10 @@
 					"sizes" => $Image->sizes,
 					"url" => $Image->url->getURLs()
 				);
+				
+				setMemcacheObject($mckey, $return, strtotime("+1 month"));
+				
+				return $return;
 			}
 			
 			/**
@@ -1396,6 +1405,10 @@
 		 */
 		
 		public function setCoverImage($Image) {
+			
+			$mckey = sprintf("railpage:locos.class.coverimage;id=%d", $this->id);
+			
+			deleteMemcacheObject($mckey);
 			
 			/**
 			 * Zero out any existing images

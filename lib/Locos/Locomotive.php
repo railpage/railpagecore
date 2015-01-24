@@ -346,7 +346,7 @@
 					if (!$this->id = getMemcacheObject(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id_or_slug, $number))) {
 						$this->id = $this->db->fetchOne("SELECT loco_id FROM loco_unit WHERE class_id = ? AND loco_num = ?", array($class_id_or_slug, $number)); 
 						
-						setMemcacheObject(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id_or_slug, $number), $this->id, strtotime("+1 week"));
+						setMemcacheObject(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id_or_slug, $number), $this->id, strtotime("+1 month"));
 					}
 				}
 			} else {
@@ -413,7 +413,7 @@
 					}
 				}
 					
-				$this->setCache($this->mckey, $row, strtotime("+24 hours")); 
+				setMemcacheObject($this->mckey, $row, strtotime("+1 month")); 
 			}
 			
 			if (isset($row) && is_array($row)) {
@@ -491,16 +491,6 @@
 				}
 				
 				/**
-				 * Try to load the Image object
-				 */
-				
-				if (filter_var($row['photo_id'], FILTER_VALIDATE_INT)) {
-					$Images = new \Railpage\Images\Images;
-					$this->Image = $Images->findImage("flickr", $row['photo_id']);
-					$this->Image->addLink($this->namespace, $this->id);
-				}
-				
-				/**
 				 * Get all owners of this locomotive
 				 */
 				
@@ -554,17 +544,6 @@
 				} catch (Exception $e) {
 					global $Error; 
 					$Error->save($e); 
-				}
-				
-				
-				/**
-				 * Get the average rating of the data of this loco
-				 */
-				
-				try {
-					$this->rating = $this->getRating();
-				} catch (Exception $e) {
-					// Do nothing for now
 				}
 				
 				/**
@@ -643,6 +622,7 @@
 				 * Populate the list of liveries
 				 */
 				
+				/*
 				foreach ($this->db->fetchAll("SELECT lu.livery_id FROM loco_unit_livery AS lu LEFT JOIN loco_livery AS li ON lu.livery_id = li.livery_id WHERE lu.loco_id = ? ORDER BY li.livery", $this->id) as $row) {
 					$Livery = new Livery($row['livery_id']);
 					
@@ -671,6 +651,7 @@
 					
 					$this->liveries[] = $livery;
 				}
+				*/
 				
 				/**
 				 * Set the StatsD namespaces

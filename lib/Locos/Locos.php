@@ -427,7 +427,7 @@
 			
 			$mckey = "railpage:loco.manufacturers"; 
 			
-			if ($return = $this->getCache($mckey)) {
+			if ($return = getMemcacheObject($mckey)) {
 				return $return;
 			} else {
 				$return['stat'] = "ok"; 
@@ -715,7 +715,7 @@
 				return false;
 			}
 			
-			$this->deleteCache("railpage:loco.manufacturers"); 
+			deleteMemcacheObject("railpage:loco.manufacturers"); 
 			
 			$data = array(
 				"manufacturer_name" => $builder_name
@@ -1688,7 +1688,15 @@
 				}
 			}
 			
-			return new LocoClass(array_rand($ids));
+			shuffle($ids);
+			
+			foreach ($ids as $id) {
+				$LocoClass = new LocoClass($id);
+				
+				if (!empty($LocoClass->desc) && $LocoClass->getCoverImage()) {
+					return $LocoClass;
+				}
+			}
 		}
 		
 		/**
