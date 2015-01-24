@@ -190,5 +190,15 @@
 			
 			return $this;
 		}
+		
+		/**
+		 * Get staged articles 
+		 * @since Version 3.9
+		 * @return array
+		 */
+		
+		public function getArticles() {
+			return $this->articles;
+		}
 	}
 ?>
