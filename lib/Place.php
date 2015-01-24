@@ -14,8 +14,7 @@
 	use Railpage\Locations\Region;
 	use Railpage\Locations\Location;
 	
-	use Railpage\GTFS\AU\TFNSW;
-	use Railpage\GTFS\AU\PTV;
+	use Railpage\GTFS\GTFS;
 	
 	use Exception;
 	use stdClass;
@@ -275,7 +274,17 @@
 		 */
 		
 		public function getGTFSPlaces() {
-	
+			
+			$places = array();
+			
+			foreach ((new GTFS)->getProviders() as $Provider) {
+				
+				if (is_object($Provider) && method_exists($Provider, "StopsNearLocation")) {
+					$places[$Provider::PROVIDER_COUNTRY_SHORT][$Provider::PROVIDER_NAME] = $Provider->StopsNearLocation($this->lat, $this->lon);
+				}
+			}
+			
+			/*
 			$providers = array(
 				"AU" => array(
 					"PTV", 
@@ -294,6 +303,9 @@
 					$places[$country][$GTFS->provider] = $GTFS->StopsNearLocation($this->lat, $this->lon);
 				}
 			}
+			*/
+			
+			
 			
 			return $places;
 		}
