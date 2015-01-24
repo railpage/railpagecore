@@ -6,7 +6,7 @@
 	 * @author Michael Greenhill
 	 */
 	
-	namespace Railpage\GTFS\AU\TransPerth;
+	namespace Railpage\GTFS\AU\WA\TransPerth;
 	
 	use Exception;
 	use DateTime;

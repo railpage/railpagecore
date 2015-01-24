@@ -1,12 +1,12 @@
 <?php
 	/**
-	 * TransPerth GTFS stop/place class
+	 * TFNSW GTFS stop/place class
 	 * @since Version 3.8.7
 	 * @package Railpage
 	 * @author Michael Greenhill
 	 */
 	
-	namespace Railpage\GTFS\AU\TransPerth;
+	namespace Railpage\GTFS\AU\NSW\TFNSW;
 	
 	use Exception;
 	use DateTime;
@@ -19,7 +19,7 @@
 	use Railpage\GTFS\StandardStop;
 	
 	/**
-	 * GTFS stop for the AU\TransPerth GTFS provider
+	 * GTFS stop for the AU\TFNSW GTFS provider
 	 * @since Version 3.8.7
 	 */
 	
@@ -32,7 +32,7 @@
 		 */
 		
 		public function __construct($id = false) {
-			$this->Provider = new TransPerth; 
+			$this->Provider = new TFNSW; 
 			
 			parent::__construct($id);
 		}

@@ -69,14 +69,33 @@
 		/**
 		 * Yield providers as new objects
 		 * @since Version 3.9
-		 * @yield object A Railpage GTFS instance, eg \Railpage\GTFS\AU\TFNSW
-		 * @return object A Railpage GTFS instance, eg \Railpage\GTFS\AU\TFNSW
+		 * @yield object A Railpage GTFS instance, eg \Railpage\GTFS\AU\TFNSW\TFNSW
+		 * @return object A Railpage GTFS instance, eg \Railpage\GTFS\AU\TFNSW\TFNSW
 		 */
 		
 		public function yieldProviders($region = false) {
 			foreach ($this->getProviders($region) as $provider) {
 				yield new $provider;
 			}
+		}
+		
+		/**
+		 * Get a single provider matching a given string
+		 * @since Version 3.9
+		 * @param string $name
+		 * @return object A Railpage GTFS instance, eg \Railpage\GTFS\AU\SA\AdelaideMetro\AdelaideMetro
+		 */
+		
+		public function getProvider($name = false) {
+			if (!$name) {
+				throw new Exception("No name provided to filter by");
+			}
+			
+			foreach ($this->getProviders($name) as $provider) {
+				return new $provider;
+			}
+			
+			return false;
 		}
 	}
 ?>

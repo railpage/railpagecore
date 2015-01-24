@@ -6,7 +6,7 @@
 	 * @author Michael Greenhill
 	 */
 	
-	namespace Railpage\GTFS\AU\PTV;
+	namespace Railpage\GTFS\AU\VIC\PTV;
 	
 	use Exception;
 	use DateTime;
@@ -16,6 +16,7 @@
 	use Zend\Db\Adapter\Adapter;
 	use Railpage\GTFS\GTFSInterface;
 	use Railpage\GTFS\StandardProvider;
+	use Railpage\Url;
 	
 	/**
 	 * PTV provider class for GTFS
@@ -38,6 +39,46 @@
 		 */
 		
 		const PROVIDER_NAME = "PTV";
+		
+		/**
+		 * Continent of origin
+		 * @since Version 3.9
+		 * @const string PROVIDER_CONTINENT
+		 */
+		
+		const PROVIDER_CONTINENT = "Oceana";
+		
+		/**
+		 * Country of origin
+		 * @since Version 3.9
+		 * @const string PROVIDER_COUNTRY
+		 */
+		
+		const PROVIDER_COUNTRY = "Australia";
+		
+		/**
+		 * Country of origin
+		 * @since Version 3.9
+		 * @const string PROVIDER_COUNTRY_SHORT
+		 */
+		
+		const PROVIDER_COUNTRY_SHORT = "AU";
+		
+		/**
+		 * State or region of origin
+		 * @since Version 3.9
+		 * @const string PROVIDER_REGION
+		 */
+		
+		const PROVIDER_REGION = "Victoria";
+		
+		/**
+		 * State or region of origin
+		 * @since Version 3.9
+		 * @const string PROVIDER_REGION_SHORT
+		 */
+		
+		const PROVIDER_REGION_SHORT = "VIC";
 		
 		/**
 		 * Database table prefix
@@ -170,7 +211,12 @@
 				throw new Exception("Cannot fetch API query - no API method defined");
 			}
 			
-			$url = strlen($method) > 0 ? "/v2/" . $method : "/v2";
+			if ($method == "stops-for-line") {
+				$url = "/v2";
+			} else {
+				$url = strlen($method) > 0 ? "/v2/" . $method : "/v2";
+			}
+			
 			$Date = new DateTime;
 			$data = array();
 			
@@ -184,12 +230,20 @@
 			 * Loop through $parameters and add to the URL
 			 */
 			
-			foreach ($parameters as $key => $val) {
-				if (is_array($val)) {
-					// Figure it out later
-				} else {
-					$url .= "/" . urlencode($key) . "/" . urlencode($val); 
+			if ($method == "search") {
+				$url .= "/" . urlencode($parameters[0]);
+			} else {
+				foreach ($parameters as $key => $val) {
+					if (is_array($val)) {
+						// Figure it out later
+					} else {
+						$url .= "/" . urlencode($key) . "/" . urlencode($val); 
+					}
 				}
+			}
+			
+			if ($method == "stops-for-line") {
+				$url .= "/" . urlencode($method);
 			}
 			
 			/**
@@ -310,6 +364,156 @@
 			}
 			
 			return $return;
+		}
+		
+		/**
+		 * Get a train object
+		 * @since Version 3.9
+		 * @return object
+		 */
+		
+		public function getRoute($id = false) {
+			return new Route($id, $this);
+		}
+		
+		/**
+		 * Get routes serviced by this provider
+		 * @since Version 3.9
+		 * @return array
+		 */
+		
+		public function getRoutes() {
+			
+			$params = array("line");
+			
+			$results = $this->fetch("search", $params);
+			
+			$routes = array(); 
+			
+			foreach ($results as $row) {
+				if ($row['result']['transport_type'] == "train") {
+					$routes[$row['result']['line_id']] = array(
+						"id" => $row['result']['line_id'],
+						"route_id" => $row['result']['line_id'],
+						"agency_id" => 1,
+						"route_short_name" => $row['result']['line_number'],
+						"route_long_name" => $row['result']['line_name'],
+						"route_desc" => "",
+						"route_url" => "",
+						"route_color" => "",
+						"route_text_color" => "",
+						"url" => new Url(sprintf("%s/timetables?provider=%s&id=%d", RP_WEB_ROOT, static::PROVIDER_NAME, $row['result']['line_id']))
+					);
+				}
+			}
+			
+			return $routes;
+			
+			/*
+			$routes = array(
+				array(
+					"id" => 1,
+					"route_id" => 1,
+					"agency_id" => 1,
+					"route_short_name" => "Alamein Line",
+					"route_long_name" => "Alamein Line",
+					"route_desc" => "",
+					"route_url" => "",
+					"route_color" => "",
+					"route_text_color" => ""
+				),
+				array(
+					"id" => 2,
+					"route_id" => 2,
+					"agency_id" => 1,
+					"route_short_name" => "Belgrave Line",
+					"route_long_name" => "Belgrave Line",
+					"route_desc" => "",
+					"route_url" => "",
+					"route_color" => "",
+					"route_text_color" => ""
+				),
+				array(
+					"id" => 3,
+					"route_id" => 3,
+					"agency_id" => 1,
+					"route_short_name" => "Craigieburn Line",
+					"route_long_name" => "Craigieburn Line",
+					"route_desc" => "",
+					"route_url" => "",
+					"route_color" => "",
+					"route_text_color" => ""
+				),
+				array(
+					"id" => 4,
+					"route_id" => 4,
+					"agency_id" => 1,
+					"route_short_name" => "Cranbourne Line",
+					"route_long_name" => "Cranbourne Line",
+					"route_desc" => "",
+					"route_url" => "",
+					"route_color" => "",
+					"route_text_color" => ""
+				),
+				array(
+					"id" => 6,
+					"route_id" => 6,
+					"agency_id" => 1,
+					"route_short_name" => "Frankston Line",
+					"route_long_name" => "Frankston Line",
+					"route_desc" => "",
+					"route_url" => "",
+					"route_color" => "",
+					"route_text_color" => ""
+				),
+				array(
+					"id" => 7,
+					"route_id" => 7,
+					"agency_id" => 1,
+					"route_short_name" => "Glen Waverley Line",
+					"route_long_name" => "Glen Waverley Line",
+					"route_desc" => "",
+					"route_url" => "",
+					"route_color" => "",
+					"route_text_color" => ""
+				),
+				array(
+					"id" => 8,
+					"route_id" => 8,
+					"agency_id" => 1,
+					"route_short_name" => "Hurstbridge Line",
+					"route_long_name" => "Hurstbridge Line",
+					"route_desc" => "",
+					"route_url" => "",
+					"route_color" => "",
+					"route_text_color" => ""
+				),
+				array(
+					"id" => 9,
+					"route_id" => 9,
+					"agency_id" => 1,
+					"route_short_name" => "Lilydale Line",
+					"route_long_name" => "Lilydale Line",
+					"route_desc" => "",
+					"route_url" => "",
+					"route_color" => "",
+					"route_text_color" => ""
+				),
+				array(
+					"id" => 11,
+					"route_id" => 11,
+					"agency_id" => 1,
+					"route_short_name" => "Pakenham Line",
+					"route_long_name" => "Pakenham Line",
+					"route_desc" => "",
+					"route_url" => "",
+					"route_color" => "",
+					"route_text_color" => ""
+				)
+			);
+			*/
+			
+			printArray($routes);
 		}
 	}
 ?>

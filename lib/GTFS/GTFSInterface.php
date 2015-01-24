@@ -47,5 +47,13 @@
 		 */
 		
 		public function StopsNearLocation($latitude, $longitude);
+		
+		/**
+		 * Get routes from GTFS data
+		 * @since Version 3.9
+		 * @return array
+		 */
+		
+		public function GetRoutes();
 	}
 ?>

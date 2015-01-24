@@ -15,12 +15,21 @@
 	use Zend\Db\Sql\Select;
 	use Zend\Db\Adapter\Adapter;
 	use Railpage\GTFS\GTFSInterface;
+	use Railpage\Url;
 	
 	/**
 	 * Standard GTFS provider class for GTFS
 	 */
 	
 	class StandardProvider implements GTFSInterface {
+		
+		/**
+		 * Route type: rail
+		 * @since Version 3.9
+		 * @const int ROUTE_RAIL
+		 */
+		
+		const ROUTE_RAIL = 2;
 		
 		/**
 		 * Timetable data source
@@ -116,11 +125,13 @@
 							  * sin( radians( stop_lat ) )
 							)
 						) AS distance
-						FROM au_syd_stops
+						FROM %s_stops
 						WHERE location_type = 1
 						HAVING distance < 3
 						ORDER BY distance
 						LIMIT 0 , 50";
+			
+			$query = sprintf($query, static::DB_PREFIX);
 			
 			$result = $this->adapter->query($query, Adapter::QUERY_MODE_EXECUTE); 
 			
@@ -145,7 +156,47 @@
 		 */
 		
 		public function getDbPrefix() {
-			return self::DB_PREFIX;
+			return static::DB_PREFIX;
+		}
+		
+		/**
+		 * Get the provider name
+		 * @since Version 3.9
+		 * @return string
+		 */
+		
+		public function getProviderName() {
+			return static::PROVIDER_NAME;
+		}
+		
+		/**
+		 * Get routes from GTFS data
+		 * @since Version 3.9
+		 * @return array
+		 */
+		
+		public function GetRoutes() {
+			$query = sprintf("SELECT id, route_id, route_short_name, route_long_name, route_desc, route_url FROM %s_routes WHERE route_type = %d ORDER BY route_short_name", static::DB_PREFIX, self::ROUTE_RAIL); 
+			$result = $this->adapter->query($query, Adapter::QUERY_MODE_EXECUTE);
+			
+			$routes = array();  
+			
+			if ($result) {
+				foreach ($result as $row) {
+					$row = $row->getArrayCopy();
+					
+					$row['provider'] = array(
+						"name" => static::PROVIDER_NAME,
+						"class" => get_class($this)
+					);
+					
+					$row['url'] = new Url(sprintf("%s/timetables?provider=%s&id=%d", RP_WEB_ROOT, static::PROVIDER_NAME, $row['id']));
+					
+					$routes[$row['id']] = $row;
+				}
+			}
+			
+			return $routes;
 		}
 	}
 ?>

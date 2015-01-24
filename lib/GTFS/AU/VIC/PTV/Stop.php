@@ -6,7 +6,7 @@
 	 * @author Michael Greenhill
 	 */
 	
-	namespace Railpage\GTFS\AU\PTV;
+	namespace Railpage\GTFS\AU\VIC\PTV;
 	
 	use Exception;
 	use DateTime;
