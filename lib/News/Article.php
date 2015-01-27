@@ -10,6 +10,7 @@
 	 
 	namespace Railpage\News;
 	
+	use SphinxClient;
 	use DateTime;
 	use DateTimeZone;
 	use Exception;
@@ -837,6 +838,27 @@
 			$this->Topic = $Topic;
 			
 			return $this;
+		}
+		
+		/**
+		 * Find related news articles
+		 * @since Version 3.9
+		 * @return array
+		 * @param int $num The maximum number of results to return
+		 */
+		
+		public function getRelatedArticles($num = 5) {
+			$Sphinx = new SphinxClient;
+			$Sphinx->setServer($this->Config->Sphinx->Host, 9306);
+			$Sphinx->setMatchMode(SPH_MATCH_ANY);
+			$Sphinx->setFilter("topic_id", array($this->Topic->id));
+			$Sphinx->setFilter("story_id", array($this->id), true);
+			$Sphinx->setFilterRange("story_time_unix", strtotime("1 year ago"), time());
+			$Sphinx->setLimits(0, $num);
+			
+			$results = $Sphinx->query($Sphinx->escapeString($this->title), "idx_news_article");
+			
+			return $results['matches'];
 		}
 	}
 ?>
