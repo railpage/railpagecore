@@ -3,7 +3,7 @@
 	/**
 	 * Forums API
 	 * @since Version 3.0.1
-	 * @version 3.8.7
+	 * @version 3.9
 	 * @package Railpage
 	 * @author James Morgan, Michael Greenhill
 	 */
@@ -19,6 +19,7 @@
 	use Zend_Acl;
 	use Zend_Acl_Resource;
 	use Zend_Acl_Role;
+	use ReflectionClass;
 
 	define("RP_THREAD_LOCKED", 1);
 	define("RP_THREAD_UNLOCKED", 0);
@@ -31,6 +32,22 @@
 	 */
 	 
 	class Forums extends AppCore {
+		
+		/**
+		 * Reputation integer ID: like
+		 * @since Version 3.9
+		 * @const int REPUTATION_LIKE
+		 */
+		
+		const REPUTATION_LIKE = 1;
+		
+		/**
+		 * Reputation integer ID: informative
+		 * @since Version 3.9
+		 * @const int REPUTATION_INFORMATIVE
+		 */
+		
+		const REPUTATION_INFORMATIVE = 2;
 		
 		/**
 		 * Auth: list all
@@ -752,6 +769,26 @@
 			}
 			
 			return $return;
+		}
+		
+		/**
+		 * Get forum reputation names/values
+		 * @since Version 3.9
+		 * @return array
+		 */
+		
+		public function getReputationTypes() {
+			$reflect = new ReflectionClass(get_class($this));
+			
+			$reps = array(); 
+			
+			foreach ($reflect->getConstants() as $name => $value) {
+				if (strpos($name, "REPUTATION_") !== false) {
+					$reps[$name] = $value;
+				}
+			}
+			
+			return $reps;
 		}
 	}
 ?>

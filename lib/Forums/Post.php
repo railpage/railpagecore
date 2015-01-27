@@ -3,7 +3,7 @@
 	/**
 	 * Forums API
 	 * @since Version 3.0.1
-	 * @version 3.2
+	 * @version 3.9
 	 * @package Railpage
 	 * @author James Morgan, Michael Greenhill
 	 */
