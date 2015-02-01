@@ -153,9 +153,10 @@
 		 * Store jobs in the database
 		 * @since Version 3.9
 		 * @return \Railpage\News\Scraper
+		 * @param boolean $logging Enable verbose logging of this feature
 		 */
 		
-		public function store() {
+		public function store($logging = false) {
 			
 			/**
 			 * Get Sphinx so we can lookup similar articles to prevent duplicates
@@ -185,6 +186,10 @@
 					$Article->body = $article['body'];
 					
 					$Article->setTopic($article['topic'])->setAuthor(new User(User::SYSTEM_USER_ID))->commit(true);
+					
+					if ($logging) {
+						printf("Added news article \"%s\" (ID %d) in topic %s\n", $Article->title, $Article->id, $Article->Topic->name);
+					}
 				}
 			}
 			
