@@ -174,7 +174,7 @@
 					$this->Organisation = new Organisation($row['organisation_id']);
 				}
 				
-				if (round($row['lat'], 3) != "0.000" && round($row['lon'], 3) != "0.000") {
+				if (!empty($row['lat']) && round($row['lat'], 3) != "0.000" && !empty($row['lon']) && round($row['lon'], 3) != "0.000") {
 					$this->Place = new Place($row['lat'], $row['lon']);
 				}
 				

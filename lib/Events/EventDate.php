@@ -110,6 +110,14 @@
 						$this->End = new DateTime($row['date'] . " " . $row['end']);
 					}
 					
+					if (isset($this->meta['lat']) && empty($this->meta['lat'])) {
+						unset($this->meta['lat']);
+					}
+					
+					if (isset($this->meta['lon']) && empty($this->meta['lon'])) {
+						unset($this->meta['lon']);
+					}
+					
 					if (isset($this->meta['lat']) && isset($this->meta['lon'])) {
 						$this->Place = new Place($this->meta['lat'], $this->meta['lon']);
 					}
