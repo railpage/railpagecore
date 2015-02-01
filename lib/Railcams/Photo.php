@@ -247,6 +247,16 @@
 		}
 		
 		/**
+		 * Delete this photo
+		 * @since Version 3.9.1
+		 * @return boolean
+		 */
+		
+		public function delete() {
+			return $this->Provider->deletePhoto($this);
+		}
+		
+		/**
 		 * Get previous photo
 		 * @since Version 3.9
 		 * @return \Railpage\Railcams\Photo

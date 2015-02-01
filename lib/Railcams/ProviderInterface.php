@@ -58,5 +58,14 @@
 		
 		public function getPhotoContext(Photo $Photo);
 		
+		/**
+		 * Delete this photo
+		 * @since Version 3.9.1
+		 * @return boolean
+		 * @param \Railpage\Railcams\Photo $Photo
+		 */
+		
+		public function deletePhoto(Photo $Photo);
+		
 	}
 ?>
