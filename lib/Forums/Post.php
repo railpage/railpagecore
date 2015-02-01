@@ -683,7 +683,7 @@
 		/**
 		 * Make links to this post
 		 * @since Version 3.8.7
-		 * @return $this
+		 * @return \Railpage\Forums\Post
 		 */
 		
 		public function makeLinks() {
@@ -702,6 +702,105 @@
 			}
 			
 			return $this;
+		}
+		
+		/**
+		 * Add a reputation marker to this post
+		 * @since Version 3.9
+		 * @param int $reputation_type_id
+		 * @return int
+		 */
+		
+		public function addReputationMarker($reputation_type_id = false) {
+			if (!filter_var($reputation_type_id, FILTER_VALIDATE_INT)) {
+				throw new Exception("Cannot add a reputation marker to this post because the supplied type ID (\$reputation_type_id) is not valid");
+			}
+			
+			if (!$this->User instanceof User) {
+				throw new Exception("Cannot add a reputation marker to this post because no valid user object has been specified");
+			}
+			
+			/**
+			 * Check if this user has already rated this post
+			 */
+			
+			$query = "SELECT id FROM nuke_bbposts_reputation WHERE post_id = ? AND user_id = ?";
+			
+			$id = $this->db->fetchOne($query, array($this->id, $this->User->id));
+			
+			/**
+			 * Add the rating
+			 */
+			
+			$data = array(
+				"post_id" => $this->id,
+				"type" => $reputation_type_id,
+				"user_id" => $this->User->id
+			);
+			
+			$markers = $this->getReputationMarkers(); 
+			
+			foreach ($markers as $marker) {
+				if ($marker['id'] == $reputation_type_id) {
+					$reputation_type_name = $marker['name'];
+					break;
+				}
+			}
+			
+			if (filter_var($id, FILTER_VALIDATE_INT)) {
+				$where = array(
+					"id = ?" => $id
+				);
+				
+				$this->db->update("nuke_bbposts_reputation", $data, $where); 
+			} else {
+				$this->db->insert("nuke_bbposts_reputation", $data); 
+				$id = $this->db->lastInsertId(); 
+			}
+			
+			/** 
+			 * Add a note to this user
+			 */
+			
+			try {
+				$this->User->addNote(sprintf("Rated <a href='%s'>Post ID %d</a> as %s", $this->url->url, $this->id, $reputation_type_name));
+			} catch (Exception $e) {
+				// Throw it away
+			}
+			
+			$markers = $this->getReputationMarkers(true); 
+			
+			return $id;
+		}
+		
+		/**
+		 * Get reputation markers for this post
+		 * @since Version 3.9
+		 * @return array
+		 * @param boolean $force Force an update, removing whatever is cached in Memcache
+		 */
+		
+		public function getReputationMarkers($force = false) {
+			$mckey = sprintf("railpage:forums.post;id=%d;getreputationmarkers", $this->id);
+			
+			if ($force) {
+				deleteMemcacheObject($mckey); 
+			}
+			
+			if ($force || !$types = getMemcacheObject($mckey)) {
+				$query = "SELECT r.*, u.username FROM nuke_bbposts_reputation AS r LEFT JOIN nuke_users AS u ON r.user_id = u.user_id WHERE r.post_id = ?";
+				
+				$types = $this->getReputationTypes(); 
+				
+				foreach ($this->db->fetchAll($query, $this->id) as $row) {
+					$types[$row['type']]['votes'][] = $row;
+					$types[$row['type']]['count'] = count($types[$row['type']]['votes']);
+				}
+				
+				setMemcacheObject($mckey, $types);
+			}
+			
+			return $types;
 		}
 	}
 ?>

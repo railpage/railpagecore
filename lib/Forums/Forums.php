@@ -11,10 +11,14 @@
 	namespace Railpage\Forums;
 	
 	use Railpage\Users\User;
+	use Railpage\Forums\Post;
+	use Railpage\Forums\Forums;
 	use Railpage\AppCore;
 	use Railpage\Module;
 	use Exception;
 	use DateTime;
+	use DateTimeZone;
+	use DateInterval;
 	use stdClass;
 	use Zend_Acl;
 	use Zend_Acl_Resource;
@@ -32,22 +36,6 @@
 	 */
 	 
 	class Forums extends AppCore {
-		
-		/**
-		 * Reputation integer ID: like
-		 * @since Version 3.9
-		 * @const int REPUTATION_LIKE
-		 */
-		
-		const REPUTATION_LIKE = 1;
-		
-		/**
-		 * Reputation integer ID: informative
-		 * @since Version 3.9
-		 * @const int REPUTATION_INFORMATIVE
-		 */
-		
-		const REPUTATION_INFORMATIVE = 2;
 		
 		/**
 		 * Auth: list all
@@ -777,18 +765,130 @@
 		 * @return array
 		 */
 		
-		public function getReputationTypes() {
-			$reflect = new ReflectionClass(get_class($this));
-			
-			$reps = array(); 
-			
-			foreach ($reflect->getConstants() as $name => $value) {
-				if (strpos($name, "REPUTATION_") !== false) {
-					$reps[$name] = $value;
-				}
-			}
+		public static function getReputationTypes() {
+			$reps = array(
+				1 => array(
+					"id" => 1,
+					"name" => "Like",
+					"icon" => "<span class='glyphicon glyphicon-thumbs-up'></span>",
+					"count" => 0
+				),
+				2 => array(
+					"id" => 2,
+					"name" => "Informative",
+					"icon" => "<span class='glyphicon glyphicon-info-sign'></span>",
+					"count" => 0
+				),
+				3 => array(
+					"id" => 3,
+					"name" => "Helpful",
+					"icon" => "<span class='glyphicon glyphicon-flash'></span>",
+					"count" => 0
+				),
+				4 => array(
+					"id" => 4,
+					"name" => "Funny",
+					"icon" => "<span class='glyphicon glyphicon-heart-empty'></span>",
+					"count" => 0
+				),
+				5 => array(
+					"id" => 5,
+					"name" => "Agree",
+					"icon" => "<span class='glyphicon glyphicon-ok'></span>",
+					"count" => 0
+				),
+				6 => array(
+					"id" => 6,
+					"name" => "Disagree",
+					"icon" => "<span class='glyphicon glyphicon-remove'></span>",
+					"count" => 0
+				),
+			);
 			
 			return $reps;
+		}
+		
+		/**
+		 * Get latest post ratings/reputation rankings
+		 * @since Version 3.9.1
+		 * @return array
+		 * @param int $limit Number of results to return
+		 */
+		
+		public function getLatestPostRatings($limit = 10) {
+			$query = "SELECT r.*, u.username, t.topic_title, f.forum_name, p.poster_id
+						FROM nuke_bbposts_reputation AS r 
+							LEFT JOIN nuke_users AS u ON r.user_id = u.user_id 
+							LEFT JOIN nuke_bbposts AS p ON r.post_id = p.post_id
+							LEFT JOIN nuke_bbtopics AS t ON p.topic_id = t.topic_id
+							LEFT JOIN nuke_bbforums AS f ON p.forum_id = f.forum_id
+						ORDER BY r.date DESC
+						LIMIT 0, ?";
+			
+			$ratings = array();
+			
+			$reputationtypes = $this->getReputationTypes(); 
+			
+			foreach ($this->db->fetchAll($query, $limit) as $row) {
+				$Date = new DateTime($row['date'], new DateTimeZone($this->User->timezone));
+				
+				$row['date'] = array(
+					"absolute" => $Date->format($this->User->date_format),
+					"relative" => time2str($Date->getTimestamp())
+				);
+				
+				$row['type'] = $reputationtypes[$row['type']];
+				
+				$ThisUser = new User($row['user_id']);
+				$row['user'] = array(
+					"id" => $ThisUser->id,
+					"username" => $ThisUser->username,
+					"url" => $ThisUser->url->getURLs()
+				);
+				
+				$ThisUser = new User($row['poster_id']);
+				$row['author'] = array(
+					"id" => $ThisUser->id,
+					"username" => $ThisUser->username,
+					"url" => $ThisUser->url->getURLs()
+				);
+				
+				$Post = new Post($row['post_id']);
+				
+				$row['post'] = array(
+					"id" => $Post->id,
+					"url" => $Post->url->getURLs()
+				);
+				
+				$row['thread'] = array(
+					"id" => $Post->thread->id,
+					"title" => $Post->thread->title,
+					"url" => $Post->thread->url->getURLs()
+				);
+				
+				$row['forum'] = array(
+					"id" => $Post->thread->forum->id,
+					"name" => $Post->thread->forum->name,
+					"url" => $Post->thread->forum->url->getURLs()
+				);
+				
+				$ratings[] = $row;
+			}
+			
+			return $ratings;
+		}
+		
+		/**
+		 * Get number of ratings per user in the last six months
+		 * @since Version 3.9.1
+		 * @var int $limit Maximum number of results to return
+		 * @return array
+		 */
+		
+		public function getMostUserRatings($limit = 10) {
+			$query = "SELECT r.*, COUNT(r.user_id) AS count, u.username FROM nuke_bbposts_reputation AS r LEFT JOIN nuke_users AS u ON r.user_id = u.user_id WHERE r.date >= DATE_SUB(NOW(), INTERVAL 6 MONTH) GROUP BY r.user_id ORDER BY count DESC LIMIT 0, ?";
+			
+			return $this->db->fetchAll($query, $limit);
 		}
 	}
 ?>
