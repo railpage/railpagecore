@@ -510,7 +510,7 @@
 						break;
 					
 					case 400 : 
-						throw new Exception("Your call to Yahoo Web Services failed and returned an HTTP status of 400. That means:  Bad request. The parameters passed to the service did not match as expected. The exact error is returned in the XML/JSON response.");
+						throw new Exception(sprintf("Your call to Yahoo Web Services failed and returned an HTTP status of 400. That means:  Bad request. The parameters passed to the service did not match as expected. The exact error is returned in the XML/JSON response. The URL sent was: %s", $url));
 						break;
 					
 					default : 
@@ -536,7 +536,7 @@
 			}
 			
 			if ($return !== false) {
-				setMemcacheObject($mckey, $return, strtotime("+24 hours")); 
+				setMemcacheObject($mckey, $return, strtotime("+2 months")); 
 			}
 			
 			return $return;
