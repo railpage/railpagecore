@@ -1727,6 +1727,10 @@
 		 */
 		 
 		public function updateVisit($user_id = false, $time = false) {
+			if (!$user_id && filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$user_id = $this->id;
+			}
+			
 			if ($this->db && $user_id) {
 				if ($this->db instanceof \sql_db) {
 					if (!$time) {
@@ -1753,6 +1757,19 @@
 					);
 					
 					$this->db->update("nuke_users", $data, array("user_id = ?" => $user_id));
+					
+					/** 
+					 * Update values stored in Memcached
+					 */
+					
+					if (!isset($this->mckey)) {
+						$this->mckey = sprintf("railpage:user_id=%d", $user_id);
+					}
+					
+					if ($rs = getMemcacheObject($this->mckey)) {
+						$rs['user_lastvisit'] = $time;
+						setMemcacheObject($this->mckey, $rs);
+					}
 				}
 			}
 		}
@@ -1798,6 +1815,20 @@
 						}
 						
 						$rs = $this->db->update("nuke_users", $data, array("user_id = ?" => $user_id));
+						
+						/** 
+						 * Update values stored in Memcached
+						 */
+					
+						if (!isset($this->mckey)) {
+							$this->mckey = sprintf("railpage:user_id=%d", $user_id);
+						}
+						
+						if ($rs = getMemcacheObject($this->mckey)) {
+							$rs['user_session_time'] = $data['user_session_time'];
+							$rs['last_session_ip'] = $data['last_session_ip'];
+							setMemcacheObject($this->mckey, $rs);
+						}
 						
 						if (RP_DEBUG) {
 							if ($rs === false) {
@@ -2272,7 +2303,7 @@
 		 */
 		
 		public function updateHash() {
-			$cookie = $_COOKIE['rp_userhash']; 
+			$cookie = isset($_COOKIE['rp_userhash']) ? $_COOKIE['rp_userhash'] : ""; 
 			$hash	= array(); 
 			$update = false;
 			
@@ -3617,6 +3648,50 @@
 			
 			$Admin = new Admin;
 			return $Admin->email_available($email);
+		}
+		
+		/**
+		 * Log user activity
+		 * @since Version 3.9.1
+		 * @param int $module_id
+		 * @param string $url
+		 * @param string $pagetitle
+		 * @param string $ip
+		 * @return \Railpage\Users\User
+		 */
+		
+		public function logUserActivity($module_id = false, $url = false, $pagetitle = false, $ip = false) {
+			if (!filter_var($module_id, FILTER_VALIDATE_INT)) {
+				throw new Exception("Cannot log user activity because no module ID was provided");
+			}
+			
+			if (!$url) {
+				throw new Exception("Cannot log user activity because no URL was provided");
+			}
+			
+			if (!$pagetitle) {
+				throw new Exception("Cannot log user activity because no pagetitle was provided");
+			}
+			
+			if (!$ip && isset($_SERVER['REMOTE_ADDR'])) {
+				$ip = $_SERVER['REMOTE_ADDR'];
+			}
+			
+			if (!$ip) {
+				throw new Exception("Cannot log user activity because no remote IP was provided");
+			}
+			
+			$data = array(
+				"user_id" => $this->id,
+				"ip" => $ip,
+				"module_id" => $module_id,
+				"url" => $url,
+				"pagetitle" => $pagetitle
+			);
+			
+			$this->db->insert("log_useractivity", $data);
+			
+			return $this;
 		}
 	}
 ?>
