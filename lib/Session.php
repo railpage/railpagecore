@@ -70,6 +70,32 @@
 			
 			session_start();
 			
+			/**
+			 * Force a session length - from http://stackoverflow.com/a/1270960/319922
+			 */
+			
+			ini_set("session.gc_maxlifetime", 1800);
+			
+			if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY'] > 1800)) {
+				// last request was more than 30 minutes ago
+				session_unset();     // unset $_SESSION variable for the run-time 
+				session_destroy();   // destroy session data in storage
+			}
+			
+			$_SESSION['LAST_ACTIVITY'] = time(); // update last activity time stamp
+			
+			/**
+			 * Re-generate the session ID to avoid session attacks - from http://stackoverflow.com/a/1270960/319922
+			 */
+			
+			if (!isset($_SESSION['CREATED'])) {
+				$_SESSION['CREATED'] = time();
+			} elseif (time() - $_SESSION['CREATED'] > 1800) {
+				// session started more than 30 minutes ago
+				session_regenerate_id(true);    // change session ID for the current session and invalidate old session ID
+				$_SESSION['CREATED'] = time();  // update creation time
+			}
+			
 			$this->id = $this->getSessionId();
 			$_SESSION['session_id'] = $this->id;
 		}
