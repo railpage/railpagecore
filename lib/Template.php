@@ -14,6 +14,7 @@
 	use stdClass;
 	use Exception;
 	use Railpage\Users\User;
+	use Railpage\Jobs\Jobs;
 	
 	/**
 	 * Railpage customised wrapper for Smarty
@@ -356,6 +357,24 @@
 		 */
 		
 		public function getAdvertisementHTML() {
+			
+			if (rand(0, 5) % 2) {
+				
+				$Job = (new Jobs)->getRandomJob(); 
+				
+				$this->assign("ad", array(
+					"module" => array(
+						"url" => $Job->Module->url instanceof Url ? $Job->Module->url->url : $Job->Module->url,
+						"name" => $Job->Module->name,
+					),
+					"url" => $Job->url->url,
+					"title" => $Job->title,
+					"text" => sprintf("%s (%s), expires %s", $Job->Organisation->name, $Job->Location->name, time2str($Job->expiry->getTimestamp()))
+				));
+				
+				return $this->fetch(RP_SITE_ROOT . DS . "content" . DS . "inc.ad.banner.custom.tpl");
+			}
+			
 			if (!isset($this->User->preferences->showads) || $this->User->preferences->showads) {
 				$this->assign("ad_header", $this->RailpageConfig->AdHeader);
 			
