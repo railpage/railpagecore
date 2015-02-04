@@ -1668,6 +1668,7 @@
 		 */
 		
 		public function makeLocoURL($class_slug, $loco_number) {
+			$loco_number = str_replace(" ", "_", $loco_number);
 			return sprintf("%s/%s/%s", $this->Module->url, $class_slug, $loco_number);
 		}
 		

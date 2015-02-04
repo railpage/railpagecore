@@ -344,7 +344,24 @@
 					}
 				} else {
 					if (!$this->id = getMemcacheObject(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id_or_slug, $number))) {
-						$this->id = $this->db->fetchOne("SELECT loco_id FROM loco_unit WHERE class_id = ? AND loco_num = ?", array($class_id_or_slug, $number)); 
+						
+						$params = array(
+							$class_id_or_slug,
+							$number
+						);
+						
+						$query = "SELECT loco_id FROM loco_unit WHERE class_id = ? AND loco_num = ?";
+						
+						if (preg_match("/_/", $number)) {
+							$params[1] = str_replace("_", " ", $number);
+						} else {
+							if (strlen($number) == 5 && preg_match("/([a-zA-Z]{1})([0-9]{4})/", $number)) {
+								$params[] = sprintf("%s %s", substr($number, 0, 2), substr($number, 2, 3));
+								$query = "SELECT loco_id FROM loco_unit WHERE class_id = ? AND (loco_num = ? OR loco_num = ?)";
+							}
+						}
+						
+						$this->id = $this->db->fetchOne($query, $params);
 						
 						setMemcacheObject(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id_or_slug, $number), $this->id, strtotime("+1 month"));
 					}
@@ -2010,7 +2027,7 @@
 				"id" => $Image->id,
 				"title" => $Image->title,
 				"sizes" => $Image->sizes,
-				"url" => $Image->url->getURLs()
+				"url" => $Image->url instanceof Url ? $Image->url->getURLs() : $Image->url
 			);
 			
 			$this->commit(); 
