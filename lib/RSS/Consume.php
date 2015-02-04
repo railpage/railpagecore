@@ -12,7 +12,7 @@
 	use DateTime;
 	use DateTimeZone;
 	use DateInterval;
-	use Guzzle\Http\Client;
+	use GuzzleHttp\Client;
 	use Railpage\AppCore;
 	use Railpage\Url;
 	use Railpage\Module;
@@ -110,6 +110,10 @@
 					$feed['url'], 
 					array(
 						"User-Agent" => self::SCRAPER_AGENT . ' v.' . self::SCRAPER_VERSION
+					),
+					array(
+						"timeout" => 30,
+						"connect_timeout" => 5
 					)
 				);
 				
@@ -142,41 +146,142 @@
 				$rss = new DOMDocument;
 				$rss->loadXML($feed['body']);
 				
-				foreach ($rss->getElementsByTagName("item") as $node) {
-					
-					$date = $node->getElementsByTagName("date")->length > 0 ? $node->getElementsByTagName("date")->item(0)->nodeValue : $node->getElementsByTagName("pubDate")->item(0)->nodeValue;
-					
-					$item = array(
-						"id" => $node->getElementsByTagName("link")->item(0)->nodeValue,
-						"title" => $node->getElementsByTagName("title")->item(0)->nodeValue,
-						"desc" => $node->getElementsByTagName("description")->item(0)->nodeValue,
-						"link" => $node->getElementsByTagName("link")->item(0)->nodeValue,
-						"date" => $date
-					);
-					
-					/**
-					 * Look for encoded descriptions
-					 */
-					
-					$nodealias = array(
-						"content" => "desc"
-					);
-					
-					if ($node->getElementsByTagNameNS("http://purl.org/rss/1.0/modules/content/", "encoded")->length > 0) {
-						foreach ($node->getElementsByTagNameNS("http://purl.org/rss/1.0/modules/content/", "encoded") as $nodens) {
-							if (isset($nodealias[$nodens->prefix])) {
-								$item[$nodealias[$nodens->prefix]] = $nodens->nodeValue;
-							} else {
-								$item[$nodens->prefix] = $nodens->nodeValue;
+				#printArray($key);
+				
+				/**
+				 * RSS
+				 */
+				
+				if ($rss->getElementsByTagName("item")->length > 0) {
+					foreach ($rss->getElementsByTagName("item") as $node) {
+						
+						$date = $node->getElementsByTagName("date")->length > 0 ? $node->getElementsByTagName("date")->item(0)->nodeValue : $node->getElementsByTagName("pubDate")->item(0)->nodeValue;
+						
+						$item = array(
+							"id" => $node->getElementsByTagName("link")->item(0)->nodeValue,
+							"title" => $node->getElementsByTagName("title")->item(0)->nodeValue,
+							"desc" => $node->getElementsByTagName("description")->item(0)->nodeValue,
+							"link" => $node->getElementsByTagName("link")->item(0)->nodeValue,
+							"date" => $date,
+							"tags" => $node->getElementsByTagName("link")->item(0)->nodeValue
+						);
+						
+						/**
+						 * Get the tags
+						 */
+						
+						if ($node->getElementsByTagName("tag")->length > 0) {
+							$tags = array(); 
+							
+							foreach ($node->getElementsByTagName("tag") as $tag) {
+								$tags[] = $tag->nodeValue;
 							}
+							
+							$item['tags'] = implode(",", $tags);
+						}
+						
+						/**
+						 * Get the category
+						 */
+						
+						if ($node->getElementsByTagName("category")->length > 0) {
+							$tags = array(); 
+							
+							foreach ($node->getElementsByTagName("category") as $tag) {
+								$tags[] = $tag->nodeValue;
+							}
+							
+							$item['tags'] = implode(",", $tags);
+						}
+						
+						/**
+						 * Look for encoded descriptions
+						 */
+						
+						$nodealias = array(
+							"content" => "desc"
+						);
+						
+						if ($node->getElementsByTagNameNS("http://purl.org/rss/1.0/modules/content/", "encoded")->length > 0) {
+							foreach ($node->getElementsByTagNameNS("http://purl.org/rss/1.0/modules/content/", "encoded") as $nodens) {
+								if (isset($nodealias[$nodens->prefix])) {
+									$item[$nodealias[$nodens->prefix]] = $nodens->nodeValue;
+								} else {
+									$item[$nodens->prefix] = $nodens->nodeValue;
+								}
+							}
+						}
+						
+						/**
+						 * Process / tidy up the feed item
+						 */
+						
+						$item = $this->process($item);
+					
+						/**
+						 * Get the item summary
+						 */
+						
+						$item['summary'] = $this->createSummary($item['desc']);
+						$item['body'] = $this->stripSummaryFromBody($item['summary'], $item['desc']);
+						
+						/**
+						 * Add this item to the array of processed items
+						 */
+						
+						$this->feeds[$key]['items'][] = $item;
+					}
+				}
+			}
+			
+			/**
+			 * Atom
+			 */
+			
+			if ($rss->getElementsByTagName("item")->length == 0 && $rss->getElementsByTagName("entry")->length > 1) {
+				foreach ($rss->getElementsByTagName("entry") as $node) {
+					foreach ($node->getElementsByTagName("link") as $link) {
+						if ($link->getAttribute("rel") == "alternate") {
+							$link = $link->getAttribute("href");
+							break;
 						}
 					}
 					
+					$item = array(
+						"id" => $node->getElementsByTagName("id")->item(0)->nodeValue,
+						"title" => $node->getElementsByTagName("title")->item(0)->nodeValue,
+						"desc" => $node->getElementsByTagName("content")->item(0)->nodeValue,
+						"link" => $link,
+						"date" => $node->getElementsByTagName("updated")->item(0)->nodeValue,
+						"tags" => $link
+					);
+						
+					/**
+					 * Get the tags
+					 */
+					
+					if ($node->getElementsByTagName("tag")->length > 0) {
+						$tags = array(); 
+						
+						foreach ($node->getElementsByTagName("tag") as $tag) {
+							$tags[] = $tag->nodeValue;
+						}
+						
+						$item['tags'] = implode(",", $tags);
+					}
+						
 					/**
 					 * Process / tidy up the feed item
 					 */
 					
 					$item = $this->process($item);
+					
+					/**
+					 * Get the item summary
+					 */
+					
+					$item['summary'] = $this->createSummary($item['desc']);
+					$item['body'] = $this->stripSummaryFromBody($item['summary'], $item['desc']);
 					
 					/**
 					 * Add this item to the array of processed items
@@ -202,16 +307,32 @@
 			 * Process the desc field
 			 */
 			
+			$item['desc'] = preg_replace('#<br\s*/?>#i', "\n", $item['desc']);
+			
 			$Doc = new DOMDocument;
 			@$Doc->loadHTML('<meta http-equiv="content-type" content="text/html; charset=utf-8">' . $item['desc']); # UTF-8 hinting from http://stackoverflow.com/a/11310258/319922
+			
+			/**
+			 * Remove P elements with BRs and convert to newlines - @blame RailwayGazette
+			 */
+			
+			if ($Doc->getElementsByTagName("p")->length == 1) {
+				$node = $Doc->getElementsByTagName("p")->item(0);
+				$text = explode("\n", $node->nodeValue);
+				$text = implode("\n\n", $text);
+				
+				$node->parentNode->replaceChild($Doc->createTextNode($text), $node);
+			}
 			
 			/**
 			 * Remove redundant line breaks from within P elements - @blame YarraTrams
 			 */
 			
-			if ($Doc->getElementsByTagName("p")->length > 0) {
+			if ($Doc->getElementsByTagName("p")->length > 1) {
 				foreach ($Doc->getElementsByTagName("p") as $node) {
 					$node->nodeValue = htmlentities(str_replace("\n", " ", str_replace("\r\n", " ", $node->nodeValue))); # Without htmlentities() DOMDocument whinges and bitches something unforgivable
+					
+					$node->nodeValue = htmlentities(str_replace("&nbsp;", " ", $node->nodeValue));
 					
 					# Drop empty nodes
 					if (empty(trim($node->nodeValue))) {
@@ -250,9 +371,6 @@
 						$src = sprintf("%s://%s%s", $url['scheme'], $url['host'], $src); 
 						$node->setAttribute("src", $src);
 					}
-					
-					#$parent = $node->parentNode;
-					#$node->parentNode->replaceChild($Doc->createTextNode(sprintf("[img]%s[/img]", $src)), $node);
 				}
 			}
 			
@@ -273,14 +391,11 @@
 			
 			$item['desc'] = $Doc->saveHTML();
 			
-			#printArray($item['desc']);
-			
 			/**
 			 * Remove all HTML tags except those we want to keep
 			 */
 			
 			$item['desc'] = trim(strip_tags($item['desc'], "<img><a><ul><li><ol><table><thead><tbody><tfoot><tr><th><td>"));
-			#$item['desc'] = html_entity_decode($item['desc']);
 			
 			return $item;
 		}
@@ -293,6 +408,88 @@
 		
 		public function getFeeds() {
 			return $this->feeds; 
+		}
+		
+		/**
+		 * Create summary / lead 
+		 * @since Version 3.9.1
+		 * @return string
+		 * @param string $str The desc field to extract the summary from
+		 * @param int $n Maximum number of characters to return
+		 * @param string $end_char
+		 */
+		
+		private function createSummary($str, $n = 1024, $end_char = '&#8230;') {
+			
+			$str = strip_tags($str);
+			
+			$str = explode("\n", $str); 
+			
+			if (count($str) < 3) {
+				return implode("\n\n", $str);
+			}
+			
+			/**
+			 * Remove empty lines
+			 */
+			
+			foreach ($str as $k => $v) {
+				if (trim($v) == "") {
+					unset($str[$k]);
+				} else {
+					break;
+				}
+			}
+			
+			/**
+			 * Loop through again until we have two lines of text
+			 */
+			
+			$n = 0;
+			$text = array();
+			
+			foreach ($str as $v) {
+				$text[] = $v;
+				
+				if (trim($v) != "") {
+					$n++;
+				}
+				
+				if ($n == 2) {
+					break;
+				}
+			}
+			
+			return implode("\n\n", $text); 
+		}
+		
+		/**
+		 * Strip the summary text from the main body
+		 * @since Version 3.9.1
+		 * @param string $summary
+		 * @param string $body
+		 * @return string
+		 */
+		
+		private function stripSummaryFromBody($summary, $body) {
+			
+			$body = explode("\n", $body); 
+			
+			if (count($body) <= 3) {
+				return "";
+			}
+			
+			foreach (explode("\n\n", $summary) as $sline) {
+				foreach ($body as $k => $bline) {
+					if (strip_tags(trim($bline)) == trim($sline)) {
+						unset($body[$k]);
+					}
+				}
+			}
+			
+			$body = implode("\n\n", $body); 
+			
+			return $body;
 		}
 	}
 	
