@@ -379,7 +379,7 @@
 		
 		public function getSphinx() {
 			$conn = new Connection();
-			$conn->setConnectionParams($this->Config->Sphinx->Host, $this->Config->Sphinx->Port);
+			$conn->setParams(array("host" => $this->Config->Sphinx->Host, "port" => $this->Config->Sphinx->Port));
 			
 			return SphinxQL::create($conn);
 		}
