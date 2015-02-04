@@ -18,6 +18,12 @@
 	use Railpage\Url;
 	use Railpage\Users\User;
 	use Zend\Http\Client;
+	use FastFeed\Factory;
+	use FastFeed\Processor\StripTagsProcessor;
+	use FastFeed\Processor\SanitizerProcessor;
+	use FastFeed\Processor\ImageProcessor;
+	use FastFeed\Processor\RemoveStylesProcessor;
+	use Railpage\RSS\RailpageParser;
 	
 	/**
 	 * Scraper
@@ -83,6 +89,47 @@
 			
 			$articles = array();
 			
+			$FastFeed = Factory::create();
+			$FastFeed->addFeed('default', $this->feed);
+			$FastFeed->pushProcessor(new RemoveStylesProcessor); 
+			#$FastFeed->pushParser(new RailpageParser);
+				
+			/**
+			 * Remove tags
+			 */
+			
+			$StripTagsProcessor = new StripTagsProcessor; 
+			$StripTagsProcessor->setAllowedTagsForContent("img, a, ul, li, ol, strong, i, em, table, tr, td, th, thead, tbody, tfoot");
+			$StripTagsProcessor->setAllowedTagsForIntro("a, ul, li, ol, strong, i, em, table, tr, td, th, thead, tbody, tfoot");
+			$FastFeed->pushProcessor($StripTagsProcessor);
+			
+			$items = $FastFeed->fetch('default');
+			
+			printArray($items);die;
+			
+			foreach ($items as $Item) {
+				
+				$content = $Item->getContent(); 
+				
+				#printArray($Item->getExtra("category"));
+				
+				$date = $Item->getDate(); 
+				
+				$row = array(
+					"title" => $Item->getName(),
+					"date" => $date->setTimeZone(new DateTimeZone("Australia/Melbourne")),
+					"source" => $Item->getSource(),
+					"blurb" => $Item->getIntro(),
+					"body" => $Item->getContent(),
+					"topic" => News::guessTopic($topic)
+				);
+				
+				printArray($row);die;
+			}
+			
+			$articles[] = $row;
+			$this->articles = $articles;
+			
 			/**
 			 * Zend HTTP config
 			 */
@@ -99,7 +146,7 @@
 			 */
 			
 			$response = $client->send();
-			$content = $response->getContent();
+			$content = $response->getBody();
 			
 			/**
 			 * Load the SimpleXML object
@@ -119,9 +166,21 @@
 			
 			foreach ($xml->channel->item as $item) {
 				
-				$content = $item->children($ns['content']);
+				if (isset($ns['content']) && !empty($ns['content'])) {
+					$content = $item->children($ns['content']);
+					$content = strval($content->encoded);
+				} else {
+					$content = $item->description->__toString();
+					$content = strip_tags($content, "img,a");
+				}
 				
-				$content = strval($content->encoded);
+				#printArray($content->__toString());die;
+				
+				$topic = json_decode(json_encode($item->category), true);
+				
+				if (empty($topic)) {
+					$topic = $this->feed;
+				}
 				
 				$line = explode("\n", $content); 
 				$firstline = preg_replace('/([^?!.]*.).*/', '\\1', strip_tags($line[0]));
@@ -134,11 +193,11 @@
 					"source" => strval($item->link),
 					"blurb" => $firstline,
 					"body" => $body,
-					"topic" => News::guessTopic(json_decode(json_encode($item->category), true))
+					"topic" => News::guessTopic($topic)
 				);
 				
 				/**
-				 * Add this job to the list of jobs found in this scrape
+				 * Add this article to the list of news articles found in this scrape
 				 */
 				
 				$articles[] = $row;
@@ -165,6 +224,11 @@
 			$Sphinx = $this->getSphinx();
 			
 			foreach ($this->articles as $article) {
+				
+				/**
+				 * Look through our approved news articles for a possible duplication
+				 */
+				
 				$query = $Sphinx->select("*")
 						->from("idx_news_article")
 						->orderBy("story_time_unix", "DESC")
@@ -174,10 +238,20 @@
 				$matches = $query->execute();
 				
 				/**
+				 * Look through our rejected titles to see if we've already rejected this
+				 */
+				
+				$query = $Sphinx->select("*")
+						->from("idx_news_articles_rejected")
+						->match("title", $article['title']);
+				
+				$rejected = $query->execute();
+				
+				/**
 				 * If no matches are found we'll add in the article
 				 */
 				
-				if (!count($matches)) {
+				if (!count($matches) && !count($rejected)) {
 					$Article = new Article;
 					
 					$Article->title = $article['title'];
