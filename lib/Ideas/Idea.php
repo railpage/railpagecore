@@ -372,5 +372,43 @@
 			return $this;
 			
 		}
+		
+		/**
+		 * Get a standardised array of this data
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			$idea = array(
+				"id" => $this->id,
+				"title" => $this->title,
+				"description" => function_exists("format_post") ? format_post($this->description) : $this->description,
+				"status" => $this->status,
+				"url" => $this->url->getURLs(),
+				"votes" => $this->getVotes(),
+				"date" => array(
+					"absolute" => $this->User instanceof User ? $this->Date->format($this->User->date_format) : $this->Date->format("F j, Y, g:i a"),
+					"relative" => time2str($this->Date->getTimestamp())
+				),
+				"author" => array(
+					"id" => $this->Author->id,
+					"username" => $this->Author->username,
+					"url" => $this->Author->url,
+					"avatar" => array(
+						"small" => function_exists("format_avatar") ? format_avatar($this->Author->avatar, 40) : $this->Author->avatar,
+						"large" => function_exists("format_avatar") ? format_avatar($this->Author->avatar, 120) : $this->Author->avatar
+					)
+				),
+				"category" => array(
+					"id" => $this->Category->id,
+					"name" => $this->Category->name,
+					"url" => $this->Category->url
+				),
+				"voters" => array()
+			);
+			
+			return $idea;
+		}
 	}
 ?>

@@ -10,6 +10,7 @@
 	
 	use Railpage\AppCore;
 	use Railpage\Module;
+	use Railpage\Users\User;
 	use Exception;
 	use DateTime;
 	
@@ -100,6 +101,47 @@
 				yield new Idea($row['idea_id']);
 			}
 			
+		}
+		
+		/**
+		 * Get ideas by user
+		 * @since Version 3.9.1
+		 * @return array
+		 * @param int $page Page number
+		 * @param int $items_per_page Number of results to return
+		 */
+		
+		public function getIdeasByUser($page = 1, $items_per_page = 25) {
+			if (!$this->User instanceof User) {
+				throw new Exception("You must set a valid user before you can find ideas created by a user");
+			}
+			
+			$query = "SELECT SQL_CALC_FOUND_ROWS id, title, date FROM idea_ideas WHERE author = ? ORDER BY date DESC LIMIT ?, ?";
+			
+			$params = array(
+				$this->User->id,
+				($page - 1) * $items_per_page, 
+				$items_per_page 
+			);
+			
+			$return = array(
+				"total" => 0,
+				"page" => $page,
+				"perpage" => $items_per_page,
+				"ideas" => array()
+			);
+			
+			if ($result = $this->db->fetchAll($query, $params)) {
+				$return['total'] = $this->db_readonly->fetchOne("SELECT FOUND_ROWS() AS total"); 
+				
+				foreach ($result as $row) {
+					$Idea = new Idea($row['id']);
+					
+					$return['ideas'][] = $Idea->getArray();
+				}
+			}
+			
+			return $return;
 		}
 	}
 ?>
