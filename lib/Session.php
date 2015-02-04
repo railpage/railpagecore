@@ -88,6 +88,7 @@
 			 * Re-generate the session ID to avoid session attacks - from http://stackoverflow.com/a/1270960/319922
 			 */
 			
+			/*
 			if (!isset($_SESSION['CREATED'])) {
 				$_SESSION['CREATED'] = time();
 			} elseif (time() - $_SESSION['CREATED'] > 1800) {
@@ -95,6 +96,7 @@
 				session_regenerate_id(true);    // change session ID for the current session and invalidate old session ID
 				$_SESSION['CREATED'] = time();  // update creation time
 			}
+			*/
 			
 			$this->id = $this->getSessionId();
 			$_SESSION['session_id'] = $this->id;
