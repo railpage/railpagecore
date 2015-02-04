@@ -22,6 +22,8 @@
 	use DateTimeZone;
 	use DateInterval;
 	use stdClass;
+	use HTTP_Request2;
+	use DomDocument;
 	
 	/**
 	 * Store and fetch data of Flickr, Weston Langford, etc images in our local database
@@ -435,7 +437,7 @@
 				
 				case "picasaweb" : 
 					
-					if (empty($this->meta) && isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
+					if (empty($this->meta) && isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], "picasaweb.google.com")) {
 						$album = preg_replace("@(http|https)://picasaweb.google.com/([a-zA-Z\-\.]+)/(.+)@", "$2", $_SERVER['HTTP_REFERER']);
 						
 						if (is_string($album)) {
@@ -612,6 +614,112 @@
 					}
 					
 					$this->commit();
+					
+					break;
+				
+				/**
+				 * Vicsig
+				 */
+				
+				case "vicsig" : 
+					
+					if (strpos($_SERVER['HTTP_REFERER'], "vicsig.net/photo")) {
+						$this->meta['source'] = $_SERVER['HTTP_REFERER'];
+						
+						$request = new HTTP_Request2($_SERVER['HTTP_REFERER'], HTTP_Request2::METHOD_GET);
+						
+						/**
+						 * Start fetching it
+						 */
+						
+						try {
+							$response = $request->send();
+							if (200 == $response->getStatus()) {
+								$data = $response->getBody();
+								
+								$doc = new DomDocument(); 
+								$doc->loadHTML($data);
+								
+								$images = $doc->getElementsByTagName("img"); 
+								
+								foreach ($images as $element) {
+									
+									if (!empty($element->getAttribute("src")) && !empty($element->getAttribute("alt"))) {
+										#$image_title = $element->getAttribute("alt");
+										
+										$this->sizes['original'] = array(
+											"source" => $element->getAttribute("src"),
+											"width" => $element->getAttribute("width"), 
+											"height" => $element->getAttribute("height"),
+										);
+										
+										if (substr($this->sizes['original']['source'], 0, 1) == "/") {
+											$this->sizes['original']['source'] = "http://www.vicsig.net" . $this->sizes['original']['source'];
+										}
+										
+										break;
+									}
+								}
+								
+								$desc = $doc->getElementsByTagName("i");
+								
+								foreach ($desc as $element) {
+									if (!isset($image_desc)) {
+										$text = trim($element->nodeValue); 
+										$text = str_replace("\r\n", "\n", $text); 
+										$text = explode("\n", $text);
+										
+										/**
+										 * Loop through the exploded text and remove the obvious date/author/etc
+										 */ 
+										
+										foreach ($text as $k => $line) {
+											
+											// Get the author
+											if (preg_match("@Photo: @i", $line)) {
+												$this->author = new stdClass;
+												$this->author->realname = str_replace("Photo: ", "", $line); 
+												$this->author->url = $_SERVER['HTTP_REFERER'];
+												unset($text[$k]);
+											}
+											
+											// Get the date
+											try {
+												$this->meta['dates']['posted'] = (new DateTime($line))->format("Y-m-d H:i:s"); 
+												unset($text[$k]);
+											} catch (Exception $e) {
+												// Throw it away
+											}
+										}
+										
+										/**
+										 * Whatever's left must be the photo title and description
+										 */
+										
+										foreach ($text as $k => $line) {
+											if (empty($this->title)) {
+												$this->title = $line;
+												continue;
+											}
+											
+											$this->description .= $line;
+										}
+										
+										$this->links = new stdClass;
+										$this->links->provider = $_SERVER['HTTP_REFERER'];
+										
+										$this->commit();
+									}
+								}
+							}
+						} catch (Exception $e) {
+							$return['stat'] = "error";
+							$return['error_message'] = $e->getMessage(); 
+						}
+						
+					}
+					
+					#printArray($_SERVER['HTTP_REFERER']);die;
 					
 					break;
 				
