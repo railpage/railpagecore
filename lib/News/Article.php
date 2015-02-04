@@ -369,7 +369,8 @@
 				}
 				
 				$this->slug = $return['slug'];
-				$this->url = new Url($this->makePermaLink($this->slug)); 
+				$this->url = new Url($this->makePermaLink($this->slug));
+				$this->url->source = $return['source']; 
 				
 				if (function_exists("format_post")) {
 					$this->blurb_clean	= format_post($this->blurb, false, false, true, true, true);
@@ -406,6 +407,11 @@
 				} catch (Exception $e) {
 					global $Error; 
 					$Error->save($e); 
+				}
+				
+				if (empty($this->body) && !empty($this->source)) {
+					$this->url->url = $this->source;
+					$this->url->canonical = $this->source;
 				}
 			} else {
 				#throw new Exception($this->db->error."\n\n".$query);
@@ -502,6 +508,22 @@
 					return false;
 				}
 			} else {
+				
+				/**
+				 * Insert into Sphinx's rejected articles table
+				 */
+				
+				$data = array(
+					"id" => (int) str_replace(".", "", microtime(true)),
+					"title" => $this->title
+				);
+				
+				$Sphinx = $this->getSphinx(); 
+				
+				$Insert = $Sphinx->insert()->into("idx_news_articles_rejected");
+				$Insert->set($data);
+				$Insert->execute();
+				
 				if ($this->pending) {
 					$where = array("qid = ?" => $this->id); 
 					
@@ -520,13 +542,17 @@
 		 * Approve a story
 		 * @version 3.0
 		 * @since Version 3.0
-		 * @param int $user_id
+		 * @param int|\Railpage\Users\User $user_id
 		 * @return mixed
 		 */
 		 
 		public function approve($user_id = false) {
 			if (!$this->id || !$this->db) {
 				return false;
+			}
+			
+			if ($user_id instanceof User) {
+				$user_id = $user_id->id;
 			}
 			
 			if ($this->db instanceof \sql_db) {
@@ -755,6 +781,14 @@
 				throw new Exception("Cannot make a JSON object for the requested news article beacuse no valid article ID was found. Something's wrong....");
 			}
 			
+			if (empty($this->body) && !empty($this->source)) {
+				if ($this->url instanceof Url) {
+					$this->url->url = $this->source;
+				} else {
+					$this->url = $this->source;
+				}
+			}
+			
 			$response = array(
 				"namespace" => $this->Module->namespace,
 				"module" => $this->Module->name,
@@ -766,6 +800,7 @@
 					"body" => is_object($this->body) ? $this->body->__toString() : $this->body,
 					"image" => $this->featured_image,
 					"approved" => $this->approved,
+					"source" => $this->source,
 					
 					"url" => $this->url instanceof Url ? $this->url->getURLs() : array("url" => sprintf("/news/article-%d", $this->id)),
 					

@@ -130,6 +130,11 @@
 			
 			if (!$json = getMemcacheObject($key)) {
 				$Article = new Article($article_id);
+				
+				if (empty($Article->body) && !empty($Article->source)) {
+					$Article->url->url = $Article->source;
+				}
+				
 				$json = $Article->makeJSON();
 			}
 			
@@ -155,6 +160,14 @@
 			
 			$topic = trim($topic);
 			
+			if (preg_match("/tasrail/i", $topic)) {
+				$topic = "tas";
+			}
+			
+			if (preg_match("/puffingbillyworkshops/i", $topic)) {
+				$topic = "narrow-gauge";
+			}
+			
 			/**
 			 * Attempt to find the topic in our existing list
 			 */
@@ -164,6 +177,8 @@
 			if (filter_var($Topic->id, FILTER_VALIDATE_INT)) {
 				return $Topic;
 			}
+			
+			#printArray($topic);die;
 			
 			/**
 			 * If we don't have a valid topic ID then it didn't work. Time to approximate
