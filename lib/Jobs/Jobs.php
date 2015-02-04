@@ -172,5 +172,20 @@
 				yield new Organisation($row['organisation_id']);
 			}
 		}
+		
+		/**
+		 * Get a random job
+		 * @since Version 3.9
+		 * @return \Railpage\Jobs\Job
+		 */
+		
+		public function getRandomJob() {
+			$query = "SELECT job_id FROM jn_jobs WHERE job_expiry >= ?";
+			
+			$jobs = $this->db->fetchAll($query, date("Y-m-d H:i:s"));
+			
+			$job_id = array_rand($jobs);
+			return new Job($jobs[$job_id]['job_id']);
+		}
 	}
 ?>
