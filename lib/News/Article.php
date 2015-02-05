@@ -13,6 +13,7 @@
 	use SphinxClient;
 	use DateTime;
 	use DateTimeZone;
+	use DateInterval;
 	use Exception;
 	use Railpage\Users\User;
 	use Railpage\Url;
@@ -894,6 +895,49 @@
 			$results = $Sphinx->query($Sphinx->escapeString($this->title), "idx_news_article");
 			
 			return $results['matches'];
+		}
+		
+		/**
+		 * Check for duplicated news articles before posting
+		 * @since Version 3.9.1
+		 * @return boolean
+		 */
+		
+		public function isDuplicate() {
+			
+			$Sphinx = $this->getSphinx();
+			
+			/**
+			 * Look through our approved news articles for a possible duplication
+			 */
+			
+			$query = $Sphinx->select("*")
+					->from("idx_news_article")
+					->orderBy("story_time_unix", "DESC")
+					->where("story_time_unix", ">=", $this->date->sub(new DateInterval("P7D"))->getTimestamp())
+					->match("story_title", $this->title);
+			
+			$matches = $query->execute();
+			
+			/**
+			 * Look through our rejected titles to see if we've already rejected this
+			 */
+			
+			$query = $Sphinx->select("*")
+					->from("idx_news_articles_rejected")
+					->match("title", $this->title);
+			
+			$rejected = $query->execute();
+			
+			/**
+			 * If no matches are found we'll add in the article
+			 */
+			
+			if (count($matches) || count($rejected)) {
+				return true;
+			}
+			
+			return false;
 		}
 	}
 ?>
