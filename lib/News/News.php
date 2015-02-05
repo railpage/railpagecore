@@ -148,7 +148,7 @@
 		 * @return \Railpage\News\Topic
 		 */
 		
-		public static function guessTopic($topic) {
+		static public function guessTopic($topic) {
 			
 			/**
 			 * Normalise the topic name
