@@ -114,7 +114,7 @@
 		"zendframework/zend-feed" : "2.3.*",
 		"zendframework/zendservice-twitter" : ">=2.0.0",
 		"zendframework/zendservice-recaptcha" : ">=2.0.0",
-		"timoh6/GenPhrase" : "dev-master",
+		"genphrase/genphrase": "dev-master",
 		"google/apiclient" : ">=1.0.0",
 		"swiftmailer/swiftmailer" : ">=5.3.0",
 		"rezzza/flickr" : "1.1.*@dev",
