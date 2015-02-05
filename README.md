@@ -13,3 +13,9 @@ The classes have been namespaced under the \Railpage\ namespace, for example: \R
 If you're not using Composer, you should. We have a lot of dependencies and Composer will save you a lot of time. 
 
 To start using the core code, execute `./composer.phar require railpage/railpage` to grab and install. 
+
+## Using
+
+Make sure you're using Composer. 
+
+Assuming you've already included your Composer autoloader in your code, imort the desired modules by placing a `use` operator at the top of your .php file. For example: `use Railpage\Locos\Locomotive` will then enable `$Loco = new Locomotive($id)` further down in your code. 
