@@ -143,9 +143,6 @@
 	],
 	"require" : {
 		"php" : ">=5.5.0",
-		"pear/pear_exception": "1.0.*@dev",
-		"pear/http_request2": "dev-trunk",
-		"pear/mail_mime": "dev-master",
 		"zendframework/zend-http" : "2.3.*",
 		"zendframework/zend-config" : "2.3.*",
 		"zendframework/zend-uri" : "2.3.*",
