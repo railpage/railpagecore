@@ -9,6 +9,7 @@
 	namespace Railpage\RSS;
 	
 	use DOMDocument;
+	use Exception;
 	use DateTime;
 	use DateTimeZone;
 	use DateInterval;
@@ -106,20 +107,20 @@
 		
 		public function scrape() {
 			foreach ($this->feeds as $key => $feed) {
-				$request = $this->GuzzleClient->get(
+				$response = $this->GuzzleClient->get(
 					$feed['url'], 
 					array(
-						"User-Agent" => self::SCRAPER_AGENT . ' v.' . self::SCRAPER_VERSION
-					),
-					array(
-						"timeout" => 30,
+						"headers" => array(
+							"User-Agent" => self::SCRAPER_AGENT . ' v.' . self::SCRAPER_VERSION
+						),
+						"timeout" => 60,
 						"connect_timeout" => 5
 					)
 				);
 				
-				$response = $request->send(); 
+				#$response = $request->send(); 
 				
-				if (!$response->isSuccessful()) {
+				if ($response->getStatusCode() != 200) {
 					throw new Exception(sprintf("Failed to scrape RSS feed %s: Error %s", $feed['url'], $response->getStatusCode()));
 				}
 				
@@ -232,62 +233,62 @@
 						$this->feeds[$key]['items'][] = $item;
 					}
 				}
-			}
 			
-			/**
-			 * Atom
-			 */
-			
-			if ($rss->getElementsByTagName("item")->length == 0 && $rss->getElementsByTagName("entry")->length > 1) {
-				foreach ($rss->getElementsByTagName("entry") as $node) {
-					foreach ($node->getElementsByTagName("link") as $link) {
-						if ($link->getAttribute("rel") == "alternate") {
-							$link = $link->getAttribute("href");
-							break;
-						}
-					}
-					
-					$item = array(
-						"id" => $node->getElementsByTagName("id")->item(0)->nodeValue,
-						"title" => $node->getElementsByTagName("title")->item(0)->nodeValue,
-						"desc" => $node->getElementsByTagName("content")->item(0)->nodeValue,
-						"link" => $link,
-						"date" => $node->getElementsByTagName("updated")->item(0)->nodeValue,
-						"tags" => $link
-					);
-						
-					/**
-					 * Get the tags
-					 */
-					
-					if ($node->getElementsByTagName("tag")->length > 0) {
-						$tags = array(); 
-						
-						foreach ($node->getElementsByTagName("tag") as $tag) {
-							$tags[] = $tag->nodeValue;
+				/**
+				 * Atom
+				 */
+				
+				if ($rss->getElementsByTagName("item")->length == 0 && $rss->getElementsByTagName("entry")->length > 1) {
+					foreach ($rss->getElementsByTagName("entry") as $node) {
+						foreach ($node->getElementsByTagName("link") as $link) {
+							if ($link->getAttribute("rel") == "alternate") {
+								$link = $link->getAttribute("href");
+								break;
+							}
 						}
 						
-						$item['tags'] = implode(",", $tags);
-					}
+						$item = array(
+							"id" => $node->getElementsByTagName("id")->item(0)->nodeValue,
+							"title" => $node->getElementsByTagName("title")->item(0)->nodeValue,
+							"desc" => $node->getElementsByTagName("content")->item(0)->nodeValue,
+							"link" => $link,
+							"date" => $node->getElementsByTagName("updated")->item(0)->nodeValue,
+							"tags" => $link
+						);
+							
+						/**
+						 * Get the tags
+						 */
 						
-					/**
-					 * Process / tidy up the feed item
-					 */
-					
-					$item = $this->process($item);
-					
-					/**
-					 * Get the item summary
-					 */
-					
-					$item['summary'] = $this->createSummary($item['desc']);
-					$item['body'] = $this->stripSummaryFromBody($item['summary'], $item['desc']);
-					
-					/**
-					 * Add this item to the array of processed items
-					 */
-					
-					$this->feeds[$key]['items'][] = $item;
+						if ($node->getElementsByTagName("tag")->length > 0) {
+							$tags = array(); 
+							
+							foreach ($node->getElementsByTagName("tag") as $tag) {
+								$tags[] = $tag->nodeValue;
+							}
+							
+							$item['tags'] = implode(",", $tags);
+						}
+							
+						/**
+						 * Process / tidy up the feed item
+						 */
+						
+						$item = $this->process($item);
+						
+						/**
+						 * Get the item summary
+						 */
+						
+						$item['summary'] = $this->createSummary($item['desc']);
+						$item['body'] = $this->stripSummaryFromBody($item['summary'], $item['desc']);
+						
+						/**
+						 * Add this item to the array of processed items
+						 */
+						
+						$this->feeds[$key]['items'][] = $item;
+					}
 				}
 			}
 			
