@@ -12,7 +12,7 @@ The classes have been namespaced under the \Railpage\ namespace, for example: \R
 
 If you're not using Composer, you should. We have a lot of dependencies and Composer will save you a lot of time. 
 
-To start using the core code, execute `./composer.phar require railpage/railpage` to grab and install. 
+To start using the core code, execute `./composer.phar require railpage/railpagecore` to grab and install. 
 
 ## Using
 
