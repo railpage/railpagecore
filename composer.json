@@ -90,14 +90,10 @@
 			"url" : "https://packages.zendframework.com/"
 		},
 		{
-			"type" : "pear",
-			"url" : "http://pear.php.net"
-		},
-		{
 			"type" : "package",
 			"package" : {
 				"name" : "smarty/smarty",
-				"version" : "3.1.9",
+				"version" : "3.1.17",
 				"dist" : {
 					"url" : "http://www.smarty.net/files/Smarty-3.1.17.zip",
 					"type" : "zip"
@@ -148,8 +144,9 @@
 	],
 	"require" : {
 		"php" : ">=5.5.0",
-		"pear-pear.php.net/HTTP_Request2" : "*",
-		"pear-pear.php.net/Mail_Mime" : "*",
+		"pear/pear_exception": "1.0.*@dev",
+		"pear/http_request2": "dev-trunk",
+		"pear/mail_mime": "dev-master",
 		"zendframework/zend-http" : "2.3.*",
 		"zendframework/zend-config" : "2.3.*",
 		"zendframework/zend-uri" : "2.3.*",
