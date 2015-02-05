@@ -1,6 +1,6 @@
 # Railpage Core Code
 
-[![Build Status](https://travis-ci.org/railpage/railpagecore.svg?branch=master)](https://travis-ci.org/railpage/railpagecore)
+[![Build Status](https://travis-ci.org/railpage/railpagecore.svg?branch=master)](https://travis-ci.org/railpage/railpagecore) [![Gitter chat](https://badges.gitter.im/railpage/railpagecore.png)](https://gitter.im/railpage/railpagecore)
 
 This repository contains the core Railpage PHP objects formerly located under their respective modules. 
 
