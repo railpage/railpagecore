@@ -1,6 +1,6 @@
 # Railpage Core Code
 
-[![Build Status](https://travis-ci.org/railpage/railpagecore.svg?branch=master)](https://travis-ci.org/railpage/railpagecore)
+[![Build Status](https://travis-ci.org/railpage/railpagecore.svg?branch=master)](https://travis-ci.org/railpage/railpagecore) [![Latest Stable Version](https://poser.pugx.org/railpage/railpagecore/v/stable.svg)](https://packagist.org/packages/railpage/railpagecore) [![Gitter chat](https://badges.gitter.im/railpage/railpagecore.png)](https://gitter.im/railpage/railpagecore)
 
 This repository contains the core Railpage PHP objects formerly located under their respective modules. 
 
@@ -18,4 +18,10 @@ To start using the core code, execute `./composer.phar require railpage/railpage
 
 Make sure you're using Composer. 
 
-Assuming you've already included your Composer autoloader in your code, imort the desired modules by placing a `use` operator at the top of your .php file. For example: `use Railpage\Locos\Locomotive` will then enable `$Loco = new Locomotive($id)` further down in your code. 
+Assuming you've already included your Composer autoloader in your code, imort the desired modules by placing a `use` operator at the top of your .php file. For example: 
+
+````php
+use Railpage\Locos\Locomotive;
+
+$Loco = new Locomotive($id);
+````
