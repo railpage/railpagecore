@@ -251,10 +251,38 @@
 		public function getStylesheets() {
 			$tags = array(); 
 			
+			$minify = array(); 
+			
 			if (count($this->stylesheets)) {
 				foreach ($this->stylesheets as $data) {
-					$tags[] = "<link href='" . $data['href']. "' rel='" . $data['rel'] . "' media='" . $data['media'] . "'>";
+					if (substr($data['href'], 0, 4) == "http") {
+						$tags[] = sprintf("<link href='%s' rel='%s' media='%s'>", $data['href'], $data['rel'], $data['media']);
+					} else {
+						
+						if (file_exists(RP_SITE_ROOT . str_replace(".css", ".min.css", $data['href']))) {
+							$data['href'] = str_replace(".css", ".min.css", $data['href']);
+						}
+						
+						$str = substr($data['href'], 0, 1) == "/" ? substr($data['href'], 1, strlen($data['href'])) : $data['href'];
+						$str = explode("?v=", $str);
+						
+						if (!in_array($str[0], $minify)) {
+							$minify[] = $str[0];
+						}
+					}
 				}
+			}
+			
+			if (count($minify)) {
+				foreach ($minify as $k => $css) {
+					if (strpos($css, "style-smooth")) {
+						unset($minify[$k]);
+						$minify[] = $css;
+					}
+				}
+				
+				$minify = implode(",", $minify);
+				$tags[] = sprintf("<link href='%s/vendor/mrclay/minify/min/?f=%s&v=%s' rel='stylesheet' media='all'>", RP_WEB_ROOT, $minify, RP_VERSION);
 			}
 			
 			return implode("\n\t", $tags); 
