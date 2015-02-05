@@ -22,8 +22,8 @@
 	use DateTimeZone;
 	use DateInterval;
 	use stdClass;
-	use HTTP_Request2;
 	use DomDocument;
+	use GuzzleHttp\Client;
 	
 	/**
 	 * Store and fetch data of Flickr, Weston Langford, etc images in our local database
@@ -165,7 +165,10 @@
 		 */
 		
 		public function __construct($id = NULL) {
+			
 			parent::__construct();
+			
+			$this->GuzzleClient = new Client;
 			
 			$this->Module = new Module("images");
 			
@@ -626,100 +629,94 @@
 					if (strpos($_SERVER['HTTP_REFERER'], "vicsig.net/photo")) {
 						$this->meta['source'] = $_SERVER['HTTP_REFERER'];
 						
-						$request = new HTTP_Request2($_SERVER['HTTP_REFERER'], HTTP_Request2::METHOD_GET);
+						$response = $this->GuzzleClient->get($_SERVER['HTTP_REFERER']);
+						
+						if ($response->getStatusCode() != 200) {
+							throw new Exception(sprintf("Failed to fetch image data from %s: HTTP error %s", $this->provider, $response->getStatusCode()));
+						}
 						
 						/**
 						 * Start fetching it
 						 */
 						
-						try {
-							$response = $request->send();
-							if (200 == $response->getStatus()) {
-								$data = $response->getBody();
+						$data = $response->getBody();
+						
+						$doc = new DomDocument(); 
+						$doc->loadHTML($data);
+						
+						$images = $doc->getElementsByTagName("img"); 
+						
+						foreach ($images as $element) {
+							
+							if (!empty($element->getAttribute("src")) && !empty($element->getAttribute("alt"))) {
+								#$image_title = $element->getAttribute("alt");
 								
-								$doc = new DomDocument(); 
-								$doc->loadHTML($data);
+								$this->sizes['original'] = array(
+									"source" => $element->getAttribute("src"),
+									"width" => $element->getAttribute("width"), 
+									"height" => $element->getAttribute("height"),
+								);
 								
-								$images = $doc->getElementsByTagName("img"); 
-								
-								foreach ($images as $element) {
-									
-									if (!empty($element->getAttribute("src")) && !empty($element->getAttribute("alt"))) {
-										#$image_title = $element->getAttribute("alt");
-										
-										$this->sizes['original'] = array(
-											"source" => $element->getAttribute("src"),
-											"width" => $element->getAttribute("width"), 
-											"height" => $element->getAttribute("height"),
-										);
-										
-										if (substr($this->sizes['original']['source'], 0, 1) == "/") {
-											$this->sizes['original']['source'] = "http://www.vicsig.net" . $this->sizes['original']['source'];
-										}
-										
-										break;
-									}
+								if (substr($this->sizes['original']['source'], 0, 1) == "/") {
+									$this->sizes['original']['source'] = "http://www.vicsig.net" . $this->sizes['original']['source'];
 								}
 								
-								$desc = $doc->getElementsByTagName("i");
-								
-								foreach ($desc as $element) {
-									if (!isset($image_desc)) {
-										$text = trim($element->nodeValue); 
-										$text = str_replace("\r\n", "\n", $text); 
-										$text = explode("\n", $text);
-										
-										/**
-										 * Loop through the exploded text and remove the obvious date/author/etc
-										 */ 
-										
-										foreach ($text as $k => $line) {
-											
-											// Get the author
-											if (preg_match("@Photo: @i", $line)) {
-												$this->author = new stdClass;
-												$this->author->realname = str_replace("Photo: ", "", $line); 
-												$this->author->url = $_SERVER['HTTP_REFERER'];
-												unset($text[$k]);
-											}
-											
-											// Get the date
-											try {
-												$this->meta['dates']['posted'] = (new DateTime($line))->format("Y-m-d H:i:s"); 
-												unset($text[$k]);
-											} catch (Exception $e) {
-												// Throw it away
-											}
-										}
-										
-										/**
-										 * Whatever's left must be the photo title and description
-										 */
-										
-										foreach ($text as $k => $line) {
-											if (empty($this->title)) {
-												$this->title = $line;
-												continue;
-											}
-											
-											$this->description .= $line;
-										}
-										
-										$this->links = new stdClass;
-										$this->links->provider = $_SERVER['HTTP_REFERER'];
-										
-										$this->commit();
-									}
-								}
+								break;
 							}
-						} catch (Exception $e) {
-							$return['stat'] = "error";
-							$return['error_message'] = $e->getMessage(); 
+						}
+						
+						$desc = $doc->getElementsByTagName("i");
+						
+						foreach ($desc as $element) {
+							if (!isset($image_desc)) {
+								$text = trim($element->nodeValue); 
+								$text = str_replace("\r\n", "\n", $text); 
+								$text = explode("\n", $text);
+								
+								/**
+								 * Loop through the exploded text and remove the obvious date/author/etc
+								 */ 
+								
+								foreach ($text as $k => $line) {
+									
+									// Get the author
+									if (preg_match("@Photo: @i", $line)) {
+										$this->author = new stdClass;
+										$this->author->realname = str_replace("Photo: ", "", $line); 
+										$this->author->url = $_SERVER['HTTP_REFERER'];
+										unset($text[$k]);
+									}
+									
+									// Get the date
+									try {
+										$this->meta['dates']['posted'] = (new DateTime($line))->format("Y-m-d H:i:s"); 
+										unset($text[$k]);
+									} catch (Exception $e) {
+										// Throw it away
+									}
+								}
+								
+								/**
+								 * Whatever's left must be the photo title and description
+								 */
+								
+								foreach ($text as $k => $line) {
+									if (empty($this->title)) {
+										$this->title = $line;
+										continue;
+									}
+									
+									$this->description .= $line;
+								}
+								
+								$this->links = new stdClass;
+								$this->links->provider = $_SERVER['HTTP_REFERER'];
+								
+								$this->commit();
+							}
 						}
 						
 					}
-					
-					#printArray($_SERVER['HTTP_REFERER']);die;
 					
 					break;
 				

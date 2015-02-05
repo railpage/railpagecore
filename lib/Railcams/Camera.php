@@ -16,6 +16,9 @@
 	use Rezzza\Flickr\Metadata;
 	use Rezzza\Flickr\ApiFactory;
 	use Rezzza\Flickr\Http\GuzzleAdapter;
+	use GuzzleHttp\Client;
+	use DOMDocument;
+	use DOMXpath
 	
 	/**
 	 * Railcam class
@@ -191,6 +194,8 @@
 		
 		public function __construct($id = false) {
 			parent::__construct(); 
+			
+			$this->GuzzleClient = new Client;
 			
 			if ($id) {
 				$this->id = $id;
@@ -419,39 +424,34 @@
 				$this->video_store_url .= "/";
 			}
 			
-			require_once("HTTP/Request2.php");
+			$response = $this->GuzzleClient->get($this->video_store_url);
 			
-			$request = new \HTTP_Request2($this->video_store_url, \HTTP_Request2::METHOD_GET);
+			if ($response->getStatusCode() != 200) {
+				throw new Exception(sprintf("Failed to fetch videos from railcam: Error %s", $response->getStatusCode()));
+			}
 			
-			try {
-				$response = $request->send();
-				if (200 == $response->getStatus()) {
-					$index = $response->getBody();
-					
-					$doc = new \DOMDocument();
-					$doc->loadHTML($index);
-					
-					$xpath = new \DOMXpath($doc);
-					$nodes = $xpath->query('//a');
-					
-					$i = 0;
-					
-					foreach($nodes as $node) {
-						$url = $node->getAttribute('href');
-						
-						if ($i < $num && $url != "/" && substr($url, 0, 3) != "?C=") {
-							if (!strstr($url, $this->video_store_url)) {
-								$url = $this->video_store_url.$url;
-							}
-							
-							$videos[] = $url;
-							
-							$i++;
-						}
+			$index = $response->getBody();
+			
+			$doc = new DOMDocument();
+			$doc->loadHTML($index);
+			
+			$xpath = new DOMXpath($doc);
+			$nodes = $xpath->query('//a');
+			
+			$i = 0;
+			
+			foreach($nodes as $node) {
+				$url = $node->getAttribute('href');
+				
+				if ($i < $num && $url != "/" && substr($url, 0, 3) != "?C=") {
+					if (!strstr($url, $this->video_store_url)) {
+						$url = $this->video_store_url.$url;
 					}
+					
+					$videos[] = $url;
+					
+					$i++;
 				}
-			} catch (HTTP_Request2_Exception $e) {
-				printArray($e->getMessage()); die;
 			}
 			
 			return $videos;

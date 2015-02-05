@@ -11,8 +11,7 @@
 	
 	use Exception;
 	use DateTime;
-	use HTTP_Request2;
-	use Zend\Http\Client;
+	use GuzzleHttp\Client;
 	
 	/**
 	 * Base Railpage API
@@ -103,6 +102,8 @@
 			$this->endpoint	= $api_endpoint;
 			$this->signature_method = "HMAC-SHA1";
 			$this->http_delivery = "POST";
+			
+			$this->GuzzleClient = new Client;
 		}
 		
 		/**
@@ -269,46 +270,18 @@
 			$request_url = $this->request_url($method, $args);
 			
 			$return = array(); 
-			$request = new HTTP_Request2($request_url, HTTP_Request2::METHOD_GET);
 			
-			// Add the GoDaddy Certification Authority root cert to help cURL validate our cert
-			$request->setConfig(array(
-				"ssl_verify_peer" => false
-			));
+			$response = $this->GuzzleClient->get($request_url);
 			
-			try {
-				$response = $request->send();
-				if (200 == $response->getStatus()) {
-					$return['stat'] = "ok";
-					
-					$this->response = $response->getBody();
-					
-					$return = array_merge($return, $this->format()); 
-				} else {
-					$return['stat'] = "error"; 
-					$return['error_message'] = "Unknown HTTP error";
-				}
-			} catch (Exception $e) {
-				$return['stat'] = "error";
-				$return['error_message'] = $e->getMessage(); 
+			if (!$response->getStatusCode() == 200) {
+				throw new Exception(sprintf("Failed to execute API call: HTTP error %s", $response->getStatusCode()));
 			}
 			
-			/**
-			 * Get the data
-			 */
+			$return['stat'] = "ok";
+					
+			$this->response = $response->getBody();
 			
-			/*
-			$config = array(
-				'adapter' => 'Zend\Http\Client\Adapter\Curl',
-				'curloptions' => array(CURLOPT_FOLLOWLOCATION => true),
-			);
-			
-			$client = new Client($request_url, $config);
-			$response = $client->send();
-			
-			$this->response = $response->getContent();
 			$return = array_merge($return, $this->format()); 
-			*/
 		
 			if (RP_DEBUG) {
 				$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "(" . $method . "::" . implode(", ", $args) . ") completed in " . number_format(microtime(true) - $debug_timer_start, 8) . "s";

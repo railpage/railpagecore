@@ -21,8 +21,7 @@
 	use flickr_railpage;
 	use DateTime;
 	use DateTimeZone;
-	use Zend\Http\Client;
-	use HTTP_Request2;
+	use GuzzleHttp\Client;
 	
 	/**
 	 * Place class
@@ -88,6 +87,8 @@
 		
 		public function __construct($lat, $lon, $radius = 0.1) {
 			parent::__construct(); 
+			
+			$this->GuzzleClient = new Client;
 			
 			$this->lat = $lat;
 			$this->lon = $lon;
@@ -324,46 +325,12 @@
 			} else {
 				$url = sprintf("https://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s&sensor=false", $this->lat, $this->lon);
 				
-				/**
-				 * Travis-CI and/or Zend is fucked
-				 */
-				/*
-				$config = array(
-					'adapter' => 'Zend\Http\Client\Adapter\Curl',
-					'curloptions' => array(
-						CURLOPT_FOLLOWLOCATION => true,
-						CURLOPT_SSLVERSION => 3, //cURL for Travis CI
-						CURLOPT_SSL_VERIFYPEER => false,
-						CURLOPT_SSL_VERIFYHOST => 2,
-					),
-				);
+				$response = $this->GuzzleClient->get($url);
 				
-				$client = new Client($url, $config);
-				$response = $client->send();
-				
-				$content = $response->getContent();
-				$result = json_decode($content, true);
-				*/
-				
-				$ch = curl_init();
-
-				curl_setopt($ch, CURLOPT_URL, $url);
-				curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-				curl_setopt($ch, CURLOPT_SSLVERSION, 3);
-				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-				curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
-				curl_setopt($ch, CURLOPT_HEADER, 0);
-				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-				
-				$return = curl_exec($ch);
-				
-				if (curl_exec($ch) === false) {
-					echo 'Curl error: ' . curl_error($ch);
+				if ($response->getStatusCode() == 200) {
+					$result = json_decode($response->getBody(), true);
 				}
 				
-				curl_close($ch);
-				
-				$result = json_decode($return, true);
 				$return = array();
 				
 				if (isset($result['results'][0]['formatted_address'])) {
@@ -413,17 +380,12 @@
 			} else {
 				$url = "http://api.openweathermap.org/data/2.5/forecast/daily?lat=" . $this->lat . "&lon=" . $this->lon . "&units=metric&cnt=" . $days;
 			}
+			
+			$response = $this->GuzzleClient->get($url);
 				
-			$config = array(
-				'adapter' => 'Zend\Http\Client\Adapter\Curl',
-				'curloptions' => array(CURLOPT_FOLLOWLOCATION => true),
-			);
-			
-			$client = new Client($url, $config);
-			$response = $client->send();
-			
-			$content = $response->getContent();
-			$forecast = json_decode($content, true);
+			if ($response->getStatusCode() == 200) {
+				$forecast = json_decode($response->getBody(), true);
+			}
 			
 			if (is_array($forecast)) {
 				$weather = array(); 
@@ -479,24 +441,14 @@
 				
 				$url = sprintf("http://where.yahooapis.com/v1/%s?lang=en&appid=%s&format=json", $lookup, $RailpageConfig->Yahoo->ApplicationID);
 				
-				/**
-				 * Load PEAR HTTP/Request2
-				 */
+				$GuzzleClient = new Client;
+				$response = $GuzzleClient->get($url);
 				
-				#require_once("HTTP/Request2.php");
+				if ($response->getStatusCode() == 200) {
+					$result = json_decode($response->getBody(), true);
+				}
 				
-				/**
-				 * Fetch from Yahoo's GeoPlanet API
-				 */
-				
-				$request = new HTTP_Request2($url, HTTP_Request2::METHOD_GET);
-				$request->setConfig(array(
-					"ssl_verify_peer" => false
-				));
-				
-				$response = $request->send();
-				
-				switch ($response->getStatus()) {
+				switch ($response->getStatusCode()) {
 					case 200 :
 						$return = json_decode($response->getBody(), true);
 						break;
@@ -514,7 +466,7 @@
 						break;
 					
 					default : 
-						throw new Exception("Your call to Yahoo Web Services returned an unexpected HTTP status of: " . $response->getStatus());
+						throw new Exception("Your call to Yahoo Web Services returned an unexpected HTTP status of: " . $response->getStatusCode());
 						
 				}
 				
@@ -543,4 +495,3 @@
 		}
 
 	}
-?>
