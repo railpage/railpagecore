@@ -71,6 +71,15 @@
 		public $firstline;
 		
 		/**
+		 * Article summary
+		 * Will eventually replace separate blurb & body with whole post (content) and summary (lead)
+		 * @since Version 3.9.1
+		 * @var string $lead
+		 */
+		
+		public $lead;
+		
+		/**
 		 * Story blurb
 		 * @since Version 3.3
 		 * @var string $blurb
@@ -85,6 +94,15 @@
 		 */
 		
 		public $blurb_clean;
+		
+		/**
+		 * The main body of the article
+		 * Will eventually replace separate blurb & body with whole post (paragraphs) and summary (lead)
+		 * @since Version 3.9.1
+		 * @var string $paragraphs
+		 */
+		
+		public $paragraphs;
 		
 		/**
 		 * Story body
@@ -289,11 +307,11 @@
 			
 			$return = false;
 			
-			$mckey = __METHOD__ . "-" . $this->id; 
+			$this->mckey = __METHOD__ . "-" . $this->id; 
 			$mcexp = strtotime("+1 hour"); 
 			
 			/*
-			if ($this->pending === false && $this->memcache && $return = $this->memcache->get($mckey)) {
+			if ($this->pending === false && $this->memcache && $return = $this->memcache->get($this->mckey)) {
 				// Do nothing
 				printArray($return);die;
 			} else {
@@ -317,7 +335,7 @@
 					$return = $rs->fetch_assoc(); 
 					
 					if ($this->pending === false && $this->memcache) {
-						$this->memcache->set($mckey, $return, $mcexp);
+						$this->memcache->set($this->mckey, $return, $mcexp);
 					}
 				}
 			} else {
@@ -355,6 +373,8 @@
 				$this->approved			= isset($return['approved']) ? (bool)$return['approved'] : false;
 				$this->sent_to_fb		= isset($return['sent_to_fb']) ? (bool)$return['sent_to_fb'] : false;
 				$this->featured_image	= isset($return['featured_image']) ? $return['featured_image'] : false;
+				$this->lead = $return['lead'];
+				$this->paragraphs = $return['paragraphs'];
 				
 				// Match the first sentence
 				$line = explode("\n", $this->blurb); 
@@ -410,7 +430,7 @@
 					$Error->save($e); 
 				}
 				
-				if (empty($this->body) && !empty($this->source)) {
+				if (empty($this->getParagraphs()) && !empty($this->source)) {
 					$this->url->url = $this->source;
 					$this->url->canonical = $this->source;
 				}
@@ -656,10 +676,17 @@
 			
 			$dataArray = array(); 
 			
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				deleteMemcacheObject($this->mckey);
+				deleteMemcacheObject(sprintf("json:railpage.news.article=%d", $this->id));
+			}
+			
 			$dataArray['approved'] 	= $this->approved; 
 			$dataArray['title']		= $this->title;
-			$dataArray['hometext']	= $this->blurb->__toString(); 
+			$dataArray['hometext']	= is_object($this->blurb) ? $this->blurb->__toString(): $this->blurb; 
 			$dataArray['bodytext']	= is_object($this->body) ? $this->body->__toString() : $this->body;
+			$dataArray['lead'] = $this->lead;
+			$dataArray['paragraphs'] = $this->paragraphs;
 			$dataArray['ForumThreadID']		= $this->topic_id; 
 			$dataArray['source']	= $this->source; 
 			$dataArray['user_id']	= $this->Author instanceof User ? $this->Author->id : $this->user_id; 
@@ -717,18 +744,26 @@
 				return false;
 			}
 			
-			if (empty($this->blurb)) {
+			if (empty($this->blurb) && empty($this->lead)) {
 				throw new Exception("Validation failed: blurb is empty"); 
 				return false;
 			}
 			
-			if (empty($this->body) && empty($this->source)) {
+			if (empty($this->body) && empty($this->source) && empty($this->paragraphs)) {
 				throw new Exception("Validation failed: body is empty"); 
 				return false;
 			}
 			
 			if (is_null($this->body)) {
 				$this->body = "";
+			}
+			
+			if (is_null($this->paragraphs)) {
+				$this->paragraphs = "";
+			}
+			
+			if (is_null($this->lead)) {
+				$this->lead = "";
 			}
 			
 			if (!isset($this->Author) || !$this->Author instanceof User) {
@@ -782,7 +817,7 @@
 				throw new Exception("Cannot make a JSON object for the requested news article beacuse no valid article ID was found. Something's wrong....");
 			}
 			
-			if (empty($this->body) && !empty($this->source)) {
+			if (empty($this->getParagraphs()) && !empty($this->source)) {
 				if ($this->url instanceof Url) {
 					$this->url->url = $this->source;
 				} else {
@@ -797,8 +832,8 @@
 					"id" => $this->id,
 					"title" => $this->title,
 					"hits" => $this->hits,
-					"blub" => is_object($this->blurb) ? $this->blurb->__toString() : $this->blurb,
-					"body" => is_object($this->body) ? $this->body->__toString() : $this->body,
+					"blub" => $this->getLead(),
+					"body" => $this->getParagraphs(),
 					"image" => $this->featured_image,
 					"approved" => $this->approved,
 					"source" => $this->source,
@@ -894,7 +929,7 @@
 			
 			$results = $Sphinx->query($Sphinx->escapeString($this->title), "idx_news_article");
 			
-			return $results['matches'];
+			return isset($results['matches']) ? $results['matches'] : array();
 		}
 		
 		/**
@@ -938,6 +973,30 @@
 			}
 			
 			return false;
+		}
+		
+		/**
+		 * Get the lead of this article
+		 * @since Version 3.9.1
+		 * @return string
+		 */
+		
+		public function getLead() {
+			$lead = empty($this->blurb) || is_null($this->blurb) ? $this->lead : $this->blurb;
+			
+			return is_object($lead) ? $lead->__toString() : $lead;
+		}
+		
+		/**
+		 * Get the paragraphs (body) of this article
+		 * @since Version 3.9.1
+		 * @return string
+		 */
+		
+		public function getParagraphs() {
+			$paragraphs = empty($this->body) || is_null($this->body) ? $this->paragraphs : $this->blurb . "\n\n" . $this->body;
+			
+			return is_object($paragraphs) ? $paragraphs->__toString() : $paragraphs;
 		}
 	}
 ?>

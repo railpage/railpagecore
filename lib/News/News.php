@@ -126,12 +126,10 @@
 		public static function getArticleJSON($article_id) {
 			$key = sprintf("json:railpage.news.article=%d", $article_id);
 			
-			#deleteMemcacheObject($key);
-			
 			if (!$json = getMemcacheObject($key)) {
 				$Article = new Article($article_id);
 				
-				if (empty($Article->body) && !empty($Article->source)) {
+				if (empty($Article->getParagraphs()) && !empty($Article->source)) {
 					$Article->url->url = $Article->source;
 				}
 				
