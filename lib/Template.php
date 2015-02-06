@@ -386,7 +386,9 @@
 		
 		public function getAdvertisementHTML() {
 			
-			if (rand(0, 5) % 2) {
+			$showjobs = false;
+			
+			if ($showjobs && rand(0, 5) % 2) {
 				
 				$Job = (new Jobs)->getRandomJob(); 
 				
