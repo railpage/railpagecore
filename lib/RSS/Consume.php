@@ -422,7 +422,7 @@
 		
 		private function createSummary($str, $n = 1024, $end_char = '&#8230;') {
 			
-			$str = strip_tags($str);
+			$str = strip_tags($str, "<ul><li><ol>");
 			
 			$str = explode("\n", $str); 
 			
@@ -450,6 +450,7 @@
 			$text = array();
 			
 			foreach ($str as $v) {
+				
 				$text[] = $v;
 				
 				if (trim($v) != "") {
