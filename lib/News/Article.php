@@ -377,7 +377,7 @@
 				$this->paragraphs = $return['paragraphs'];
 				
 				// Match the first sentence
-				$line = explode("\n", $this->blurb); 
+				$line = explode("\n", $this->getLead()); 
 				$this->firstline = preg_replace('/([^?!.]*.).*/', '\\1', strip_tags($line[0]));
 				
 				if (isset($return['geo_lat']) && !empty($return['geo_lat']) && isset($return['geo_lon']) && !empty($return['geo_lon'])) {
