@@ -10,6 +10,7 @@
 	namespace Railpage\Downloads;
 	
 	use Railpage\AppCore;
+	use Railpage\Module;
 	use Exception;
 	
 	if (!defined("DS")) {
@@ -19,7 +20,11 @@
 	if (isset($RailpageConfig->Uploads->Directory)) {
 		define("RP_DOWNLOAD_DIR", $RailpageConfig->Uploads->Directory);
 	} else {
-		define("RP_DOWNLOAD_DIR", dirname(dirname(dirname(__DIR__))). DS . "uploads" . DS); 
+		if (defined("RP_SITE_ROOT")) {
+			define("RP_DOWNLOAD_DIR", sprintf("%s%suploads%s", RP_SITE_ROOT, DS, DS));
+		} else{
+			define("RP_DOWNLOAD_DIR", dirname(dirname(dirname(dirname(dirname(__DIR__))))). DS . "uploads" . DS); 
+		}
 	}
 	
 	if (isset($RailpageConfig->Uploads->MaxSize)) {
@@ -68,6 +73,8 @@
 		
 		public function __construct($dir = NULL) {
 			parent::__construct();
+			
+			$this->Module = new Module("Downloads");
 				
 			if (is_null($dir)) {
 				// Try to set the directory
