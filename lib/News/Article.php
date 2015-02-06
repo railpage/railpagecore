@@ -832,7 +832,7 @@
 					"id" => $this->id,
 					"title" => $this->title,
 					"hits" => $this->hits,
-					"blub" => $this->getLead(),
+					"blurb" => $this->getLead(),
 					"body" => $this->getParagraphs(),
 					"image" => $this->featured_image,
 					"approved" => $this->approved,

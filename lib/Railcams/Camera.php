@@ -18,7 +18,7 @@
 	use Rezzza\Flickr\Http\GuzzleAdapter;
 	use GuzzleHttp\Client;
 	use DOMDocument;
-	use DOMXpath
+	use DOMXpath;
 	
 	/**
 	 * Railcam class
