@@ -698,8 +698,6 @@
 			$dataArray['slug'] = $this->createSlug();
 			$dataArray['topic'] = $this->Topic->id;
 			
-			#ssprintArray($dataArray);die;
-			
 			if ($this->featured_image !== false) {
 				$dataArray['featured_image'] = $this->featured_image;
 			}

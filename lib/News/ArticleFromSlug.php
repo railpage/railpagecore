@@ -28,7 +28,7 @@
 		public function __construct($slug) {
 			global $ZendDB, $ZendDB_ReadOnly;
 			
-			$mckey = "railpage:news.article_slug=" . $slug; 
+			$mckey = "railpage:news.article_slug=" . $slug;
 			
 			$loaded = false;
 			
