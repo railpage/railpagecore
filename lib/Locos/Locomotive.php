@@ -18,6 +18,7 @@
 	use DateTime;
 	use Exception;
 	use stdClass;
+	use Railpage\Registry;
 		
 	/**
 	 * Loco object

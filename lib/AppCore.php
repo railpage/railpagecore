@@ -14,6 +14,10 @@
 	use Foolz\SphinxQL\SphinxQL;
 	use Foolz\SphinxQL\Connection;
 	
+	use Monolog\Logger;
+	use Monolog\Handler\SwiftMailerHandler;
+	use Monolog\Handler\PushoverHandler;
+	
 	if (!defined("RP_SITE_ROOT")) {
 		define("RP_SITE_ROOT", "");
 	}
@@ -210,6 +214,25 @@
 				$this->Config = getRailpageConfig();
 			} elseif (file_exists(dirname(__DIR__) . DS . "config.railpage.json")) {
 				$this->Config = json_decode(file_get_contents(dirname(__DIR__) . DS . "config.railpage.json"));
+			}
+			
+			/**
+			 * Create the registry
+			 */
+			
+			$Registry = Registry::getInstance();
+			
+			/**
+			 * Load/set the logger interface
+			 */ 
+			
+			try {
+				$this->log = $Registry->get("log");
+			} catch (Exception $e) {
+				$Log = new Logger("railpage");
+				$Log->pushHandler(new PushoverHandler("aVHTDYcWLH7y8ZXoDNnaHjAuH7gnY5", "uWy9phgETHeYLqTZBL5YSVjoqB93id", "Railpage API"));
+				$Registry->set("log", $Log);
+				$this->log = $Log;
 			}
 		}
 		
