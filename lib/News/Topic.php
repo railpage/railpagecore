@@ -240,6 +240,7 @@
 						}
 						
 						$row['url'] = $this->makePermaLink($row['slug']); 
+						$row['story_id'] = $row['sid'];
 						
 						$return['children'][] = $row; 
 					}
