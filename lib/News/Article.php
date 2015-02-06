@@ -994,7 +994,11 @@
 		 */
 		
 		public function getParagraphs() {
-			$paragraphs = empty($this->body) || is_null($this->body) ? $this->paragraphs : $this->blurb . "\n\n" . $this->body;
+			if (empty($this->body) && empty($this->paragraphs)) {
+				$paragraphs = $this->getLead(); 
+			} else {
+				$paragraphs = empty($this->body) || is_null($this->body) ? $this->paragraphs : $this->blurb . "\n\n" . $this->body;
+			}
 			
 			return is_object($paragraphs) ? $paragraphs->__toString() : $paragraphs;
 		}
