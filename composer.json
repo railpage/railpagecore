@@ -107,6 +107,7 @@
 	],
 	"require" : {
 		"php" : ">=5.5.0",
+		"zendframework/zendframework1": "1.*",
 		"zendframework/zend-http" : "~2.3",
 		"zendframework/zend-config" : "~2.3",
 		"zendframework/zend-uri" : "~2.3",
