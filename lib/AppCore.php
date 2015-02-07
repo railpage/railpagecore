@@ -10,6 +10,8 @@
 	
 	use stdClass;
 	use Exception;
+	use Memcached as MemcachedBlahBlah;
+	use Redis;
 	use Railpage\Users\User;
 	use Foolz\SphinxQL\SphinxQL;
 	use Foolz\SphinxQL\Connection;
@@ -17,6 +19,10 @@
 	use Monolog\Logger;
 	use Monolog\Handler\SwiftMailerHandler;
 	use Monolog\Handler\PushoverHandler;
+	
+	use Doctrine\Common\Cache\MemcachedCache;
+	use Doctrine\Common\Cache\RedisCache;
+	
 	
 	if (!defined("RP_SITE_ROOT")) {
 		define("RP_SITE_ROOT", "");
@@ -28,6 +34,10 @@
 	
 	if (!defined("RP_HOST")) {
 		define("RP_HOST", "www.railpage.com.au");
+	}
+	
+	if (!defined("DS")) {
+		define("DS", DIRECTORY_SEPARATOR);
 	}
 	
 	/**
@@ -144,78 +154,6 @@
 		public function __construct() {
 			global $ZendDB, $ZendDB_ReadOnly, $PHPUnitTest;
 			
-			if (isset($PHPUnitTest) && $PHPUnitTest == true) {
-				
-				require("db.dist" . DS . "zend_db.php"); 
-				$this->db = $ZendDB;
-				$this->destroy = true;
-				
-				$ZendDB_ReadOnly = $ZendDB;
-				
-			} else {
-			
-				if (isset($ZendDB)) {
-					$this->db = $ZendDB; 
-				} elseif (file_exists("db" . DS . "zend_db.php")) {
-					require("db" . DS . "zend_db.php"); 
-					$this->db = $ZendDB;
-					$this->destroy = true;
-				} elseif (file_exists(".." . DS . "db" . DS . "zend_db.php")) {
-					require(".." . DS . "db" . DS . "zend_db.php"); 
-					$this->db = $ZendDB;
-					$this->destroy = true;
-				} else {
-					
-					// Attempt to resolve the DB connection to a stream path. If it can't be resolved, assume this is a CI environment and load a test DB connector
-					
-					if (stream_resolve_include_path("db" . DS . "connect.php")) {
-						require("db" . DS . "connect.php"); 
-						throw new Exception(__CLASS__." needs a database object");
-						$this->db = $db;
-						$this->destroy = true;
-					}
-				}
-				
-				if (isset($ZendDB_ReadOnly)) {
-					$this->db_readonly = $ZendDB_ReadOnly; 
-				} elseif (file_exists("db" . DS . "zend_db.php")) {
-					require("db" . DS . "zend_db.php"); 
-					$this->db_readonly = $ZendDB_ReadOnly;
-					$this->destroy = true;
-				} elseif (file_exists(".." . DS . "db" . DS . "zend_db.php")) {
-					require(".." . DS . "db" . DS . "zend_db.php"); 
-					$this->db_readonly = $ZendDB_ReadOnly;
-					$this->destroy = true;
-				}
-			}
-			
-			/** 
-			 * Create Memcache object
-			 */
-			
-			if (file_exists(__DIR__ . DIRECTORY_SEPARATOR . "memcache.php")) {
-				require(__DIR__ . DIRECTORY_SEPARATOR . "memcache.php"); 
-				
-				$this->memcache = $memcache;
-			}
-			
-			/**
-			 * Build the StatsD object
-			 */
-			
-			$this->StatsD = new stdClass;
-			$this->StatsD->target = new stdClass;
-			
-			/**
-			 * Load the config
-			 */
-			
-			if (function_exists("getRailpageConfig")) {
-				$this->Config = getRailpageConfig();
-			} elseif (file_exists(dirname(__DIR__) . DS . "config.railpage.json")) {
-				$this->Config = json_decode(file_get_contents(dirname(__DIR__) . DS . "config.railpage.json"));
-			}
-			
 			/**
 			 * Create the registry
 			 */
@@ -234,6 +172,122 @@
 				$Registry->set("log", $Log);
 				$this->log = $Log;
 			}
+			
+			if (isset($PHPUnitTest) && $PHPUnitTest == true) {
+				
+				require("db.dist" . DS . "zend_db.php"); 
+				$this->db = $ZendDB;
+				$this->destroy = true;
+				
+				$ZendDB_ReadOnly = $ZendDB;
+				
+			} else {
+				
+				/**
+				 * Load / set the database instance
+				 */
+				
+				try {
+					$this->db = $Registry->get("db");
+				} catch (Exception $e) {
+			
+					if (isset($ZendDB)) {
+						$this->db = $ZendDB; 
+					} elseif (file_exists("db" . DS . "zend_db.php")) {
+						require("db" . DS . "zend_db.php"); 
+						$this->db = $ZendDB;
+						$this->destroy = true;
+					} elseif (file_exists(".." . DS . "db" . DS . "zend_db.php")) {
+						require(".." . DS . "db" . DS . "zend_db.php"); 
+						$this->db = $ZendDB;
+						$this->destroy = true;
+					} else {
+						
+						// Attempt to resolve the DB connection to a stream path. If it can't be resolved, assume this is a CI environment and load a test DB connector
+						
+						if (stream_resolve_include_path("db" . DS . "connect.php")) {
+							require("db" . DS . "connect.php"); 
+							throw new Exception(__CLASS__." needs a database object");
+							$this->db = $db;
+							$this->destroy = true;
+						}
+					}
+					
+					$Registry->set("db", $this->db);
+				}
+				
+				/**
+				 * Load / set the read-only database instance
+				 */
+				
+				try {
+					$this->db_readonly = $Registry->get("db_readonly");
+				} catch (Exception $e) {
+					if (isset($ZendDB_ReadOnly)) {
+						$this->db_readonly = $ZendDB_ReadOnly; 
+					} elseif (file_exists("db" . DS . "zend_db.php")) {
+						require("db" . DS . "zend_db.php"); 
+						$this->db_readonly = $ZendDB_ReadOnly;
+						$this->destroy = true;
+					} elseif (file_exists(".." . DS . "db" . DS . "zend_db.php")) {
+						require(".." . DS . "db" . DS . "zend_db.php"); 
+						$this->db_readonly = $ZendDB_ReadOnly;
+						$this->destroy = true;
+					}
+					
+					$Registry->set("db_readonly", $this->db_readonly);
+				}
+			}
+			
+			/** 
+			 * Create Memcache object
+			 */
+			
+			if (file_exists(__DIR__ . DIRECTORY_SEPARATOR . "memcache.php")) {
+				require(__DIR__ . DIRECTORY_SEPARATOR . "memcache.php"); 
+				
+				$this->memcache = $memcache;
+			}
+			
+			/**
+			 * Build the StatsD object
+			 */
+			
+			try {
+				$this->StatsD = $Registry->get("statsd"); 
+			} catch (Exception $e) {
+				$this->StatsD = new stdClass;
+				$this->StatsD->target = new stdClass;
+				$Registry->set("statsd", $this->StatsD);
+			}
+			
+			/**
+			 * Load the config
+			 */
+			
+			$this->Config = self::getConfig();
+			
+			/**
+			 * Load / set the Memcached object
+			 */
+			
+			try {
+				$this->Memcached = $Registry->get("memcached");
+			} catch (Exception $e) {
+				$Memcached = new MemcachedBlahBlah;
+				$Memcached->addServer($this->Config->Memcached->Host, 11211);
+				
+				$this->Memcached = new MemcachedCache;
+				$this->Memcached->setMemcached($Memcached);
+				
+				$Registry->set("memcached", $this->Memcached);
+			}
+			
+			/**
+			 * Load / set the Redis object
+			 */
+			
+			$this->Redis = self::getRedis();
 		}
 		
 		/**
@@ -405,6 +459,57 @@
 			$conn->setParams(array("host" => $this->Config->Sphinx->Host, "port" => $this->Config->Sphinx->Port));
 			
 			return SphinxQL::create($conn);
+		}
+		
+		/**
+		 * Get RP configuration
+		 * @since Version 3.9.1
+		 * @return \stdClass
+		 */
+		
+		static public function getConfig() {
+			$Registry = Registry::getInstance();
+			
+			try {
+				$Config = $Registry->get("config");
+			} catch (Exception $e) {
+				if (function_exists("getRailpageConfig")) {
+					$Config = getRailpageConfig();
+				} elseif (file_exists(dirname(__DIR__) . DS . "config.railpage.json")) {
+					$Config = json_decode(file_get_contents(dirname(__DIR__) . DS . "config.railpage.json"));
+				}
+				
+				$Registry->set("config", $Config);
+			}
+			
+			return $Config;
+		}
+		 
+		
+		/**
+		 * Get our Redist instance
+		 * @since Version 3.9.1
+		 * @return \Doctrine\Common\Cache\RedisCache
+		 */
+		
+		static public function getRedis() {
+			$Registry = Registry::getInstance();
+			
+			$Config = self::getConfig();
+			
+			try {
+				$cacheDriver = $Registry->get("redis");
+			} catch (Exception $e) {
+				$Redis = new Redis;
+				$Redis->connect($Config->Memcached->Host, 6379);
+				
+				$cacheDriver = new RedisCache;
+				$cacheDriver->setRedis($Redis);
+				
+				$Registry->set("redis", $cacheDriver);
+			}
+			
+			return $cacheDriver;
 		}
 	}
 ?>
