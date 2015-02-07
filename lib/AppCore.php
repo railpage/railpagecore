@@ -190,7 +190,7 @@
 				try {
 					$this->db = $Registry->get("db");
 				} catch (Exception $e) {
-			
+					
 					if (isset($ZendDB)) {
 						$this->db = $ZendDB; 
 					} elseif (file_exists("db" . DS . "zend_db.php")) {

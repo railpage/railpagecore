@@ -1103,8 +1103,8 @@
 			 */
 			
 			if (empty($data['user_avatar']) || substr($data['user_avatar'], -9, 5) == "blank") {
-				$data['user_avatar'] = format_avatar("http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png", 120, 120);
-				$data['user_avatar_filename'] = format_avatar("http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png", 120, 120);
+				$data['user_avatar'] = function_exists("format_avatar") ? format_avatar("http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png", 120, 120) : "http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png";
+				$data['user_avatar_filename'] = function_exists("format_avatar") ? format_avatar("http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png", 120, 120) : "http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png";
 				$data['user_avatar_width'] = 120;
 				$data['user_avatar_height'] = 120;
 			}
