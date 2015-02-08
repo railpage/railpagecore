@@ -271,17 +271,7 @@
 			 * Load / set the Memcached object
 			 */
 			
-			try {
-				$this->Memcached = $Registry->get("memcached");
-			} catch (Exception $e) {
-				$Memcached = new MemcachedBlahBlah;
-				$Memcached->addServer($this->Config->Memcached->Host, 11211);
-				
-				$this->Memcached = new MemcachedCache;
-				$this->Memcached->setMemcached($Memcached);
-				
-				$Registry->set("memcached", $this->Memcached);
-			}
+			$this->Memcached = self::getMemcached();
 			
 			/**
 			 * Load / set the Redis object
@@ -518,6 +508,32 @@
 				$cacheDriver->setRedis($Redis);
 				
 				$Registry->set("redis", $cacheDriver);
+			}
+			
+			return $cacheDriver;
+		}
+		
+		/**
+		 * Get our Memcached instance
+		 * @since Version 3.9.1
+		 * @return \Doctrine\Common\Cache\MemcachedCache
+		 */
+		
+		static public function getMemcached() {
+			$Registry = Registry::getInstance();
+			
+			$Config = self::getConfig();
+			
+			try {
+				$cacheDriver = $Registry->get("memcached");
+			} catch (Exception $e) {
+				$Memcached = new MemcachedBlahBlah;
+				$Memcached->addServer($Config->Memcached->Host, 11211);
+				
+				$cacheDriver = new MemcachedCache;
+				$cacheDriver->setMemcached($Memcached);
+				
+				$Registry->set("memcached", $cacheDriver);
 			}
 			
 			return $cacheDriver;
