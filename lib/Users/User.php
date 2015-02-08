@@ -913,7 +913,7 @@
 	 
 			if (RP_DEBUG) {
 				global $site_debug;
-				$debug_timer_start = microtime(true);
+				$debug_timer_start_z = microtime(true);
 			}
 			
 			if (function_exists("debug_recordInstance")) {	
@@ -942,7 +942,7 @@
 			}
 			
 			if (RP_DEBUG) {
-				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") instantiated in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") instantiated in " . round(microtime(true) - $debug_timer_start_z, 5) . "s";
 			}
 		}
 		
@@ -964,13 +964,31 @@
 				return false;
 			}
 			
+			if (RP_DEBUG) {
+				global $site_debug;
+				$debug_timer_start = microtime(true);
+			}
+			
 			$this->createUrls();
+			
+			if (RP_DEBUG) {
+				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") createUrls() completed in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+			}
 			
 			$this->mckey = "railpage:user_id=" . $this->id; 
 			$cached = false;
 			
+			if (RP_DEBUG) {
+				global $site_debug;
+				$debug_timer_start = microtime(true);
+			}
+			
 			if ($data = $this->getCache($this->mckey)) {
 				$cached = true;
+			
+				if (RP_DEBUG) {
+					$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via Memcached in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+				}
 				
 			} elseif ($this->db instanceof \sql_db) {
 				$query  = "SELECT u.*, COALESCE(SUM((SELECT COUNT(*) FROM nuke_bbprivmsgs WHERE privmsgs_to_userid='".$this->db->real_escape_string($this->id)."' AND (privmsgs_type='5' OR privmsgs_type='1'))), 0) AS unread_pms FROM nuke_users u WHERE u.user_id = '".$this->db->real_escape_string($this->id)."';";
@@ -1028,6 +1046,10 @@
 							$data['oauth_secret']	= $row['consumer_secret'];
 						}
 					}
+			
+					if (RP_DEBUG) {
+						$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via sql_db in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+					}
 				} else {
 					throw new \Exception($this->db->error); 
 					return false;
@@ -1063,6 +1085,10 @@
 						}
 					}
 				}
+			
+				if (RP_DEBUG) {
+					$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via zend_db in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+				}
 			}
 				
 			/**
@@ -1071,6 +1097,12 @@
 			
 			// Set the full avatar path
 			if (!empty($data['user_avatar'])) {
+				
+				if (RP_DEBUG) {
+					global $site_debug;
+					$debug_timer_start = microtime(true);
+				}
+			
 				$data['user_avatar_filename'] = $data['user_avatar']; 
 				
 				if (!stristr($data['user_avatar'], "http://") && !stristr($data['user_avatar'], "https://")) {
@@ -1099,7 +1131,12 @@
 						$data['user_avatar'] = ""; // Empty the avatar to enforce the defaults below
 					}
 				}
-				*/
+				*/	
+			
+				if (RP_DEBUG) {
+					$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") user avatar processed in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+				}
+				
 			}
 			
 			/**

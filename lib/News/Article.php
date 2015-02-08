@@ -305,58 +305,62 @@
 				return false;
 			}
 			
+			if (RP_DEBUG) {
+				global $site_debug;
+				$debug_timer_start = microtime(true);
+			}
+			
 			$return = false;
 			
 			$this->mckey = __METHOD__ . "-" . $this->id; 
 			$mcexp = strtotime("+1 hour"); 
 			
-			/*
-			if ($this->pending === false && $this->memcache && $return = $this->memcache->get($this->mckey)) {
-				// Do nothing
-				printArray($return);die;
-			} else {
-			*/
-			if ($this->db instanceof \sql_db) {
-				if ($this->pending == true) {
-					// Get story from pending table
-					$query = "SELECT u.username, 0 AS sent_to_fb, p.geo_lat, p.geo_lon, p.qid as sid, p.uname as informant, p.subject as title, p.story as hometext, p.storyext as bodytext, p.topic, p.source, t.topicname, t.topicimage, t.topictext, p.timestamp as time FROM nuke_users u, nuke_queue p, nuke_topics t WHERE p.topic = t.topicid AND p.uid = u.user_id AND p.qid = '".$this->db->real_escape_string($this->id)."'";
-					$table = "pending";
-				} else {
-					$query = "SELECT s.*, t.topicname, t.topicimage, t.topictext, t.topicid FROM nuke_stories s, nuke_topics t WHERE s.topic = t.topicid AND s.sid = '".$this->db->real_escape_string($this->id)."'";
-					$table = "published";
-				}
-				
-				if ($rs = $this->db->query($query)) {
-					if ($rs->num_rows == 0) {
-						throw new Exception("Cannot fetch ".$table." article ID ".$this->id." - no story found"); 
-						return false;
-					}
+			if (!$return = $this->Memcached->fetch($this->mckey)) {
+			
+				if ($this->db instanceof \sql_db) {
+					/*
+					if ($this->pending == true) {
+						// Get story from pending table
+						$query = "SELECT u.username, 0 AS sent_to_fb, p.geo_lat, p.geo_lon, p.qid as sid, p.uname as informant, p.subject as title, p.story as hometext, p.storyext as bodytext, p.topic, p.source, t.topicname, t.topicimage, t.topictext, p.timestamp as time FROM nuke_users u, nuke_queue p, nuke_topics t WHERE p.topic = t.topicid AND p.uid = u.user_id AND p.qid = '".$this->db->real_escape_string($this->id)."'";
+						$table = "pending";
+					} else {
+					*/
+						$query = "SELECT s.*, t.topicname, t.topicimage, t.topictext, t.topicid FROM nuke_stories s, nuke_topics t WHERE s.topic = t.topicid AND s.sid = '".$this->db->real_escape_string($this->id)."'";
+						$table = "published";
+					#}
 					
-					$return = $rs->fetch_assoc(); 
-					
-					if ($this->pending === false && $this->memcache) {
-						$this->memcache->set($this->mckey, $return, $mcexp);
+					if ($rs = $this->db->query($query)) {
+						if ($rs->num_rows == 0) {
+							throw new Exception("Cannot fetch ".$table." article ID ".$this->id." - no story found"); 
+							return false;
+						}
+						
+						$return = $rs->fetch_assoc(); 
+						
+						if ($this->pending === false && $this->memcache) {
+							$this->Memcached->save($this->mckey, $return, $mcexp);
+						}
 					}
-				}
-			} else {
-				if ($this->pending == true) {
-					$query = "SELECT q.qid AS sid, q.uid AS user_id, u.username, q.subject AS title, q.story AS hometext, q.storyext AS bodytext, q.timestamp AS time, q.source, t.topicname, t.topictext, q.topic, 'oldqueue' AS queue
-								FROM nuke_queue AS q
-								LEFT JOIN nuke_topics AS t ON q.topic = t.topicid
-								LEFT JOIN nuke_users AS u ON q.uid = u.user_id
-								WHERE q.qid = ?";
 				} else {
-					$query = "SELECT s.*, t.topicname, t.topicimage, t.topictext, t.topicid 
-								FROM nuke_stories AS s 
-								LEFT JOIN nuke_topics AS t ON s.topic = t.topicid
-								WHERE s.sid = ?";
+					/*
+					if ($this->pending == true) {
+						$query = "SELECT q.qid AS sid, q.uid AS user_id, u.username, q.subject AS title, q.story AS hometext, q.storyext AS bodytext, q.timestamp AS time, q.source, t.topicname, t.topictext, q.topic, 'oldqueue' AS queue
+									FROM nuke_queue AS q
+									LEFT JOIN nuke_topics AS t ON q.topic = t.topicid
+									LEFT JOIN nuke_users AS u ON q.uid = u.user_id
+									WHERE q.qid = ?";
+					} else {
+					*/
+						$query = "SELECT s.*, t.topicname, t.topicimage, t.topictext, t.topicid 
+									FROM nuke_stories AS s 
+									LEFT JOIN nuke_topics AS t ON s.topic = t.topicid
+									WHERE s.sid = ?";
+					#}
+					
+					$return = $this->db_readonly->fetchRow($query, $this->id); 
+					$this->Memcached->save($this->mckey, $return);
 				}
-				
-				$return = $this->db_readonly->fetchRow($query, $this->id); 
 			}
-			/*
-			}
-			*/
 			
 			if (isset($return) && is_array($return) && !empty($return)) {
 				
@@ -438,6 +442,10 @@
 				#throw new Exception($this->db->error."\n\n".$query);
 				throw new Exception(sprintf("Cannot find news article #%d", $this->id));
 				return false;
+			}
+			
+			if (RP_DEBUG) {
+				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") instantiated in " . round(microtime(true) - $debug_timer_start, 5) . "s";
 			}
 			
 			return $return;
@@ -680,9 +688,10 @@
 				deleteMemcacheObject($this->mckey);
 				deleteMemcacheObject(sprintf("json:railpage.news.article=%d", $this->id));
 				
-				$Redis = AppCore::getRedis();
-				$Redis->delete(sprintf("railpage:news.article=%s", $this->id));
-				$Redis->delete(sprintf("railpage:news.article=%s", $this->slug));
+				$this->Redis->delete(sprintf("railpage:news.article=%s", $this->id));
+				$this->Redis->delete(sprintf("railpage:news.article=%s", $this->slug));
+				
+				$this->Memcached->delete($this->mckey);
 			}
 			
 			$dataArray['approved'] 	= $this->approved; 
