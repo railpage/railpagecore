@@ -389,6 +389,10 @@
 					$this->lon = $return['geo_lon']; 
 				}
 				
+				/**
+				 * URLs
+				 */
+				
 				if (empty($return['slug'])) {
 					$return['slug'] = $this->createSlug(); 
 				}
@@ -396,43 +400,29 @@
 				$this->slug = $return['slug'];
 				$this->url = new Url($this->makePermaLink($this->slug));
 				$this->url->source = $return['source']; 
+				$this->fwlink = $this->url->short;
 				
-				if (function_exists("format_post")) {
-					$this->blurb_clean	= format_post($this->blurb, false, false, true, true, true);
-					$this->body_clean	= format_post($this->body, false, false, true, true, true);
-				}
+				/**
+				 * Instantiate the author
+				 */
 				
 				$this->setAuthor(new User($this->user_id));
 				$this->username = $this->Author->username;
 				
+				/** 
+				 * Instantiate the staff object
+				 */
+				
+				if (!filter_var($this->staff_user_id, FILTER_VALIDATE_INT) || $this->staff_user_id == 0) {
+					$this->staff_user_id = 72587;
+				}
+				
 				$this->setStaff(new User($this->staff_user_id));
 				$this->staff_username = $this->Staff->username;
 				
-				// Rest of this shit is for backwards compatibility
-				$whitespace_find = array("<p> </p>", "<p></p>", "<p>&nbsp;</p>");
-				$whitespace_replace = array("", "", ""); 
-				
-				#$return['hometext'] = format_post(str_replace($whitespace_find, $whitespace_replace, $return['hometext'])); 
-				#$return['bodytext'] = format_post(str_replace($whitespace_find, $whitespace_replace, $return['bodytext'])); 
-				
-				#$return['hometext'] = convert_to_utf8($return['hometext']);
-				#$return['bodytext'] = convert_to_utf8($return['bodytext']);
-				
-				#$return['hometext'] = wpautop($return['hometext']);
-				#$return['bodytext'] = process_multimedia(wpautop($return['bodytext']));
-				
-				try {
-					$this->fwlink = new \Railpage\fwlink($this->url);
-					
-					if (empty($this->fwlink->url)) {
-						$this->fwlink->url = $this->url;
-						$this->fwlink->title = $this->title;
-						$this->fwlink->commit();
-					}
-				} catch (Exception $e) {
-					global $Error; 
-					$Error->save($e); 
-				}
+				/**
+				 * Alter the URL
+				 */
 				
 				if (empty($this->getParagraphs()) && !empty($this->source)) {
 					$this->url->url = $this->source;
@@ -890,7 +880,7 @@
 			
 			$response = json_encode($response);
 			
-			setMemcacheObject(sprintf("json:railpage.news.article=%d", $this->id), $response);
+			$this->Memcached->save(sprintf("json:railpage.news.article=%d", $this->id), $response);
 			
 			return $response;
 		}

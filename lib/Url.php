@@ -10,6 +10,7 @@
 	namespace Railpage;
 	
 	use Railpage\fwlink;
+	use Exception;
 	
 	/**
 	 * URLs
@@ -32,6 +33,11 @@
 		 */
 		
 		public function __construct($default_url = false) {
+				
+			if (RP_DEBUG) {
+				global $site_debug;
+				$debug_timer_start = microtime(true);
+			}
 			
 			if ($default_url !== false) {
 				
@@ -53,6 +59,10 @@
 					$this->canonical = sprintf("http://%s%s%s", $rp_host, $rp_root, $this->url);
 				}
 				
+			}
+			
+			if (RP_DEBUG) {
+				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $default_url . ") instantiated in " . round(microtime(true) - $debug_timer_start, 5) . "s";
 			}
 			
 		}
