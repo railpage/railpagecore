@@ -1082,6 +1082,9 @@
 				 * Get user avatar dimensions. If we can't get the avatar dimensions it stands to reason that the avatar no longer exists, so we should unset it
 				 */
 				
+				# MGH 8/02/2015 - commented out as it's blowing out page gen times. @todo: make a validateAvatar() function that does this shit once and then sets it forever
+				
+				/*
 				if (is_null($data['user_avatar_width']) || is_null($data['user_avatar_height'])) {
 					if (!$size = getMemcacheObject(sprintf("rp:user.avatar.sizes=%s", $data['user_avatar']))) {
 						if ($size = @getimagesize($data['user_avatar'])) {
@@ -1096,6 +1099,7 @@
 						$data['user_avatar'] = ""; // Empty the avatar to enforce the defaults below
 					}
 				}
+				*/
 			}
 			
 			/**
