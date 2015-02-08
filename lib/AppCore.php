@@ -479,6 +479,17 @@
 					$Config = json_decode(file_get_contents(dirname(__DIR__) . DS . "config.railpage.json"));
 				}
 				
+				if (!isset($Config)) {
+					$Config = array(
+						"Memcached" => array(
+							"Host" => "127.0.0.1",
+							"Port" => 11211
+						)
+					);
+					
+					$Config = json_decode(json_encode($Config));
+				}
+				
 				$Registry->set("config", $Config);
 			}
 			
