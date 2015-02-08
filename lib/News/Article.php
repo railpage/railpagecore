@@ -679,6 +679,10 @@
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
 				deleteMemcacheObject($this->mckey);
 				deleteMemcacheObject(sprintf("json:railpage.news.article=%d", $this->id));
+				
+				$Redis = AppCore::getRedis();
+				$Redis->delete(sprintf("railpage:news.article=%s", $this->id));
+				$Redis->delete(sprintf("railpage:news.article=%s", $this->slug));
 			}
 			
 			$dataArray['approved'] 	= $this->approved; 
