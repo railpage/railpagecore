@@ -111,7 +111,9 @@
 					$this->type_id = $row['type_id']; 
 					$this->meta = json_decode($row['meta'], true);
 					
-					$this->meta['domain'] = get_domain($this->meta['url']);
+					if (function_exists("get_domain")) {
+						$this->meta['domain'] = get_domain($this->meta['url']);
+					}
 					
 					$this->url = "/assets?id=" . $this->id;
 					

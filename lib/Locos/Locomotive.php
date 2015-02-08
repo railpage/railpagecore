@@ -297,6 +297,11 @@
 		public function __construct($id = NULL, $class_id_or_slug = NULL, $number = NULL) {
 			parent::__construct(); 
 			
+			if (RP_DEBUG) {
+				global $site_debug;
+				$debug_timer_start = microtime(true);
+			}
+			
 			/**
 			 * Record this in the debug log
 			 */
@@ -374,6 +379,10 @@
 			// Load the loco object
 			if (!empty($this->id)) {
 				$this->fetch(); 
+			}
+			
+			if (RP_DEBUG) {
+				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") instantiated in " . round(microtime(true) - $debug_timer_start, 5) . "s";
 			}
 		}
 		
@@ -465,6 +474,7 @@
 				$this->url = new Url(strtolower($this->makeLocoURL($this->Class->slug, $this->number)));
 				$this->url->edit = sprintf("%s?mode=loco.edit&id=%d", $this->Module->url, $this->id);
 				$this->url->sightings = sprintf("%s/sightings", $this->url->url);
+				$this->fwlink = $this->url->short;
 				
 				/**
 				 * Set the meta data
@@ -617,23 +627,6 @@
 					$this->operator_id = $operators[0]['operator_id']; 
 					
 					$this->commit();
-				}
-				
-				/**
-				 * Build the shortcut URL for this object
-				 */
-				
-				try {
-					$this->fwlink = new \Railpage\fwlink($this->url);
-					
-					if (empty($this->fwlink->url)) {
-						$this->fwlink->url = $this->url;
-						$this->fwlink->title = $this->number . " - " . $this->Class->name;
-						$this->fwlink->commit();
-					}
-				} catch (Exception $e) {
-					global $Error; 
-					$Error->save($e); 
 				}
 				
 				/**

@@ -243,7 +243,13 @@
 		 */
 		
 		public function __construct($id_or_slug = false, $recurse = true) {
+			
 			parent::__construct(); 
+			
+			if (RP_DEBUG) {
+				global $site_debug;
+				$debug_timer_start = microtime(true);
+			}
 			
 			/**
 			 * Record this in the debug log
@@ -269,8 +275,10 @@
 				$this->id = $id_or_slug;
 				$this->fetch($recurse);
 			}
-				
-			#printArray(round(microtime(true) - RP_START_TIME, 4) . "s");
+			
+			if (RP_DEBUG) {
+				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") instantiated in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+			}
 		}
 		
 		/**
@@ -300,7 +308,7 @@
 			$this->mckey = sprintf("railpage:locos.class_id=%d", $this->id); 
 			$key = "id";
 			
-			if (!$row = getMemcacheObject($this->mckey)) {
+			if (!$row = $this->Memcached->fetch($this->mckey)) {
 				if ($this->db instanceof \sql_db) {
 					$query = "SELECT c.id, c.asset_id, c.slug, c.download_id, c.date_added, c.date_modified, c.model, c.axle_load, c.tractive_effort, c.weight, c.length, c.parent AS parent_class_id, c.source_id AS source, c.id AS class_id, c.flickr_tag, c.flickr_image_id, c.introduced AS class_introduced, c.name AS class_name, c.loco_type_id AS loco_type_id, c.desc AS class_desc, c.manufacturer_id AS class_manufacturer_id, m.manufacturer_name AS class_manufacturer, w.arrangement AS wheel_arrangement, w.id AS wheel_arrangement_id, t.title AS loco_type
 								FROM loco_class AS c
@@ -312,7 +320,7 @@
 					if ($rs = $this->db->query($query)) {
 						$row = $rs->fetch_assoc();
 						
-						setMemcacheObject($this->mckey, $row, strtotime("+1 week")); 
+						$this->Memcached->save($this->mckey, $row, strtotime("+1 year")); 
 					}
 				} else {
 					if (RP_DEBUG) {
@@ -337,15 +345,19 @@
 						}
 					}
 					
-					foreach ($row as $key => $val) {
-						$row[$key] = convert_to_utf8($val);
+					/** 
+					 * Normalise some items
+					 */
+					
+					if (function_exists("convert_to_utf8")) {
+						foreach ($row as $key => $val) {
+							$row[$key] = convert_to_utf8($val);
+						}
 					}
 					
-					setMemcacheObject($this->mckey, $row, strtotime("+1 month")); 
+					$this->Memcached->save($this->mckey, $row, strtotime("+1 year")); 
 				}
 			}
-			
-			#printArray(" - " . round(microtime(true) - RP_START_TIME, 4) . "s");
 			
 			if (isset($row) && is_array($row)) {
 				
