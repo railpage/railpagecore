@@ -113,6 +113,7 @@
 		"ext-mongo": "*",
 		"ext-redis": "*",
 		"ext-curl": "*",
+		"tombzombie/dice": "dev-master",
 		"zendframework/zendframework1": "1.*",
 		"zendframework/zend-http" : "~2.3",
 		"zendframework/zend-config" : "~2.3",
