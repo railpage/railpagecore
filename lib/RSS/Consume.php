@@ -1,6 +1,6 @@
 <?php
 	/**
-	 * Abstract RSS Scraper (because all "RSS" is not a standard)
+	 * RSS consumer (because all "RSS" is not standard. Screw you, RSS.)
 	 * @since Version 3.9.1
 	 * @package Railpage
 	 * @author Michael Greenhill
@@ -8,7 +8,9 @@
 	
 	namespace Railpage\RSS;
 	
+	use SimpleXMLElement;
 	use DOMDocument;
+	use DOMXPath;
 	use Exception;
 	use DateTime;
 	use DateTimeZone;
@@ -118,8 +120,6 @@
 					)
 				);
 				
-				#$response = $request->send(); 
-				
 				if ($response->getStatusCode() != 200) {
 					throw new Exception(sprintf("Failed to scrape RSS feed %s: Error %s", $feed['url'], $response->getStatusCode()));
 				}
@@ -143,11 +143,129 @@
 			
 			$items = array(); 
 			
+			foreach ($this->feeds as $feedsrc => $feed) {
+				
+				/**
+				 * Create a new SimpleXMLElement object using the data returned from the RSS/Atom feed
+				 */
+				
+				$xml = new SimpleXMLElement($feed['body'], LIBXML_NOCDATA);
+				
+				/**
+				 * Find all namespaces
+				 */
+				
+				$ns = $xml->getNamespaces(true);
+				$type = "rss";
+				
+				if ($xml->channel->item != NULL) {
+					$loop = $xml->channel->item; 
+				} else {
+					$type = "atom";
+					$loop = $xml->entry;
+				}
+				
+				/**
+				 * Loop through each entry in the feed
+				 */
+				
+				foreach ($loop as $node) {
+					$date = !empty($node->date->__toString()) ? $node->date->__toString() : $node->pubDate->__toString();
+					
+					$link = $node->link->__toString();
+					
+					foreach ($node->link as $link) {
+						if ($link['type'] == "text/html" || $link['rel'] == "alternate") {
+							$link = $link['href']->__toString();
+						}
+					}
+					
+					$item = array(
+						"id" => !empty($node->guid->__toString()) ? $node->guid->__toString() : $link,
+						"title" => $node->title->__toString(),
+						"description" => !empty($node->content->__toString()) ? $node->content->__toString() : $node->description->__toString(),
+						"link" => $link,
+						"tags" => $link,
+						"category" => $link,
+						"date" => $date,
+					);
+					
+					/**
+					 * Loop through all known namespaces and assemble the data
+					 */
+					
+					foreach ($ns as $namespace) {
+						foreach ($node->children($namespace) as $key => $data) {
+							
+							if (isset($item[$key])) {
+								$item[$key] = trim($data->__toString()); 
+							} elseif ($key == "encoded") {
+								$item['description'] = $data->__toString();
+							} else {
+								$item['extra'][$key] = $data->__toString();
+							}
+						}
+					}
+					
+					/**
+					 * Organise the tag(s) situation a little better
+					 */
+					
+					if (count($node->tag) > 0) {
+						$tags = array(); 
+						
+						foreach ($node->tag as $tag) {
+							$tags[] = $tag->__toString();
+						}
+						
+						if (!empty(implode(",", $tags))) {
+							$item['tags'] = implode(",", $tags);
+						}
+					}
+					
+					if (count($node->category) > 0) {
+						$tags = array(); 
+						
+						foreach ($node->category as $tag) {
+							$tags[] = $tag->__toString();
+						}
+						
+						if (!empty(implode(",", $tags))) {
+							$item['tags'] = implode(",", $tags);
+						}
+					}
+						
+					/**
+					 * Process / tidy up the feed item
+					 */
+					
+					$item = $this->process($item);
+				
+					/**
+					 * Get the item summary
+					 */
+					
+					$item['summary'] = $this->createSummary($item['description']);
+					$item['body'] = $this->stripSummaryFromBody($item['summary'], $item['description']);
+					
+					/**
+					 * Add this item to the array of processed items
+					 */
+					
+					$this->feeds[$feedsrc]['items'][] = $item;
+				}
+			}
+					
+			return $this;
+			
+			/** 
+			 * Deprecated, shitty old DOMDocument-based scraper
+			 * I hate DOMDocument
+			 */
+				
 			foreach ($this->feeds as $key => $feed) {
 				$rss = new DOMDocument;
 				$rss->loadXML($feed['body']);
-				
-				#printArray($key);
 				
 				/**
 				 * RSS
@@ -159,9 +277,9 @@
 						$date = $node->getElementsByTagName("date")->length > 0 ? $node->getElementsByTagName("date")->item(0)->nodeValue : $node->getElementsByTagName("pubDate")->item(0)->nodeValue;
 						
 						$item = array(
-							"id" => $node->getElementsByTagName("link")->item(0)->nodeValue,
+							"id" => $node->getElementsByTagName("guid")->length > 0 ? $node->getElementsByTagName("guid")->item(0)->nodeValue : $node->getElementsByTagName("link")->item(0)->nodeValue,
 							"title" => $node->getElementsByTagName("title")->item(0)->nodeValue,
-							"desc" => $node->getElementsByTagName("description")->item(0)->nodeValue,
+							"description" => $node->getElementsByTagName("description")->item(0)->nodeValue,
 							"link" => $node->getElementsByTagName("link")->item(0)->nodeValue,
 							"date" => $date,
 							"tags" => $node->getElementsByTagName("link")->item(0)->nodeValue
@@ -200,7 +318,7 @@
 						 */
 						
 						$nodealias = array(
-							"content" => "desc"
+							"content" => "description"
 						);
 						
 						if ($node->getElementsByTagNameNS("http://purl.org/rss/1.0/modules/content/", "encoded")->length > 0) {
@@ -223,8 +341,8 @@
 						 * Get the item summary
 						 */
 						
-						$item['summary'] = $this->createSummary($item['desc']);
-						$item['body'] = $this->stripSummaryFromBody($item['summary'], $item['desc']);
+						$item['summary'] = $this->createSummary($item['description']);
+						$item['body'] = $this->stripSummaryFromBody($item['summary'], $item['description']);
 						
 						/**
 						 * Add this item to the array of processed items
@@ -250,7 +368,7 @@
 						$item = array(
 							"id" => $node->getElementsByTagName("id")->item(0)->nodeValue,
 							"title" => $node->getElementsByTagName("title")->item(0)->nodeValue,
-							"desc" => $node->getElementsByTagName("content")->item(0)->nodeValue,
+							"description" => $node->getElementsByTagName("content")->item(0)->nodeValue,
 							"link" => $link,
 							"date" => $node->getElementsByTagName("updated")->item(0)->nodeValue,
 							"tags" => $link
@@ -280,8 +398,8 @@
 						 * Get the item summary
 						 */
 						
-						$item['summary'] = $this->createSummary($item['desc']);
-						$item['body'] = $this->stripSummaryFromBody($item['summary'], $item['desc']);
+						$item['summary'] = $this->createSummary($item['description']);
+						$item['body'] = $this->stripSummaryFromBody($item['summary'], $item['description']);
 						
 						/**
 						 * Add this item to the array of processed items
@@ -305,13 +423,14 @@
 		private function process(array $item) {
 			
 			/**
-			 * Process the desc field
+			 * Process the description field
 			 */
 			
-			$item['desc'] = preg_replace('#<br\s*/?>#i', "\n", $item['desc']);
+			$item['description'] = preg_replace('#<br\s*/?>#i', "\n", $item['description']);
+			$item['description'] = str_replace("&nbsp;", " ", $item['description']);
 			
 			$Doc = new DOMDocument;
-			@$Doc->loadHTML('<meta http-equiv="content-type" content="text/html; charset=utf-8">' . $item['desc']); # UTF-8 hinting from http://stackoverflow.com/a/11310258/319922
+			@$Doc->loadHTML('<meta http-equiv="content-type" content="text/html; charset=utf-8">' . $item['description'], LIBXML_NOCDATA ); # UTF-8 hinting from http://stackoverflow.com/a/11310258/319922
 			
 			/**
 			 * Remove P elements with BRs and convert to newlines - @blame RailwayGazette
@@ -331,14 +450,13 @@
 			
 			if ($Doc->getElementsByTagName("p")->length > 1) {
 				foreach ($Doc->getElementsByTagName("p") as $node) {
-					$node->nodeValue = htmlentities(str_replace("\n", " ", str_replace("\r\n", " ", $node->nodeValue))); # Without htmlentities() DOMDocument whinges and bitches something unforgivable
 					
-					$node->nodeValue = htmlentities(str_replace("&nbsp;", " ", $node->nodeValue));
-					
-					# Drop empty nodes
-					if (empty(trim($node->nodeValue))) {
-						$parent = $node->parentNode;
-						$parent->removeChild($node);
+					if ($node->childNodes->item(0)->nodeName == "#text") {
+						$node->nodeValue = htmlentities(str_replace("\n", " ", str_replace("\r\n", " ", $node->nodeValue))); # Without htmlentities() DOMDocument whinges and bitches something unforgivable
+						
+						if (empty(trim($node->nodeValue))) {
+							$node->parentNode->removeChild($node);
+						}
 					}
 				}
 			}
@@ -390,13 +508,26 @@
 			 * Get the updated HTML
 			 */
 			
-			$item['desc'] = $Doc->saveHTML();
+			$item['description'] = $Doc->saveHTML();
+			$item['description'] = str_replace('<meta http-equiv="content-type" content="text/html; charset=utf-8">', "", $item['description']);
 			
 			/**
 			 * Remove all HTML tags except those we want to keep
 			 */
 			
-			$item['desc'] = trim(strip_tags($item['desc'], "<img><a><ul><li><ol><table><thead><tbody><tfoot><tr><th><td>"));
+			$item['description'] = trim(strip_tags($item['description'], "<img><a><ul><li><ol><table><thead><tbody><tfoot><tr><th><td>"));
+			
+			/**
+			 * Convert tags from a SimpleXML object to a string
+			 */
+			
+			if (is_object($item['tags'])) {
+				$item['tags'] = $item['tags']->__toString(); 
+			}
+			
+			if (is_object($item['link'])) {
+				$item['link'] = $item['link']->__toString(); 
+			}
 			
 			return $item;
 		}
@@ -415,7 +546,7 @@
 		 * Create summary / lead 
 		 * @since Version 3.9.1
 		 * @return string
-		 * @param string $str The desc field to extract the summary from
+		 * @param string $str The description field to extract the summary from
 		 * @param int $n Maximum number of characters to return
 		 * @param string $end_char
 		 */
