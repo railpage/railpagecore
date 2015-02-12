@@ -17,6 +17,7 @@
 	use Railpage\Url;
 	use Railpage\Organisations\Organisation;
 	use Zend\Http\Client;
+	use Railpage\RSS\Consume;
 	
 	/**
 	 * Scraper
@@ -76,10 +77,102 @@
 		/**
 		 * Scrape the RSS feed
 		 * @since Version 3.8.7
-		 * @return $this
+		 * @return \Railpage\Jobs\Scraper
 		 */
 		
 		public function fetch() {
+			if (!is_string($this->feed)) {
+				throw new Exception("Cannot fetch jobs from RSS feed because no RSS feed was provided");
+			}
+			
+			$jobs = array();
+			
+			$Consume = new Consume;
+			$Consume->addFeed($this->feed)->scrape()->parse();
+			
+			foreach ($Consume->getFeeds() as $feed) {
+				foreach ($feed['items'] as $item) {
+					
+					/**
+					 * Format the location
+					 */
+					
+					$location = explode("|", $item['extra']['location']);
+				
+					if (!is_array($location) || count($location) === 1) {
+						$location = array(
+							0 => "Australia",
+							1 => is_array($location) ? $location[0] : $location
+						);
+					}
+					
+					/**
+					 * Get geolocation data using Yahoo's WhereOnEarth (woe) API, if our function exists. 
+					 */
+					
+					$timezone = "Australia/Melbourne";
+					
+					if (!function_exists("getWoeData")) {
+						$location = array(
+							"name" => sprintf("%, %s", $location[1], $location[0])
+						);
+					} else {
+						$woe = getWoeData(sprintf("%s, %s", $location[1], $location[0]));
+						
+						if (count($woe)) {
+							$location = array(
+								"name" => $woe['places']['place'][0]['name'],
+								"lat" => $woe['places']['place'][0]['centroid']['latitude'],
+								"lon" => $woe['places']['place'][0]['centroid']['longitude']
+							);
+						}
+					}
+					
+					/**
+					 * Assemble this job into an associative array
+					 */
+					
+					$row = array(
+						"title" => $item['title'],
+						"id" => $item['extra']['refNo'],
+						"date" => array(
+							"open" => new DateTime($item['date']),
+							"close" => new DateTime(empty($item['extra']['closingDate']) ? sprintf("@%d", strtotime("+1 month")) : $item['extra']['closingDate'])
+						),
+						"category" => $item['category'],
+						"url" => array(
+							"view" => $item['link'],
+							"apply" => $item['extra']['applyLink']
+						),
+						"location" => $location,
+						"salary" => 0,
+						"type" => explode(",", $item['extra']['workType']),
+						"description" => $item['description']
+					);
+					
+					$row['date']['open']->setTimeZone(new DateTimeZone($timezone));
+					$row['date']['close']->setTimeZone(new DateTimeZone($timezone));
+					
+					/**
+					 * Add this job to the list of jobs found in this scrape
+					 */
+					
+					$jobs[] = $row;
+				}
+			}
+			
+			$this->jobs = $jobs;
+			
+			return $this;
+		}
+		
+		/**
+		 * Scrape the RSS feed
+		 * @since Version 3.8.7
+		 * @return $this
+		 */
+		
+		public function fetchOld() {
 			if (!is_string($this->feed)) {
 				throw new Exception("Cannot fetch jobs from RSS feed because no RSS feed was provided");
 			}
