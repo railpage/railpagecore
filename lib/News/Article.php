@@ -977,6 +977,15 @@
 				return true;
 			}
 			
+			/**
+			 * Fall back to a database query
+			 */
+			
+			$query = "SELECT sid FROM nuke_stories WHERE title = ? AND time >= ?";
+			if (count($this->db->fetchAll($query, array($this->title, $this->date->sub(new DateInterval("P7D"))->format("Y-m-d H:i:s"))))) {
+				return true;
+			}
+			
 			return false;
 		}
 		
