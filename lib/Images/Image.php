@@ -162,11 +162,17 @@
 		 * Constructor
 		 * @since Version 3.8.7
 		 * @param int $id
+		 * @param int $option
 		 */
 		
-		public function __construct($id = NULL) {
+		public function __construct($id = NULL, $option = NULL) {
 			
 			parent::__construct();
+			
+			if (RP_DEBUG) {
+				global $site_debug;
+				$zzdebug_timer_start = microtime(true);
+			}
 			
 			$this->GuzzleClient = new Client;
 			
@@ -178,7 +184,9 @@
 				 * Record this in the debug log
 				 */
 				
-				debug_recordInstance(__CLASS__);
+				if (function_exists("debug_recordInstance")) {
+					debug_recordInstance(__CLASS__);
+				}
 				
 				$this->mckey = sprintf("railpage:image=%d", $id);
 				
@@ -197,7 +205,7 @@
 				$this->photo_id = $row['photo_id'];
 				$this->Date = new DateTime($row['modified']);
 				
-				$this->title = !empty($row['meta']['title']) ? format_topictitle($row['meta']['title']) : "Untitled";
+				$this->title = !empty($row['meta']['title']) ? (function_exists("format_topictitle") ? format_topictitle($row['meta']['title']) : $row['meta']['title']) : "Untitled";
 				$this->description = $row['meta']['description'];
 				$this->sizes = $row['meta']['sizes'];
 				$this->links = $row['meta']['links'];
@@ -283,10 +291,10 @@
 						$this->author->User = new User($this->author->railpage_id);
 					}
 				} else {
-					$this->populate(true);
+					$this->populate(true, $option);
 				}
 				
-				if (round($row['lat'], 3) != "0.000" && round($row['lon'], 3) != "0.000") {
+				if ($option != Images::OPT_NOPLACE && round($row['lat'], 3) != "0.000" && round($row['lon'], 3) != "0.000") {
 					try {
 						$this->Place = new Place($row['lat'], $row['lon']);
 					} catch (Exception $e) {
@@ -303,11 +311,17 @@
 				} else {
 					switch ($this->provider) {
 						case "flickr" :
-							$this->source = "https://flic.kr/p/" . base58_encode($this->photo_id);
+							if (function_exists("base58_encode")) {
+								$this->source = "https://flic.kr/p/" . base58_encode($this->photo_id);
+							}
 					}
 				}
 			
 				$this->getJSON();
+			}
+			
+			if (RP_DEBUG) {
+				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") instantiated in " . round(microtime(true) - $zzdebug_timer_start, 5) . "s";
 			}
 		}
 		
@@ -410,9 +424,10 @@
 		 * @since Version 3.8.7
 		 * @return $this
 		 * @param boolean $force
+		 * @param int $option
 		 */
 		
-		public function populate($force = false) {
+		public function populate($force = false, $option) {
 			$RailpageAPI = new API($this->Config->API->Key, $this->Config->API->Secret);
 			
 			if ($force === false && !$this->isStale()) {
@@ -515,7 +530,7 @@
 							}
 						}
 						
-						if (isset($json['feed']['georss$where']['gml$Point']) && is_array($json['feed']['georss$where']['gml$Point'])) {
+						if ($option != Images::OPT_NOPLACE && isset($json['feed']['georss$where']['gml$Point']) && is_array($json['feed']['georss$where']['gml$Point'])) {
 							$pos = explode(" ", $json['feed']['georss$where']['gml$Point']['gml$pos']['$t']);
 							$this->Place = new Place($pos[0], $pos[1]);
 						}
@@ -604,7 +619,7 @@
 						 * Load the Place object
 						 */
 						
-						if (isset($PhotoInfo['photo']['location'])) {
+						if ($option != Images::OPT_NOPLACE && isset($PhotoInfo['photo']['location'])) {
 							try {
 								$this->Place = new Place($PhotoInfo['photo']['location']['latitude'], $PhotoInfo['photo']['location']['longitude']);
 							} catch (Exception $e) {
