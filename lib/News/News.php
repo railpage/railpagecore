@@ -166,6 +166,10 @@
 				$topic = "narrow-gauge";
 			}
 			
+			if (preg_match("/yarratrams/i", $topic)) {
+				$topic = "tram";
+			}
+			
 			/**
 			 * Attempt to find the topic in our existing list
 			 */

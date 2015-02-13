@@ -87,26 +87,16 @@
 		{
 			"type" : "composer",
 			"url" : "https://packages.zendframework.com/"
-		},
-		{
-			"type" : "package",
-			"package" : {
-				"name" : "smarty/smarty",
-				"version" : "3.1.17",
-				"dist" : {
-					"url" : "http://www.smarty.net/files/Smarty-3.1.17.zip",
-					"type" : "zip"
-				},
-				"source" : {
-					"url" : "http://smarty-php.googlecode.com/svn/",
-					"type" : "svn",
-					"reference" : "tags/Smarty_3_1_17/distribution/"
-				}
-			}
 		}
 	],
 	"require" : {
 		"php" : ">=5.5.0",
+		"ext-gd": "*",
+		"ext-imagick": "*",
+		"ext-memcached": "*",
+		"ext-mongo": "*",
+		"ext-redis": "*",
+		"ext-curl": "*",
 		"zendframework/zendframework1": "1.*",
 		"zendframework/zend-http" : "~2.3",
 		"zendframework/zend-config" : "~2.3",

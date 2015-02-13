@@ -755,7 +755,11 @@
 				return false;
 			}
 			
-			if (is_null($this->body)) {
+			if (is_null($this->blurb) || !empty($this->lead)) {
+				$this->blurb = "";
+			}
+			
+			if (is_null($this->body) || !empty($this->paragraphs)) {
 				$this->body = "";
 			}
 			
