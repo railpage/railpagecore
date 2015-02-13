@@ -531,8 +531,7 @@
 				return false;
 			}
 			
-			return strtolower(sprintf("%s/%s/%s", $this->Module->url, create_slug($country), $this->makeRegionSlug($region)));
-			#return "/locations/" . create_slug($country) . "/" . $this->makeRegionSlug($region);
+			return strtolower(sprintf("%s/%s/%s", $this->Module->url, self::create_slug($country), $this->makeRegionSlug($region)));
 		}
 		
 		/**
@@ -551,7 +550,7 @@
 				return false;
 			}
 			
-			return create_slug($region);
+			return self::create_slug($region);
 		}
 		
 		/**

@@ -47,14 +47,6 @@
 		public $db;
 		
 		/**
-		 * User object
-		 * @since Version 3.3
-		 * @var object $user
-		 */
-		
-		public $user;
-		
-		/**
 		 * Constructor
 		 * @since Version 3.3
 		 * @param object $db
@@ -66,8 +58,8 @@
 			$this->Module = new Module("privatemessages");
 			
 			foreach (func_get_args() as $arg) {
-				if ($arg instanceof \Railpage\Users\User) {
-					$this->user = $arg;
+				if ($arg instanceof User) {
+					$this->setUser($arg);
 				}
 			}
 		}
@@ -80,8 +72,8 @@
 		 */
 		
 		public function getUnread() {
-			if (!$this->user->id) {
-				throw new \Exception("Cannot fetch unread PMs - not a registered user");
+			if (!$this->User->id) {
+				throw new Exception("Cannot fetch unread PMs - not a registered user");
 				return false;
 			}
 			
@@ -91,7 +83,7 @@
 							LEFT JOIN nuke_bbprivmsgs_text AS pt ON p.privmsgs_id = pt.privmsgs_text_id
 							LEFT JOIN nuke_users AS u ON u.user_id = p.privmsgs_from_userid
 							WHERE (p.privmsgs_type = ".PRIVMSGS_UNREAD_MAIL." OR p.privmsgs_type = ".PRIVMSGS_NEW_MAIL.")
-							AND p.privmsgs_to_userid = ".$this->user->id." 
+							AND p.privmsgs_to_userid = ".$this->User->id." 
 							ORDER BY p.privmsgs_date DESC";
 				
 				if ($rs = $this->db->query($query)) {
@@ -102,7 +94,7 @@
 					
 					return $return;
 				} else {
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 					return false;
 				}
 			} else {
@@ -116,7 +108,7 @@
 				
 				$return = array();
 				
-				foreach ($this->db->fetchAll($query, array(PRIVMSGS_UNREAD_MAIL, PRIVMSGS_NEW_MAIL, $this->user->id)) as $row) {
+				foreach ($this->db->fetchAll($query, array(PRIVMSGS_UNREAD_MAIL, PRIVMSGS_NEW_MAIL, $this->User->id)) as $row) {
 					$return[$row['privmsgs_id']] = $row; 
 				}
 				
@@ -132,7 +124,7 @@
 		
 		public function deleteObjects($object_id = false) {
 			if (!$object_id) {
-				//throw new \Exception("Cannot delete objects - no object ID given"); 
+				//throw new Exception("Cannot delete objects - no object ID given"); 
 				return false;
 			} 
 			
@@ -151,18 +143,18 @@
 							if ($this->db->query("DELETE FROM nuke_bbprivmsgs_text WHERE privmsgs_text_id IN ('".implode("','", $ids)."')")) {
 								return true;
 							} else {
-								throw new \Exception($this->db->error."\n".$query); 
+								throw new Exception($this->db->error."\n".$query); 
 								return false;
 							}
 						} else {
-							throw new \Exception($this->db->error."\n".$query); 
+							throw new Exception($this->db->error."\n".$query); 
 							return false;
 						}
 					} else {
 						return false;
 					}
 				} else {
-					throw new \Exception($this->db->error."\n".$query); 
+					throw new Exception($this->db->error."\n".$query); 
 					return false;
 				}
 			} else {
@@ -191,7 +183,7 @@
 		
 		public function getDeleted($user_id = false) {
 			if (!$user_id) {
-				throw new \Exception("Cannot fetch deleted message IDs - no user ID given"); 
+				throw new Exception("Cannot fetch deleted message IDs - no user ID given"); 
 				return false;
 			}
 			
@@ -209,7 +201,7 @@
 					
 					return $return;
 				} else {
-					throw new \Exception($this->db->error."\n\n".$query); 
+					throw new Exception($this->db->error."\n\n".$query); 
 				}
 			} else {
 				$query = "SELECT privmsgs_id FROM privmsgs_hidelist WHERE user_id = ?";
@@ -260,19 +252,6 @@
 			}
 			
 			return $return;
-		}
-		
-		/**
-		 * Set the user for this object
-		 * @since Version 3.9
-		 * @param \Railpage\Users\User $User
-		 * @return $this
-		 */
-		
-		public function setUser(User $User) {
-			$this->user = $User;
-			
-			return $this;
 		}
 	}
 ?>

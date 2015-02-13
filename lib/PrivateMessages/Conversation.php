@@ -53,6 +53,12 @@
 				if (filter_var($arg, FILTER_VALIDATE_INT)) {
 					$this->load($arg); 
 				}
+				
+				if ($arg instanceof User) {
+					$this->setUser($User);
+					
+					var_dump($this->getUser());
+				}
 			}
 		} 
 		
@@ -75,7 +81,7 @@
 				
 				if ($rs = $this->db->query($query)) {
 					if ($rs->num_rows == 0) {
-						throw new \Exception("No messages found"); 
+						throw new Exception("No messages found"); 
 					}
 					
 					$row = $rs->fetch_assoc(); 
@@ -85,7 +91,7 @@
 					$this->users[$row['privmsgs_from_userid']] = $row['username_from']; 
 					return true;
 				} else {
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 					return true;
 				}
 			} else {
@@ -120,11 +126,11 @@
 			
 			// Do some error checking first...
 			if (empty($this->subject) || empty($this->users) || count($user_ids) != 2) {
-				throw new \Exception("Cannot fetch message IDs"); 
+				throw new Exception("Cannot fetch message IDs"); 
 			}
 			
 			// Get deleted message IDs to exclude them from the search
-			$deleted = $this->getDeleted($_SESSION['user_id']); 
+			$deleted = $this->getDeleted($this->User->id); 
 			
 			if (count($deleted)) {
 				$exclude_sql = " AND privmsgs_id NOT IN ('".implode("', '", $deleted)."') ";
@@ -156,7 +162,7 @@
 					
 					return $return;
 				} else {
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 					return false;
 				}
 			} else {
@@ -190,4 +196,4 @@
 			}
 		}
 	}
-?>
+	

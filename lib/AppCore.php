@@ -538,5 +538,36 @@
 			
 			return $cacheDriver;
 		}
+		
+		/**
+		 * Create a URL slug if the create_slug() function doesn't exist
+		 * @since Version 3.9.1
+		 * @param string $url
+		 * @return string
+		 */
+		
+		static public function create_slug($string) {
+			
+			if (function_exists("create_slug")) {
+				return create_slug($string); 
+			}
+			
+			$find = array(
+				"(",
+				")",
+				"-"
+			);
+			
+			$replace = array(); 
+			
+			foreach ($find as $item) {
+				$replace[] = "";
+			}
+			
+			$string = str_replace($find, $replace, $string);
+				
+			$slug = strtolower(preg_replace('/[^A-Za-z0-9-]+/', '-', trim($string)));
+			return $slug;
+		}
 	}
 ?>
