@@ -421,12 +421,14 @@
 		
 		public function getDetails() {
 			
-			if (empty($this->mime) && file_exists($this->filepath) && empty($this->url)) {
+			#printArray(RP_DOWNLOAD_DIR . $this->filepath);
+			
+			if (empty($this->mime) && file_exists(RP_DOWNLOAD_DIR . $this->filepath) && empty($this->url)) {
 				$finfo = finfo_open(FILEINFO_MIME_TYPE); 
 				$this->mime = finfo_file($finfo, $this->filepath);
 			}
 			
-			printArray($this->mime);
+			#printArray($this->mime);
 		}
 	}
 ?>
