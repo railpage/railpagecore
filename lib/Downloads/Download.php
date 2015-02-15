@@ -9,6 +9,8 @@
 	
 	namespace Railpage\Downloads;
 	
+	use Railpage\Users\User;
+	use Railpage\Url;
 	use DateTime;
 	use DateTimeZone;
 	use Exception;
@@ -151,6 +153,14 @@
 		public $Date;
 		
 		/**
+		 * Author
+		 * @since Version 3.9.1
+		 * @var \Railpage\Users\User $Author
+		 */
+		
+		public $Author;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.2
 		 */
@@ -170,7 +180,7 @@
 				try {
 					$this->fetch(); 
 				} catch (Exception $e) {
-					throw new \Exception($e->getMessage()); 
+					throw new Exception($e->getMessage()); 
 				}
 			}
 		}
@@ -183,11 +193,12 @@
 		
 		public function fetch() {
 			if (empty($this->id)) {
-				throw new \Exception("Cannot fetch download object - no download ID given"); 
+				throw new Exception("Cannot fetch download object - no download ID given"); 
 				return false;
 			}
 			
-			$this->url = sprintf("https://www.railpage.com.au/downloads/%s/get", $this->id);
+			$this->url = new Url(sprintf("%s?mode=download.view&id=%d", $this->Module->url, $this->id));
+			$this->url->download = sprintf("https://www.railpage.com.au/downloads/%s/get", $this->id);
 			
 			$query = "SELECT d.*, UNIX_TIMESTAMP(d.date) AS date_unix FROM download_items AS d WHERE d.id = ?";
 			
@@ -235,12 +246,21 @@
 					$this->submitter = $row['submitter'];
 				}
 				
-				// Load the Category object
+				/**
+				 * Load the category this download belongs to
+				 */
+				
 				try {
 					$this->Category = new Category($row['category_id']); 
 				} catch (Exception $e) {
-					throw new \Exception($e->getMessage()); 
+					throw new Exception($e->getMessage()); 
 				}
+				
+				/**
+				 * Load the author
+				 */
+				
+				$this->Author = new User($this->user_id);
 			}
 		}
 		
@@ -280,6 +300,14 @@
 			
 			if (empty($this->extra_data)) {
 				$this->extra_data = array();
+			}
+			
+			if ($this->Author instanceof User) {
+				$this->user_id = $this->Author->id;
+			}
+			
+			if (!filter_var($this->user_id, FILTER_VALIDATE_INT)) {
+				throw new Exception("No valid owner of this download has been provided");
 			}
 			
 			return true;
@@ -383,6 +411,22 @@
 			);
 			
 			return $this->db->delete("download_items", $where);
+		}
+		
+		/**
+		 * Get detailed information about this file
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getDetails() {
+			
+			if (empty($this->mime) && file_exists($this->filepath) && empty($this->url)) {
+				$finfo = finfo_open(FILEINFO_MIME_TYPE); 
+				$this->mime = finfo_file($finfo, $this->filepath);
+			}
+			
+			printArray($this->mime);
 		}
 	}
 ?>
