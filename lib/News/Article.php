@@ -755,7 +755,11 @@
 				return false;
 			}
 			
-			if (is_null($this->body)) {
+			if (is_null($this->blurb) || !empty($this->lead)) {
+				$this->blurb = "";
+			}
+			
+			if (is_null($this->body) || !empty($this->paragraphs)) {
 				$this->body = "";
 			}
 			
@@ -970,6 +974,15 @@
 			 */
 			
 			if (count($matches) || count($rejected)) {
+				return true;
+			}
+			
+			/**
+			 * Fall back to a database query
+			 */
+			
+			$query = "SELECT sid FROM nuke_stories WHERE title = ? AND time >= ?";
+			if (count($this->db->fetchAll($query, array($this->title, $this->date->sub(new DateInterval("P7D"))->format("Y-m-d H:i:s"))))) {
 				return true;
 			}
 			

@@ -294,28 +294,29 @@
 			
 			foreach ($this->jobs as $job) {
 				
-				$Job = new Job;
-				
-				$Job->title = $job['title'];
-				$Job->Organisation = $this->Organisation;
-				$Job->desc = $job['description'];
-				$Job->Open = $job['date']['open'];
-				$Job->expiry = $job['date']['close'];
-				$Job->salary = $job['salary'];
-				$Job->duration = implode(", ", $job['type']);
-				$Job->Location = new Location($job['location']['name']);
-				$Job->Classification = new Classification(strval($job['category']));
-				$Job->reference_id = $job['id'];
-				$Job->url = new Url;
-				$Job->url->apply = strval($job['url']['apply']);
-				
-				try {
-					$Job->commit();
-				} catch (Exception $e) {
-					printArray($e->getMessage());die;
+				if (strtolower(trim($job['title'])) != "test job") {
+					$Job = new Job;
+					
+					$Job->title = $job['title'];
+					$Job->Organisation = $this->Organisation;
+					$Job->desc = $job['description'];
+					$Job->Open = $job['date']['open'];
+					$Job->expiry = $job['date']['close'];
+					$Job->salary = $job['salary'];
+					$Job->duration = implode(", ", $job['type']);
+					$Job->Location = new Location($job['location']['name']);
+					$Job->Classification = new Classification(strval($job['category']));
+					$Job->reference_id = $job['id'];
+					$Job->url = new Url;
+					$Job->url->apply = strval($job['url']['apply']);
+					
+					try {
+						$Job->commit();
+					} catch (Exception $e) {
+						printArray($e->getMessage());die;
+					}
 				}
 			}
-			
 		}
 	}
 ?>

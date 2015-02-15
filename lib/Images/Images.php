@@ -22,6 +22,14 @@
 	class Images extends AppCore {
 		
 		/**
+		 * Option: Do not load a \Railpage\Place object
+		 * @since Version 3.9.1
+		 * @const int OPT_NOPLACE
+		 */
+		
+		const OPT_NOPLACE = 7;
+		
+		/**
 		 * Constructor
 		 */
 		
@@ -31,8 +39,10 @@
 			/**
 			 * Record this in the debug log
 			 */
-				
-			debug_recordInstance(__CLASS__);
+			
+			if (function_exists("debug_recordInstance")) {
+				debug_recordInstance(__CLASS__);
+			}
 		}
 		
 		/**
@@ -42,9 +52,10 @@
 		 * @param int $id
 		 * @throws \Exception if $provider is null
 		 * @throws \Exception if $photo_id is null
+		 * @param int $option
 		 */
 		
-		public function findImage($provider = NULL, $photo_id = NULL) {
+		public function findImage($provider = NULL, $photo_id = NULL, $option = NULL) {
 			if (is_null($provider)) {
 				throw new Exception("Cannot lookup image from image provider - no provider given (hint: Flickr, WestonLangford)");
 			}
@@ -66,14 +77,14 @@
 			#printArray(" image:id " . round(microtime(true) - RP_START_TIME, 4) . "s");
 			
 			if (isset($id) && filter_var($id, FILTER_VALIDATE_INT)) {
-				return new Image($id);
+				return new Image($id, $option);
 			}
 			
 			$Image = new Image;
 			$Image->provider = $provider;
 			$Image->photo_id = $photo_id;
 			
-			$Image->populate();
+			$Image->populate(true, $option);
 			
 			return $Image;
 		}

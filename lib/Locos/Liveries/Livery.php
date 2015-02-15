@@ -142,7 +142,13 @@
 		 */
 		
 		public function __construct($id, $recurse = true) {
+			
 			parent::__construct();
+			
+			if (RP_DEBUG) {
+				global $site_debug;
+				$debug_timer_startx = microtime(true);
+			}
 			
 			$this->namespace = "railpage.locos.liveries.livery";
 			
@@ -154,11 +160,11 @@
 				
 				$this->url = "/flickr?tag=railpage:livery=" . $this->id;
 				
-				try {
-					$this->fetch();
-				} catch (Exception $e) {
-					throw new Exception($e->getMessage()); 
-				}
+				$this->fetch();
+			}
+			
+			if (RP_DEBUG) {
+				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") instantiated in " . round(microtime(true) - $debug_timer_startx, 5) . "s";
 			}
 		}
 		
@@ -190,18 +196,7 @@
 				$this->url = "/flickr?tag=" . $this->tag;
 				
 				if (filter_var($this->photo_id, FILTER_VALIDATE_INT)) {
-					$Images = new Images;
-					$this->Image = $Images->findImage("flickr", $this->photo_id);
-				}
-				
-				if ($this->recurse && $this->superseded_by_id > 0) {
-					$Superseded_by = new Livery($this->superseded_by_id, false); 
-					$this->superseded_by = $Superseded_by->name;
-				}
-				
-				if ($this->recurse && $this->supersedes_id > 0) {
-					$Supersedes = new Livery($this->supersedes_id, false); 
-					$this->supersedes = $Supersedes->name;
+					$this->Image = (new Images)->findImage("flickr", $this->photo_id, Images::OPT_NOPLACE);
 				}
 				
 				return true;
@@ -209,6 +204,34 @@
 				throw new Exception("Cannot fetch Livery object - no livery for ID ".$this->id." was found");
 				return false;
 			}
+		}
+		
+		/**
+		 * Return the livery superseded by this one
+		 * @since Version 3.9.1
+		 * @return \Railpage\Locos\Liveries\Livery
+		 */
+		
+		public function getPreviousLivery() {
+			if ($this->recurse && $this->supersedes_id > 0) {
+				return new Livery($this->supersedes_id, false);
+			}
+			
+			return null;
+		}
+		
+		/**
+		 * Return the livery that supersedes this one
+		 * @since Version 3.9.1
+		 * @return \Railpage\Locos\Liveries\Livery
+		 */
+		
+		public function getNextLivery() {
+			if ($this->recurse && $this->superseded_by_id > 0) {
+				return new Livery($this->superseded_by_id, false);
+			}
+			
+			return null;
 		}
 		
 		/**
