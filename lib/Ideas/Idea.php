@@ -12,6 +12,7 @@
 	use Railpage\AppCore;
 	use Railpage\Module;
 	use Railpage\SiteEvent;
+	use Railpage\Forums\Thread;
 	use Railpage\Url;
 	use Exception;
 	use DateTime;
@@ -72,6 +73,14 @@
 		public $status = 1;
 		
 		/**
+		 * Forum discussion thread ID
+		 * @since Version 3.9.1
+		 * @var int $forum_thread_id
+		 */
+		
+		private $forum_thread_id = 0;
+		
+		/**
 		 * Author of this idea
 		 * @var \Railpage\Users\User $Author
 		 */
@@ -116,6 +125,7 @@
 					$this->Date = new DateTime($row['date']);
 					$this->Category = new Category($row['category_id']);
 					$this->status = $row['status'];
+					$this->forum_thread_id = $row['forum_thread_id'];
 					
 					$this->url = new Url(sprintf("%s/%s", $this->Category->url, $this->slug));
 				}
@@ -132,6 +142,7 @@
 					$this->Date = new DateTime($row['date']);
 					$this->Category = new Category($row['category_id']);
 					$this->status = $row['status'];
+					$this->forum_thread_id = $row['forum_thread_id'];
 					
 					$this->url = new Url(sprintf("%s/%s", $this->Category->url, $this->slug));
 				}
@@ -139,8 +150,11 @@
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
 				$this->fetchVotes();
-				$this->url->implemented = sprintf("%s?id=%d&mode=idea.implemented", $this->Module->url, $this->id);
+				$this->url->implemented = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_IMPLEMENTED);
+				$this->url->declined = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_NO);
+				$this->url->active = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_ACTIVE);
 				$this->url->vote = sprintf("%s?mode=idea.vote&id=%d", $this->Module->url, $this->id);
+				$this->url->creatediscussion = sprintf("%s?mode=idea.discuss&id=%d", $this->Module->url, $this->id);
 			}
 			
 		}
@@ -189,6 +203,10 @@
 				$this->createSlug();
 			}
 			
+			if (!filter_var($this->forum_thread_id, FILTER_VALIDATE_INT)) {
+				$this->forum_thread_id = 0;
+			}
+			
 			return true;
 			
 		}
@@ -230,7 +248,8 @@
 				"author" => $this->Author->id,
 				"category_id" => $this->Category->id,
 				"date" => $this->Date->format("Y-m-d H:i:s"),
-				"status" => $this->status
+				"status" => $this->status,
+				"forum_thread_id" => $this->forum_thread_id
 			);
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
@@ -409,6 +428,34 @@
 			);
 			
 			return $idea;
+		}
+		
+		/**
+		 * Set the discussion thread for this idea
+		 * @since Version 3.9.1
+		 * @param \Railpage\Forums\Thread $Thread
+		 * @return \Railpage\Ideas\Idea
+		 */
+		
+		public function setForumThread(Thread $Thread) {
+			$this->forum_thread_id = $Thread->id;
+			$this->commit(); 
+			
+			$Thread->putObject($this);
+			
+			return $this;
+		}
+		
+		/**
+		 * Get the discussion thread for this idea
+		 * @since Version 3.9.1
+		 * @return \Railpage\Forums\Thread
+		 */
+		
+		public function getForumThread() {
+			if (filter_var($this->forum_thread_id, FILTER_VALIDATE_INT) && $this->forum_thread_id > 0) {
+				return new Thread($this->forum_thread_id);
+			}
 		}
 	}
 ?>
