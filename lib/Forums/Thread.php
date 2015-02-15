@@ -180,6 +180,14 @@
 		public $DateStarted;
 		
 		/**
+		 * Meta data for this thread
+		 * @since Version 3.9.1
+		 * @var array $meta
+		 */
+		
+		public $meta;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.0.1
 		 * @version 3.0.1
@@ -230,6 +238,7 @@
 				$this->lastpost 	= $row['topic_last_post_id'];
 				$this->type			= $row['topic_type'];
 				$this->url_slug 	= $row['url_slug'];
+				$this->meta = isset($row['topic_meta']) ? json_decode($row['topic_meta'], true) : array(); 
 				
 				if (empty($this->url_slug)) {
 					$this->createSlug();
@@ -392,7 +401,8 @@
 				"topic_first_post_id" => $this->firstpost,
 				"topic_last_post_id" => $this->lastpost,
 				"topic_type" => $this->type,
-				"url_slug" => $this->url_slug
+				"url_slug" => $this->url_slug,
+				"topic_meta" => json_encode($this->meta)
 			);
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
@@ -782,6 +792,38 @@
 			}
 			
 			return new Article($article_id);
+		}
+		
+		/**
+		 * Link an object to this thread
+		 * @since Version 3.9.1
+		 * @param object $Object
+		 * @return \Railpage\Forums\Thread
+		 */
+		
+		public function putObject($Object) {
+			$class = get_class($Object); 
+			$id = $Object->id;
+			$name = isset($Object->name) ? $Object->name : $Object->title;
+			
+			$this->meta['linkedobjects'][$class] = array(
+				"id" => $id,
+				"name" => $name
+			);
+			
+			$this->commit(); 
+			
+			return $this;
+		}
+		
+		/**
+		 * Get objects linked to this thread
+		 * @since Verison 3.9.1
+		 * @return array
+		 */
+		
+		public function getObjects() {
+			return $this->meta['linkedobjects'];
 		}
 	}
 ?>
