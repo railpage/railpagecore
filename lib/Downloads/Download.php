@@ -176,6 +176,8 @@
 			
 			if (!empty($this->id)) {
 				
+				$this->mckey = sprintf("railpage:downloads.download=%d", $this->id);
+				
 				// Populate the object vars
 				try {
 					$this->fetch(); 
@@ -472,23 +474,29 @@
 		
 		public function getDetails() {
 			
-			if (empty($this->mime) && file_exists(RP_DOWNLOAD_DIR . $this->filepath)) {
-				$finfo = finfo_open(FILEINFO_MIME_TYPE); 
-				$this->mime = finfo_file($finfo, RP_DOWNLOAD_DIR . $this->filepath);
+			$mckey = sprintf("%s;details", $this->mckey); 
+			
+			if (!$data = $this->Memcached->fetch($mckey)) {
+				if (empty($this->mime) && file_exists(RP_DOWNLOAD_DIR . $this->filepath)) {
+					$finfo = finfo_open(FILEINFO_MIME_TYPE); 
+					$this->mime = finfo_file($finfo, RP_DOWNLOAD_DIR . $this->filepath);
+				}
+				
+				$mime = explode("/", $this->mime); 
+				
+				$data = array(
+					"type" => ucwords($mime[0]),
+					"size" => $this->filesize,
+					"downloads" => $this->hits,
+					"added" => array(
+						"absolute" => $this->Date->format("Y-m-d g:i:s a"),
+						"relative" => time2str($this->Date->getTimestamp())
+					),
+					"thumbnail" => $this->getThumbnail()
+				);
+				
+				$this->Memcached->save($mckey, $data, strtotime("+12 hours"));
 			}
-			
-			$mime = explode("/", $this->mime); 
-			
-			$data = array(
-				"type" => ucwords($mime[0]),
-				"size" => $this->filesize,
-				"downloads" => $this->hits,
-				"added" => array(
-					"absolute" => $this->Date->format("Y-m-d g:i:s a"),
-					"relative" => time2str($this->Date->getTimestamp())
-				),
-				"thumbnail" => $this->getThumbnail()
-			);
 			
 			return $data;
 		}
