@@ -896,11 +896,21 @@
 		 */
 		
 		public function getJSON() {
-			if ($json = getMemacheObject(sprintf("json:railpage.news.article=%d", $this->id))) {
+			if ($json = $this->Memcached->fetch(sprintf("json:railpage.news.article=%d", $this->id))) {
 				return $json;
 			} else {
 				return $this->makeJSON();
 			}
+		}
+		
+		/**
+		 * Get an array of this object
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			return json_decode($this->getJSON(), true); 
 		}
 		
 		/**
