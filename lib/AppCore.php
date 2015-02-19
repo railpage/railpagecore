@@ -444,9 +444,12 @@
 		 * Create and connect to Sphinx
 		 */
 		
-		public function getSphinx() {
+		static public function getSphinx() {
+			
+			$Config = self::getConfig(); 
+			
 			$conn = new Connection();
-			$conn->setParams(array("host" => $this->Config->Sphinx->Host, "port" => $this->Config->Sphinx->Port));
+			$conn->setParams(array("host" => $Config->Sphinx->Host, "port" => $Config->Sphinx->Port));
 			
 			return SphinxQL::create($conn);
 		}
