@@ -187,5 +187,50 @@
 			$job_id = array_rand($jobs);
 			return new Job($jobs[$job_id]['job_id']);
 		}
+		
+		/**
+		 * Get newest jobs
+		 * @since Version 3.9.1
+		 * @return \Railpage\Jobs\Job
+		 * @yield \Railpage\Jobs\Job
+		 */
+		
+		public function yieldNewJobs($limit = 25) {
+			$query = "SELECT job_id FROM jn_jobs ORDER BY job_added DESC LIMIT 0, ?";
+			
+			foreach ($this->db->fetchAll($query, $limit) as $row) {
+				yield new Job($row['job_id']);
+			}
+		}
+		
+		/**
+		 * Get jobs from an employer
+		 * @since Version 3.9.1
+		 * @return \Railpage\Jobs\Job
+		 * @yield \Railpage\Jobs\Job
+		 */
+		
+		public function getJobsFromEmployer(Organisation $Org, $page = 1, $limit = 25) {
+			$query = "SELECT SQL_CALC_FOUND_ROWS job_id, job_title FROM jn_jobs WHERE organisation_id = ? ORDER BY job_added DESC LIMIT ?, ?";
+			
+			$page = ($page - 1) * $limit;
+			
+			$where = array($Org->id, $page, $limit);
+			
+			$jobs = $this->db->fetchAll($query, $where);
+			
+			$return = array(
+				"page" => $page,
+				"items_per_page" => $limit,
+				"total" => $this->db->fetchOne("SELECT FOUND_ROWS() AS total"),
+				"organisation" => array(
+					"id" => $Org->id,
+					"name" => $Org->name
+				), 
+				"jobs" => $jobs
+			);
+			
+			return $return;
+		}
 	}
 ?>
