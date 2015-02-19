@@ -289,7 +289,7 @@
 				"job_special_cond" => $this->special_cond,
 				"job_duration" => $this->duration,
 				"job_thread_id" => $this->thread_id,
-				"job_urls" => json_encode($this->url->getUrls()),
+				"job_urls" => json_encode($this->url->getURLs()),
 				"conversions" => $this->conversions
 			);
 			
@@ -306,6 +306,42 @@
 					return $this;
 				}
 			}
+		}
+		
+		/**
+		 * Get this job as an associative array
+		 * @since Versio 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			$return = array(
+				"id" => $this->id,
+				"title" => $this->title,
+				"reference_id" => $this->reference_id,
+				"description" => $this->desc,
+				"added" => array(
+					"absolute" => $this->Open->format("Y-m-d H:i:s")
+				),
+				"expiry" => array(
+					"absolute" => $this->expiry->format("Y-m-d H:i:s")
+				),
+				"location" => array(
+					"id" => $this->Location->id,
+					"name" => $this->Location->name
+				),
+				"organisation" => array(
+					"id" => $this->Organisation->id,
+					"name" => $this->Organisation->name
+				),
+				"classification" => array(
+					"id" => $this->Classification->id,
+					"name" => $this->Classification->name
+				),
+				"url" => $this->url->getURLs()
+			);
+			
+			return $return;
 		}
 	}
 ?>
