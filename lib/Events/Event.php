@@ -400,6 +400,14 @@
 			$this->url = new Url(sprintf("%s/%s", $this->Module->url, $this->slug));
 			$this->url->edit = sprintf("%s?mode=event.edit&event_id=%d", $this->Module->url, $this->id);
 			$this->url->delete = sprintf("%s?mode=event.reject&event_id=%d", $this->Module->url, $this->id);
+			
+			if (isset($this->meta['website']) && !empty($this->meta['website'])) {
+				$this->url->website = $this->meta['website'];
+			}
+			
+			if (isset($this->meta['tickets']) && !empty($this->meta['tickets'])) {
+				$this->url->tickets = $this->meta['tickets'];
+			}
 		}
 	}
 ?>
