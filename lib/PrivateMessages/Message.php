@@ -416,25 +416,29 @@
 			 * Send an email to the recipient if their settings say so
 			 */
 			
-			global $Smarty;
-			$Smarty->assign("server_addr", "www.railpage.com.au");
-			$Smarty->assign("message_id", $pm_id);
-			$Smarty->assign("pm_from_username", $this->Author->username);
-			$Smarty->assign("userdata_username", $this->Recipient->username);
-			
-			if (defined("RP_SITE_ROOT")) {
-				$path = sprintf("%s%scontent%semail_pm.tpl", RP_SITE_ROOT, DS, DS);
-			} else {
-				$path = dirname(dirname(dirname(dirname(dirname(__DIR__))))) . DS ."content" . DS . "email_pm.tpl";
-			}
-			
-			$html = $Smarty->fetch($path);
-			
-			/**
-			 * Create a user notification
-			 */
-			
 			if ($this->Recipient->notify_privmsg == 1) {
+				
+				/**
+				 * Template settings
+				 */
+				
+				global $Smarty;
+				$Smarty->assign("server_addr", "www.railpage.com.au");
+				$Smarty->assign("message_id", $pm_id);
+				$Smarty->assign("pm_from_username", $this->Author->username);
+				$Smarty->assign("userdata_username", $this->Recipient->username);
+				
+				if (defined("RP_SITE_ROOT")) {
+					$path = sprintf("%s%scontent%semail_pm.tpl", RP_SITE_ROOT, DS, DS);
+				} else {
+					$path = dirname(dirname(dirname(dirname(dirname(__DIR__))))) . DS ."content" . DS . "email_pm.tpl";
+				}
+				
+				$html = $Smarty->fetch($path);
+				
+				/**
+				 * Create a user notification
+				 */
 				
 				$Notification = new Notification;
 				$Notification->transport = Notifications::TRANSPORT_EMAIL;

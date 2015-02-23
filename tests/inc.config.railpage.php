@@ -14,3 +14,7 @@
 	);
 	
 	$RailpageConfig = json_decode(json_encode($RailpageConfig));
+	
+	$RailpageConfig->Memcached = new stdClass;
+	$RailpageConfig->Memcached->Host = defined("RP_MEMCACHE_HOST") ? RP_MEMCACHE_HOST : "127.0.0.1";
+	$RailpageConfig->Memcached->Port = defined("RP_MEMCACHE_PORT") ? RP_MEMCACHE_PORT : 11211;
