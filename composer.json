@@ -91,12 +91,6 @@
 	],
 	"require" : {
 		"php" : ">=5.5.0",
-		"ext-gd": "*",
-		"ext-imagick": "*",
-		"ext-memcached": "*",
-		"ext-mongo": "*",
-		"ext-redis": "*",
-		"ext-curl": "*",
 		"zendframework/zendframework1": "1.*",
 		"zendframework/zend-http" : "~2.3",
 		"zendframework/zend-config" : "~2.3",
