@@ -469,6 +469,24 @@
 				return $prop;
 			}
 			
+			/**
+			 * Look in the content directory
+			 */
+				
+			if (!empty($this->subtheme)) {
+				$prop = RP_SITE_ROOT . DS . "content" . DS . $template . "-" . $this->subtheme . ".tpl";
+				
+				if (file_exists($prop)) {
+					return $prop;
+				}
+			}
+			
+			$prop = RP_SITE_ROOT . DS . "content" . DS . $template . ".tpl";
+			
+			if (file_exists($prop)) {
+				return $prop;
+			}
+			
 			throw new Exception("Cannot find a template file matching " . $template . " in any directories");
 		}
 		

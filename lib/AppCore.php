@@ -441,6 +441,21 @@
 		}
 		
 		/**
+		 * Set the recipient for this object
+		 * @since Version 3.8.7
+		 * @param \Railpage\Users\User $Recipient
+		 * @return $this
+		 */
+		
+		public function setRecipient(User $Recipient) {
+			
+			$this->Recipient = $Recipient;
+			
+			return $this;
+			
+		}
+		
+		/**
 		 * Create and connect to Sphinx
 		 */
 		
