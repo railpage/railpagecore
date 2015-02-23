@@ -8,10 +8,12 @@
 	 
 	namespace Railpage;
 	
+	use DateTime;
 	use Exception;
 	use stdClass;
 	use Railpage\AppCore;
 	use Railpage\Url;
+	use Railpage\Registry;
 	
 	if (!defined("RP_SITE_ROOT")) {
 		define("RP_SITE_ROOT", "");
@@ -311,6 +313,32 @@
 				$this->Paths->module = sprintf("%s/modules/%s", RP_SITE_ROOT, $this->name);
 				$this->Paths->html = sprintf("%s/modules/%s/html", RP_SITE_ROOT, $this->name);
 			}
+		}
+		
+		/**
+		 * Get impressions on this module over a given date range
+		 * @since Version 3.9.1
+		 * @return array
+		 * @param \DateTime $DateFrom
+		 * @param \DateTime $DateTo
+		 */
+		
+		public function getImpressions(DateTime $DateFrom, DateTime $DateTo) {
+			
+			if (!is_object($this->db)) {
+				$Registry = Registry::getInstance();
+				$this->db = $Registry->get("db");
+			}
+			
+			$query = "SELECT count(log_id) AS num, DATE_FORMAT(date, '%Y-%m-%d') AS date FROM log_useractivity WHERE module_id = ? GROUP BY DATE_FORMAT(date, '%Y-%m-%d')";
+			
+			$return = array(); 
+			
+			foreach ($this->db->fetchAll($query, $this->id) as $row) {
+				$return[$row['date']] = $row['num'];
+			}
+			
+			return $return;
 		}
 	}
 ?>
