@@ -11,6 +11,8 @@
 	use Exception;
 	use DateTime;
 	use Railpage\Users\User;
+	use Railpage\Notifications\Notifications;
+	use Railpage\Notifications\Notification;
 	
 	use Swift_Message;
 	use Swift_Mailer;
@@ -399,69 +401,66 @@
 				"object_id" => $this->object_id
 			);
 			
-			if ($this->db->insert("nuke_bbprivmsgs", $data)) {
-				$pm_id = $this->db->lastInsertId();
-				
-				$data = array(
-					"privmsgs_text_id" => $pm_id,
-					"privmsgs_bbcode_uid" => $this->bbcode_uid,
-					"privmsgs_text" => function_exists("prepare_submit") ? prepare_submit($this->body) : $this->body
-				);
-				
-				$rs = $this->db->insert("nuke_bbprivmsgs_text", $data); 
-			}
+			$this->db->insert("nuke_bbprivmsgs", $data);
+			$pm_id = $this->db->lastInsertId();
 			
-			if ($rs) {
-				// Send an email to the recipient if their settings say so
-				try {
-					$ThisUser = new User($this->to_user_id); 
-					
-					if ($ThisUser->notify_privmsg == 1) {
-						try {
-							// Send the confirmation email
-							//require_once('vendor/pear-pear.swiftmailer.org/Swift/lib/swift_init.php');
-							
-							global $smarty, $User;
-							$smarty->assign("server_addr", "www.railpage.com.au");
-							$smarty->assign("message_id", $pm_id);
-							$smarty->assign("pm_from_username", $User->username);
-							$smarty->assign("userdata_username", $ThisUser->username);
-							
-							if (defined("RP_SITE_ROOT")) {
-								$path = sprintf("%s%scontent%semail_pm.tpl", RP_SITE_ROOT, DS, DS);
-							} else {
-								$path = dirname(dirname(dirname(dirname(dirname(__DIR__))))) . DS ."content" . DS . "email_pm.tpl";
-							}
-							
-							$html = $smarty->fetch($path);
-							
-							$crlf = "\n";
-							$message = Swift_Message::newInstance()
-								->setSubject("New private message on Railpage")
-								->setFrom(array("rp2@railpage.com.au" => "Railpage"))
-								->setTo(array($ThisUser->contact_email => $ThisUser->username))
-								->setBody($html, 'text/html');
-								
-							// Mail transport
-							$transport = Swift_SmtpTransport::newInstance($this->Config->SMTP->host, $this->Config->SMTP->port, $this->Config->SMTP->TLS = true ? "tls" : NULL)
-								->setUsername($this->Config->SMTP->username)
-								->setPassword($this->Config->SMTP->password);
-							
-							$mailer = Swift_Mailer::newInstance($transport);
-							
-							$result = $mailer->send($message);
-						} catch (Exception $e) {
-							printArray($e->getMessage()); die;
-						}
-					}
-				} catch (Exception $e) {
-					echo $e->getMessage(); 
+			$data = array(
+				"privmsgs_text_id" => $pm_id,
+				"privmsgs_bbcode_uid" => $this->bbcode_uid,
+				"privmsgs_text" => function_exists("prepare_submit") ? prepare_submit($this->body) : $this->body
+			);
+			
+			$rs = $this->db->insert("nuke_bbprivmsgs_text", $data); 
+			
+			/**
+			 * Send an email to the recipient if their settings say so
+			 */
+			
+			if ($this->Recipient->notify_privmsg == 1) {
+				
+				/**
+				 * Template settings
+				 */
+				
+				global $Smarty;
+				$Smarty->assign("server_addr", "www.railpage.com.au");
+				$Smarty->assign("message_id", $pm_id);
+				$Smarty->assign("pm_from_username", $this->Author->username);
+				$Smarty->assign("userdata_username", $this->Recipient->username);
+				
+				if (defined("RP_SITE_ROOT")) {
+					$path = sprintf("%s%scontent%semail_pm.tpl", RP_SITE_ROOT, DS, DS);
+				} else {
+					$path = dirname(dirname(dirname(dirname(dirname(__DIR__))))) . DS ."content" . DS . "email_pm.tpl";
 				}
 				
-				return true;
-			} else {
-				throw new Exception($this->db->error); 
-				return false;
+				$html = $Smarty->fetch($path);
+				
+				/**
+				 * Create a user notification
+				 */
+				
+				$Notification = new Notification;
+				$Notification->transport = Notifications::TRANSPORT_EMAIL;
+				$Notification->status = Notifications::STATUS_QUEUED;
+				$Notification->subject = "New private message on Railpage";
+				$Notification->body = $html;
+				$Notification->addRecipient($this->Recipient->id, $this->Recipient->username, $this->Recipient->contact_email)->commit();
+				
+				$message = Swift_Message::newInstance()
+					->setSubject("New private message on Railpage")
+					->setFrom(array("rp2@railpage.com.au" => "Railpage"))
+					->setTo(array($this->Recipient->contact_email => $this->Recipient->username))
+					->setBody($html, 'text/html');
+				
+				// Mail transport
+				$transport = Swift_SmtpTransport::newInstance($this->Config->SMTP->host, $this->Config->SMTP->port, $this->Config->SMTP->TLS = true ? "tls" : NULL)
+					->setUsername($this->Config->SMTP->username)
+					->setPassword($this->Config->SMTP->password);
+				
+				$mailer = Swift_Mailer::newInstance($transport);
+				
+				$result = $mailer->send($message);
 			}
 		}
 		
