@@ -11,3 +11,5 @@ before_script:
 script: 
  - composer install
  - phpunit
+services:
+ - redis-server

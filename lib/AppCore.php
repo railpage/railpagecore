@@ -441,12 +441,30 @@
 		}
 		
 		/**
+		 * Set the recipient for this object
+		 * @since Version 3.8.7
+		 * @param \Railpage\Users\User $Recipient
+		 * @return $this
+		 */
+		
+		public function setRecipient(User $Recipient) {
+			
+			$this->Recipient = $Recipient;
+			
+			return $this;
+			
+		}
+		
+		/**
 		 * Create and connect to Sphinx
 		 */
 		
-		public function getSphinx() {
+		static public function getSphinx() {
+			
+			$Config = self::getConfig(); 
+			
 			$conn = new Connection();
-			$conn->setParams(array("host" => $this->Config->Sphinx->Host, "port" => $this->Config->Sphinx->Port));
+			$conn->setParams(array("host" => $Config->Sphinx->Host, "port" => $Config->Sphinx->Port));
 			
 			return SphinxQL::create($conn);
 		}

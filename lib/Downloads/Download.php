@@ -176,6 +176,8 @@
 			
 			if (!empty($this->id)) {
 				
+				$this->mckey = sprintf("railpage:downloads.download=%d", $this->id);
+				
 				// Populate the object vars
 				try {
 					$this->fetch(); 
@@ -414,6 +416,57 @@
 		}
 		
 		/**
+		 * Generate a thumbnail of this file
+		 * @since Version 3.9.1
+		 * @return string
+		 */
+		
+		public function getThumbnail() {
+			if (empty($this->mime) && file_exists(RP_DOWNLOAD_DIR . $this->filepath)) {
+				$finfo = finfo_open(FILEINFO_MIME_TYPE); 
+				$this->mime = finfo_file($finfo, RP_DOWNLOAD_DIR . $this->filepath);
+			}
+			
+			$mime = explode("/", $this->mime); 
+			$thumbnail = sprintf("%s.thumbnail.jpg", $this->filepath);
+			
+			if (file_exists(RP_DOWNLOAD_DIR . $thumbnail)) {
+				$info = getimagesize(RP_DOWNLOAD_DIR . $thumbnail);
+				
+				return array(
+					"file" => $thumbnail,
+					"width" => $info[0],
+					"height" => $info[1],
+					"size" => filesize(RP_DOWNLOAD_DIR . $thumbnail)
+				);
+			}
+			
+			switch ($mime[0]) {
+				case "video" : 
+					if (file_exists("/usr/bin/avconv")) {
+						$avlib = "/usr/bin/avconv";
+					} else {
+						return false;
+					}
+					
+					exec(sprintf("%s -i %s%s -vsync 1 -r 1 -an -y -vframes 1 '%s%s'", $avlib, RP_DOWNLOAD_DIR, $this->filepath, RP_DOWNLOAD_DIR, $thumbnail), $return);
+					
+					$info = getimagesize(RP_DOWNLOAD_DIR . $thumbnail);
+				
+					return array(
+						"file" => $thumbnail,
+						"width" => $info[0],
+						"height" => $info[1],
+						"size" => filesize(RP_DOWNLOAD_DIR . $thumbnail)
+					);
+					
+					break;
+			}
+			
+			return false;
+		}
+		
+		/**
 		 * Get detailed information about this file
 		 * @since Version 3.9.1
 		 * @return array
@@ -421,12 +474,31 @@
 		
 		public function getDetails() {
 			
-			if (empty($this->mime) && file_exists($this->filepath) && empty($this->url)) {
-				$finfo = finfo_open(FILEINFO_MIME_TYPE); 
-				$this->mime = finfo_file($finfo, $this->filepath);
+			$mckey = sprintf("%s;details", $this->mckey); 
+			
+			if (!$data = $this->Memcached->fetch($mckey)) {
+				if (empty($this->mime) && file_exists(RP_DOWNLOAD_DIR . $this->filepath)) {
+					$finfo = finfo_open(FILEINFO_MIME_TYPE); 
+					$this->mime = finfo_file($finfo, RP_DOWNLOAD_DIR . $this->filepath);
+				}
+				
+				$mime = explode("/", $this->mime); 
+				
+				$data = array(
+					"type" => ucwords($mime[0]),
+					"size" => $this->filesize,
+					"downloads" => $this->hits,
+					"added" => array(
+						"absolute" => $this->Date->format("Y-m-d g:i:s a"),
+						"relative" => time2str($this->Date->getTimestamp())
+					),
+					"thumbnail" => $this->getThumbnail()
+				);
+				
+				$this->Memcached->save($mckey, $data, strtotime("+12 hours"));
 			}
 			
-			printArray($this->mime);
+			return $data;
 		}
 	}
-?>
+	

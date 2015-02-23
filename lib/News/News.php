@@ -10,6 +10,8 @@
 	 
 	namespace Railpage\News;
 	
+	use SphinxClient;
+	use Railpage\AppCore;
 	use Railpage\Module;
 	use Exception;
 	use DateTime;
@@ -201,6 +203,28 @@
 			if (!filter_var($Topic->id, FILTER_VALIDATE_INT)) {
 				return new Topic("other-rail");
 			}
+		}
+		
+		/**
+		 * Find articles with similar titles (good for 404 errors)
+		 * @since Version 3.9.1
+		 * @return array
+		 * @param string $lookup The text to search Sphinx for
+		 * @param int $num The maximum number of results to return
+		 */
+		
+		static public function findCorrectArticle($lookup = false, $num = 5) {
+			
+			$Config = AppCore::getConfig();
+			
+			$Sphinx = new SphinxClient;
+			$Sphinx->setServer($Config->Sphinx->Host, 9306);
+			$Sphinx->setMatchMode(SPH_MATCH_ANY);
+			$Sphinx->setLimits(0, $num);
+			
+			$results = $Sphinx->query($Sphinx->escapeString($lookup), "idx_news_article");
+			
+			return isset($results['matches']) ? $results['matches'] : array();
 		}
 	}
 ?>

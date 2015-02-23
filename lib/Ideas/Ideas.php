@@ -35,6 +35,13 @@
 		const STATUS_ACTIVE = 1;
 		
 		/**
+		 * Status: Will not implement
+		 * @const STATUS_NO
+		 */
+		
+		const STATUS_NO = 2;
+		
+		/**
 		 * Status: Implemented
 		 * @const STATUS_IMPLEMENTED
 		 */

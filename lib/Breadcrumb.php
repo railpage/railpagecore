@@ -62,7 +62,8 @@
 			
 			foreach ($this->menu as $i => $data) {
 				if (isset($data['url']) && is_string($data['url'])) {
-					$items[] = sprintf("<li><a href='%s'>%s</a></li>", htmlspecialchars($data['url'], ENT_QUOTES), $data['title']);
+					$child = $i == 0 ? "itemprop='child'" : "";
+					$items[] = sprintf("<li %s itemscope itemtype='http://data-vocabulary.org/Breadcrumb'><a href='%s' itemprop='url'><span itemprop='title'>%s</a></a></li>", $child, htmlspecialchars($data['url'], ENT_QUOTES), $data['title']);
 				} else {
 					$items[] = sprintf("<li>%s</li>", $data['title']); 
 				}
