@@ -559,7 +559,7 @@
 						"railpage.flickr.photos.getsizes", 
 						array(
 							"photo_id" => $this->photo_id, 
-							"force" => "true"
+							"force" => $force ? "true" : "false"
 						)
 					);
 					
@@ -567,7 +567,7 @@
 						"railpage.flickr.photos.getinfo", 
 						array(
 							"photo_id" => $this->photo_id, 
-							"force" => "true"
+							"force" => $force ? "true" : "false"
 						)
 					);
 					
