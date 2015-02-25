@@ -65,6 +65,10 @@
 				define("RP_SITE_DOMAIN", "railpage.com.au");
 			}
 			
+			if (empty(trim(ini_get("memcached.sess_prefix")))) {
+				ini_set("memcached.sess_prefix", "memc.sess.key.");
+			}
+			
 			// Cross-subdomain cookies n shiz
 			session_set_cookie_params(0, "/", sprintf(".%s", RP_SITE_DOMAIN)); 
 			
