@@ -190,14 +190,14 @@
 				
 				$this->mckey = sprintf("railpage:image=%d", $id);
 				
-				if (!$row = getMemcacheObject($this->mckey)) {
+				if (!$row = $this->Redis->fetch($this->mckey)) {
 				
 					$query = "SELECT i.id, i.provider, i.photo_id, i.modified, i.meta, i.lat, i.lon FROM image AS i WHERE i.id = ?";
 				
 					$row = $this->db->fetchRow($query, $id);
 					$row['meta'] = json_decode($row['meta'], true);
 					
-					setMemcacheObject($this->mckey, $row, strtotime("+24 hours"));
+					$this->Redis->save($this->mckey, $row, strtotime("+24 hours"));
 				}
 				
 				$this->id = $id;

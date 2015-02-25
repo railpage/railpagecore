@@ -926,7 +926,6 @@
 			
 			$this->Module = new Module("users");
 			
-			
 			foreach (func_get_args() as $arg) {
 				if (filter_var($arg, FILTER_VALIDATE_INT)) {
 					$this->id = $arg;
@@ -983,7 +982,7 @@
 				$debug_timer_start = microtime(true);
 			}
 			
-			if ($data = $this->getCache($this->mckey)) {
+			if ($data = $this->Redis->fetch($this->mckey)) {
 				$cached = true;
 			
 				if (RP_DEBUG) {
@@ -1051,7 +1050,7 @@
 						$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via sql_db in " . round(microtime(true) - $debug_timer_start, 5) . "s";
 					}
 				} else {
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 					return false;
 				}
 			} else {
@@ -1174,7 +1173,7 @@
 			$this->getGroups();
 			
 			if (!$cached) {
-				$this->setCache($this->mckey, $data, strtotime("+6 hours"));
+				$this->Redis->save($this->mckey, $data, strtotime("+6 hours"));
 			}
 			
 			$this->provider 	= isset($data['provider']) ? $data['provider'] : "railpage";
@@ -1580,7 +1579,7 @@
 					
 						$return = true;
 					} else {
-						throw new \Exception($this->db->error);
+						throw new Exception($this->db->error);
 					}
 				} catch (Exception $e) {
 					global $Error;
@@ -1588,7 +1587,7 @@
 					
 					$return = false;
 					
-					throw new \Exception($e->getMessage());
+					throw new Exception($e->getMessage());
 				}
 				
 				return $return;
@@ -1755,7 +1754,7 @@
 			
 			$trace = debug_backtrace(); 
 			
-			throw new \Exception("Deprecated function " . $trace[0]['class'] . "->" . $trace[0]['function'] . " called from " . $trace[0]['file'] . " on line " . $trace[0]['line']);
+			throw new Exception("Deprecated function " . $trace[0]['class'] . "->" . $trace[0]['function'] . " called from " . $trace[0]['file'] . " on line " . $trace[0]['line']);
 			return false;
 		}
 		
@@ -1844,7 +1843,7 @@
 						$query = "UPDATE nuke_users SET user_session_time = '".time()."' ".$ip_sql." WHERE user_id = '".$this->db->real_escape_string($user_id)."'"; 
 						
 						if (!$this->db->query($query)) {
-							throw new \Exception($this->db->error); 
+							throw new Exception($this->db->error); 
 						}
 					} else {
 						$data = array(
@@ -1948,7 +1947,7 @@
 					
 					return true;
 				} else {
-					throw new \Exception($this->db->error."\n\n".$this->db->query); 
+					throw new Exception($this->db->error."\n\n".$this->db->query); 
 					
 					return false;
 				}
@@ -1994,7 +1993,7 @@
 				if ($rs = $this->db->query($query)) {
 					return true;
 				} else {
-					throw new \Exception($this->db->error);
+					throw new Exception($this->db->error);
 					return false;
 				}
 			} else {
@@ -2048,7 +2047,7 @@
 					setcookie("rp_autologin", base64_encode(implode(":",$autologin)), $cookie_expire, RP_AUTOLOGIN_PATH, RP_AUTOLOGIN_DOMAIN, RP_SSL_ENABLED, true); 
 					return true;
 				} else {
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 					return false;
 				}
 			} else {
@@ -2179,7 +2178,7 @@
 					
 					return $autologins;
 				} else {
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 					return false;
 				}
 			} else {
@@ -2222,7 +2221,7 @@
 				if ($this->db->query($query)) {
 					return true;
 				} else {
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 					return false;
 				}
 			} else {
@@ -2268,7 +2267,7 @@
 				if ($this->db->query($query)) {
 					return true; 
 				} else {
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 					return false;
 				}
 			} else {
@@ -2303,6 +2302,8 @@
 				
 			$logins = array();
 			
+			$key = sprintf("railpage:user=%d;logins;perpage=%d;page=%d", $this->id, $items_per_page, $page);
+			
 			if ($this->db instanceof \sql_db) {
 				$query = "SELECT * FROM log_logins USE INDEX (login_time) WHERE user_id = ".$this->id." ORDER BY login_time DESC LIMIT 0,25"; 
 				
@@ -2313,7 +2314,7 @@
 						$logins[$row['login_id']] = $row; 
 					}
 				} else {
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 					return false;
 				}
 			} else {
@@ -2390,12 +2391,12 @@
 					if ($this->db->query($query)) {
 						return true;
 					} else {
-						throw new \Exception($this->db->error); 
+						throw new Exception($this->db->error); 
 						return false;
 					}
 				} else {
 					// Couldn't execute query...
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 				}
 			} else {
 				$query = "SELECT hash FROM nuke_users_hash WHERE user_id = ?";
@@ -2486,7 +2487,7 @@
 		
 		public function addChaff($amount = 1) {
 			if (!$this->id) {
-				throw new \Exception("Cannot increment chaff rating - user ID unavailable"); 
+				throw new Exception("Cannot increment chaff rating - user ID unavailable"); 
 				return false;
 			}
 			
@@ -2496,7 +2497,7 @@
 				if ($this->db->query($query)) {
 					return true; 
 				} else {
-					throw new \Exception($this->db->error."\n\n".$query); 
+					throw new Exception($this->db->error."\n\n".$query); 
 					return false;
 				}
 			} else {
@@ -2520,14 +2521,14 @@
 			if (filter_var($date_start, FILTER_VALIDATE_INT)) {
 				$page = $date_start;
 			} elseif (!is_a($date_start, "DateTime")) {
-				throw new \Exception("\$date_start needs to be an instance of DateTime"); 
+				throw new Exception("\$date_start needs to be an instance of DateTime"); 
 				return false;
 			}
 			
 			if (filter_var($date_end, FILTER_VALIDATE_INT)) {
 				$items_per_page = $date_end;
 			} elseif (!is_a($date_end, "DateTime")) {
-				throw new \Exception("\$date_end needs to be an instance of DateTime"); 
+				throw new Exception("\$date_end needs to be an instance of DateTime"); 
 				return false;
 			}
 			
@@ -3057,7 +3058,7 @@
 			
 			$mckey = "railpage:usergroups.user_id=" . $this->id; 
 			
-			if ($this->groups = $this->getCache($mckey)) {
+			if ($this->groups = $this->Redis->fetch($mckey)) {
 				return $this->groups; 
 			} else {
 				$query = "SELECT group_id FROM nuke_bbuser_group WHERE user_id = ? AND user_pending = 0";
@@ -3077,11 +3078,11 @@
 								}
 							}
 						} else {
-							throw new \Exception($this->db->error."\n\n".$query);
+							throw new Exception($this->db->error."\n\n".$query);
 							return false;
 						}
 					} else {
-						throw new \Exception($this->db->error."\n\n".$query);
+						throw new Exception($this->db->error."\n\n".$query);
 						return false;
 					}
 				} else {
@@ -3095,7 +3096,7 @@
 				}
 				
 				if (!empty($this->groups)) {
-					$this->setCache($mckey, $this->groups, strtotime("+2 hours"));
+					$this->Redis->save($mckey, $this->groups, strtotime("+24 hours"));
 				}
 			
 				return $this->groups;
