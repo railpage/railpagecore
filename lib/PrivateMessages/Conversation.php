@@ -57,7 +57,7 @@
 				if ($arg instanceof User) {
 					$this->setUser($User);
 					
-					var_dump($this->getUser());
+					//var_dump($this->getUser());
 				}
 			}
 		} 
