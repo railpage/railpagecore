@@ -222,7 +222,7 @@
 				
 			if (isset($row) && is_array($row)) {	
 				$this->id 		= $row['topic_id'];
-				$this->title 	= format_topictitle(str_replace("Re: ", "", $row["topic_title"]));
+				$this->title 	= function_exists("format_topictitle") ? format_topictitle($row['topic_title']) : $row['topic_title'];
 				$this->forum 	= new Forum($row['forum_id']);
 				$this->url 		= new Url(sprintf("/f-t%d.htm", $this->id));
 				

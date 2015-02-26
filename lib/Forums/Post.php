@@ -236,43 +236,51 @@
 		 */
 		
 		function __construct($postid = false) {
+			global $site_debug;
+			$post_timer_start = microtime(true);
+			
 			parent::__construct();
 			
 			$this->Module = new Module("forums");
 			
 			$this->timestamp = time();
+			$this->mckey = sprintf("railpage:forums;post=%d", $postid); 
 			
-			if (filter_var($postid, FILTER_VALIDATE_INT)) {
-				if (RP_DEBUG) {
-					global $site_debug;
-					$debug_timer_start = microtime(true);
-				}
-				
-				if ($this->db instanceof \sql_db) {
-					$query = "SELECT p.*, t.*, u.username, u.user_avatar FROM nuke_bbposts p, nuke_bbposts_text t, nuke_users AS u WHERE u.user_id = p.poster_id AND p.post_id = '".$this->db->real_escape_string($postid)."' AND t.post_id = p.post_id LIMIT 1";
-				
-					$result = $this->db->query($query);
-					
-					if ($result && $result->num_rows == 1) {
-						$row = $result->fetch_assoc();
+			if (!$row = $this->Redis->fetch($this->mckey)) {
+				if (filter_var($postid, FILTER_VALIDATE_INT)) {
+					if (RP_DEBUG) {
+						global $site_debug;
+						$debug_timer_start = microtime(true);
 					}
-				} else {
-					$query = "SELECT p.*, t.*, u.username, u.user_avatar FROM nuke_bbposts p, nuke_bbposts_text t, nuke_users AS u WHERE u.user_id = p.poster_id AND p.post_id = ? AND t.post_id = p.post_id LIMIT 1";
+					
+					if ($this->db instanceof \sql_db) {
+						$query = "SELECT p.*, t.*, u.username, u.user_avatar FROM nuke_bbposts p, nuke_bbposts_text t, nuke_users AS u WHERE u.user_id = p.poster_id AND p.post_id = '".$this->db->real_escape_string($postid)."' AND t.post_id = p.post_id LIMIT 1";
+					
+						$result = $this->db->query($query);
+						
+						if ($result && $result->num_rows == 1) {
+							$row = $result->fetch_assoc();
+						}
+					} else {
+						$query = "SELECT p.*, t.*, u.username, u.user_avatar FROM nuke_bbposts p, nuke_bbposts_text t, nuke_users AS u WHERE u.user_id = p.poster_id AND p.post_id = ? AND t.post_id = p.post_id LIMIT 1";
+						
+						$row = $this->db->fetchRow($query, $postid);
+						$this->Redis->save($this->mckey, $row, strtotime("+12 hours"));
+					
+						if (RP_DEBUG) {
+							if ($row === false) {
+								$site_debug[] = "Zend_DB: FAILED select post ID " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+							} else {
+								$site_debug[] = "Zend_DB: SUCCESS select post ID " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+							}
+						} 
+					}
+				} elseif (is_string($postid)) {
+					$query = "SELECT p.*, t.*, u.username, u.user_avatar FROM nuke_bbposts p, nuke_bbposts_text t, nuke_users AS u WHERE u.user_id = p.poster_id AND t.url_slug = ? AND t.post_id = p.post_id LIMIT 1";
 					
 					$row = $this->db->fetchRow($query, $postid);
-				
-					if (RP_DEBUG) {
-						if ($row === false) {
-							$site_debug[] = "Zend_DB: FAILED select post ID " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-						} else {
-							$site_debug[] = "Zend_DB: SUCCESS select post ID " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-						}
-					} 
+					$this->Redis->save($this->mckey, $row, strtotime("+12 hours"));
 				}
-			} elseif (is_string($postid)) {
-				$query = "SELECT p.*, t.*, u.username, u.user_avatar FROM nuke_bbposts p, nuke_bbposts_text t, nuke_users AS u WHERE u.user_id = p.poster_id AND t.url_slug = ? AND t.post_id = p.post_id LIMIT 1";
-				
-				$row = $this->db->fetchRow($query, $postid);
 			}
 				
 			if (isset($row) && is_array($row)) {
@@ -313,6 +321,10 @@
 				$this->Author = new User($row['poster_id']);
 				
 				$this->makeLinks(); 
+			}
+			
+			if (RP_DEBUG) {
+				$site_debug[] = __CLASS__ . "::" . __METHOD__ . " completed in " . round(microtime(true) - $post_timer_start, 5) . "s";
 			}
 		}
 		

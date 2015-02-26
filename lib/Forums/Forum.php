@@ -160,8 +160,8 @@
 			if (isset($row) && is_array($row)) {
 				$this->id 			= $forumid;
 				$this->catid 		= $row["cat_id"];
-				$this->name 		= html_entity_decode_utf8($row["forum_name"]);
-				$this->description 	= html_entity_decode_utf8($row["forum_desc"]);
+				$this->name 		= function_exists("html_entity_decode_utf8") ? html_entity_decode_utf8($row["forum_name"]) : $row['forum_name'];
+				$this->description 	= function_exists("html_entity_decode_utf8") ? html_entity_decode_utf8($row["forum_desc"]) : $row['forum_desc'];
 				$this->status 		= $row["forum_status"];
 				$this->order 		= $row["forum_order"];
 				$this->posts 		= $row["forum_posts"];
