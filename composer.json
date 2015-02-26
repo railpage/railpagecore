@@ -36,6 +36,7 @@
 		"psr-4" : {
 			"Railpage\\" : "lib/",
 			"Railpage\\Assets\\" : "lib/Assets/",
+			"Railpage\\BanControl\\" : "lib/BanControl/",
 			"Railpage\\Bugs\\" : "lib/Bugs/",
 			"Railpage\\Chronicle\\" : "lib/Chronicle/",
 			"Railpage\\Chronicle\\Provider\\" : "lib/Chronicle/Provider/",
