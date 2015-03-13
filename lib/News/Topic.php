@@ -191,7 +191,7 @@
 						$row['title'] = format_topictitle($row['story_title']);
 						
 						// Match the first sentence
-						$line = explode("\n", $row['story_blurb']); 
+						$line = explode("\n", !empty($row['story_lead']) ? $row['story_lead'] : $row['story_blurb']); 
 						$row['firstline'] = preg_replace('/([^?!.]*.).*/', '\\1', strip_tags($line[0]));
 							
 						if (empty($row['story_slug'])) {
@@ -220,7 +220,7 @@
 				$return['topic_id'] = $this->id;
 				
 				if ($result = $this->db_readonly->fetchAll($query, array($this->id, "1", $page * $limit, $limit))) {
-					$return['total'] 	= $this->db_readonly->fetchOne("SELECT FOUND_ROWS() AS total"); 
+					$return['total'] = $this->db_readonly->fetchOne("SELECT FOUND_ROWS() AS total"); 
 					
 					foreach ($result as $row) {
 						if (function_exists("relative_date")) {
