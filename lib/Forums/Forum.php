@@ -485,5 +485,46 @@
 			
 			return $this->ZendACL->isAllowed("forums_viewer", $this->acl_resource, $permission);
 		}
+		
+		/**
+		 * Refresh forum data
+		 * @since Version 3.9.1
+		 * @return \Railpage\Forums\Forum
+		 */
+		
+		public function refreshForumStats() {
+			$query = "SELECT 
+				(SELECT COUNT(post_id) AS forum_posts FROM nuke_bbposts WHERE forum_id = ?) AS forum_posts,
+				(SELECT COUNT(topic_id) AS forum_topics FROM nuke_bbtopics WHERE forum_id = ?) AS forum_topics,
+				(SELECT post_id AS forum_last_post_id FROM nuke_bbposts WHERE forum_id = ? ORDER BY post_time DESC LIMIT 1) AS forum_last_post_id";
+			
+			$where = array(
+				$this->id,
+				$this->id,
+				$this->id
+			);
+			
+			$stats = $this->db->fetchAll($query, $where);
+			
+			if ($this->id == 63) {
+				printArray($stats);
+			}
+			
+			if (isset($stats[0])) {
+				$data = $stats[0];
+				
+				$where = array(
+					"forum_id = ?" => $this->id
+				);
+				
+				if ($this->id == 63) {
+					printArray($data);
+				}
+				
+				$this->db->update("nuke_bbforums", $data, $where);
+			}
+			
+			return $this;
+		}
 	}
 ?>
