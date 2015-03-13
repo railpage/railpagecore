@@ -400,6 +400,7 @@
 				$this->slug = $return['slug'];
 				$this->url = new Url($this->makePermaLink($this->slug));
 				$this->url->source = $return['source']; 
+				$this->url->reject = sprintf("/news/pending?task=reject&id=%d&queue=newqueue", $this->id);
 				$this->fwlink = $this->url->short;
 				
 				/**
@@ -984,15 +985,29 @@
 			 */
 			
 			if (count($matches) || count($rejected)) {
-				return true;
+				//return true;
 			}
 			
 			/**
 			 * Fall back to a database query
 			 */
 			
-			$query = "SELECT sid FROM nuke_stories WHERE title = ? AND time >= ?";
-			if (count($this->db->fetchAll($query, array($this->title, $this->date->sub(new DateInterval("P7D"))->format("Y-m-d H:i:s"))))) {
+			$where = array(
+				strtolower($this->title),
+				md5(strtolower($this->title)),
+				$this->date->sub(new DateInterval("P90D"))->format("Y-m-d H:i:s")
+			);
+			
+			$query = "SELECT sid FROM nuke_stories WHERE (LOWER(title) = ? OR MD5(LOWER(title)) = ?) AND time >= ?";
+			
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$query .= " AND sid != ?";
+				$where[] = $this->id;
+			}
+			
+			$result = $this->db->fetchAll($query, $where);
+			
+			if (count($result)) {
 				return true;
 			}
 			
