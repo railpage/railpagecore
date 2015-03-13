@@ -427,7 +427,7 @@
 		 * @param int $option
 		 */
 		
-		public function populate($force = false, $option) {
+		public function populate($force = false, $option = NULL) {
 			$RailpageAPI = new API($this->Config->API->Key, $this->Config->API->Secret);
 			
 			if ($force === false && !$this->isStale()) {
@@ -441,6 +441,80 @@
 			if (RP_DEBUG) {
 				global $site_debug;
 				$debug_timer_start = microtime(true);
+			}
+			
+			/**
+			 * New and improved populator using image providers
+			 */
+			
+			$imageprovider = __NAMESPACE__ . "\\Provider\\" . ucfirst($this->provider);
+			
+			switch ($this->provider) {
+				case "picasaweb" :
+					$imageprovider = __NAMESPACE__ . "\\Provider\\PicasaWeb";
+					$params = array();
+					break;
+				
+				case "flickr" : 
+					$params = array(
+						"api_key" => $this->Config->Flickr->APIKey,
+						"oauth_token" => "",
+						"oauth_secret" => ""
+					);
+					break;
+			}
+			
+			$Provider = new $imageprovider($params); 
+			
+			if ($data = $Provider->getImage($this->photo_id, $force)) {
+				$this->sizes = $data['sizes'];
+				$this->title = $data['title'];
+				$this->description = $data['description'];
+				$this->meta = array(
+					"dates" => array(
+						"posted" => $data['dates']['uploaded'] instanceof DateTime ? $data['dates']['uploaded']->format("Y-m-d H:i:s") : $data['dates']['uploaded']['date'],
+						"taken" => $data['dates']['taken'] instanceof DateTime ? $data['dates']['taken']->format("Y-m-d H:i:s") : $data['dates']['taken']['date'],
+					)
+				);
+				
+				$this->author = new stdClass;
+				$this->author->username = $data['author']['username'];
+				$this->author->realname = !empty($data['author']['realname']) ? $data['author']['realname'] : $data['author']['username'];
+				$this->author->id = $data['author']['id'];
+				$this->author->url = "https://www.flickr.com/photos/" . $this->author->id;
+				
+				if (isset($data['author']['railpage_id']) && filter_var($data['author']['railpage_id'], FILTER_VALIDATE_INT)) {
+					$this->author->User = new User($data['author']['railpage_id']); 
+				}
+				
+				/**
+				 * Load the tags
+				 */
+				
+				if (isset($data['tags']) && count($data['tags'])) {
+					foreach ($data['tags'] as $row) {
+						$this->meta['tags'][] = $row['raw'];
+					}
+				}
+				
+				/**
+				 * Load the Place object
+				 */
+				
+				if ($option != Images::OPT_NOPLACE && isset($data['location'])) {
+					try {
+						$this->Place = new Place($data['location']['latitude'], $data['location']['longitude']);
+					} catch (Exception $e) {
+						// Throw it away. Don't care.
+					}
+				}
+				
+				$this->links = new stdClass;
+				$this->links->provider = $data['urls']['url'][0]['_content'];
+				
+				$this->commit();
+				
+				return true;
 			}
 			
 			/**
