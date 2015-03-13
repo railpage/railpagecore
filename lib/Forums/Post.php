@@ -13,6 +13,7 @@
 	use Railpage\Users\User;
 	use Railpage\Module;
 	use Railpage\Url;
+	use Railpage\AppCore;
 	use Exception;
 	use DateTime;
 	use ArrayObject;
@@ -220,6 +221,14 @@
 		public $url_slug;
 		
 		/**
+		 * Is this post pinned in the thread? (Use for flagging a post as important
+		 * @since Version 3.9.1
+		 * @var boolean $pinned
+		 */
+		
+		public $pinned;
+		
+		/**
 		 * Author of this post
 		 * @since Version 3.8.7
 		 * @param \Railpage\Users\User $Author
@@ -299,6 +308,7 @@
 				$this->bbcode_uid = $row['bbcode_uid'];
 				$this->editor_version = $row['editor_version']; 
 				$this->url_slug = $row['url_slug'];
+				$this->pinned = isset($row['pinned']) ? (bool) $row['pinned'] : false;
 				
 				if (empty($this->url_slug)) {
 					$this->createSlug();
@@ -414,6 +424,13 @@
 			}
 			
 			/**
+			 * Update this information in Redis
+			 */
+			
+			$this->Redis->save(sprintf("railpage:forums.post=%d", $this->id), $this);
+			$this->Redis->delete(sprintf("railpage:forums.post=%d;processed_message", $this->id));
+			
+			/**
 			 * If this is an existing post, insert it into the edit table before we proceed
 			 */
 			
@@ -478,7 +495,8 @@
 				"post_reported" => $this->reported,
 				"post_herring_count" => $this->herring_count,
 				"lat" => $this->lat,
-				"lon" => $this->lon
+				"lon" => $this->lon,
+				"pinned" => intval($this->pinned)
 			);
 			
 			$text = array(
