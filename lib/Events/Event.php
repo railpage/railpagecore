@@ -8,6 +8,7 @@
 	
 	namespace Railpage\Events;
 	
+	use Railpage\Users\User;
 	use Railpage\AppCore;
 	use Railpage\Organisations\Organisation;
 	use Railpage\Place;
@@ -157,6 +158,12 @@
 				$this->slug = $row['slug'];
 				$this->status = isset($row['status']) ? $row['status'] : Events::STATUS_APPROVED;
 				
+				if (!isset($row['user_id'])) {
+					$row['user_id'] = 45;
+				}
+				
+				$this->setAuthor(new User($row['user_id']));
+				
 				$this->flickr_tag = "railpage:event=" . $this->id;
 				
 				if (filter_var($row['category_id'], FILTER_VALIDATE_INT)) {
@@ -215,6 +222,10 @@
 				$this->status = Events::STATUS_UNAPPROVED;
 			}
 			
+			if (!$this->Author instanceof User) {
+				throw new Exception("A valid user object must be set (hint: Event::setAuthor()");
+			}
+			
 			return true;
 		}
 		
@@ -237,7 +248,8 @@
 				"meta" => json_encode($this->meta),
 				"category_id" => $this->Category->id,
 				"slug" => $this->slug,
-				"status" => $this->status
+				"status" => $this->status,
+				"user_id" => $this->Author->id
 			);
 			
 			if ($this->Organisation instanceof Organisation) {
@@ -453,6 +465,11 @@
 					"lat" => 0,
 					"lon" => 0
 				),
+				"author" => array(
+					"id" => $this->Author->id,
+					"username" => $this->Author->username,
+					"url" => $this->Author->url->getURLs()
+				)
 			);
 			
 			if ($this->Organisation instanceof Organisation) {

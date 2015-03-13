@@ -8,6 +8,7 @@
 	
 	namespace Railpage\Events;
 	
+	use Railpage\Users\User;
 	use Railpage\Events\Event;
 	use DateTime;
 	use DateTimeZone;
@@ -111,6 +112,8 @@
 					$this->url = new Url("/events?mode=event.date&event_id=" . $this->Event->id . "&date_id=" . $this->id);
 					$this->status = $row['status'];
 					
+					$this->setAuthor(new User($row['user_id']));
+					
 					if ($row['start'] != "00:00:00") {
 						$this->Start = new DateTime($row['date'] . " " . $row['start']);
 					}
@@ -171,6 +174,10 @@
 				$this->status = Events::STATUS_UNAPPROVED;
 			}
 			
+			if (!$this->Author instanceof User) {
+				throw new Exception("A valid user object must be set (hint: EventDate::setAuthor()");
+			}
+			
 			return true;
 		}
 		
@@ -184,7 +191,8 @@
 			$data = array(
 				"event_id" => $this->Event->id,
 				"date" => $this->Date->format("Y-m-d"),
-				"status" => $this->status
+				"status" => $this->status,
+				"user_id" => $this->Author->id
 			);
 			
 			if ($this->Place instanceof Place) {
@@ -271,6 +279,11 @@
 				"place" => array(
 					"lat" => 0,
 					"lon" => 0
+				),
+				"author" => array(
+					"id" => $this->Author->id,
+					"username" => $this->Author->username,
+					"url" => $this->Author->url->getURLs()
 				)
 			);
 			
