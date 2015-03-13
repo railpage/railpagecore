@@ -15,6 +15,22 @@
 	use DateTime;
 	
 	class BanControl extends AppCore {
+		
+		/**
+		 * Cache key for all banned objects
+		 * @since Version 3.9.1
+		 * @const string CACHE_KEY_ALL
+		 */
+		
+		const CACHE_KEY_ALL = "railpage:bancontrol.all;v1";
+		
+		/**
+		 * Gzip level for caching
+		 * @since Version 3.9.1
+		 * @const int CACHE_GZIP_LEVEL
+		 */
+		
+		const CACHE_GZIP_LEVEL = 9;
 		 
 		/**
 		 * Banned users
@@ -42,16 +58,69 @@
 		public $domains;
 		
 		/**
+		 * Load all 
+		 * @since Version 3.9.1
+		 * @return \Railpage\BanControl\BanControl
+		 */
+		
+		public function loadAll() {
+			// Attempt to load combined users & IPs first
+			if (empty($this->users) || empty($this->ip_addresses)) {
+				if ($array = json_decode(gzuncompress($this->Memcached->fetch(self::CACHE_KEY_ALL)), true)) {
+					$this->users = $array['users'];
+					$this->ip_addresses = $array['ips'];
+					
+					return true;
+				} 
+			}
+			
+			$this->loadUsers(); 
+			$this->loadIPs(); 
+			
+			$this->cacheAll(); 
+			
+			return $this;
+		}
+		
+		/**
+		 * Save loaded ban arrays into our cache provider
+		 * @since Version 3.9.1
+		 * @return \Railpage\BanControl\BanControl
+		 * @param boolean $force
+		 */
+		
+		public function cacheAll($force = false) {
+			if ($force) {
+				$this->loadUsers($force); 
+				$this->loadIPs($force);
+			}
+			
+			$store = array(
+				"users" => $this->users,
+				"ips" => $this->ips
+			);
+			
+			$this->Memcached->save(self::CACHE_KEY_ALL, gzcompress(json_encode($store), self::CACHE_GZIP_LEVEL));
+			
+			if (is_object($this->Redis)) {
+				$this->Redis->save("railpage:bancontrol", $this);
+			}
+			
+			return $this;
+		}
+		
+		/**
 		 * Get banned users
 		 * @since Version 3.2
 		 * @version 3.2
 		 * @return boolean
+		 * @param boolean $force
 		 */
 		
-		public function loadUsers() {
+		public function loadUsers($force = false) {
 			$mckey = "railpage:bancontrol.users;v5"; 
 			
-			if (!$this->users = json_decode(gzuncompress($this->Memcached->fetch($mckey)), true)) {
+			if ($force || !$this->users = json_decode(gzuncompress($this->Memcached->fetch($mckey)), true)) {
 				$query = "SELECT b.id, b.user_id, b.ban_time, b.ban_expire, b.ban_reason, b.banned_by AS admin_user_id, bu.username, bu.reported_to_sfs, au.username AS admin_username
 					FROM bancontrol AS b
 					LEFT JOIN nuke_users AS bu ON b.user_id = bu.user_id
@@ -63,7 +132,7 @@
 					$this->users[$row['user_id']] = $row;
 				}
 				
-				$this->Memcached->save($mckey, gzcompress(json_encode($this->users), 9));
+				$this->Memcached->save($mckey, gzcompress(json_encode($this->users), self::CACHE_GZIP_LEVEL));
 			}
 			
 			return true;
@@ -74,12 +143,13 @@
 		 * @since Version 3.2
 		 * @version 3.2
 		 * @return boolean
+		 * @param boolean $force
 		 */
 		
-		public function loadIPs() {
+		public function loadIPs($force = false) {
 			$mckey = "railpage:bancontrol.ips;v4"; 
 			
-			if (!$this->ip_addresses = json_decode(gzuncompress($this->Memcached->fetch($mckey)), true)) {
+			if ($force || !$this->ip_addresses = json_decode(gzuncompress($this->Memcached->fetch($mckey)), true)) {
 				$query = "SELECT b.id, b.ip, b.ban_time, b.ban_expire, b.ban_reason, b.banned_by AS admin_user_id, au.username AS admin_username
 					FROM bancontrol AS b
 					LEFT JOIN nuke_users AS au ON b.banned_by = au.user_id
@@ -90,7 +160,7 @@
 					$this->ip_addresses[$row['ip']] = $row;
 				}
 				
-				$this->Memcached->save($mckey, gzcompress(json_encode($this->ip_addresses), 9));
+				$this->Memcached->save($mckey, gzcompress(json_encode($this->ip_addresses), self::CACHE_GZIP_LEVEL));
 			}
 			
 			return true;
@@ -150,56 +220,65 @@
 				"ban_expire"	=> $expiry
 			);
 			
-			if ($this->db->insert("bancontrol", $data)) {
-				// Tell the world that they've been naughty
-				$ThisUser = new User($user_id);
-				$ThisUser->active 		= 0;
-				$ThisUser->location 	= "Banned"; 
-				$ThisUser->signature 	= "Banned";
-				$ThisUser->avatar 		= "";
-				$ThisUser->interests 	= "";
-				$ThisUser->occupation 	= "";
+			$this->db->insert("bancontrol", $data);
+			
+			/**
+			 * Update the cache
+			 */
+			 
+			$this->cacheAll(true);
+			
+			/**
+			 * Tell the world that they've been naughty
+			 */
+			
+			$ThisUser = new User($user_id);
+			$ThisUser->active 		= 0;
+			$ThisUser->location 	= "Banned"; 
+			$ThisUser->signature 	= "Banned";
+			$ThisUser->avatar 		= "";
+			$ThisUser->interests 	= "";
+			$ThisUser->occupation 	= "";
+			
+			try {
+				$ThisUser->commit(true); 
+				$return = true;
 				
-				try {
-					$ThisUser->commit(true); 
-					$return = true;
-					
-					$ThisUser->addNote("Banned", $_SESSION['user_id']);
-					
-					global $smarty;
+				$ThisUser->addNote("Banned", $_SESSION['user_id']);
 				
-					// Send the ban email
-					$smarty->assign("userdata_username", $ThisUser->username);
-					$smarty->assign("ban_reason", $reason);
-					
-					if ($expiry > 0) {
-						$smarty->assign("ban_expire_nice", date($ThisUser->date_format, $expire));
-					}
-					
-					$email_body = $smarty->fetch($smarty->ResolveTemplate("email_ban"));
-					
-					// Send the confirmation email
-					require_once("Mail.php");
-					require_once("Mail/mime.php");
-					
-					$crlf = "\n";
-					$hdrs = array("To" => $ThisUser->contact_email, "From" => "banned@railpage.com.au", "Subject" => "Railpage account suspension");
-					
-					$mime = new \Mail_Mime(array("eol" => $crlf)); 
-					
-					$mime->setHTMLBody($email_body);
-					
-					$body = $mime->get();
-					$hdrs = $mime->headers($hdrs);
-					
-					$mail =& \Mail::factory("mail");
-					$send = $mail->send($ThisUser->contact_email, $hdrs, $body);
-					
-					return true;
-				} catch (Exception $e) {
-					global $Error;
-					$Error->save($e, $_SESSION['user_id']);
+				global $smarty;
+			
+				// Send the ban email
+				$smarty->assign("userdata_username", $ThisUser->username);
+				$smarty->assign("ban_reason", $reason);
+				
+				if ($expiry > 0) {
+					$smarty->assign("ban_expire_nice", date($ThisUser->date_format, $expire));
 				}
+				
+				$email_body = $smarty->fetch($smarty->ResolveTemplate("email_ban"));
+				
+				// Send the confirmation email
+				require_once("Mail.php");
+				require_once("Mail/mime.php");
+				
+				$crlf = "\n";
+				$hdrs = array("To" => $ThisUser->contact_email, "From" => "banned@railpage.com.au", "Subject" => "Railpage account suspension");
+				
+				$mime = new \Mail_Mime(array("eol" => $crlf)); 
+				
+				$mime->setHTMLBody($email_body);
+				
+				$body = $mime->get();
+				$hdrs = $mime->headers($hdrs);
+				
+				$mail =& \Mail::factory("mail");
+				$send = $mail->send($ThisUser->contact_email, $hdrs, $body);
+				
+				return true;
+			} catch (Exception $e) {
+				global $Error;
+				$Error->save($e, $_SESSION['user_id']);
 			}
 			
 			return false;
@@ -237,7 +316,15 @@
 				"ban_expire"	=> $expiry
 			);
 			
-			return $this->db->insert("bancontrol", $data);
+			$this->db->insert("bancontrol", $data);
+			
+			/**
+			 * Update the cache
+			 */
+			 
+			$this->cacheAll(true);
+			
+			return true;
 		}
 		
 		/**
