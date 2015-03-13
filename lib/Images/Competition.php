@@ -139,6 +139,8 @@
 			
 			$this->Author = new User($row['author']);
 			
+			$this->url = new Url(sprintf("/gallery?mode=competition&id=%d", $this->id));
+			
 			return $this;
 		}
 		
