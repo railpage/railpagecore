@@ -56,5 +56,21 @@
 				return $this->db->fetchAll($query, array($parent_id, $parent_id)); 
 			}
 		}
+		
+		/**
+		 * Find a location ID from a given name
+		 * @since Version 3.9.1
+		 * @param string $name
+		 * @return int
+		 */
+		
+		public function findLocationID($name = false) {
+			$query = "SELECT jn_location_id FROM jn_locations WHERE LOWER(jn_location_name) = ?";
+			
+			#$name = "'%" . $name . "%'";
+			$name = strtolower(trim($name));
+			
+			return $this->db->fetchOne($query, $name);
+		}
 	}
 ?>
