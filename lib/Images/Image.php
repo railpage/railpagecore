@@ -1085,5 +1085,17 @@
 			
 			return true;
 		}
+		
+		/**
+		 * Get an associative array representing this object
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			$this->getJSON();
+			
+			return json_decode($this->json, true);
+		}
 	}
 ?>

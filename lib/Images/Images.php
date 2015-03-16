@@ -126,5 +126,37 @@
 			
 			return false;
 		}
+		
+		/**
+		 * Get a photo from its source URL
+		 * @since Version 3.9.1
+		 * @param string $url
+		 * @return boolean|\Railpage\Images\Image
+		 */
+		
+		public function getImageFromUrl($url = false) {
+			if (preg_match("#flickr.com/photos/([a-zA-Z0-9\-\_\@]+)/([0-9]+)#", $url, $matches)) {
+				if ($Image = $this->findImage("flickr", $matches[2])) {
+					return $Image;
+				}
+			}
+			
+			if (preg_match("#flic.kr/p/([a-zA-Z0-9]+)#", $url, $matches)) {
+				$alphabet = "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ";
+				$decoded = 0;
+				$multi = 1;
+				
+				while (strlen($matches[1]) > 0) {
+					$digit = $matches[1][strlen($matches[1])-1];
+					$decoded += $multi * strpos($alphabet, $digit);
+					$multi = $multi * strlen($alphabet);
+					$matches[1] = substr($matches[1], 0, -1);
+				}
+				
+				if ($Image = $this->findImage("flickr", $decoded)) {
+					return $Image;
+				}
+			}
+		}
 	}
 ?>

@@ -60,6 +60,14 @@
 		const PHOTO_REJECTED = 2;
 		
 		/**
+		 * Default number of maximum votes per user per competition
+		 * @since Version 3.9.1
+		 * @const int MAX_VOTES_PER_USER
+		 */
+		
+		const MAX_VOTES_PER_USER = 5;
+		
+		/**
 		 * Get the list of competitions, optionally filter by status
 		 * @since Version 3.9.1
 		 * @param int $status
