@@ -135,6 +135,11 @@
 		 */
 		
 		public function getImageFromUrl($url = false) {
+			
+			/**
+			 * Flickr
+			 */
+			
 			if (preg_match("#flickr.com/photos/([a-zA-Z0-9\-\_\@]+)/([0-9]+)#", $url, $matches)) {
 				if ($Image = $this->findImage("flickr", $matches[2])) {
 					return $Image;
@@ -156,6 +161,14 @@
 				if ($Image = $this->findImage("flickr", $decoded)) {
 					return $Image;
 				}
+			}
+			
+			/**
+			 * Vicsig
+			 */
+			
+			if (preg_match("#vicsig.net/photo#")) {
+				// Do nothing yet
 			}
 		}
 	}
