@@ -133,6 +133,8 @@
 			}
 			
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
+				$this->cachekey = sprintf("railpage:photo.comp=%d", $id);
+				
 				$this->id = $id;
 				$this->load();
 			}
@@ -360,6 +362,10 @@
 		 */
 		
 		public function getPhoto($image) {
+			$image_id = $image instanceof Image ? $image->id : $image['id'];
+			
+			$key = sprintf("railpage:comp=%d;image=%d", $this->id, $image_id);
+			
 			if ($image instanceof Image) {
 				$query = "SELECT * FROM image_competition_submissions WHERE competition_id = ? AND image_id = ? ORDER BY date_added DESC";
 				$params = array(
