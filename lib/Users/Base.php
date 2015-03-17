@@ -60,7 +60,7 @@
 		public function onlineUsers() {
 			$mckey = "railpage:onlineusers"; 
 			
-			if ($return = getMemcacheObject($mckey)) {
+			if ($return = $this->Memcached->fetch($mckey)) {
 				foreach ($return as $id => $row) {
 					if (isset($row['last_session_ip'])) {
 						return $return;
@@ -78,7 +78,7 @@
 					$return[$row['user_id']] = $row; 
 				}
 				
-				setMemcacheObject($mckey, $return, strtotime("+1 minute")); 
+				$this->Memcached->save($mckey, $return, strtotime("+1 minute")); 
 			}
 					
 			return $return;
@@ -241,7 +241,7 @@
 			
 			$this->db->insert("nuke_bbranks", $data);
 			
-			deleteMemcacheObject("railpage:ranks");
+			$this->Memcached->delete("railpage:ranks");
 			
 			return $this->db->lastInsertId();
 		}

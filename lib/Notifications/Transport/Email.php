@@ -16,6 +16,7 @@
 	use Swift_Message;
 	use Swift_Mailer;
 	use Swift_SmtpTransport;
+	use Swift_Encoding;
 	
 	/**
 	 * Email
@@ -62,12 +63,14 @@
 			 */
 			
 			$message = Swift_Message::newInstance()
+				->setEncoder(Swift_Encoding::get8BitEncoding())
 				->setSubject($this->data['subject'])
 				->setFrom(array($this->data['author']['email'] => $this->data['author']['username']))
-				->setBody($this->data['body'], 'text/html');
+				->setBody($this->data['body'], 'text/html')
+				->setCharset("UTF-8");
 			
 			foreach ($this->data['recipients'] as $recipient) {
-				$message->setTo(array($recipient['destination'] => $recipient['username']));
+				$message->setBcc(array($recipient['destination'] => $recipient['username']));
 			}
 			
 			/**

@@ -197,7 +197,7 @@
 					foreach ($ns as $namespace) {
 						foreach ($node->children($namespace) as $key => $data) {
 							
-							if (isset($item[$key])) {
+							if (isset($item[$key]) && !empty(trim($data->__toString()))) {
 								$item[$key] = trim($data->__toString()); 
 							} elseif ($key == "encoded") {
 								$item['description'] = $data->__toString();

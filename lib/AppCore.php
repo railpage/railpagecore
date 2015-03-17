@@ -292,7 +292,7 @@
 				if ($this->db instanceof \sql_db) {
 					$this->db->close(); 
 				} else {
-					$this->closeConnection(); 
+					#$this->closeConnection(); 
 				}
 			}
 		}
@@ -586,6 +586,38 @@
 				
 			$slug = strtolower(preg_replace('/[^A-Za-z0-9-]+/', '-', trim($string)));
 			return $slug;
+		}
+		
+		/**
+		 * Set the database connection for this object
+		 * @since Version 3.9.1
+		 * @return $this
+		 */
+		
+		public function setDatabaseConnection($cn = false) {
+			if (!is_object($cn)) {
+				throw new Exception("Invalid database connection specified");
+			}
+			
+			$this->db = $cn;
+			
+			return $this;
+		}
+		
+		/**
+		 * Set the read-only database connection for this object
+		 * @since Version 3.9.1
+		 * @return $this
+		 */
+		
+		public function setDatabaseReadOnlyConnection($cn = false) {
+			if (!is_object($cn)) {
+				throw new Exception("Invalid database connection specified");
+			}
+			
+			$this->db_readonly = $cn;
+			
+			return $this;
 		}
 	}
 ?>

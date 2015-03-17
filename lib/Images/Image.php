@@ -190,14 +190,14 @@
 				
 				$this->mckey = sprintf("railpage:image=%d", $id);
 				
-				if (!$row = getMemcacheObject($this->mckey)) {
+				if (!$row = $this->Redis->fetch($this->mckey)) {
 				
 					$query = "SELECT i.id, i.provider, i.photo_id, i.modified, i.meta, i.lat, i.lon FROM image AS i WHERE i.id = ?";
 				
 					$row = $this->db->fetchRow($query, $id);
 					$row['meta'] = json_decode($row['meta'], true);
 					
-					setMemcacheObject($this->mckey, $row, strtotime("+24 hours"));
+					$this->Redis->save($this->mckey, $row, strtotime("+24 hours"));
 				}
 				
 				$this->id = $id;
@@ -427,7 +427,7 @@
 		 * @param int $option
 		 */
 		
-		public function populate($force = false, $option) {
+		public function populate($force = false, $option = NULL) {
 			$RailpageAPI = new API($this->Config->API->Key, $this->Config->API->Secret);
 			
 			if ($force === false && !$this->isStale()) {
@@ -441,6 +441,80 @@
 			if (RP_DEBUG) {
 				global $site_debug;
 				$debug_timer_start = microtime(true);
+			}
+			
+			/**
+			 * New and improved populator using image providers
+			 */
+			
+			$imageprovider = __NAMESPACE__ . "\\Provider\\" . ucfirst($this->provider);
+			
+			switch ($this->provider) {
+				case "picasaweb" :
+					$imageprovider = __NAMESPACE__ . "\\Provider\\PicasaWeb";
+					$params = array();
+					break;
+				
+				case "flickr" : 
+					$params = array(
+						"api_key" => $this->Config->Flickr->APIKey,
+						"oauth_token" => "",
+						"oauth_secret" => ""
+					);
+					break;
+			}
+			
+			$Provider = new $imageprovider($params); 
+			
+			if ($data = $Provider->getImage($this->photo_id, $force)) {
+				$this->sizes = $data['sizes'];
+				$this->title = $data['title'];
+				$this->description = $data['description'];
+				$this->meta = array(
+					"dates" => array(
+						"posted" => $data['dates']['uploaded'] instanceof DateTime ? $data['dates']['uploaded']->format("Y-m-d H:i:s") : $data['dates']['uploaded']['date'],
+						"taken" => $data['dates']['taken'] instanceof DateTime ? $data['dates']['taken']->format("Y-m-d H:i:s") : $data['dates']['taken']['date'],
+					)
+				);
+				
+				$this->author = new stdClass;
+				$this->author->username = $data['author']['username'];
+				$this->author->realname = !empty($data['author']['realname']) ? $data['author']['realname'] : $data['author']['username'];
+				$this->author->id = $data['author']['id'];
+				$this->author->url = "https://www.flickr.com/photos/" . $this->author->id;
+				
+				if (isset($data['author']['railpage_id']) && filter_var($data['author']['railpage_id'], FILTER_VALIDATE_INT)) {
+					$this->author->User = new User($data['author']['railpage_id']); 
+				}
+				
+				/**
+				 * Load the tags
+				 */
+				
+				if (isset($data['tags']) && count($data['tags'])) {
+					foreach ($data['tags'] as $row) {
+						$this->meta['tags'][] = $row['raw'];
+					}
+				}
+				
+				/**
+				 * Load the Place object
+				 */
+				
+				if ($option != Images::OPT_NOPLACE && isset($data['location'])) {
+					try {
+						$this->Place = new Place($data['location']['latitude'], $data['location']['longitude']);
+					} catch (Exception $e) {
+						// Throw it away. Don't care.
+					}
+				}
+				
+				$this->links = new stdClass;
+				$this->links->provider = $data['urls']['url'][0]['_content'];
+				
+				$this->commit();
+				
+				return true;
 			}
 			
 			/**
@@ -547,92 +621,6 @@
 					$this->sizes = $this->meta['sizes'];
 					
 					$this->commit();
-					break;
-				
-				/**
-				 * Flickr
-				 */
-				
-				case "flickr" : 
-					
-					$PhotoSizes = $RailpageAPI->Get(
-						"railpage.flickr.photos.getsizes", 
-						array(
-							"photo_id" => $this->photo_id, 
-							"force" => "true"
-						)
-					);
-					
-					$PhotoInfo = $RailpageAPI->Get(
-						"railpage.flickr.photos.getinfo", 
-						array(
-							"photo_id" => $this->photo_id, 
-							"force" => "true"
-						)
-					);
-					
-					$this->sizes = $PhotoSizes['sizes']['size'];
-					
-					if (isset($PhotoInfo['photo'])) {
-						$this->title = $PhotoInfo['photo']['title']['_content'];
-						$this->description = $PhotoInfo['photo']['description']['_content'];
-						$this->meta = array(
-							"dates" => array(
-								"posted" => $PhotoInfo['photo']['dates']['posted'],
-								"taken" => $PhotoInfo['photo']['dates']['taken']
-							)
-						);
-						
-						/**
-						 * Create the author object
-						 */
-						
-						$this->author = new stdClass;
-						$this->author->username = $PhotoInfo['photo']['owner']['username'];
-						$this->author->realname = !empty($PhotoInfo['photo']['owner']['realname']) ? $PhotoInfo['photo']['owner']['realname'] : $PhotoInfo['photo']['owner']['username'];
-						$this->author->id = $PhotoInfo['photo']['owner']['nsid'];
-						$this->author->url = "https://www.flickr.com/photos/" . $this->author->id;
-						
-						/**
-						 * Check if the author is on Railpage
-						 */
-						
-						$query = "SELECT user_id FROM nuke_users WHERE flickr_nsid = ?";
-						
-						if ($tmp_user_id = $this->db->fetchOne($query, $this->author->id)) {
-							$this->author->railpage_id = $tmp_user_id;
-							$this->author->User = new User($tmp_user_id);
-						}
-						
-						
-						/**
-						 * Load the tags
-						 */
-						
-						if (isset($PhotoInfo['photo']['tags']['tag'])) {
-							foreach ($PhotoInfo['photo']['tags']['tag'] as $row) {
-								$this->meta['tags'][] = $row['raw'];
-							}
-						}
-						
-						/**
-						 * Load the Place object
-						 */
-						
-						if ($option != Images::OPT_NOPLACE && isset($PhotoInfo['photo']['location'])) {
-							try {
-								$this->Place = new Place($PhotoInfo['photo']['location']['latitude'], $PhotoInfo['photo']['location']['longitude']);
-							} catch (Exception $e) {
-								// Throw it away. Don't care.
-							}
-						}
-						
-						$this->links = new stdClass;
-						$this->links->provider = $PhotoInfo['photo']['urls']['url'][0]['_content'];
-					}
-					
-					$this->commit();
-					
 					break;
 				
 				/**
@@ -1010,6 +998,18 @@
 			$this->db->update("image_link", $data, $where);
 			
 			return true;
+		}
+		
+		/**
+		 * Get an associative array representing this object
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			$this->getJSON();
+			
+			return json_decode($this->json, true);
 		}
 	}
 ?>

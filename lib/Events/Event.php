@@ -8,6 +8,7 @@
 	
 	namespace Railpage\Events;
 	
+	use Railpage\Users\User;
 	use Railpage\AppCore;
 	use Railpage\Organisations\Organisation;
 	use Railpage\Place;
@@ -23,22 +24,6 @@
 	 */
 	
 	class Event extends AppCore {
-		
-		/**
-		 * Status: approved
-		 * @const STATUS_APPROVED
-		 * @since Version 3.9
-		 */
-		
-		const STATUS_APPROVED = 1;
-		
-		/**
-		 * Status: unapproved
-		 * @const STATUS_UNAPPROVED
-		 * @since Version 3.9
-		 */
-		
-		const STATUS_UNAPPROVED = 0;
 		
 		/**
 		 * Event ID
@@ -113,6 +98,14 @@
 		public $flickr_tag;
 		
 		/**
+		 * Event status
+		 * @since Version 3.9.1
+		 * @var int $status
+		 */
+		
+		public $status;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.8.7
 		 * @param int $id The ID of the event
@@ -163,6 +156,13 @@
 				$this->desc = $row['description']; 
 				$this->meta = json_decode($row['meta'], true);
 				$this->slug = $row['slug'];
+				$this->status = isset($row['status']) ? $row['status'] : Events::STATUS_APPROVED;
+				
+				if (!isset($row['user_id'])) {
+					$row['user_id'] = 45;
+				}
+				
+				$this->setAuthor(new User($row['user_id']));
 				
 				$this->flickr_tag = "railpage:event=" . $this->id;
 				
@@ -218,6 +218,14 @@
 				$this->createSlug();
 			}
 			
+			if (!filter_var($this->status)) {
+				$this->status = Events::STATUS_UNAPPROVED;
+			}
+			
+			if (!$this->Author instanceof User) {
+				throw new Exception("A valid user object must be set (hint: Event::setAuthor()");
+			}
+			
 			return true;
 		}
 		
@@ -239,7 +247,9 @@
 				"description" => $this->desc,
 				"meta" => json_encode($this->meta),
 				"category_id" => $this->Category->id,
-				"slug" => $this->slug
+				"slug" => $this->slug,
+				"status" => $this->status,
+				"user_id" => $this->Author->id
 			);
 			
 			if ($this->Organisation instanceof Organisation) {
@@ -252,8 +262,8 @@
 				$data['lat'] = $this->Place->lat;
 				$data['lon'] = $this->Place->lon;
 			} else {
-				$data['lat'] = NULL;
-				$data['lon'] = NULL;
+				$data['lat'] = "";
+				$data['lon'] = "";
 			}
 			
 			if (filter_var($this->id)) {
@@ -286,10 +296,11 @@
 				$debug_timer_start = microtime(true);
 			}
 			
-			$query = "SELECT id FROM event_dates WHERE event_id = ?";
+			$query = "SELECT id FROM event_dates WHERE event_id = ? AND status = ?";
 			
 			$params = array(
-				$this->id
+				$this->id,
+				Events::STATUS_APPROVED
 			);
 			
 			if ($Start instanceof DateTime) {
@@ -325,7 +336,7 @@
 				$debug_timer_start = microtime(true);
 			}
 			
-			$query = "SELECT id FROM event_dates WHERE event_id = ? AND date = ?";
+			$query = "SELECT id FROM event_dates WHERE event_id = ? AND date = ? AND status = ?";
 			
 			if (!$Date instanceof DateTime) {
 				throw new Exception("Cannot find dates for this event - no DateTime object given");
@@ -335,7 +346,26 @@
 				$site_debug[] = __CLASS__ . "::" . __METHOD__ . " completed in " . round(microtime(true) - $debug_timer_start, 5) . "s";
 			}
 			
-			return $this->db->fetchAll($query, array($this->id, $Date->format("Y-m-d")));
+			$where = array(
+				$this->id, 
+				$Date->format("Y-m-d"),
+				Events::STATUS_APPROVED
+			);
+			
+			return $this->db->fetchAll($query, $where);
+		}
+		
+		/**
+		 * Approve this event
+		 * @since Version 3.9.1
+		 * @return \Railpage\Events\Event
+		 */
+		
+		public function approve() {
+			$this->status = Events::STATUS_APPROVED;
+			$this->commit(); 
+			
+			return $this;
 		}
 		
 		/**
@@ -408,6 +438,56 @@
 			if (isset($this->meta['tickets']) && !empty($this->meta['tickets'])) {
 				$this->url->tickets = $this->meta['tickets'];
 			}
+		}
+		
+		/**
+		 * Create an associative array representing this object
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			$array = array(
+				"id" => $this->id,
+				"title" => $this->title,
+				"description" => $this->desc,
+				"status" => array(
+					"id" => $this->status,
+					"name" => $this->status == Events::STATUS_APPROVED ? "Approved" : "Unapproved"
+				),
+				"url" => $this->url->getURLs(),
+				"category" => array(
+					"id" => $this->Category->id,
+					"name" => $this->Category->name,
+					"url" => $this->Category->url->getURLs()
+				),
+				"place" => array(
+					"lat" => 0,
+					"lon" => 0
+				),
+				"author" => array(
+					"id" => $this->Author->id,
+					"username" => $this->Author->username,
+					"url" => $this->Author->url->getURLs()
+				)
+			);
+			
+			if ($this->Organisation instanceof Organisation) {
+				$array['organisation'] = array(
+					"id" => $this->Organisation->id,
+					"name" => $this->Organisation->name,
+					"url" => $this->Organisation->url instanceof Url ? $this->Organisation->url->getURLs() : array("url" => $this->Organisation->url)
+				);
+			}
+			
+			if ($this->Place instanceof Place) {
+				$array['place'] = array(
+					"lat" => $this->Place->lat,
+					"lon" => $this->Place->lon
+				);
+			}
+			
+			return $array;
 		}
 	}
 ?>

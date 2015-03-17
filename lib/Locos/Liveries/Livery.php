@@ -180,8 +180,12 @@
 				return false;
 			}
 			
-			$query = "SELECT * FROM loco_livery WHERE livery_id = ?";
-			$row = $this->db->fetchRow($query, $this->id); 
+			$this->mckey = sprintf("railpage:livery=%d", $this->id);
+			
+			if (!$row = $this->Memcached->fetch($this->mckey)) {
+				$query = "SELECT * FROM loco_livery WHERE livery_id = ?";
+				$row = $this->db->fetchRow($query, $this->id); 
+			}
 			
 			if (isset($row) && is_array($row)) {		
 				$this->name 		= $row['livery'];
@@ -196,7 +200,13 @@
 				$this->url = "/flickr?tag=" . $this->tag;
 				
 				if (filter_var($this->photo_id, FILTER_VALIDATE_INT)) {
-					$this->Image = (new Images)->findImage("flickr", $this->photo_id, Images::OPT_NOPLACE);
+					
+					#$rdkey = sprintf("railpage:image;provider=%s;photo_id=%s;v2", "flickr", $this->photo_id);
+					
+					#if (!$this->Image = $this->Redis->fetch($rdkey)) {
+						$this->Image = (new Images)->findImage("flickr", $this->photo_id, Images::OPT_NOPLACE);
+					#	$this->Redis->save($rdkey, $this->Image, strtotime("+24 hours"));
+					#}
 				}
 				
 				return true;

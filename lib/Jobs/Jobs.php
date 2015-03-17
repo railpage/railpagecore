@@ -204,6 +204,16 @@
 		}
 		
 		/**
+		 * Get number of jobs added in the last 30 days
+		 */
+		
+		public function getNumNewJobs() {
+			$query = "SELECT COUNT(job_id) FROM jn_jobs WHERE job_added >= ?";
+			
+			return $this->db->fetchOne($query, (new DateTime("@" . strtotime("30 days ago")))->format("Y-m-d H:i:s"));
+		}
+		
+		/**
 		 * Get jobs from an employer
 		 * @since Version 3.9.1
 		 * @return \Railpage\Jobs\Job

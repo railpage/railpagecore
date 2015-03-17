@@ -328,7 +328,7 @@
 				"id" => $this->id,
 				"subject" => $this->subject,
 				"body" => $this->body,
-				"response" => $this->response
+				"response" => empty($this->response) ? $this->response : json_decode(json_encode($this->response), true)
 			);
 			
 			if ($this->Author instanceof User) {

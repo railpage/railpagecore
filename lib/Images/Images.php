@@ -66,15 +66,10 @@
 			
 			$mckey = sprintf("railpage:image;provider=%s;id=%s", $provider, $photo_id);
 			
-			#printArray(" image:start " . round(microtime(true) - RP_START_TIME, 4) . "s");
-			
-			if (!$id = getMemcacheObject($mckey)) {
-				if ($id = $this->db->fetchOne("SELECT id FROM image WHERE provider = ? AND photo_id = ?", array($provider, $photo_id))) {
-					setMemcacheObject($mckey, $id, strtotime("+1 month"));
-				}
+			if (!$id = $this->Redis->fetch($mckey)) {
+				$id = $this->db->fetchOne("SELECT id FROM image WHERE provider = ? AND photo_id = ?", array($provider, $photo_id));
+				$this->Redis->save($mckey, $id, strtotime("+1 month"));
 			}
-			
-			#printArray(" image:id " . round(microtime(true) - RP_START_TIME, 4) . "s");
 			
 			if (isset($id) && filter_var($id, FILTER_VALIDATE_INT)) {
 				return new Image($id, $option);
@@ -130,6 +125,51 @@
 			}
 			
 			return false;
+		}
+		
+		/**
+		 * Get a photo from its source URL
+		 * @since Version 3.9.1
+		 * @param string $url
+		 * @return boolean|\Railpage\Images\Image
+		 */
+		
+		public function getImageFromUrl($url = false) {
+			
+			/**
+			 * Flickr
+			 */
+			
+			if (preg_match("#flickr.com/photos/([a-zA-Z0-9\-\_\@]+)/([0-9]+)#", $url, $matches)) {
+				if ($Image = $this->findImage("flickr", $matches[2])) {
+					return $Image;
+				}
+			}
+			
+			if (preg_match("#flic.kr/p/([a-zA-Z0-9]+)#", $url, $matches)) {
+				$alphabet = "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ";
+				$decoded = 0;
+				$multi = 1;
+				
+				while (strlen($matches[1]) > 0) {
+					$digit = $matches[1][strlen($matches[1])-1];
+					$decoded += $multi * strpos($alphabet, $digit);
+					$multi = $multi * strlen($alphabet);
+					$matches[1] = substr($matches[1], 0, -1);
+				}
+				
+				if ($Image = $this->findImage("flickr", $decoded)) {
+					return $Image;
+				}
+			}
+			
+			/**
+			 * Vicsig
+			 */
+			
+			if (preg_match("#vicsig.net/photo#")) {
+				// Do nothing yet
+			}
 		}
 	}
 ?>

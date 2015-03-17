@@ -36,6 +36,7 @@
 		"psr-4" : {
 			"Railpage\\" : "lib/",
 			"Railpage\\Assets\\" : "lib/Assets/",
+			"Railpage\\BanControl\\" : "lib/BanControl/",
 			"Railpage\\Bugs\\" : "lib/Bugs/",
 			"Railpage\\Chronicle\\" : "lib/Chronicle/",
 			"Railpage\\Chronicle\\Provider\\" : "lib/Chronicle/Provider/",
@@ -61,6 +62,7 @@
 			"Railpage\\Help\\" : "lib/Help/",
 			"Railpage\\Ideas\\" : "lib/Ideas/",
 			"Railpage\\Images\\" : "lib/Images/",
+			"Railpage\\Images\\Provider\\" : "lib/Images/Provider/",
 			"Railpage\\Jobs\\" : "lib/Jobs/",
 			"Railpage\\Links\\" : "lib/Links/",
 			"Railpage\\Locations\\" : "lib/Locations/",
@@ -91,12 +93,6 @@
 	],
 	"require" : {
 		"php" : ">=5.5.0",
-		"ext-gd": "*",
-		"ext-imagick": "*",
-		"ext-memcached": "*",
-		"ext-mongo": "*",
-		"ext-redis": "*",
-		"ext-curl": "*",
 		"tombzombie/dice": "dev-master",
 		"zendframework/zendframework1": "1.*",
 		"zendframework/zend-http" : "~2.3",

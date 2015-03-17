@@ -926,7 +926,6 @@
 			
 			$this->Module = new Module("users");
 			
-			
 			foreach (func_get_args() as $arg) {
 				if (filter_var($arg, FILTER_VALIDATE_INT)) {
 					$this->id = $arg;
@@ -983,111 +982,122 @@
 				$debug_timer_start = microtime(true);
 			}
 			
-			if ($data = $this->getCache($this->mckey)) {
+			/**
+			 * Load the User data from Redis first
+			 */
+			
+			if ($data = $this->Redis->fetch($this->mckey)) {
 				$cached = true;
 			
 				if (RP_DEBUG) {
-					$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via Memcached in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+					$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via Redis in " . round(microtime(true) - $debug_timer_start, 5) . "s";
 				}
-				
-			} elseif ($this->db instanceof \sql_db) {
-				$query  = "SELECT u.*, COALESCE(SUM((SELECT COUNT(*) FROM nuke_bbprivmsgs WHERE privmsgs_to_userid='".$this->db->real_escape_string($this->id)."' AND (privmsgs_type='5' OR privmsgs_type='1'))), 0) AS unread_pms FROM nuke_users u WHERE u.user_id = '".$this->db->real_escape_string($this->id)."';";
-				
-				if (!defined("RP_PLATFORM") || RP_PLATFORM != "API") {
-					$query .= "SELECT o.* FROM organisation o, organisation_member om WHERE o.organisation_id = om.organisation_id AND om.user_id = ".$this->db->real_escape_string($this->id).";";
-					$query .= "SELECT oc.* FROM oauth_consumer AS oc LEFT JOIN nuke_users AS u ON u.oauth_consumer_id = oc.id WHERE u.user_id = ".$this->db->real_escape_string($this->id).";";
-				}
-				
-				if ($this->db->multi_query($query)) {
-					// Get the user data
+			}
+			
+			/**
+			 * I fucked up before, so validate the redis data before we continue...
+			 */
+			
+			if (!is_array($data) || empty($data) || count($data) == 1) {
+				if ($this->db instanceof \sql_db) {
+					$query  = "SELECT u.*, COALESCE(SUM((SELECT COUNT(*) FROM nuke_bbprivmsgs WHERE privmsgs_to_userid='".$this->db->real_escape_string($this->id)."' AND (privmsgs_type='5' OR privmsgs_type='1'))), 0) AS unread_pms FROM nuke_users u WHERE u.user_id = '".$this->db->real_escape_string($this->id)."';";
 					
-					if ($rs = $this->db->store_result()) {
-						if ($rs->num_rows == 1 && $data = $rs->fetch_assoc()) {
-							//unset($data['user_password']); 
-							$data['session_logged_in'] = true;
-							$data['session_start'] = $data['user_session_time'];
-							
-							$rs->free(); 
+					if (!defined("RP_PLATFORM") || RP_PLATFORM != "API") {
+						$query .= "SELECT o.* FROM organisation o, organisation_member om WHERE o.organisation_id = om.organisation_id AND om.user_id = ".$this->db->real_escape_string($this->id).";";
+						$query .= "SELECT oc.* FROM oauth_consumer AS oc LEFT JOIN nuke_users AS u ON u.oauth_consumer_id = oc.id WHERE u.user_id = ".$this->db->real_escape_string($this->id).";";
+					}
+					
+					if ($this->db->multi_query($query)) {
+						// Get the user data
+						
+						if ($rs = $this->db->store_result()) {
+							if ($rs->num_rows == 1 && $data = $rs->fetch_assoc()) {
+								//unset($data['user_password']); 
+								$data['session_logged_in'] = true;
+								$data['session_start'] = $data['user_session_time'];
+								
+								$rs->free(); 
+							} else {
+								trigger_error("User: Could not retrieve user from database");
+								trigger_error($this->db->error); 
+								trigger_error($query);
+								
+								return false;
+							}
 						} else {
 							trigger_error("User: Could not retrieve user from database");
 							trigger_error($this->db->error); 
-							trigger_error($query);
+							trigger_error($query); 
 							
 							return false;
 						}
-					} else {
-						trigger_error("User: Could not retrieve user from database");
-						trigger_error($this->db->error); 
-						trigger_error($query); 
 						
+						// Get the organisation membership
+						if ($this->db->more_results()) {
+							$this->db->next_result();
+							
+							if ($rs = $this->db->store_result()) {
+								$data['organisations'] = array(); 
+								
+								while ($row = $rs->fetch_assoc()) {
+									$data['organisations'][$row['organisation_id']] = $row;
+								}
+							}
+						}
+						
+						// OAuth consumer key
+						if ($this->db->more_results()) {
+							$this->db->next_result();
+							
+							if ($rs = $this->db->store_result()) {
+								$row = $rs->fetch_assoc(); 
+								$data['oauth_key']		= $row['consumer_key'];
+								$data['oauth_secret']	= $row['consumer_secret'];
+							}
+						}
+				
+						if (RP_DEBUG) {
+							$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via sql_db in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+						}
+					} else {
+						throw new Exception($this->db->error); 
 						return false;
 					}
+				} else {
+					// Zend_Db
 					
-					// Get the organisation membership
-					if ($this->db->more_results()) {
-						$this->db->next_result();
+					$query = "SELECT u.*, COALESCE(SUM((SELECT COUNT(*) FROM nuke_bbprivmsgs WHERE privmsgs_to_userid= ? AND (privmsgs_type='5' OR privmsgs_type='1'))), 0) AS unread_pms FROM nuke_users u WHERE u.user_id = ?";
+					
+					if ($data = $this->db->fetchRow($query, array($this->id, $this->id))) {
+						#unset($data['user_password']); 
+						#unset($data['user_password_bcrypt']);
 						
-						if ($rs = $this->db->store_result()) {
+						$data['session_logged_in'] = true;
+						$data['session_start'] = $data['user_session_time'];
+						
+						if (!defined("RP_PLATFORM") || RP_PLATFORM != "API") {
 							$data['organisations'] = array(); 
 							
-							while ($row = $rs->fetch_assoc()) {
-								$data['organisations'][$row['organisation_id']] = $row;
+							$query = "SELECT o.* FROM organisation o, organisation_member om WHERE o.organisation_id = om.organisation_id AND om.user_id = ?"; 
+							
+							if ($orgs = $this->db->fetchAll($query, $this->id)) {
+								foreach ($orgs as $row) {
+									$data['organisations'][$row['organisation_id']] = $row;
+								}
+							}
+							
+							$query = "SELECT oc.* FROM oauth_consumer AS oc LEFT JOIN nuke_users AS u ON u.oauth_consumer_id = oc.id WHERE u.user_id = ?";
+							
+							if ($row = $this->db->fetchRow($query, $this->id)) {
+								$data['oauth_key']		= $row['consumer_key'];
+								$data['oauth_secret']	= $row['consumer_secret'];
 							}
 						}
 					}
-					
-					// OAuth consumer key
-					if ($this->db->more_results()) {
-						$this->db->next_result();
-						
-						if ($rs = $this->db->store_result()) {
-							$row = $rs->fetch_assoc(); 
-							$data['oauth_key']		= $row['consumer_key'];
-							$data['oauth_secret']	= $row['consumer_secret'];
-						}
-					}
-			
+				
 					if (RP_DEBUG) {
-						$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via sql_db in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+						$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via zend_db in " . round(microtime(true) - $debug_timer_start, 5) . "s";
 					}
-				} else {
-					throw new \Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				// Zend_Db
-				
-				$query = "SELECT u.*, COALESCE(SUM((SELECT COUNT(*) FROM nuke_bbprivmsgs WHERE privmsgs_to_userid= ? AND (privmsgs_type='5' OR privmsgs_type='1'))), 0) AS unread_pms FROM nuke_users u WHERE u.user_id = ?";
-				
-				if ($data = $this->db->fetchRow($query, array($this->id, $this->id))) {
-					#unset($data['user_password']); 
-					#unset($data['user_password_bcrypt']);
-					
-					$data['session_logged_in'] = true;
-					$data['session_start'] = $data['user_session_time'];
-					
-					if (!defined("RP_PLATFORM") || RP_PLATFORM != "API") {
-						$data['organisations'] = array(); 
-						
-						$query = "SELECT o.* FROM organisation o, organisation_member om WHERE o.organisation_id = om.organisation_id AND om.user_id = ?"; 
-						
-						if ($orgs = $this->db->fetchAll($query, $this->id)) {
-							foreach ($orgs as $row) {
-								$data['organisations'][$row['organisation_id']] = $row;
-							}
-						}
-						
-						$query = "SELECT oc.* FROM oauth_consumer AS oc LEFT JOIN nuke_users AS u ON u.oauth_consumer_id = oc.id WHERE u.user_id = ?";
-						
-						if ($row = $this->db->fetchRow($query, $this->id)) {
-							$data['oauth_key']		= $row['consumer_key'];
-							$data['oauth_secret']	= $row['consumer_secret'];
-						}
-					}
-				}
-			
-				if (RP_DEBUG) {
-					$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via zend_db in " . round(microtime(true) - $debug_timer_start, 5) . "s";
 				}
 			}
 				
@@ -1118,9 +1128,9 @@
 				
 				/*
 				if (is_null($data['user_avatar_width']) || is_null($data['user_avatar_height'])) {
-					if (!$size = getMemcacheObject(sprintf("rp:user.avatar.sizes=%s", $data['user_avatar']))) {
+					if (!$size = $this->Memcached->fetch(sprintf("rp:user.avatar.sizes=%s", $data['user_avatar']))) {
 						if ($size = @getimagesize($data['user_avatar'])) {
-							setMemcacheObject(sprintf("rp:user.avatar.sizes=%s", $data['user_avatar']), $size, strtotime("+1 year"));
+							$this->Memcached->save(sprintf("rp:user.avatar.sizes=%s", $data['user_avatar']), $size, strtotime("+1 year"));
 						}
 					}
 					
@@ -1165,17 +1175,13 @@
 			}
 			
 			// Nice time
-			$data['user_lastvisit_nice'] = date($data['user_dateformat'], $data['user_lastvisit']); 
+			$data['user_lastvisit_nice'] = date($data['user_dateformat'], $data['user_lastvisit']);
 			
 			/**
 			 * Start setting the class vars
 			 */
 			
 			$this->getGroups();
-			
-			if (!$cached) {
-				$this->setCache($this->mckey, $data, strtotime("+6 hours"));
-			}
 			
 			$this->provider 	= isset($data['provider']) ? $data['provider'] : "railpage";
 			$this->preferences	= json_decode($data['user_opts']); 
@@ -1372,6 +1378,10 @@
 				$this->commit(true);
 			}
 			
+			if (!$cached) {
+				$this->Redis->save($this->mckey, $data, strtotime("+6 hours"));
+			}
+			
 			return true;
 		}
 		
@@ -1445,8 +1455,9 @@
 				return false;
 			}
 			
-			if (!empty($this->mckey) && getMemcacheObject($this->mckey)) {
-				removeMemcacheObject($this->mckey);
+			if (!empty($this->mckey) && $this->Memcached->contains($this->mckey)) {
+				$this->Memcached->delete($this->mckey);
+				$this->Redis->delete(sprintf("railpage:users.user=%d", $this->id));
 			}
 			
 			$dataArray = array();
@@ -1580,7 +1591,7 @@
 					
 						$return = true;
 					} else {
-						throw new \Exception($this->db->error);
+						throw new Exception($this->db->error);
 					}
 				} catch (Exception $e) {
 					global $Error;
@@ -1588,7 +1599,7 @@
 					
 					$return = false;
 					
-					throw new \Exception($e->getMessage());
+					throw new Exception($e->getMessage());
 				}
 				
 				return $return;
@@ -1755,7 +1766,7 @@
 			
 			$trace = debug_backtrace(); 
 			
-			throw new \Exception("Deprecated function " . $trace[0]['class'] . "->" . $trace[0]['function'] . " called from " . $trace[0]['file'] . " on line " . $trace[0]['line']);
+			throw new Exception("Deprecated function " . $trace[0]['class'] . "->" . $trace[0]['function'] . " called from " . $trace[0]['file'] . " on line " . $trace[0]['line']);
 			return false;
 		}
 		
@@ -1807,9 +1818,18 @@
 						$this->mckey = sprintf("railpage:user_id=%d", $user_id);
 					}
 					
-					if ($rs = getMemcacheObject($this->mckey)) {
+					if (is_object($this->Redis)) {
+						$this->Redis->delete(sprintf("railpage:users.user=%d", $this->id));
+						
+						$rs = $this->Redis->fetch($this->mckey); 
 						$rs['user_lastvisit'] = $time;
-						setMemcacheObject($this->mckey, $rs);
+						
+						$this->Redis->save($this->mckey, $rs);
+					}
+					
+					if ($rs = $this->Memcached->fetch($this->mckey)) {
+						$rs['user_lastvisit'] = $time;
+						$this->Memcached->save($this->mckey, $rs);
 					}
 				}
 			}
@@ -1844,7 +1864,7 @@
 						$query = "UPDATE nuke_users SET user_session_time = '".time()."' ".$ip_sql." WHERE user_id = '".$this->db->real_escape_string($user_id)."'"; 
 						
 						if (!$this->db->query($query)) {
-							throw new \Exception($this->db->error); 
+							throw new Exception($this->db->error); 
 						}
 					} else {
 						$data = array(
@@ -1865,10 +1885,11 @@
 							$this->mckey = sprintf("railpage:user_id=%d", $user_id);
 						}
 						
-						if ($rs = getMemcacheObject($this->mckey)) {
+						if ($rs = $this->Memcached->fetch($this->mckey)) {
 							$rs['user_session_time'] = $data['user_session_time'];
 							$rs['last_session_ip'] = $data['last_session_ip'];
-							setMemcacheObject($this->mckey, $rs);
+							$this->Memcached->save($this->mckey, $rs);
+							$this->Redis->delete($this->mckey);
 						}
 						
 						if (RP_DEBUG) {
@@ -1948,7 +1969,7 @@
 					
 					return true;
 				} else {
-					throw new \Exception($this->db->error."\n\n".$this->db->query); 
+					throw new Exception($this->db->error."\n\n".$this->db->query); 
 					
 					return false;
 				}
@@ -1994,7 +2015,7 @@
 				if ($rs = $this->db->query($query)) {
 					return true;
 				} else {
-					throw new \Exception($this->db->error);
+					throw new Exception($this->db->error);
 					return false;
 				}
 			} else {
@@ -2048,7 +2069,7 @@
 					setcookie("rp_autologin", base64_encode(implode(":",$autologin)), $cookie_expire, RP_AUTOLOGIN_PATH, RP_AUTOLOGIN_DOMAIN, RP_SSL_ENABLED, true); 
 					return true;
 				} else {
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 					return false;
 				}
 			} else {
@@ -2179,7 +2200,7 @@
 					
 					return $autologins;
 				} else {
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 					return false;
 				}
 			} else {
@@ -2222,7 +2243,7 @@
 				if ($this->db->query($query)) {
 					return true;
 				} else {
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 					return false;
 				}
 			} else {
@@ -2268,7 +2289,7 @@
 				if ($this->db->query($query)) {
 					return true; 
 				} else {
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 					return false;
 				}
 			} else {
@@ -2303,6 +2324,8 @@
 				
 			$logins = array();
 			
+			$key = sprintf("railpage:user=%d;logins;perpage=%d;page=%d", $this->id, $items_per_page, $page);
+			
 			if ($this->db instanceof \sql_db) {
 				$query = "SELECT * FROM log_logins USE INDEX (login_time) WHERE user_id = ".$this->id." ORDER BY login_time DESC LIMIT 0,25"; 
 				
@@ -2313,7 +2336,7 @@
 						$logins[$row['login_id']] = $row; 
 					}
 				} else {
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 					return false;
 				}
 			} else {
@@ -2390,12 +2413,12 @@
 					if ($this->db->query($query)) {
 						return true;
 					} else {
-						throw new \Exception($this->db->error); 
+						throw new Exception($this->db->error); 
 						return false;
 					}
 				} else {
 					// Couldn't execute query...
-					throw new \Exception($this->db->error); 
+					throw new Exception($this->db->error); 
 				}
 			} else {
 				$query = "SELECT hash FROM nuke_users_hash WHERE user_id = ?";
@@ -2486,7 +2509,7 @@
 		
 		public function addChaff($amount = 1) {
 			if (!$this->id) {
-				throw new \Exception("Cannot increment chaff rating - user ID unavailable"); 
+				throw new Exception("Cannot increment chaff rating - user ID unavailable"); 
 				return false;
 			}
 			
@@ -2496,7 +2519,7 @@
 				if ($this->db->query($query)) {
 					return true; 
 				} else {
-					throw new \Exception($this->db->error."\n\n".$query); 
+					throw new Exception($this->db->error."\n\n".$query); 
 					return false;
 				}
 			} else {
@@ -2520,14 +2543,14 @@
 			if (filter_var($date_start, FILTER_VALIDATE_INT)) {
 				$page = $date_start;
 			} elseif (!is_a($date_start, "DateTime")) {
-				throw new \Exception("\$date_start needs to be an instance of DateTime"); 
+				throw new Exception("\$date_start needs to be an instance of DateTime"); 
 				return false;
 			}
 			
 			if (filter_var($date_end, FILTER_VALIDATE_INT)) {
 				$items_per_page = $date_end;
 			} elseif (!is_a($date_end, "DateTime")) {
-				throw new \Exception("\$date_end needs to be an instance of DateTime"); 
+				throw new Exception("\$date_end needs to be an instance of DateTime"); 
 				return false;
 			}
 			
@@ -2538,7 +2561,7 @@
 			if (isset($this->Guest) && $this->Guest instanceof User) {
 				$forum_post_filter_mckey = sprintf("forum.post.filter.user:%d", $this->Guest->id);
 				
-				if (!$forum_post_filter = getMemcacheObject($forum_post_filter_mckey)) {
+				if (!$forum_post_filter = $this->Memcached->fetch($forum_post_filter_mckey)) {
 					$Forums = new Forums;
 					$Index = new Index;
 					
@@ -2562,7 +2585,7 @@
 						WHERE l.key = 'post_id' 
 						" . $forum_filter . ")";
 					
-					setMemcacheObject($forum_post_filter_mckey, $forum_post_filter, strtotime("+1 week"));
+					$this->Memcached->save($forum_post_filter_mckey, $forum_post_filter, strtotime("+1 week"));
 				}
 			} else {
 				$forum_post_filter = "";
@@ -3057,7 +3080,7 @@
 			
 			$mckey = "railpage:usergroups.user_id=" . $this->id; 
 			
-			if ($this->groups = $this->getCache($mckey)) {
+			if ($this->groups = $this->Redis->fetch($mckey)) {
 				return $this->groups; 
 			} else {
 				$query = "SELECT group_id FROM nuke_bbuser_group WHERE user_id = ? AND user_pending = 0";
@@ -3077,11 +3100,11 @@
 								}
 							}
 						} else {
-							throw new \Exception($this->db->error."\n\n".$query);
+							throw new Exception($this->db->error."\n\n".$query);
 							return false;
 						}
 					} else {
-						throw new \Exception($this->db->error."\n\n".$query);
+						throw new Exception($this->db->error."\n\n".$query);
 						return false;
 					}
 				} else {
@@ -3095,7 +3118,7 @@
 				}
 				
 				if (!empty($this->groups)) {
-					$this->setCache($mckey, $this->groups, strtotime("+2 hours"));
+					$this->Redis->save($mckey, $this->groups, strtotime("+24 hours"));
 				}
 			
 				return $this->groups;
@@ -3736,4 +3759,3 @@
 			return $this;
 		}
 	}
-?>
