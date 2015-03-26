@@ -2283,6 +2283,7 @@
 				$dataArray['login_time'] = time(); 
 				$dataArray['login_ip'] = $this->db->real_escape_string($client_addr); 
 				$dataArray['login_hostname'] = $this->db->real_escape_string($_SERVER['REMOTE_HOST']);
+				$dataArray['server'] = $this->db->real_escape_string($_SERVER['HTTP_HOST']);
 				
 				$query = $this->db->buildQuery($dataArray, "log_logins"); 
 				
@@ -2297,7 +2298,8 @@
 					"user_id" => $this->id,
 					"login_time" => time(),
 					"login_ip" => $client_addr,
-					"login_hostname" => $_SERVER['REMOTE_HOST']
+					"login_hostname" => $_SERVER['REMOTE_HOST'],
+					"server" => $_SERVER['HTTP_HOST']
 				);
 				
 				if ($data['login_ip'] == $data['login_hostname']) {
@@ -3757,5 +3759,27 @@
 			$this->db->insert("log_useractivity", $data);
 			
 			return $this;
+		}
+		
+		/**
+		 * Find a list of duplicate usernames
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function findDuplicates() {
+			$query = "SELECT 
+	u.user_id, u.username, u.user_active, u.user_regdate, u.user_regdate_nice, u.user_email, u.user_lastvisit, 
+	(SELECT COUNT(p.post_id) AS num_posts FROM nuke_bbposts AS p WHERE p.poster_id = u.user_id) AS num_posts,
+	(SELECT MAX(pt.post_time) AS post_time FROM nuke_bbposts AS pt WHERE pt.poster_id = u.user_id) AS last_post_time
+	FROM nuke_users AS u 
+	WHERE u.username = ? OR u.user_email = ?";
+			
+			$params = array(
+				$this->username,
+				$this->contact_email
+			);
+			
+			return $this->db->fetchAll($query, $params);
 		}
 	}

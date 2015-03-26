@@ -233,6 +233,10 @@
 				throw new Exception("Author is not set (hint: setAuthor(User))");
 			}
 			
+			if (!filter_var($this->Author->id, FILTER_VALIDATE_INT)) {
+				throw new Exception("Invalid user ID for Competition::\$Author");
+			}
+			
 			if (!$this->VotingDateOpen instanceof DateTime) {
 				throw new Exception("VotingDateOpen must be an instance of DateTime");
 			}
@@ -424,6 +428,13 @@
 		 */
 		
 		public function getNumVotesForUser(User $User) {
+			if (!filter_var($User->id, FILTER_VALIDATE_INT)) {
+				return array(
+					"cast" => 0,
+					"free" => 0
+				);
+			}
+			
 			$query = "SELECT id FROM image_competition_votes WHERE competition_id = ? AND user_id = ?";
 			
 			$params = array(
@@ -451,6 +462,10 @@
 		 */
 		
 		public function canUserVote(User $User, $Image = false) {
+			if (!filter_var($User->id, FILTER_VALIDATE_INT)) {
+				return false;
+			}
+			
 			$now = new DateTime;
 			
 			if (!($this->VotingDateOpen instanceof DateTime && $this->VotingDateOpen <= $now) || 
@@ -538,6 +553,11 @@
 		 */
 		
 		public function submitPhoto(Image $Image, User $User, $meta = array()) {
+			
+			if (!filter_var($User->id, FILTER_VALIDATE_INT)) {
+				throw new Exception("Invalid user ID");
+			}
+			
 			$data = array(
 				"competition_id" => $this->id,
 				"user_id" => $User->id,
@@ -561,6 +581,11 @@
 		 */
 		
 		public function submitVote(User $User, Image $Image) {
+			
+			if (!filter_var($User->id, FILTER_VALIDATE_INT)) {
+				throw new Exception("Invalid user ID");
+			}
+			
 			$data = array(
 				"competition_id" => $this->id,
 				"user_id" => $User->id,

@@ -795,7 +795,9 @@
 					"name" => $this->provider,
 					"photo_id" => $this->photo_id
 				),
-				"sizes" => $this->sizes
+				"sizes" => $this->sizes,
+				"author" => json_decode(json_encode($this->author), true),
+				"url" => $this->url->getURLs()
 			);
 			
 			if ($this->Place instanceof Place) {
