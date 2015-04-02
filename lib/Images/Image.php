@@ -226,62 +226,7 @@
 				 */
 				
 				if (count($this->sizes)) {
-				
-					if (!isset($this->sizes['thumb'])) {
-						foreach ($this->sizes as $size) {
-							if ($size['width'] >= 280 && $size['height'] >= 150) {
-								$this->sizes['thumb'] = $size;
-								break;
-							}
-						}
-					}
-					
-					if (!isset($this->sizes['small'])) {
-						foreach ($this->sizes as $size) {
-							if ($size['width'] >= 500 && $size['height'] >= 281) {
-								$this->sizes['small'] = $size;
-								break;
-							}
-						}
-					}
-					
-					$width = 0;
-					
-					foreach ($this->sizes as $size) {
-						if ($size['width'] > $width) {
-							$this->sizes['largest'] = $size;
-						
-							$width = $size['width'];
-						}
-					}
-				
-					foreach ($this->sizes as $size) {
-						if ($size['width'] >= 1920) {
-							$this->sizes['fullscreen'] = $size;
-							break;
-						}
-					}
-				
-					foreach ($this->sizes as $size) {
-						if ($size['width'] > 1024 && $size['width'] <= 1920) {
-							$this->sizes['larger'] = $size;
-							break;
-						}
-					}
-				
-					foreach ($this->sizes as $size) {
-						if ($size['width'] == 1024) {
-							$this->sizes['large'] = $size;
-							break;
-						}
-					}
-				
-					foreach ($this->sizes as $size) {
-						if ($size['width'] == 800) {
-							$this->sizes['medium'] = $size;
-							break;
-						}
-					}
+					$this->sizes = Images::normaliseSizes($this->sizes);
 				}
 				
 				if (isset($row['meta']['author'])) {
@@ -448,11 +393,11 @@
 			 */
 			
 			$imageprovider = __NAMESPACE__ . "\\Provider\\" . ucfirst($this->provider);
+			$params = array();
 			
 			switch ($this->provider) {
 				case "picasaweb" :
 					$imageprovider = __NAMESPACE__ . "\\Provider\\PicasaWeb";
-					$params = array();
 					break;
 				
 				case "flickr" : 
@@ -491,7 +436,7 @@
 				 * Load the tags
 				 */
 				
-				if (isset($data['tags']) && count($data['tags'])) {
+				if (isset($data['tags']) && is_array($data['tags']) && count($data['tags'])) {
 					foreach ($data['tags'] as $row) {
 						$this->meta['tags'][] = $row['raw'];
 					}
@@ -510,7 +455,7 @@
 				}
 				
 				$this->links = new stdClass;
-				$this->links->provider = $data['urls']['url'][0]['_content'];
+				$this->links->provider = isset($data['urls']['url'][0]['_content']) ? $data['urls']['url'][0]['_content'] : $data['urls'][key($data['urls'])];
 				
 				$this->commit();
 				
@@ -788,7 +733,7 @@
 		
 		public function getJSON() {
 			$data = array(
-				"id" => $this->title,
+				"id" => $this->id,
 				"title" => $this->title,
 				"description" => $this->description,
 				"provider" => array(
@@ -797,7 +742,7 @@
 				),
 				"sizes" => $this->sizes,
 				"author" => json_decode(json_encode($this->author), true),
-				"url" => $this->url->getURLs()
+				"url" => $this->url instanceof Url ? $this->url->getURLs() : array()
 			);
 			
 			if ($this->Place instanceof Place) {

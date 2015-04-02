@@ -337,23 +337,6 @@
 			$photos = array(); 
 			
 			foreach ($this->db->fetchAll($query, $params) as $row) {
-				/*
-				$Author = new User($row['user_id']);
-				$Image = new Image($row['image_id']);
-				$Date = new DateTime($row['date_added']); 
-				
-				$return = new stdClass;
-				$return->id = $row['id']; 
-				$return->Author = $Author;
-				$return->Image = $Image;
-				$return->DateAdded = $Date;
-				$return->Meta = json_decode($row['meta'], true);
-				$return->url = new Url(sprintf("%s/%d", $this->url->url, $Image->id));
-				$return->url->vote = sprintf("%s/vote", $return->url);
-				
-				yield $return;
-				*/
-				
 				yield $this->getPhoto($row);
 			}
 		}
@@ -455,6 +438,37 @@
 		}
 		
 		/**
+		 * Get the number of votes for this photo
+		 * @since Version 3.9.1
+		 * @param \Railpage\Images\Image $Image
+		 * @return int
+		 */
+		
+		public function getNumVotesForImage(Image $Image) {
+			$votes = 0;
+			
+			foreach ($this->getVotesForImage($Image) as $row) {
+				$votes += $row['amount'];
+			}
+			
+			return $votes;
+		}
+		
+		/**
+		 * Get the votes cast for a given image in this competition
+		 * @since Version 3.9.1
+		 * @param \Railpage\Images\Image $Image
+		 * @return array
+		 */
+		
+		public function getVotesForImage(Image $Image) {
+			$query = "SELECT u.username, v.user_id, date, amount FROM image_competition_votes AS v LEFT JOIN nuke_users AS u ON u.user_id = v.user_id
+						WHERE v.competition_id = ? AND v.image_id = ?";
+			
+			return $this->db->fetchAll($query, array($this->id, $Image->id));
+		}
+		
+		/**
 		 * Can a user vote in this competition?
 		 * @since Version 3.9.1
 		 * @return boolean
@@ -517,7 +531,6 @@
 		 */
 		
 		public function canUserSubmitPhoto(User $User) {
-			
 			if (!filter_var($User->id, FILTER_VALIDATE_INT)) {
 				return false;
 			}
@@ -687,6 +700,22 @@
 		}
 		
 		/**
+		 * Get the number of photos pending approval
+		 * @since Version 3.9.1
+		 * @return int
+		 */
+		
+		public function getNumPendingSubmissions() {
+			$query = "SELECT * FROM image_competition_submissions WHERE competition_id = ? AND status = ? ORDER BY date_added DESC";
+			$where = array(
+				$this->id,
+				Competitions::PHOTO_UNAPPROVED
+			);
+			
+			return count($this->db->fetchAll($query, $where)); 
+		}
+		
+		/**
 		 * Approve a queued submission
 		 * @since Version 3.9.1
 		 * @return \Railpage\Images\Competition
@@ -707,7 +736,17 @@
 				"competition_id = ?" => $this->id
 			);
 			
+			/**
+			 * Update the database table
+			 */
+			
 			$this->db->update("image_competition_submissions", $data, $where);
+			
+			/**
+			 * Update the cached array of photos
+			 */
+			
+			$this->getPhotosAsArray(true);
 			
 			return $this;
 		}
@@ -735,6 +774,18 @@
 			);
 			
 			$this->db->update("image_competition_submissions", $data, $where);
+		
+			/**
+			 * Release all votes cast for this photo
+			 */
+			
+			$this->releaseVotesForImage($Image);
+			
+			/**
+			 * Update the cached array of photos
+			 */
+			
+			$this->getPhotosAsArray(true);
 			
 			return $this;
 		}
@@ -897,6 +948,66 @@
 				
 				yield $Photo;
 			}
+		}
+		
+		/**
+		 * Get photos as an associative array
+		 * @since Version 3.9.1
+		 * @return array
+		 * @param boolean $force
+		 */
+		
+		public function getPhotosAsArray($force = false) {
+			$key = sprintf("railpage:comp=%d;images.array", $this->id);
+			
+			$this->Memcached = AppCore::getMemcached();
+			
+			if ($force) {
+				$this->Memcached->delete($key);
+			}
+			
+			if (!$photos = $this->Memcached->fetch($key)) {
+				$photos = array(); 
+				
+				foreach ($this->getPhotos() as $Submission) {
+					$photos[] = array(
+						"id" => $Submission->id,
+						"url" => $Submission->url->getURLs(),
+						"image" => $Submission->Image->getArray(),
+						"author" => array(
+							"id" => $Submission->Author->id,
+							"username" => $Submission->Author->username,
+							"url" => $Submission->Author->url instanceof Url ? $Submission->Author->url->getURLs() : array("url" => $Submission->Author->url)
+						),
+						"dateadded" => array(
+							"absolute" => $Submission->DateAdded->format("Y-m-d H:i:s"),
+							"relative" => function_exists("time2str") ? time2str($Submission->DateAdded->getTimestamp()) : null
+						)
+					);
+				}
+				
+				$this->Memcached->save($key, $photos); 
+			}
+			
+			return $photos;
+		}
+		
+		/**
+		 * Release votes cast for a given image
+		 * @since Version 3.9.1
+		 * @param \Railpage\Images\Image $Image
+		 * @return \Railpage\Images\Competition
+		 */
+		
+		public function releaseVotesForImage(Image $Image) {
+			$where = array(
+				"competition_id = ?" => $this->id,
+				"image_id = ?" => $Image->id
+			);
+			
+			$this->db->delete("image_competition_votes", $where);
+			
+			return $this;
 		}
 	}
 	
