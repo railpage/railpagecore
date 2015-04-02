@@ -108,6 +108,7 @@
 		"guzzle/http": "~3.9",
 		"guzzlehttp/guzzle": "~5.2",
 		"monolog/monolog": "~1.12",
-		"doctrine/cache": "~1.4"
+		"doctrine/cache": "~1.4",
+		"mibe/feedwriter": "~1.0"
 	}
 }

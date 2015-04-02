@@ -1457,7 +1457,18 @@
 			
 			if (!empty($this->mckey) && $this->Memcached->contains($this->mckey)) {
 				$this->Memcached->delete($this->mckey);
-				$this->Redis->delete(sprintf("railpage:users.user=%d", $this->id));
+				
+				try {
+					$this->Redis->delete(sprintf("railpage:users.user=%d", $this->id));
+				} catch (Exception $e) {
+					// throw it away
+				}
+				
+				try {
+					$this->Redis->delete($this->mckey);
+				} catch (Exception $e) {
+					// throw it away
+				}
 			}
 			
 			$dataArray = array();
@@ -3289,6 +3300,12 @@
 		public function setPassword($password = false) {
 			if (!$password || empty($password)) {
 				throw new Exception("Cannot set password - no password was provided");
+			}
+			
+			try {
+				$this->Redis->delete($this->mckey);
+			} catch (Exception $e) {
+				// Throw it away, don't care
 			}
 			
 			/**

@@ -103,7 +103,11 @@
 			$this->Memcached->save(self::CACHE_KEY_ALL, gzcompress(json_encode($store), self::CACHE_GZIP_LEVEL));
 			
 			if (is_object($this->Redis)) {
-				$this->Redis->save("railpage:bancontrol", $this);
+				try {
+					$this->Redis->save("railpage:bancontrol", $this);
+				} catch (Exception $e) {
+					// throw it away
+				}
 			}
 			
 			return $this;
@@ -208,8 +212,22 @@
 				$expiry = "0";
 			}
 			
-			$this->Memcached->delete("railpage:bancontrol.users"); 
-			$this->Redis->delete("railpage:bancontrol");
+			/**
+			 * Empty the cache
+			 */
+			
+			try {
+				$this->Memcached->delete("railpage:bancontrol.users"); 
+				$this->Memcached->delete(self::CACHE_KEY_ALL);
+			} catch (Exception $e) {
+				// throw it away
+			}
+			
+			try {
+				$this->Redis->delete("railpage:bancontrol");
+			} catch (Exception $e) {
+				// throw it away
+			}
 			
 			$data = array(
 				"user_id"		=> $user_id,
@@ -304,8 +322,22 @@
 				$expiry = "0";
 			}
 			
-			$this->Memcached->delete("railpage:bancontrol.ips");
-			$this->Redis->delete("railpage:bancontrol");
+			/**
+			 * Empty the cache
+			 */
+			
+			try {
+				$this->Memcached->delete("railpage:bancontrol.ips"); 
+				$this->Memcached->delete(self::CACHE_KEY_ALL);
+			} catch (Exception $e) {
+				// throw it away
+			}
+			
+			try {
+				$this->Redis->delete("railpage:bancontrol");
+			} catch (Exception $e) {
+				// throw it away
+			}
 			
 			$data = array(
 				"ip"			=> $ip_addr,
@@ -340,8 +372,22 @@
 		public function unBanUser($ban_id, $user_id = false) {
 			$success = false;
 			
-			$this->Memcached->delete("railpage:bancontrol.users"); 
-			$this->Redis->delete("railpage:bancontrol");
+			/**
+			 * Empty the cache
+			 */
+			
+			try {
+				$this->Memcached->delete("railpage:bancontrol.users"); 
+				$this->Memcached->delete(self::CACHE_KEY_ALL);
+			} catch (Exception $e) {
+				// throw it away
+			}
+			
+			try {
+				$this->Redis->delete("railpage:bancontrol");
+			} catch (Exception $e) {
+				// throw it away
+			}
 			
 			if ($ban_id instanceof User) {
 				$user_id = $ban_id->id;
@@ -424,8 +470,22 @@
 		
 		public function unBanIp($ban_id, $ban_ip = false) {
 			
-			$this->Memcached->delete("railpage:bancontrol.ips");
-			$this->Redis->delete("railpage:bancontrol");
+			/**
+			 * Empty the cache
+			 */
+			
+			try {
+				$this->Memcached->delete("railpage:bancontrol.ips"); 
+				$this->Memcached->delete(self::CACHE_KEY_ALL);
+			} catch (Exception $e) {
+				// throw it away
+			}
+			
+			try {
+				$this->Redis->delete("railpage:bancontrol");
+			} catch (Exception $e) {
+				// throw it away
+			}
 			
 			$data = array(
 				"ban_active" => "0"
@@ -457,10 +517,24 @@
 			if (!$ban_id) {
 				throw new Exception("Cannot change user ban - no ban ID given"); 
 				return false;
-			} 
+			}
 			
-			$this->Memcached->delete("railpage:bancontrol.users"); 
-			$this->Redis->delete("railpage:bancontrol");
+			/**
+			 * Empty the cache
+			 */
+			
+			try {
+				$this->Memcached->delete("railpage:bancontrol.users"); 
+				$this->Memcached->delete(self::CACHE_KEY_ALL);
+			} catch (Exception $e) {
+				// throw it away
+			}
+			
+			try {
+				$this->Redis->delete("railpage:bancontrol");
+			} catch (Exception $e) {
+				// throw it away
+			}
 			
 			if (!$expire) {
 				$expire = "0"; 
