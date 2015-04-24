@@ -254,7 +254,7 @@
 			}
 			
 			if (!isset($sizes['larger'])) {
-				$sizes['larger'] = $sizes['original'];
+				$sizes['larger'] = $sizes['largest'];
 			}
 			
 			if (!isset($sizes['large'])) {

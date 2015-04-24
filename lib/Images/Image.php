@@ -192,7 +192,7 @@
 				
 				if (!$row = $this->Redis->fetch($this->mckey)) {
 				
-					$query = "SELECT i.id, i.provider, i.photo_id, i.modified, i.meta, i.lat, i.lon FROM image AS i WHERE i.id = ?";
+					$query = "SELECT i.title, i.description, i.id, i.provider, i.photo_id, i.modified, i.meta, i.lat, i.lon FROM image AS i WHERE i.id = ?";
 				
 					$row = $this->db->fetchRow($query, $id);
 					$row['meta'] = json_decode($row['meta'], true);
@@ -219,6 +219,20 @@
 					if (empty($this->meta['source'])) {
 						$this->meta['source'] = $this->url->source; 
 					}
+				}
+				
+				/**
+				 * Update the database row
+				 */
+				
+				if (((!isset($row['title']) || empty($row['title']) || is_null($row['title'])) && !empty($this->title)) || 
+					((!isset($row['description']) || empty($row['description']) || is_null($row['description'])) && !empty($this->description))) {
+					$row['title'] = $this->title;
+					$row['description'] = $this->description;
+					
+					$this->Redis->save($this->mckey, $row, strtotime("+24 hours"));
+					
+					$this->commit();
 				}
 				
 				/**
@@ -303,6 +317,8 @@
 			unset($author->User);
 			
 			$data = array(
+				"title" => $this->title,
+				"description" => $this->description,
 				"provider" => $this->provider,
 				"photo_id" => $this->photo_id,
 				"meta" => json_encode(array(
@@ -924,7 +940,13 @@
 				$where_namespace = "";
 			}
 			
-			return $this->db->fetchAll("SELECT * FROM image_link WHERE image_id = ? " . $where_namespace . " AND ignored = 0", $params);
+			#printArray($params);
+			
+			$rs = $this->db->fetchAll("SELECT * FROM image_link WHERE image_id = ? " . $where_namespace . " AND ignored = 0", $params);
+			
+			#printArray($rs);die;
+			
+			return $rs;
 		}
 		
 		/**
@@ -933,7 +955,7 @@
 		 * @param boolean $ignored
 		 */
 		
-		public function ignored($ignored = true) {
+		public function ignored($ignored = true, $link_id = 0) {
 			$data = array(
 				"ignored" => intval($ignored)
 			);
@@ -941,6 +963,10 @@
 			$where = array(
 				"image_id = ?" => $this->id
 			);
+			
+			if (filter_var($link_id, FILTER_VALIDATE_INT) && $link_id > 0) {
+				$where['id = ?'] = $link_id;
+			}
 			
 			$this->db->update("image_link", $data, $where);
 			

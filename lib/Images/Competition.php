@@ -909,7 +909,7 @@
 				$tmp[] = $data; 
 			}
 			
-			$return = array_slice($tmp, -4);
+			$return = array_slice($tmp, -2);
 			
 			/**
 			 * Add the current photo to the array
@@ -929,7 +929,9 @@
 				}
 			}
 			
-			$return = array_merge($return, array_slice($tmp, 0, 4));
+			$return = array_merge($return, array_slice($tmp, 0, 2));
+			
+			$return = array_reverse($return);
 			
 			/**
 			 * Loop through the context and return a stdClass photo

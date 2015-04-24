@@ -115,12 +115,29 @@
 			$query = "SELECT 
 				u.user_id, u.username, 
 				(SELECT COUNT(s.id) AS submissions FROM image_competition_submissions AS s WHERE s.user_id = u.user_id AND s.status = 1) AS submissions,
-				(SELECT COUNT(v.id) AS votes FROM image_competition_votes AS v WHERE v.image_id = s.image_id AND s.user_id = u.user_id AND s.status = 1) AS votes
+				(SELECT COUNT(v.id) AS votes FROM image_competition_votes AS v WHERE v.image_id = s.image_id AND s.user_id = u.user_id AND s.status = 1) AS votes,
+				IFNULL((SELECT wins FROM (
+					SELECT COUNT(wins.user_id) AS wins, wins.user_id FROM (
+						SELECT winners.user_id, winners.competition_id FROM (
+							SELECT COUNT(v.id) AS votes, sub.user_id, v.competition_id
+								FROM image_competition_votes AS v 
+								LEFT JOIN image_competition_submissions AS sub ON v.image_id = sub.image_id
+								LEFT JOIN image_competition AS c ON sub.competition_id = c.id 
+								WHERE c.status = 1 
+								GROUP BY v.competition_id, sub.user_id
+								ORDER BY v.competition_id, votes DESC
+							) AS winners 
+							GROUP BY winners.competition_id
+						) AS wins
+						GROUP BY wins.user_id
+					) AS wins
+					WHERE user_id = s.user_id
+				), 0) AS wins
 				FROM image_competition_submissions AS s
 				LEFT JOIN nuke_users AS u ON s.user_id = u.user_id
 				LEFT JOIN image_competition AS c ON c.id = s.competition_id
 				GROUP BY user_id
-				ORDER BY votes DESC";
+				ORDER BY votes DESC, submissions DESC, username ASC";
 			
 			$return = array(); 
 			
