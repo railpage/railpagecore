@@ -216,9 +216,16 @@
 			 * Empty the cache
 			 */
 			
+			$this->Memcached = AppCore::getMemcached();
+			
 			try {
-				$this->Memcached->delete("railpage:bancontrol.users"); 
-				$this->Memcached->delete(self::CACHE_KEY_ALL);
+				if ($this->Memcached->fetch("railpage:bancontrol.users")) {
+					$this->Memcached->delete("railpage:bancontrol.users"); 
+				}
+				
+				if ($this->Memcached->fetch(self::CACHE_KEY_ALL)) {
+					$this->Memcached->delete(self::CACHE_KEY_ALL);
+				}
 			} catch (Exception $e) {
 				// throw it away
 			}

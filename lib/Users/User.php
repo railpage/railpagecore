@@ -14,6 +14,8 @@
 	use DateTime;
 	use DateTimeZone;
 	
+	use Railpage\AppCore;
+	use Railpage\BanControl\BanControl;
 	use Railpage\Module;
 	use Railpage\Url;
 	use Railpage\Forums\Thread;
@@ -29,6 +31,30 @@
 	 */
 	
 	class User extends Base {
+		
+		/**
+		 * Status: active
+		 * @since Version 3.9.1
+		 * @const int STATUS_ACTIVE
+		 */
+		 
+		const STATUS_ACTIVE = 100;
+		
+		/**
+		 * Status: unactivated
+		 * @since Version 3.9.1
+		 * @const int STATUS_UNACTIVATED
+		 */
+		
+		const STATUS_UNACTIVATED = 200;
+		
+		/**
+		 * Status: banned
+		 * @since Version 3.9.1
+		 * @const int STATUS_BANNED
+		 */
+		
+		const STATUS_BANNED = 300;
 		
 		/**
 		 * Set the default theme
@@ -236,6 +262,14 @@
 		 */
 		 
 		public $regdate;
+		
+		/**
+		 * Registration date as an instanceof \DateTime
+		 * @since Version 3.9.1
+		 * @var \DateTime $RegistrationDate
+		 */
+		
+		public $RegistrationDate;
 		
 		/** 
 		 * Authentication level
@@ -1306,7 +1340,7 @@
 			 * Update the user registration date if required
 			 */
 		 
-	 		if (empty($data['user_regdate_nice'])) {
+	 		if (empty($data['user_regdate_nice']) || $data['user_regdate_nice'] == "0000-00-00") {
 	 			$datetime = new DateTime($data['user_regdate']);
 	 			
 	 			$data['user_regdate_nice'] = $datetime->format("Y-m-d");
@@ -1314,6 +1348,8 @@
 	 			
 	 			$this->db->update("nuke_users", $update, array("user_id = ?" => $this->id));
 	 		}
+			
+			$this->RegistrationDate = new DateTime($data['user_regdate_nice']);
 			
 			/**
 			 * Fetch the last IP address from the login logs
@@ -1575,6 +1611,10 @@
 			
 			$dataArray['facebook_user_id'] = $this->facebook_user_id;
 			$dataArray['reported_to_sfs'] = $this->reported_to_sfs;
+			
+			if ($this->RegistrationDate instanceof DateTime) {
+				$dataArray['user_regdate_nice'] = $this->RegistrationDate->format("Y-m-d H:i:s");
+			}
 			
 			if ($this->db instanceof \sql_db) {
 				// Escape values for SQL
@@ -2119,6 +2159,7 @@
 		
 		public function tryAutoLogin() {
 			if (empty($_COOKIE['rp_autologin'])) {
+				$this->addNote("Autologin attempted but no autologin cookie was found");
 				return false;
 			} else {
 				$cookie = explode(":", base64_decode($_COOKIE['rp_autologin'])); 
@@ -2188,6 +2229,8 @@
 
 					}
 				}
+				
+				$this->addNote("Autologin attempted but an invalid autologin cookie was found");
 				
 				return false;
 			}
@@ -3534,6 +3577,31 @@
 		}
 		
 		/**
+		 * Check if this user is pending activation
+		 * @since Version 3.9.1
+		 * @return boolean
+		 */
+		
+		public function getUserAccountStatus() {
+			if ((boolean) $this->active === true) {
+				return self::STATUS_ACTIVE;
+			}
+			
+			$BanControl = new BanControl;
+			$BanControl->loadUsers(true); 
+			
+			if (!empty($BanControl->lookupUser($this->id))) {
+				return self::STATUS_BANNED; 
+			}
+			
+			if ((boolean) $this->active === false) {
+				return self::STATUS_UNACTIVATED;
+			}
+			
+			throw new Exception("Cannot determine the status of this user account");
+		}
+		
+		/**
 		 * Refresh user data from the database
 		 * @since Version 3.8.7
 		 * @return \Railpage\Users\User
@@ -3798,5 +3866,52 @@
 			);
 			
 			return $this->db->fetchAll($query, $params);
+		}
+		
+		/**
+		 * Validate user avatar
+		 * @since Version 3.9.1
+		 * @return \Railpage\Users\User
+		 * @param boolean $force
+		 */
+		
+		public function validateAvatar($force = false) {
+			
+			if (!empty($this->avatar)) {
+				if ($force || (empty($this->avatar_width) || empty($this->avatar_height) || $this->avatar_width == 0 || $this->avatar_height == 0)) {
+					if ($size = @getimagesize($this->avatar)) {
+						
+						$Config = AppCore::getConfig(); 
+						
+						if ($size[0] >= $Config->AvatarMaxWidth || $size[1] >= $Config->AvatarMaxHeight) {
+							$this->avatar = sprintf("https://static.railpage.com.au/image_resize.php?w=%d&h=%d&image=%s", $Config->AvatarMaxWidth, $Config->AvatarMaxHeight, urlencode($this->avatar));
+							$this->avatar_filename = $this->avatar;
+							
+							if ($size = getimagesize($this->avatar)) {
+								$this->avatar_width = $size[0];
+								$this->avatar_height = $size[1];
+							} else {
+								$this->avatar_width = $Config->AvatarMaxWidth;
+								$this->avatar_height = $Config->AvatarMaxHeight; 
+							}
+						} else {
+							$this->avatar_width = $size[0];
+							$this->avatar_height = $size[1];
+							$this->avatar_filename = $this->avatar;
+						}
+						
+						$this->commit(true);
+						
+						return $this;
+					}
+				}
+			}
+			
+			$this->avatar = function_exists("format_avatar") ? format_avatar("http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png", 120, 120) : "http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png";
+			$this->avatar_filename = function_exists("format_avatar") ? format_avatar("http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png", 120, 120) : "http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png";
+			$this->avatar_width = 120;
+			$this->avatar_height = 120;
+			
+			return $this;
 		}
 	}
