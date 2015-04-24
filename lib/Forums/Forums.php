@@ -1118,4 +1118,3 @@
 			setcookie($cookiename, self::serialize_array($items), strtotime("+1 year"), RP_AUTOLOGIN_PATH, RP_AUTOLOGIN_DOMAIN, RP_SSL_ENABLED, true); 
 		}
 	}
-?>

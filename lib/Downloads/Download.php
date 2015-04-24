@@ -443,11 +443,7 @@
 			
 			switch ($mime[0]) {
 				case "video" : 
-					if (file_exists("/usr/bin/avconv")) {
-						$avlib = "/usr/bin/avconv";
-					} else {
-						return false;
-					}
+					$avlib = self::getAVLib();
 					
 					exec(sprintf("%s -i %s%s -vsync 1 -r 1 -an -y -vframes 1 '%s%s'", $avlib, RP_DOWNLOAD_DIR, $this->filepath, RP_DOWNLOAD_DIR, $thumbnail), $return);
 					
@@ -492,13 +488,97 @@
 						"absolute" => $this->Date->format("Y-m-d g:i:s a"),
 						"relative" => time2str($this->Date->getTimestamp())
 					),
-					"thumbnail" => $this->getThumbnail()
+					"thumbnail" => $this->getThumbnail(),
+					"video" => $this->getHTML5Video()
 				);
 				
 				$this->Memcached->save($mckey, $data, strtotime("+12 hours"));
 			}
 			
 			return $data;
+		}
+		
+		/**
+		 * Get the AV library available on this system
+		 * @since Version 3.9.1
+		 * @return string
+		 * @throws \Exception if no suitable AV library is available
+		 */
+		
+		static public function getAVLib() {
+			if (file_exists("/usr/bin/avconv")) {
+				$avlib = "/usr/bin/avconv";
+			} else {
+				throw new Exception("No video library (libav or ffmpeg) was found");
+			}
+			
+			return $avlib;
+		}
+		
+		/**
+		 * Convert this file to a HTML5-compatible video format
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getHTML5Video() {
+			if (empty($this->mime) && file_exists(RP_DOWNLOAD_DIR . $this->filepath)) {
+				$this->getThumbnail(); 
+			}
+			
+			$mime = explode("/", $this->mime); 
+			
+			if ($mime[0] != "video") {
+				return false;
+			}
+			
+			$avlib = self::getAVLib();
+			
+			$videos = array();
+			
+			set_time_limit(1200);
+			
+			/**
+			 * Mp4
+			 */
+			
+			$dstfile = sprintf("%s/%s.v3.mp4", pathinfo($this->filepath, PATHINFO_DIRNAME), pathinfo($this->filepath, PATHINFO_FILENAME));
+			
+			if (!file_exists(RP_DOWNLOAD_DIR . $dstfile)) {
+				exec(sprintf("%s -i %s%s -vcodec h264 -acodec aac -strict -2 -ar 64k %s%s", $avlib, RP_DOWNLOAD_DIR, $this->filepath, RP_DOWNLOAD_DIR, $dstfile), $return);
+			}
+			
+			$finfo = finfo_open(FILEINFO_MIME_TYPE); 
+			$mime = finfo_file($finfo, RP_DOWNLOAD_DIR . $dstfile);
+			
+			$videos['mp4'] = array(
+				"absolute" => RP_DOWNLOAD_DIR . $dstfile,
+				"file" => $dstfile,
+				"size" => filesize(RP_DOWNLOAD_DIR . $dstfile),
+				"mime" => $mime
+			);
+			
+			/**
+			 * WebM
+			 */
+			
+			$dstfile = sprintf("%s/%s.v3.webm", pathinfo($this->filepath, PATHINFO_DIRNAME), pathinfo($this->filepath, PATHINFO_FILENAME));
+			
+			if (!file_exists(RP_DOWNLOAD_DIR . $dstfile)) {
+				exec(sprintf("%s -i %s%s -acodec libvorbis -ac 2 -ab 96k -ar 44100 %s%s", $avlib, RP_DOWNLOAD_DIR, $this->filepath, RP_DOWNLOAD_DIR, $dstfile), $return);
+			}
+			
+			$finfo = finfo_open(FILEINFO_MIME_TYPE); 
+			$mime = finfo_file($finfo, RP_DOWNLOAD_DIR . $dstfile);
+			
+			$videos['webm'] = array(
+				"absolute" => RP_DOWNLOAD_DIR . $dstfile,
+				"file" => $dstfile,
+				"size" => filesize(RP_DOWNLOAD_DIR . $dstfile),
+				"mime" => $mime
+			);
+			
+			return $videos;
 		}
 	}
 	

@@ -437,7 +437,6 @@
 				$this->guessCoverPhoto(); 
 				
 			} else {
-				#throw new Exception($this->db->error."\n\n".$query);
 				throw new Exception(sprintf("Cannot find news article #%d", $this->id));
 				return false;
 			}
@@ -1078,4 +1077,3 @@
 			);
 		}
 	}
-?>
