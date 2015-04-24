@@ -49,6 +49,20 @@
 		const STATUS_IMPLEMENTED = 3;
 		
 		/**
+		 * Status: In progress
+		 * @const STATUS_INPROGRESS
+		 */
+		
+		const STATUS_INPROGRESS = 4;
+		
+		/**
+		 * Status: Under consideration
+		 * @const STATUS_UNDERCONSIDERATION
+		 */
+		
+		const STATUS_UNDERCONSIDERATION = 5;
+		
+		/**
 		 * Constructor
 		 */
 		

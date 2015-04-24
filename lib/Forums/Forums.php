@@ -267,7 +267,9 @@
 			
 			$exclude_forums = array();
 			
-			for ($i = 0; $i < count($forum_list); $i++) {
+			$c = count($forum_list);
+			
+			for ($i = 0; $i < $c; $i++) {
 				if ($is_auth_ary[$forum_list[$i]['forum_id']]['auth_view']) {
 					if (!in_array($forum_list[$i]['forum_id'], array("37"))) {
 						$exclude_forums[] = $forum_list[$i]['forum_id'];

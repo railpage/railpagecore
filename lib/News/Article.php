@@ -1026,5 +1026,18 @@
 			
 			return is_object($paragraphs) ? $paragraphs->__toString() : $paragraphs;
 		}
+		
+		/**
+		 * Get the source of this article
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getSource() {
+			return array(
+				"domain" => parse_url($this->source, PHP_URL_HOST),
+				"source" => $this->source
+			);
+		}
 	}
 ?>

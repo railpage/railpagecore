@@ -340,7 +340,7 @@
 		
 		public function canVote(User $User) {
 			
-			if ($this->status != 1) {
+			if ($this->status == Ideas::STATUS_DELETED || $this->status == Ideas::STATUS_NO || $this->status == Ideas::STATUS_IMPLEMENTED) {
 				return false;
 			}
 			
