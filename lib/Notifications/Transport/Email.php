@@ -17,6 +17,8 @@
 	use Swift_Mailer;
 	use Swift_SmtpTransport;
 	use Swift_Encoding;
+	use Swift_Plugins_AntiFloodPlugin;
+	use Swift_Plugins_DecoratorPlugin;
 	
 	/**
 	 * Email
@@ -69,9 +71,11 @@
 				->setBody($this->data['body'], 'text/html')
 				->setCharset("UTF-8");
 			
+			/*
 			foreach ($this->data['recipients'] as $recipient) {
 				$message->setBcc(array($recipient['destination'] => $recipient['username']));
 			}
+			*/
 			
 			/**
 			 * Create an SMTP transport object
@@ -87,11 +91,35 @@
 			
 			$mailer = Swift_Mailer::newInstance($transport);
 			
+			/**
+			 * Use AntiFlood to re-connect after 100 emails and pause 30s between batches
+			 */
+			
+			$mailer->registerPlugin(new Swift_Plugins_AntiFloodPlugin(100, 30));
+			
+			/**
+			 * Decorate the email
+			 */
+			
+			if (isset($this->data['decoration'])) {
+				$decorator = new Swift_Plugins_DecoratorPlugin($this->data['decoration']);
+				$mailer->registerPlugin($decorator);
+			}
+			
 			/** 
 			 * Dispatch the email and store the result
 			 */
 			
-			$result = $mailer->send($message, $failures);
+			$failures = array();
+			$result = array(); 
+			
+			foreach ($this->data['recipients'] as $recipient) {
+				$message->setTo(array($recipient['destination'] => $recipient['username']));
+				$rs = $mailer->send($message, $fail);
+				
+				$failures = array_merge($failures, $fail); 
+				$return = array_merge($return, $rs); 
+			}
 			
 			$return = array(
 				"stat" => $result,
