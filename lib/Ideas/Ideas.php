@@ -49,6 +49,20 @@
 		const STATUS_IMPLEMENTED = 3;
 		
 		/**
+		 * Status: In progress
+		 * @const STATUS_INPROGRESS
+		 */
+		
+		const STATUS_INPROGRESS = 4;
+		
+		/**
+		 * Status: Under consideration
+		 * @const STATUS_UNDERCONSIDERATION
+		 */
+		
+		const STATUS_UNDERCONSIDERATION = 5;
+		
+		/**
 		 * Constructor
 		 */
 		
@@ -150,5 +164,62 @@
 			
 			return $return;
 		}
+		
+		/**
+		 * Get the idea status with fancy formatting and stuff
+		 * @since Version 3.9.1
+		 * @param int $status_id
+		 * @return array
+		 */
+		
+		public static function getStatusDescription($status_id = false) {
+			if (filter_var($status_id, FILTER_VALIDATE_INT)) {
+				$badge = '<span class="label label-%s"><span class="glyphicon glyphicon-%s" style="top:2px;"></span>&nbsp;&nbsp;%s</span>';
+				
+				switch ($status_id) {
+					case self::STATUS_DELETED :
+						$text = "Deleted";
+						$badge = sprintf($badge, "danger", "remove", $text);
+						break;
+						
+					case self::STATUS_ACTIVE :
+						$text = "";
+						$badge = "";
+						break;
+						
+					case self::STATUS_NO :
+						$text = "Will not implement";
+						$badge = sprintf($badge, "warning", "remove", $text);
+						break;
+						
+					case self::STATUS_IMPLEMENTED :
+						$text = "Implemented!";
+						$badge = sprintf($badge, "success", "ok", $text);
+						break;
+						
+					case self::STATUS_INPROGRESS :
+						$text = "In progress";
+						$badge = sprintf($badge, "info", "wrench", $text);
+						break;
+						
+					case self::STATUS_UNDERCONSIDERATION :
+						$text = "Under consideration";
+						$badge = sprintf($badge, "info", "tasks", $text);
+						break;
+					
+					default :
+						$text = "";
+						$badge = "";
+						
+				}
+				
+				return array(
+					"id" => $status_id, 
+					"text" => $text,
+					"badge" => $badge
+				);
+			}
+		}
 	}
-?>
+	
+	

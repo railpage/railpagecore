@@ -59,7 +59,9 @@
 					throw new \Exception($this->db->error."\n".$query); 
 				}
 			} else {
-				$query = "SELECT organisation_id, organisation_name, organisation_desc FROM organisation WHERE organisation_name LIKE '%?%' ORDER BY organisation_name DESC";
+				$query = "SELECT organisation_id, organisation_name, organisation_desc FROM organisation WHERE organisation_name LIKE ? ORDER BY organisation_name DESC";
+				
+				$name = "%" . $name . "%";
 				
 				$result = $this->db->fetchAll($query, $name);
 				$return = array(); 

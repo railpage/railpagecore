@@ -825,5 +825,23 @@
 		public function getObjects() {
 			return $this->meta['linkedobjects'];
 		}
+		
+		/**
+		 * Get pinned posts
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getPinnedPosts() {
+			$query = "SELECT post_id FROM nuke_bbposts WHERE topic_id = ? AND pinned = 1 ORDER BY post_time ASC";
+			
+			$pinned = array(); 
+			
+			foreach ($this->db->fetchAll($query, $this->id) as $row) {
+				$pinned[] = $row['post_id'];
+			}
+			
+			return $pinned;
+		}
 	}
 ?>

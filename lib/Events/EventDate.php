@@ -8,6 +8,7 @@
 	
 	namespace Railpage\Events;
 	
+	use Railpage\Users\User;
 	use Railpage\Events\Event;
 	use DateTime;
 	use DateTimeZone;
@@ -83,6 +84,14 @@
 		public $url;
 		
 		/**
+		 * Status
+		 * @since Version 3.9.1
+		 * @var int $status
+		 */
+		
+		public $status;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.8.7
 		 * @param int $id
@@ -101,6 +110,9 @@
 					$this->Date = new DateTime($row['date']);
 					$this->meta = json_decode($row['meta'], true);
 					$this->url = new Url("/events?mode=event.date&event_id=" . $this->Event->id . "&date_id=" . $this->id);
+					$this->status = $row['status'];
+					
+					$this->setAuthor(new User($row['user_id']));
 					
 					if ($row['start'] != "00:00:00") {
 						$this->Start = new DateTime($row['date'] . " " . $row['start']);
@@ -158,6 +170,14 @@
 				throw new Exception("Cannot validate changes to this event instance - no event given");
 			}
 			
+			if (!filter_var($this->status, FILTER_VALIDATE_INT)) {
+				$this->status = Events::STATUS_UNAPPROVED;
+			}
+			
+			if (!$this->Author instanceof User) {
+				throw new Exception("A valid user object must be set (hint: EventDate::setAuthor()");
+			}
+			
 			return true;
 		}
 		
@@ -170,7 +190,9 @@
 			
 			$data = array(
 				"event_id" => $this->Event->id,
-				"date" => $this->Date->format("Y-m-d")
+				"date" => $this->Date->format("Y-m-d"),
+				"status" => $this->status,
+				"user_id" => $this->Author->id
 			);
 			
 			if ($this->Place instanceof Place) {
@@ -203,6 +225,76 @@
 			}
 			
 			return true;
+		}
+		
+		/**
+		 * Approve this event date
+		 * @since Version 3.9.1
+		 * @return \Railpage\Events\EventDate
+		 */
+		
+		public function approve() {
+			$this->status = Events::STATUS_APPROVED;
+			$this->commit(); 
+			
+			return $this;
+		}
+		
+		/**
+		 * Reject this event date
+		 * @since Version 3.9.1
+		 * @return \Railpage\Events\EventDate
+		 */
+		
+		public function reject() {
+			$where = array(
+				"id = ?" => $this->id
+			);
+			
+			$this->db->delete("event_categories", $where);
+			
+			return $this;
+		}
+		
+		/**
+		 * Create an associative array representing this object
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			$array = array(
+				"id" => $this->id,
+				"date" => array(
+					"absolute" => $this->Date->format("Y-m-d H:i:s")
+				),
+				"start" => $this->Start instanceof DateTime ? $this->Start->format("g:i a") : 0,
+				"end" => $this->End instanceof DateTime ? $this->End->format("g:i a") : 0,
+				"status" => array(
+					"id" => $this->status,
+					"name" => $this->status == Events::STATUS_APPROVED ? "Approved" : "Unapproved"
+				),
+				"url" => $this->url->getURLs(),
+				"event" => $this->Event->getArray(),
+				"place" => array(
+					"lat" => 0,
+					"lon" => 0
+				),
+				"author" => array(
+					"id" => $this->Author->id,
+					"username" => $this->Author->username,
+					"url" => $this->Author->url->getURLs()
+				)
+			);
+			
+			if ($this->Place instanceof Place) {
+				$array['place'] = array(
+					"lat" => $this->Place->lat,
+					"lon" => $this->Place->lon
+				);
+			}
+			
+			return $array;
 		}
 	}
 ?>

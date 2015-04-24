@@ -24,6 +24,22 @@
 	class Events extends AppCore {
 		
 		/**
+		 * Status: approved
+		 * @const STATUS_APPROVED
+		 * @since Version 3.9
+		 */
+		
+		const STATUS_APPROVED = 1;
+		
+		/**
+		 * Status: unapproved
+		 * @const STATUS_UNAPPROVED
+		 * @since Version 3.9
+		 */
+		
+		const STATUS_UNAPPROVED = 0;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.8.7
 		 */
@@ -60,7 +76,7 @@
 				$Date = new DateTime;
 			}
 			
-			return $this->db->fetchAll("SELECT ed.* FROM event_dates AS ed LEFT JOIN event AS e ON e.id = ed.event_id WHERE ed.date = ? AND e.status = ?", array($Date->format("Y-m-d"), Event::STATUS_APPROVED));
+			return $this->db->fetchAll("SELECT ed.* FROM event_dates AS ed LEFT JOIN event AS e ON e.id = ed.event_id WHERE ed.date = ? AND e.status = ?", array($Date->format("Y-m-d"), self::STATUS_APPROVED));
 		}
 		
 		/**
@@ -75,7 +91,7 @@
 			
 			$args = array(
 				$Now->format("Y-m-d"),
-				Event::STATUS_APPROVED, 
+				self::STATUS_APPROVED, 
 				($page - 1) * $items_per_page, 
 				$items_per_page
 			); 
@@ -108,7 +124,7 @@
 			
 			$return = array(); 
 			
-			foreach ($this->db->fetchAll($query, array(date("Y-m-d"), $Org->id, Event::STATUS_APPROVED)) as $row) {
+			foreach ($this->db->fetchAll($query, array(date("Y-m-d"), $Org->id, self::STATUS_APPROVED)) as $row) {
 				$Event = new Event($row['event_id']);
 				$return[$row['date']][] = array(
 					"id" => $Event->id,
@@ -127,10 +143,24 @@
 		 */
 		
 		public function yieldPendingEvents() {
+			$query = "SELECT id FROM event WHERE status = ?";
+			
+			foreach ($this->db->fetchAll($query, self::STATUS_UNAPPROVED) as $row) {
+				yield new Event($row['id']);
+			}
+		}
+		
+		/**
+		 * Yield event dates pending approval
+		 * @since Version 3.9
+		 * @yield new \Railpage\Events\EventDate
+		 */
+		
+		public function yieldPendingEventDates() {
 			$query = "SELECT id FROM event_dates WHERE status = ?";
 			
-			foreach ($this->db->fetchAll($query, Event::STATUS_APPROVED) as $row) {
-				yield new Event($row['id']);
+			foreach ($this->db->fetchAll($query, self::STATUS_UNAPPROVED) as $row) {
+				yield new EventDate($row['id']);
 			}
 		}
 	}

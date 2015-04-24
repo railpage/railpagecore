@@ -62,6 +62,7 @@
 			"Railpage\\Help\\" : "lib/Help/",
 			"Railpage\\Ideas\\" : "lib/Ideas/",
 			"Railpage\\Images\\" : "lib/Images/",
+			"Railpage\\Images\\Provider\\" : "lib/Images/Provider/",
 			"Railpage\\Jobs\\" : "lib/Jobs/",
 			"Railpage\\Links\\" : "lib/Links/",
 			"Railpage\\Locations\\" : "lib/Locations/",
@@ -107,6 +108,7 @@
 		"guzzle/http": "~3.9",
 		"guzzlehttp/guzzle": "~5.2",
 		"monolog/monolog": "~1.12",
-		"doctrine/cache": "~1.4"
+		"doctrine/cache": "~1.4",
+		"mibe/feedwriter": "~1.0"
 	}
 }

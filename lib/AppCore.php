@@ -19,6 +19,13 @@
 	use Monolog\Logger;
 	use Monolog\Handler\SwiftMailerHandler;
 	use Monolog\Handler\PushoverHandler;
+	use Monolog\Formatter\HtmlFormatter;
+	use Swift_Message;
+	use Swift_Mailer;
+	use Swift_SmtpTransport;
+	use Swift_Encoding;
+	use Swift_Plugins_AntiFloodPlugin;
+	use Swift_Plugins_DecoratorPlugin;
 	
 	use Doctrine\Common\Cache\MemcachedCache;
 	use Doctrine\Common\Cache\RedisCache;
@@ -160,18 +167,7 @@
 			
 			$Registry = Registry::getInstance();
 			
-			/**
-			 * Load/set the logger interface
-			 */ 
-			
-			try {
-				$this->log = $Registry->get("log");
-			} catch (Exception $e) {
-				$Log = new Logger("railpage");
-				$Log->pushHandler(new PushoverHandler("aVHTDYcWLH7y8ZXoDNnaHjAuH7gnY5", "uWy9phgETHeYLqTZBL5YSVjoqB93id", "Railpage API"));
-				$Registry->set("log", $Log);
-				$this->log = $Log;
-			}
+			$this->log = self::getLogger();
 			
 			if (isset($PHPUnitTest) && $PHPUnitTest == true) {
 				
@@ -292,7 +288,7 @@
 				if ($this->db instanceof \sql_db) {
 					$this->db->close(); 
 				} else {
-					$this->closeConnection(); 
+					#$this->closeConnection(); 
 				}
 			}
 		}
@@ -478,11 +474,14 @@
 		static public function getConfig() {
 			$Registry = Registry::getInstance();
 			
+			
 			try {
 				$Config = $Registry->get("config");
 			} catch (Exception $e) {
 				if (function_exists("getRailpageConfig")) {
 					$Config = getRailpageConfig();
+				} elseif (defined("RP_SITE_ROOT") && file_exists(RP_SITE_ROOT . DS . "config" . DS . "config.railpage.json")) {
+					$Config = json_decode(file_get_contents(RP_SITE_ROOT . DS . "config" . DS . "config.railpage.json")); 
 				} elseif (file_exists(dirname(__DIR__) . DS . "config.railpage.json")) {
 					$Config = json_decode(file_get_contents(dirname(__DIR__) . DS . "config.railpage.json"));
 				}
@@ -586,6 +585,112 @@
 				
 			$slug = strtolower(preg_replace('/[^A-Za-z0-9-]+/', '-', trim($string)));
 			return $slug;
+		}
+		
+		/**
+		 * Set the database connection for this object
+		 * @since Version 3.9.1
+		 * @return $this
+		 */
+		
+		public function setDatabaseConnection($cn = false) {
+			if (!is_object($cn)) {
+				throw new Exception("Invalid database connection specified");
+			}
+			
+			$this->db = $cn;
+			
+			return $this;
+		}
+		
+		/**
+		 * Set the read-only database connection for this object
+		 * @since Version 3.9.1
+		 * @return $this
+		 */
+		
+		public function setDatabaseReadOnlyConnection($cn = false) {
+			if (!is_object($cn)) {
+				throw new Exception("Invalid database connection specified");
+			}
+			
+			$this->db_readonly = $cn;
+			
+			return $this;
+		}
+		
+		/**
+		 * Get the logger interface
+		 * @since Version 3.9.1
+		 * @return \Monolog\Logger
+		 */
+		
+		static public function getLogger() {
+			
+			$Registry = Registry::getInstance();
+			
+			$Config = self::getConfig();
+			
+			try {
+				$Log = $Registry->get("log");
+			} catch (Exception $e) {
+				$Log = new Logger("railpage");
+				
+				/**
+				 * Shit's broke, send an email via SwiftMail
+				 */
+				
+				if (isset($Config->SMTP)) {
+					$transport = Swift_SmtpTransport::newInstance($Config->SMTP->host, $Config->SMTP->port, $Config->SMTP->TLS = true ? "tls" : NULL)
+						->setUsername($Config->SMTP->username)
+						->setPassword($Config->SMTP->password);
+						
+					$mailer = Swift_Mailer::newInstance($transport);
+					$mailer->registerPlugin(new Swift_Plugins_AntiFloodPlugin(100, 30));
+					
+					$message = Swift_Message::newInstance("[RP] Something went wrong!")
+						->setFrom(array("errorz@railpage.com.au" => "Failpage service"))
+						->setTo(array("michael@railpage.com.au" => "Michael Greenhill"))
+						->setBody("", "text/html");
+					
+					$htmlFormatter = new HtmlFormatter;
+					
+					$mailStream = new SwiftMailerHandler($mailer, $message, Logger::ERROR);
+					$mailStream->setFormatter($htmlFormatter);
+					
+					$Log->pushHandler($mailStream);
+				}
+				
+				/**
+				 * Pushover
+				 */
+				
+				#$Log->pushHandler(new PushoverHandler("aVHTDYcWLH7y8ZXoDNnaHjAuH7gnY5", "uWy9phgETHeYLqTZBL5YSVjoqB93id", "Railpage API"));
+				
+				$Registry->set("log", $Log);
+			}
+			
+			return $Log;
+		}
+		
+		/**
+		 * Get alert-to-email object
+		 * @since Version 3.9.1
+		 * @return \Monolog\Logger
+		 */
+		
+		static public function getAlerter() {
+			
+			$Registry = Registry::getInstance();
+			
+			$Config = self::getConfig();
+			
+			try {
+				$Monolog = $Registry->get("alerter"); 
+			} catch (Exception $e) {
+				$Monolog = new Logger("railpage"); 
+				#$Monolog->pushHandler(new SwiftMailerHandler(
+			}
 		}
 	}
 ?>

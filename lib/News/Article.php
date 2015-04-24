@@ -400,6 +400,7 @@
 				$this->slug = $return['slug'];
 				$this->url = new Url($this->makePermaLink($this->slug));
 				$this->url->source = $return['source']; 
+				$this->url->reject = sprintf("/news/pending?task=reject&id=%d&queue=newqueue", $this->id);
 				$this->fwlink = $this->url->short;
 				
 				/**
@@ -428,6 +429,13 @@
 					$this->url->url = $this->source;
 					$this->url->canonical = $this->source;
 				}
+				
+				/**
+				 * Set a cover photo
+				 */
+				
+				$this->guessCoverPhoto(); 
+				
 			} else {
 				#throw new Exception($this->db->error."\n\n".$query);
 				throw new Exception(sprintf("Cannot find news article #%d", $this->id));
@@ -675,13 +683,11 @@
 			$dataArray = array(); 
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
-				deleteMemcacheObject($this->mckey);
-				deleteMemcacheObject(sprintf("json:railpage.news.article=%d", $this->id));
+				$this->Memcached->delete($this->mckey);
+				$this->Memcached->delete(sprintf("json:railpage.news.article=%d", $this->id));
 				
 				$this->Redis->delete(sprintf("railpage:news.article=%s", $this->id));
 				$this->Redis->delete(sprintf("railpage:news.article=%s", $this->slug));
-				
-				$this->Memcached->delete($this->mckey);
 			}
 			
 			$dataArray['approved'] 	= $this->approved; 
@@ -984,15 +990,29 @@
 			 */
 			
 			if (count($matches) || count($rejected)) {
-				return true;
+				//return true;
 			}
 			
 			/**
 			 * Fall back to a database query
 			 */
 			
-			$query = "SELECT sid FROM nuke_stories WHERE title = ? AND time >= ?";
-			if (count($this->db->fetchAll($query, array($this->title, $this->date->sub(new DateInterval("P7D"))->format("Y-m-d H:i:s"))))) {
+			$where = array(
+				strtolower($this->title),
+				md5(strtolower($this->title)),
+				$this->date->sub(new DateInterval("P90D"))->format("Y-m-d H:i:s")
+			);
+			
+			$query = "SELECT sid FROM nuke_stories WHERE (LOWER(title) = ? OR MD5(LOWER(title)) = ?) AND time >= ?";
+			
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$query .= " AND sid != ?";
+				$where[] = $this->id;
+			}
+			
+			$result = $this->db->fetchAll($query, $where);
+			
+			if (count($result)) {
 				return true;
 			}
 			
@@ -1025,6 +1045,37 @@
 			}
 			
 			return is_object($paragraphs) ? $paragraphs->__toString() : $paragraphs;
+		}
+		
+		/**
+		 * Guess the cover photo for this article
+		 * @since Version 3.9.1
+		 * @return \Railpage\News\Article
+		 */
+		
+		public function guessCoverPhoto() {
+			if (!empty($this->featured_image) || !$this->Topic instanceof Topic) {
+				return $this;
+			}
+			
+			if ($this->Topic->id == 4 && stripos($this->title, "Gheringhap Sightings") !== false) {
+				$this->featured_image = "http://ghaploop.railpage.org.au/House%20%20Train%20(2).jpg"; #"https://farm3.staticflickr.com/2657/3978862684_b0acc234d4_z.jpg";
+			}
+			
+			return $this;
+		}
+		
+		/**
+		 * Get the source of this article
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getSource() {
+			return array(
+				"domain" => parse_url($this->source, PHP_URL_HOST),
+				"source" => $this->source
+			);
 		}
 	}
 ?>

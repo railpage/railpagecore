@@ -247,5 +247,20 @@
 		public function deletePhoto(Photo $Photo) {
 			return $this->cn->photos_delete($Photo->id);
 		}
+		
+		/**
+		 * Check if this camera needs authenticating
+		 * @since Version 3.9.1
+		 * @return boolean
+		 */
+		
+		public function isAuthenticated() {
+			if (empty($this->oauth_token) || empty($this->oauth_secret) || empty($this->flickr_api_key) ||
+				is_null($this->oauth_token) || is_null($this->oauth_secret) || is_null($this->flickr_api_key)) {
+				return false;
+			}
+			
+			return true;
+		}
 	}
 ?>

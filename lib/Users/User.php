@@ -14,6 +14,8 @@
 	use DateTime;
 	use DateTimeZone;
 	
+	use Railpage\AppCore;
+	use Railpage\BanControl\BanControl;
 	use Railpage\Module;
 	use Railpage\Url;
 	use Railpage\Forums\Thread;
@@ -29,6 +31,30 @@
 	 */
 	
 	class User extends Base {
+		
+		/**
+		 * Status: active
+		 * @since Version 3.9.1
+		 * @const int STATUS_ACTIVE
+		 */
+		 
+		const STATUS_ACTIVE = 100;
+		
+		/**
+		 * Status: unactivated
+		 * @since Version 3.9.1
+		 * @const int STATUS_UNACTIVATED
+		 */
+		
+		const STATUS_UNACTIVATED = 200;
+		
+		/**
+		 * Status: banned
+		 * @since Version 3.9.1
+		 * @const int STATUS_BANNED
+		 */
+		
+		const STATUS_BANNED = 300;
 		
 		/**
 		 * Set the default theme
@@ -236,6 +262,14 @@
 		 */
 		 
 		public $regdate;
+		
+		/**
+		 * Registration date as an instanceof \DateTime
+		 * @since Version 3.9.1
+		 * @var \DateTime $RegistrationDate
+		 */
+		
+		public $RegistrationDate;
 		
 		/** 
 		 * Authentication level
@@ -982,111 +1016,122 @@
 				$debug_timer_start = microtime(true);
 			}
 			
+			/**
+			 * Load the User data from Redis first
+			 */
+			
 			if ($data = $this->Redis->fetch($this->mckey)) {
 				$cached = true;
 			
 				if (RP_DEBUG) {
-					$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via Memcached in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+					$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via Redis in " . round(microtime(true) - $debug_timer_start, 5) . "s";
 				}
-				
-			} elseif ($this->db instanceof \sql_db) {
-				$query  = "SELECT u.*, COALESCE(SUM((SELECT COUNT(*) FROM nuke_bbprivmsgs WHERE privmsgs_to_userid='".$this->db->real_escape_string($this->id)."' AND (privmsgs_type='5' OR privmsgs_type='1'))), 0) AS unread_pms FROM nuke_users u WHERE u.user_id = '".$this->db->real_escape_string($this->id)."';";
-				
-				if (!defined("RP_PLATFORM") || RP_PLATFORM != "API") {
-					$query .= "SELECT o.* FROM organisation o, organisation_member om WHERE o.organisation_id = om.organisation_id AND om.user_id = ".$this->db->real_escape_string($this->id).";";
-					$query .= "SELECT oc.* FROM oauth_consumer AS oc LEFT JOIN nuke_users AS u ON u.oauth_consumer_id = oc.id WHERE u.user_id = ".$this->db->real_escape_string($this->id).";";
-				}
-				
-				if ($this->db->multi_query($query)) {
-					// Get the user data
+			}
+			
+			/**
+			 * I fucked up before, so validate the redis data before we continue...
+			 */
+			
+			if (!is_array($data) || empty($data) || count($data) == 1) {
+				if ($this->db instanceof \sql_db) {
+					$query  = "SELECT u.*, COALESCE(SUM((SELECT COUNT(*) FROM nuke_bbprivmsgs WHERE privmsgs_to_userid='".$this->db->real_escape_string($this->id)."' AND (privmsgs_type='5' OR privmsgs_type='1'))), 0) AS unread_pms FROM nuke_users u WHERE u.user_id = '".$this->db->real_escape_string($this->id)."';";
 					
-					if ($rs = $this->db->store_result()) {
-						if ($rs->num_rows == 1 && $data = $rs->fetch_assoc()) {
-							//unset($data['user_password']); 
-							$data['session_logged_in'] = true;
-							$data['session_start'] = $data['user_session_time'];
-							
-							$rs->free(); 
+					if (!defined("RP_PLATFORM") || RP_PLATFORM != "API") {
+						$query .= "SELECT o.* FROM organisation o, organisation_member om WHERE o.organisation_id = om.organisation_id AND om.user_id = ".$this->db->real_escape_string($this->id).";";
+						$query .= "SELECT oc.* FROM oauth_consumer AS oc LEFT JOIN nuke_users AS u ON u.oauth_consumer_id = oc.id WHERE u.user_id = ".$this->db->real_escape_string($this->id).";";
+					}
+					
+					if ($this->db->multi_query($query)) {
+						// Get the user data
+						
+						if ($rs = $this->db->store_result()) {
+							if ($rs->num_rows == 1 && $data = $rs->fetch_assoc()) {
+								//unset($data['user_password']); 
+								$data['session_logged_in'] = true;
+								$data['session_start'] = $data['user_session_time'];
+								
+								$rs->free(); 
+							} else {
+								trigger_error("User: Could not retrieve user from database");
+								trigger_error($this->db->error); 
+								trigger_error($query);
+								
+								return false;
+							}
 						} else {
 							trigger_error("User: Could not retrieve user from database");
 							trigger_error($this->db->error); 
-							trigger_error($query);
+							trigger_error($query); 
 							
 							return false;
 						}
-					} else {
-						trigger_error("User: Could not retrieve user from database");
-						trigger_error($this->db->error); 
-						trigger_error($query); 
 						
+						// Get the organisation membership
+						if ($this->db->more_results()) {
+							$this->db->next_result();
+							
+							if ($rs = $this->db->store_result()) {
+								$data['organisations'] = array(); 
+								
+								while ($row = $rs->fetch_assoc()) {
+									$data['organisations'][$row['organisation_id']] = $row;
+								}
+							}
+						}
+						
+						// OAuth consumer key
+						if ($this->db->more_results()) {
+							$this->db->next_result();
+							
+							if ($rs = $this->db->store_result()) {
+								$row = $rs->fetch_assoc(); 
+								$data['oauth_key']		= $row['consumer_key'];
+								$data['oauth_secret']	= $row['consumer_secret'];
+							}
+						}
+				
+						if (RP_DEBUG) {
+							$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via sql_db in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+						}
+					} else {
+						throw new Exception($this->db->error); 
 						return false;
 					}
+				} else {
+					// Zend_Db
 					
-					// Get the organisation membership
-					if ($this->db->more_results()) {
-						$this->db->next_result();
+					$query = "SELECT u.*, COALESCE(SUM((SELECT COUNT(*) FROM nuke_bbprivmsgs WHERE privmsgs_to_userid= ? AND (privmsgs_type='5' OR privmsgs_type='1'))), 0) AS unread_pms FROM nuke_users u WHERE u.user_id = ?";
+					
+					if ($data = $this->db->fetchRow($query, array($this->id, $this->id))) {
+						#unset($data['user_password']); 
+						#unset($data['user_password_bcrypt']);
 						
-						if ($rs = $this->db->store_result()) {
+						$data['session_logged_in'] = true;
+						$data['session_start'] = $data['user_session_time'];
+						
+						if (!defined("RP_PLATFORM") || RP_PLATFORM != "API") {
 							$data['organisations'] = array(); 
 							
-							while ($row = $rs->fetch_assoc()) {
-								$data['organisations'][$row['organisation_id']] = $row;
+							$query = "SELECT o.* FROM organisation o, organisation_member om WHERE o.organisation_id = om.organisation_id AND om.user_id = ?"; 
+							
+							if ($orgs = $this->db->fetchAll($query, $this->id)) {
+								foreach ($orgs as $row) {
+									$data['organisations'][$row['organisation_id']] = $row;
+								}
+							}
+							
+							$query = "SELECT oc.* FROM oauth_consumer AS oc LEFT JOIN nuke_users AS u ON u.oauth_consumer_id = oc.id WHERE u.user_id = ?";
+							
+							if ($row = $this->db->fetchRow($query, $this->id)) {
+								$data['oauth_key']		= $row['consumer_key'];
+								$data['oauth_secret']	= $row['consumer_secret'];
 							}
 						}
 					}
-					
-					// OAuth consumer key
-					if ($this->db->more_results()) {
-						$this->db->next_result();
-						
-						if ($rs = $this->db->store_result()) {
-							$row = $rs->fetch_assoc(); 
-							$data['oauth_key']		= $row['consumer_key'];
-							$data['oauth_secret']	= $row['consumer_secret'];
-						}
-					}
-			
+				
 					if (RP_DEBUG) {
-						$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via sql_db in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+						$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via zend_db in " . round(microtime(true) - $debug_timer_start, 5) . "s";
 					}
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				// Zend_Db
-				
-				$query = "SELECT u.*, COALESCE(SUM((SELECT COUNT(*) FROM nuke_bbprivmsgs WHERE privmsgs_to_userid= ? AND (privmsgs_type='5' OR privmsgs_type='1'))), 0) AS unread_pms FROM nuke_users u WHERE u.user_id = ?";
-				
-				if ($data = $this->db->fetchRow($query, array($this->id, $this->id))) {
-					#unset($data['user_password']); 
-					#unset($data['user_password_bcrypt']);
-					
-					$data['session_logged_in'] = true;
-					$data['session_start'] = $data['user_session_time'];
-					
-					if (!defined("RP_PLATFORM") || RP_PLATFORM != "API") {
-						$data['organisations'] = array(); 
-						
-						$query = "SELECT o.* FROM organisation o, organisation_member om WHERE o.organisation_id = om.organisation_id AND om.user_id = ?"; 
-						
-						if ($orgs = $this->db->fetchAll($query, $this->id)) {
-							foreach ($orgs as $row) {
-								$data['organisations'][$row['organisation_id']] = $row;
-							}
-						}
-						
-						$query = "SELECT oc.* FROM oauth_consumer AS oc LEFT JOIN nuke_users AS u ON u.oauth_consumer_id = oc.id WHERE u.user_id = ?";
-						
-						if ($row = $this->db->fetchRow($query, $this->id)) {
-							$data['oauth_key']		= $row['consumer_key'];
-							$data['oauth_secret']	= $row['consumer_secret'];
-						}
-					}
-				}
-			
-				if (RP_DEBUG) {
-					$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via zend_db in " . round(microtime(true) - $debug_timer_start, 5) . "s";
 				}
 			}
 				
@@ -1117,9 +1162,9 @@
 				
 				/*
 				if (is_null($data['user_avatar_width']) || is_null($data['user_avatar_height'])) {
-					if (!$size = getMemcacheObject(sprintf("rp:user.avatar.sizes=%s", $data['user_avatar']))) {
+					if (!$size = $this->Memcached->fetch(sprintf("rp:user.avatar.sizes=%s", $data['user_avatar']))) {
 						if ($size = @getimagesize($data['user_avatar'])) {
-							setMemcacheObject(sprintf("rp:user.avatar.sizes=%s", $data['user_avatar']), $size, strtotime("+1 year"));
+							$this->Memcached->save(sprintf("rp:user.avatar.sizes=%s", $data['user_avatar']), $size, strtotime("+1 year"));
 						}
 					}
 					
@@ -1164,17 +1209,13 @@
 			}
 			
 			// Nice time
-			$data['user_lastvisit_nice'] = date($data['user_dateformat'], $data['user_lastvisit']); 
+			$data['user_lastvisit_nice'] = date($data['user_dateformat'], $data['user_lastvisit']);
 			
 			/**
 			 * Start setting the class vars
 			 */
 			
 			$this->getGroups();
-			
-			if (!$cached) {
-				$this->Redis->save($this->mckey, $data, strtotime("+6 hours"));
-			}
 			
 			$this->provider 	= isset($data['provider']) ? $data['provider'] : "railpage";
 			$this->preferences	= json_decode($data['user_opts']); 
@@ -1299,7 +1340,7 @@
 			 * Update the user registration date if required
 			 */
 		 
-	 		if (empty($data['user_regdate_nice'])) {
+	 		if (empty($data['user_regdate_nice']) || $data['user_regdate_nice'] == "0000-00-00") {
 	 			$datetime = new DateTime($data['user_regdate']);
 	 			
 	 			$data['user_regdate_nice'] = $datetime->format("Y-m-d");
@@ -1307,6 +1348,8 @@
 	 			
 	 			$this->db->update("nuke_users", $update, array("user_id = ?" => $this->id));
 	 		}
+			
+			$this->RegistrationDate = new DateTime($data['user_regdate_nice']);
 			
 			/**
 			 * Fetch the last IP address from the login logs
@@ -1369,6 +1412,10 @@
 				$this->preferences->forums = new stdClass;
 				$this->preferences->forums->hideinternational = false;
 				$this->commit(true);
+			}
+			
+			if (!$cached) {
+				$this->Redis->save($this->mckey, $data, strtotime("+6 hours"));
 			}
 			
 			return true;
@@ -1444,8 +1491,20 @@
 				return false;
 			}
 			
-			if (!empty($this->mckey) && getMemcacheObject($this->mckey)) {
-				removeMemcacheObject($this->mckey);
+			if (!empty($this->mckey) && $this->Memcached->contains($this->mckey)) {
+				$this->Memcached->delete($this->mckey);
+				
+				try {
+					$this->Redis->delete(sprintf("railpage:users.user=%d", $this->id));
+				} catch (Exception $e) {
+					// throw it away
+				}
+				
+				try {
+					$this->Redis->delete($this->mckey);
+				} catch (Exception $e) {
+					// throw it away
+				}
 			}
 			
 			$dataArray = array();
@@ -1552,6 +1611,10 @@
 			
 			$dataArray['facebook_user_id'] = $this->facebook_user_id;
 			$dataArray['reported_to_sfs'] = $this->reported_to_sfs;
+			
+			if ($this->RegistrationDate instanceof DateTime) {
+				$dataArray['user_regdate_nice'] = $this->RegistrationDate->format("Y-m-d H:i:s");
+			}
 			
 			if ($this->db instanceof \sql_db) {
 				// Escape values for SQL
@@ -1806,9 +1869,18 @@
 						$this->mckey = sprintf("railpage:user_id=%d", $user_id);
 					}
 					
-					if ($rs = getMemcacheObject($this->mckey)) {
+					if (is_object($this->Redis)) {
+						$this->Redis->delete(sprintf("railpage:users.user=%d", $this->id));
+						
+						$rs = $this->Redis->fetch($this->mckey); 
 						$rs['user_lastvisit'] = $time;
-						setMemcacheObject($this->mckey, $rs);
+						
+						$this->Redis->save($this->mckey, $rs);
+					}
+					
+					if ($rs = $this->Memcached->fetch($this->mckey)) {
+						$rs['user_lastvisit'] = $time;
+						$this->Memcached->save($this->mckey, $rs);
 					}
 				}
 			}
@@ -1864,10 +1936,11 @@
 							$this->mckey = sprintf("railpage:user_id=%d", $user_id);
 						}
 						
-						if ($rs = getMemcacheObject($this->mckey)) {
+						if ($rs = $this->Memcached->fetch($this->mckey)) {
 							$rs['user_session_time'] = $data['user_session_time'];
 							$rs['last_session_ip'] = $data['last_session_ip'];
-							setMemcacheObject($this->mckey, $rs);
+							$this->Memcached->save($this->mckey, $rs);
+							$this->Redis->delete($this->mckey);
 						}
 						
 						if (RP_DEBUG) {
@@ -2086,6 +2159,7 @@
 		
 		public function tryAutoLogin() {
 			if (empty($_COOKIE['rp_autologin'])) {
+				$this->addNote("Autologin attempted but no autologin cookie was found");
 				return false;
 			} else {
 				$cookie = explode(":", base64_decode($_COOKIE['rp_autologin'])); 
@@ -2155,6 +2229,8 @@
 
 					}
 				}
+				
+				$this->addNote("Autologin attempted but an invalid autologin cookie was found");
 				
 				return false;
 			}
@@ -2261,6 +2337,7 @@
 				$dataArray['login_time'] = time(); 
 				$dataArray['login_ip'] = $this->db->real_escape_string($client_addr); 
 				$dataArray['login_hostname'] = $this->db->real_escape_string($_SERVER['REMOTE_HOST']);
+				$dataArray['server'] = $this->db->real_escape_string($_SERVER['HTTP_HOST']);
 				
 				$query = $this->db->buildQuery($dataArray, "log_logins"); 
 				
@@ -2275,7 +2352,8 @@
 					"user_id" => $this->id,
 					"login_time" => time(),
 					"login_ip" => $client_addr,
-					"login_hostname" => $_SERVER['REMOTE_HOST']
+					"login_hostname" => $_SERVER['REMOTE_HOST'],
+					"server" => $_SERVER['HTTP_HOST']
 				);
 				
 				if ($data['login_ip'] == $data['login_hostname']) {
@@ -2539,7 +2617,7 @@
 			if (isset($this->Guest) && $this->Guest instanceof User) {
 				$forum_post_filter_mckey = sprintf("forum.post.filter.user:%d", $this->Guest->id);
 				
-				if (!$forum_post_filter = getMemcacheObject($forum_post_filter_mckey)) {
+				if (!$forum_post_filter = $this->Memcached->fetch($forum_post_filter_mckey)) {
 					$Forums = new Forums;
 					$Index = new Index;
 					
@@ -2563,7 +2641,7 @@
 						WHERE l.key = 'post_id' 
 						" . $forum_filter . ")";
 					
-					setMemcacheObject($forum_post_filter_mckey, $forum_post_filter, strtotime("+1 week"));
+					$this->Memcached->save($forum_post_filter_mckey, $forum_post_filter, strtotime("+1 week"));
 				}
 			} else {
 				$forum_post_filter = "";
@@ -3267,6 +3345,12 @@
 				throw new Exception("Cannot set password - no password was provided");
 			}
 			
+			try {
+				$this->Redis->delete($this->mckey);
+			} catch (Exception $e) {
+				// Throw it away, don't care
+			}
+			
 			/**
 			 * Check to make sure it's not a shitty password
 			 */
@@ -3490,6 +3574,31 @@
 		
 		public function isActive() {
 			return (boolean) $this->active;
+		}
+		
+		/**
+		 * Check if this user is pending activation
+		 * @since Version 3.9.1
+		 * @return boolean
+		 */
+		
+		public function getUserAccountStatus() {
+			if ((boolean) $this->active === true) {
+				return self::STATUS_ACTIVE;
+			}
+			
+			$BanControl = new BanControl;
+			$BanControl->loadUsers(true); 
+			
+			if (!empty($BanControl->lookupUser($this->id))) {
+				return self::STATUS_BANNED; 
+			}
+			
+			if ((boolean) $this->active === false) {
+				return self::STATUS_UNACTIVATED;
+			}
+			
+			throw new Exception("Cannot determine the status of this user account");
 		}
 		
 		/**
@@ -3736,5 +3845,73 @@
 			
 			return $this;
 		}
+		
+		/**
+		 * Find a list of duplicate usernames
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function findDuplicates() {
+			$query = "SELECT 
+	u.user_id, u.username, u.user_active, u.user_regdate, u.user_regdate_nice, u.user_email, u.user_lastvisit, 
+	(SELECT COUNT(p.post_id) AS num_posts FROM nuke_bbposts AS p WHERE p.poster_id = u.user_id) AS num_posts,
+	(SELECT MAX(pt.post_time) AS post_time FROM nuke_bbposts AS pt WHERE pt.poster_id = u.user_id) AS last_post_time
+	FROM nuke_users AS u 
+	WHERE u.username = ? OR u.user_email = ?";
+			
+			$params = array(
+				$this->username,
+				$this->contact_email
+			);
+			
+			return $this->db->fetchAll($query, $params);
+		}
+		
+		/**
+		 * Validate user avatar
+		 * @since Version 3.9.1
+		 * @return \Railpage\Users\User
+		 * @param boolean $force
+		 */
+		
+		public function validateAvatar($force = false) {
+			
+			if (!empty($this->avatar)) {
+				if ($force || (empty($this->avatar_width) || empty($this->avatar_height) || $this->avatar_width == 0 || $this->avatar_height == 0)) {
+					if ($size = @getimagesize($this->avatar)) {
+						
+						$Config = AppCore::getConfig(); 
+						
+						if ($size[0] >= $Config->AvatarMaxWidth || $size[1] >= $Config->AvatarMaxHeight) {
+							$this->avatar = sprintf("https://static.railpage.com.au/image_resize.php?w=%d&h=%d&image=%s", $Config->AvatarMaxWidth, $Config->AvatarMaxHeight, urlencode($this->avatar));
+							$this->avatar_filename = $this->avatar;
+							
+							if ($size = getimagesize($this->avatar)) {
+								$this->avatar_width = $size[0];
+								$this->avatar_height = $size[1];
+							} else {
+								$this->avatar_width = $Config->AvatarMaxWidth;
+								$this->avatar_height = $Config->AvatarMaxHeight; 
+							}
+						} else {
+							$this->avatar_width = $size[0];
+							$this->avatar_height = $size[1];
+							$this->avatar_filename = $this->avatar;
+						}
+						
+						$this->commit(true);
+						
+						return $this;
+					}
+				}
+			}
+			
+			$this->avatar = function_exists("format_avatar") ? format_avatar("http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png", 120, 120) : "http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png";
+			$this->avatar_filename = function_exists("format_avatar") ? format_avatar("http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png", 120, 120) : "http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png";
+			$this->avatar_width = 120;
+			$this->avatar_height = 120;
+			
+			return $this;
+		}
 	}
-?>

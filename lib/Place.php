@@ -285,29 +285,6 @@
 				}
 			}
 			
-			/*
-			$providers = array(
-				"AU" => array(
-					"PTV", 
-					"TFNSW",
-					"TransPerth"
-				)
-			);
-			
-			$places = array();
-			
-			foreach ($providers as $country => $data) {
-				foreach ($data as $provider) {
-					$class = "Railpage\\GTFS\\$country\\$provider\\$provider";
-					$GTFS = new $class;
-					
-					$places[$country][$GTFS->provider] = $GTFS->StopsNearLocation($this->lat, $this->lon);
-				}
-			}
-			*/
-			
-			
-			
 			return $places;
 		}
 		
@@ -320,7 +297,7 @@
 		public function getAddress() {
 			$mckey = sprintf("railpage.place.address.lat=%s&lon=%s", $this->lat, $this->lon);
 			
-			if ($address = getMemcacheObject($mckey)) {
+			if ($address = $this->Redis->fetch($mckey)) {
 				return $address; 
 			} else {
 				$url = sprintf("https://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s&sensor=false", $this->lat, $this->lon);
@@ -351,7 +328,7 @@
 					}
 				}
 				
-				setMemcacheObject($mckey, $return, strtotime("+12 hours"));
+				$this->Redis->save($mckey, $return, strtotime("+12 hours"));
 				
 				return $return;
 			}
@@ -367,6 +344,30 @@
 		public function getWeatherForecast($days = 14) {
 			$weather = false;
 			
+			/**
+			 * Check if we've been given a DateTime object (a date) or a date range (eg 14 days) to work wtih
+			 */
+			
+			$datekey = $days instanceof DateTime ? $days->format("Y-m-d") : $days;
+			
+			/**
+			 * Try to get the weather from Memcached first
+			 */
+			
+			$mckey = sprintf("railpage:lat=%s;lon=%s;weather;days=%s", $this->lat, $this->lon, $datekey);
+			
+			if ($weather = $this->Redis->fetch($mckey)) {
+				return $weather;
+			}
+			
+			/**
+			 * Restrict our maximum date range to 14 days
+			 */
+			
+			if (is_int($days) && $days > 14) {
+				$days = 14;
+			}
+			
 			if ($days instanceof DateTime) {
 				$Date = $days;
 				$url = "http://api.openweathermap.org/data/2.5/forecast/daily?lat=" . $this->lat . "&lon=" . $this->lon . "&units=metric&cnt=14";
@@ -381,7 +382,17 @@
 				$url = "http://api.openweathermap.org/data/2.5/forecast/daily?lat=" . $this->lat . "&lon=" . $this->lon . "&units=metric&cnt=" . $days;
 			}
 			
-			$response = $this->GuzzleClient->get($url);
+			/**
+			 * Try to get the weather forecast from openweathermap
+			 */
+			
+			try {
+				$response = $this->GuzzleClient->get($url);
+			} catch (\GuzzleHTTP\RequestException $e) {
+				return false;
+			} catch (Exception $e) {
+				return false;
+			}
 				
 			if ($response->getStatusCode() == 200) {
 				$forecast = json_decode($response->getBody(), true);
@@ -405,8 +416,11 @@
 			}
 			
 			if (isset($Date) && $Date instanceof DateTime) {
+				$this->Redis->save($mckey, $weather[$Date->format("Y-m-d")], strtotime("+24 hours")); 
 				return $weather[$Date->format("Y-m-d")];
 			}
+			
+			$this->Redis->save($mckey, $weather, strtotime("+24 hours"));
 			
 			return $weather;
 		}
@@ -428,9 +442,10 @@
 			$return = array();
 			
 			$mckey = "railpage:woe=" . $lookup;
-			#deleteMemcacheObject($mckey);
 			
-			if (!$return = getMemcacheObject($mckey)) {
+			$Redis = AppCore::getRedis(); 
+			
+			if (!$return = $Redis->fetch($mckey)) {
 				global $RailpageConfig;
 				
 				if (preg_match("@[a-zA-Z]+@", $lookup) || strpos($lookup, ",")) {
@@ -488,7 +503,7 @@
 			}
 			
 			if ($return !== false) {
-				setMemcacheObject($mckey, $return, strtotime("+2 months")); 
+				$Redis->save($mckey, $return, strtotime("+2 months")); 
 			}
 			
 			return $return;

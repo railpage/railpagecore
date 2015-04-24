@@ -330,12 +330,12 @@
 					// Assume Zend_DB
 					$slug_mckey = sprintf("railpage:loco.id;fromslug=%s;v2", $class_id_or_slug);
 					
-					if ($mcresult = getMemcacheObject($slug_mckey)) {
+					if ($mcresult = $this->Memcached->fetch($slug_mckey)) {
 						$class_id_or_slug = $mcresult;
 					} else {
 						$class_id_or_slug = $this->db->fetchOne("SELECT id FROM loco_class WHERE slug = ?", $class_id_or_slug); 
 						
-						setMemcacheObject($slug_mckey, $class_id_or_slug, strtotime("+48 hours"));
+						$this->Memcached->save($slug_mckey, $class_id_or_slug, strtotime("+48 hours"));
 					}
 				}
 				
@@ -349,7 +349,7 @@
 						$this->id = $row['loco_id'];
 					}
 				} else {
-					if (!$this->id = getMemcacheObject(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id_or_slug, $number))) {
+					if (!$this->id = $this->Memcached->fetch(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id_or_slug, $number))) {
 						
 						$params = array(
 							$class_id_or_slug,
@@ -369,7 +369,7 @@
 						
 						$this->id = $this->db->fetchOne($query, $params);
 						
-						setMemcacheObject(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id_or_slug, $number), $this->id, strtotime("+1 month"));
+						$this->Memcached->save(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id_or_slug, $number), $this->id, strtotime("+1 month"));
 					}
 				}
 			} else {
@@ -402,7 +402,7 @@
 			$this->mckey = sprintf("railpage:locos.loco_id=%d", $this->id);
 			#deleteMemcacheObject($this->mckey);
 			
-			if ($row = getMemcacheObject($this->mckey)) {
+			if ($row = $this->Memcached->fetch($this->mckey)) {
 				// Do nothing
 			} elseif ($this->db instanceof \sql_db) {
 				$query = "SELECT l.*, s.name AS loco_status, ow.operator_name AS owner_name, op.operator_name AS operator_name
@@ -415,7 +415,7 @@
 				if ($rs = $this->db->query($query)) {
 					$row = $rs->fetch_assoc(); 
 					
-					setMemcacheObject($this->mckey, $row, strtotime("+1 week")); 
+					$this->Memcached->save($this->mckey, $row, strtotime("+1 week")); 
 				}
 			} else {
 				if (RP_DEBUG) {
@@ -440,7 +440,7 @@
 					}
 				}
 					
-				setMemcacheObject($this->mckey, $row, strtotime("+1 month")); 
+				$this->Memcached->save($this->mckey, $row, strtotime("+1 month")); 
 			}
 			
 			if (isset($row) && is_array($row)) {
@@ -474,6 +474,7 @@
 				$this->url = new Url(strtolower($this->makeLocoURL($this->Class->slug, $this->number)));
 				$this->url->edit = sprintf("%s?mode=loco.edit&id=%d", $this->Module->url, $this->id);
 				$this->url->sightings = sprintf("%s/sightings", $this->url->url);
+				$this->url->photos = sprintf("%s/photos", $this->url->url);
 				$this->fwlink = $this->url->short;
 				
 				/**
@@ -487,7 +488,7 @@
 				}
 				
 				// Fetch the gauge data
-				if ($this->gauge = getMemcacheObject(sprintf("railpage:locos.gauge_id=%d", $row['loco_gauge_id']))) {
+				if ($this->gauge = $this->Memcached->fetch(sprintf("railpage:locos.gauge_id=%d", $row['loco_gauge_id']))) {
 					// Do nothing
 				} elseif ($this->db instanceof \sql_db) {
 					$query = "SELECT * FROM loco_gauge WHERE gauge_id = '".$this->db->real_escape_string($row['loco_gauge_id'])."'";
@@ -495,14 +496,14 @@
 					if ($rs = $this->db->query($query)) {
 						$this->gauge = $rs->fetch_assoc(); 
 						
-						$this->setCache("rp-locos-gauge-" . $row['loco_gauge_id'], $this->gauge);
+						$this->Memcached->save("rp-locos-gauge-" . $row['loco_gauge_id'], $this->gauge);
 					}
 				} else {
 					$query = "SELECT * FROM loco_gauge WHERE gauge_id = ?";
 					
 					$this->gauge = $this->db->fetchRow($query, $row['loco_gauge_id']);
 					
-					$this->setCache("railpage:locos.gauge_id=" . $row['loco_gauge_id'], $this->gauge, strtotime("+2 months"));
+					$this->Memcached->save("railpage:locos.gauge_id=" . $row['loco_gauge_id'], $this->gauge, strtotime("+2 months"));
 				}
 				
 				/**
@@ -511,7 +512,7 @@
 				
 				if (isset($row['asset_id']) && $row['asset_id'] > 0) {
 					try {
-						$this->Asset = new \Railpage\Assets\Asset($row['asset_id']);
+						$this->Asset = new Asset($row['asset_id']);
 					} catch (Exception $e) {
 						global $Error; 
 						$Error->save($e); 
@@ -1421,7 +1422,7 @@
 			if (is_object($f)) {
 				$mckey = "railpage:locos.liveries.loco_id=" . $this->id; 
 				
-				if ($result = getMemcacheObject($mckey)) {
+				if ($result = $this->Memcached->fetch($mckey)) {
 					return $result;
 				} else {
 					// Get photos of this loco, including tags

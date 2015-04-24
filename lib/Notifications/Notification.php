@@ -328,7 +328,7 @@
 				"id" => $this->id,
 				"subject" => $this->subject,
 				"body" => $this->body,
-				"response" => $this->response
+				"response" => empty($this->response) ? $this->response : json_decode(json_encode($this->response), true)
 			);
 			
 			if ($this->Author instanceof User) {
@@ -414,7 +414,7 @@
 				throw new Exception("You must specify a username when adding a recipient to a notification");
 			}
 			
-			if (!$destination) {
+			if (!$destination || empty($destination)) {
 				throw new Exception("You must specify a destination (eg email address) when adding a recipient to a notification");
 			}
 			
