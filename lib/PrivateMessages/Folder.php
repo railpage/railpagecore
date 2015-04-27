@@ -57,33 +57,33 @@
 		 * @since Version 3.3
 		 * @version 3.3
 		 * @return array
-		 * @param object $User
 		 * @param int $page
 		 * @param int $items_per_page
 		 */
 		
-		public function getContents($User = false, $page = 1, $items_per_page = 25) {
+		public function getContents($page = 1, $items_per_page = 25) {
 			if (empty($this->folder)) {
 				throw new Exception("Cannot get folder contents - no folder specified"); 
 			} 
 			
-			if (!$User || !is_object($User)) {
+			if (!$this->User instanceof User) {
 				throw new Exception("Cannot get folder contents - User object not provided"); 
 			}
 			
-			if (!$User->id) {
-				throw new Exception("No user ID available"); 
-			}
-			
-			if (!$User->enable_privmsg) {
+			if (!$this->User->enable_privmsg) {
 				throw new Exception("Private messages not available to this user"); 
+			}
+	 
+			if (RP_DEBUG) {
+				global $site_debug;
+				$debug_timer_start_z = microtime(true);
 			}
 			
 			// Store the user object
-			$this->user = $User;
+			#$this->user = $User;
 			
 			// Fetch message IDs that have been "deleted" by this user
-			$deleted = $this->getDeleted($User->id); 
+			$deleted = $this->getDeleted($this->User->id); 
 			
 			if (count($deleted)) {
 				$exclude_sql = " AND privmsgs_id NOT IN ('".implode("', '", $deleted)."') ";
@@ -92,13 +92,13 @@
 			}
 			
 			if ($this->folder == PM_INBOX) {
-				$pm_folder_sql = "pm.privmsgs_to_userid = ".$this->user->id." AND (pm.privmsgs_type = ".PRIVMSGS_READ_MAIL." OR pm.privmsgs_type = ".PRIVMSGS_NEW_MAIL." OR pm.privmsgs_type = ".PRIVMSGS_UNREAD_MAIL." )";
+				$pm_folder_sql = "pm.privmsgs_to_userid = ".$this->User->id." AND (pm.privmsgs_type = ".PRIVMSGS_READ_MAIL." OR pm.privmsgs_type = ".PRIVMSGS_NEW_MAIL." OR pm.privmsgs_type = ".PRIVMSGS_UNREAD_MAIL." )";
 			} elseif ($this->folder == PM_OUTBOX) {
-				$pm_folder_sql = "pm.privmsgs_from_userid = ".$this->user->id." AND (pm.privmsgs_type = ".PRIVMSGS_NEW_MAIL." OR pm.privmsgs_type = ".PRIVMSGS_UNREAD_MAIL.")"; 
+				$pm_folder_sql = "pm.privmsgs_from_userid = ".$this->User->id." AND (pm.privmsgs_type = ".PRIVMSGS_NEW_MAIL." OR pm.privmsgs_type = ".PRIVMSGS_UNREAD_MAIL.")"; 
 			} elseif ($this->folder == PM_SENTBOX) {
-				$pm_folder_sql = "pm.privmsgs_from_userid = ".$this->user->id." AND (pm.privmsgs_type = ".PRIVMSGS_READ_MAIL." OR pm.privmsgs_type = ".PRIVMSGS_SENT_MAIL.")"; 
+				$pm_folder_sql = "pm.privmsgs_from_userid = ".$this->User->id." AND (pm.privmsgs_type = ".PRIVMSGS_READ_MAIL." OR pm.privmsgs_type = ".PRIVMSGS_SENT_MAIL.")"; 
 			} elseif ($this->folder == PM_SAVEBOX) {
-				$pm_folder_sql = "((pm.privmsgs_to_userid = ".$this->user->id." AND pm.privmsgs_type = ".PRIVMSGS_SAVED_IN_MAIL.") OR (pm.privmsgs_from_userid = ".$this->user->id." AND pm.privmsgs_type = ".PRIVMSGS_SAVED_OUT_MAIL."))";
+				$pm_folder_sql = "((pm.privmsgs_to_userid = ".$this->User->id." AND pm.privmsgs_type = ".PRIVMSGS_SAVED_IN_MAIL.") OR (pm.privmsgs_from_userid = ".$this->User->id." AND pm.privmsgs_type = ".PRIVMSGS_SAVED_OUT_MAIL."))";
 			}
 			
 			// Which "page" is this?
@@ -109,77 +109,53 @@
 			}
 			
 			// Done checking - get the PMs - sort by date ASC because the uasort() function will fix them up properly
-			$query = "SELECT pm.*, pmt.*, ufrom.username AS username_from, ufrom.user_id AS user_id_from, ufrom.user_avatar AS user_avatar_from, uto.username AS username_to, uto.user_id AS user_id_from, uto.user_avatar AS user_avatar_to
+			$query = "SELECT pm.*, pmt.*, ufrom.username AS username_from, ufrom.user_id AS user_id_from, ufrom.user_avatar AS user_avatar_from, 
+							uto.username AS username_to, uto.user_id AS user_id_from, uto.user_avatar AS user_avatar_to
 						FROM nuke_bbprivmsgs AS pm
-						LEFT JOIN nuke_bbprivmsgs_text AS pmt ON pm.privmsgs_id = pmt.privmsgs_text_id
-						LEFT JOIN nuke_users AS ufrom ON ufrom.user_id = privmsgs_from_userid
-						LEFT JOIN nuke_users AS uto ON uto.user_id = privmsgs_to_userid
+							INNER JOIN nuke_bbprivmsgs_text AS pmt ON pm.privmsgs_id = pmt.privmsgs_text_id
+							INNER JOIN nuke_users AS ufrom ON ufrom.user_id = privmsgs_from_userid
+							INNER JOIN nuke_users AS uto ON uto.user_id = privmsgs_to_userid
 						WHERE ".$pm_folder_sql."
-						".$exclude_sql."
-						ORDER BY pm.privmsgs_date ASC";
+							".$exclude_sql."";
 						#LIMIT ".$start.", ".$this->db->real_escape_string($items_per_page);
 			
-			#echo $query;
+			#echo "\n\n" . $query . "\n\n";
 			
-			if ($this->db instanceof \sql_db) {
+			$mckey = sprintf("railpage:privatemessages;user_id=%d;folder=%s", $this->User->id, $this->folder);
+			$cachepms = false; // For the future
+			
+			if ($cachepms && $result = $this->Redis->fetch($mckey)) {
+				// Do nothing
+			} elseif ($this->db instanceof \sql_db) {
 				if ($rs = $this->db->query($query)) {
-					#$total = $this->db->query("SELECT FOUND_ROWS() AS total"); 
-					#$total = $total->fetch_assoc(); 
-					
-					$return = array(); 
-					$return['stat'] = "ok";
-					#$return['total'] = $total['total']; 
-					$return['page'] = $page; 
-					$return['perpage'] = $items_per_page; 
-					$return['messages'] = array(); 
-					
 					while ($row = $rs->fetch_assoc()) {
-						// Fix up the sodding non-UTF8 characters
-						$row['privmsgs_text'] = convert_to_utf8($row['privmsgs_text']);
-						$row['privmsgs_subject'] = str_replace("Re: ", "", $row['privmsgs_subject']);
-						
-						if ($row['privmsgs_from_userid'] == $this->user->id) {
-							$pm_from = $row['privmsgs_to_userid'];
-						} else {
-							$pm_from = $row['privmsgs_from_userid'];
-						}
-						
-						$id = md5($row['privmsgs_subject'].$pm_from);
-						
-						if (function_exists("format_avatar")) {
-							$row['user_avatar_from'] = format_avatar($row['user_avatar_from'], 40, 40); 
-							$row['user_avatar_to'] = format_avatar($row['user_avatar_to'], 40, 40); 
-						}
-						
-						$return['messages'][$id] = $row;
+						$result[] = $row;
 					}
-					
-					// Sort by loco number
-					uasort($return['messages'], function($a, $b) {
-						return strnatcmp($b['privmsgs_date'], $a['privmsgs_date']); 
-					});
 				} else {
 					throw new Exception($this->db->error); 
 					$return['stat'] = "error";
 					$return['error'] = $this->db->error; 
 				}
-				
-				$return['total']	= count($return['messages']);
-				$return['messages'] = array_slice($return['messages'], $start, $items_per_page);
-				
-				return $return;
 			} else {
+				$result = $this->db->fetchAll($query);
+				
+				if ($cachepms) {
+					$this->Redis->save($mckey, $result, strtotime("+12 hours"));
+				}
+			}
+			
+			if (isset($result) && count($result)) {
 				$return = array(); 
 				$return['stat'] = "ok";
 				$return['page'] = $page; 
 				$return['perpage'] = $items_per_page; 
 				$return['messages'] = array(); 
 				
-				foreach ($this->db->fetchAll($query) as $row) {
-					$row['privmsgs_text'] = convert_to_utf8($row['privmsgs_text']);
+				foreach ($result as $row) {
+					$row['privmsgs_text'] = function_exists("convert_to_utf8") ? convert_to_utf8($row['privmsgs_text']) : $row['privmsgs_text'];
 					$row['privmsgs_subject'] = str_replace("Re: ", "", $row['privmsgs_subject']);
 					
-					if ($row['privmsgs_from_userid'] == $this->user->id) {
+					if ($row['privmsgs_from_userid'] == $this->User->id) {
 						$pm_from = $row['privmsgs_to_userid'];
 					} else {
 						$pm_from = $row['privmsgs_from_userid'];
@@ -187,35 +163,37 @@
 					
 					$id = md5($row['privmsgs_subject'].$pm_from);
 					
-					if (function_exists("format_avatar")) {
-						//$row['user_avatar_from'] = @format_avatar($row['user_avatar_from'], 40, 40); 
-						//$row['user_avatar_to'] = @format_avatar($row['user_avatar_to'], 40, 40); 
-					}
-					
 					$return['messages'][$id] = $row;				
 				}
-					
-				// Sort by loco number
-				uasort($return['messages'], function($a, $b) {
-					return strnatcmp($b['privmsgs_date'], $a['privmsgs_date']); 
-				});
-				
-				$return['total']	= count($return['messages']);
-				$return['messages'] = array_slice($return['messages'], $start, $items_per_page);
-				
-				/**
-				 * Process these after the slice otherwise we're fetching avatars for every single message sent to/from this user
-				 */
-				
-				foreach ($return['messages'] as $id => $row) {
-					$row['user_avatar_from'] = @format_avatar($row['user_avatar_from'], 40, 40); 
-					$row['user_avatar_to'] = @format_avatar($row['user_avatar_to'], 40, 40); 
-					
-					$return['messages'][$id] = $row;
-				}
-				
-				return $return;
 			}
+					
+			/**
+			 * Sort by PM date
+			 */
+			
+			uasort($return['messages'], function($a, $b) {
+				return strnatcmp($b['privmsgs_date'], $a['privmsgs_date']); 
+			});
+			
+			$return['total']	= count($return['messages']);
+			$return['messages'] = array_slice($return['messages'], $start, $items_per_page);
+				
+			/**
+			 * Process these after the slice otherwise we're fetching avatars for every single message sent to/from this user
+			 */
+			
+			foreach ($return['messages'] as $id => $row) {
+				$row['user_avatar_from'] = function_exists("format_avatar") ? format_avatar($row['user_avatar_from'], 40, 40) : $row['user_avatar_from']; 
+				$row['user_avatar_to'] = function_exists("format_avatar") ? format_avatar($row['user_avatar_to'], 40, 40) : $row['user_avatar_to']; 
+				
+				$return['messages'][$id] = $row;
+			}
+			
+			if (RP_DEBUG) {
+				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->folder . ") instantiated in " . round(microtime(true) - $debug_timer_start_z, 5) . "s";
+			}
+			
+			return $return;
 		}
 		
 		/**

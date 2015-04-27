@@ -890,5 +890,232 @@
 			
 			return $this->db->fetchAll($query, $limit);
 		}
+		
+		/**
+		 * Get forums that this user is allowed to x
+		 * @since Version 3.9.1
+		 * @return array
+		 * @param \Railpage\Users\User $User
+		 */
+		
+		public function getAllowedForumsIDsForUser(User $User, $permission = self::AUTH_ALL) {
+			$acl = $this->setUser($User)->getACL(); 
+			
+			$ids = array(); 
+			$allforums = $this->getAllForums();
+			
+			foreach ($allforums['categories'] as $category) {
+				foreach ($category['forums'] as $forum) {
+					if ($acl->isAllowed("forums_viewer", sprintf("railpage.forums.forum:%d", $forum['id']), $permission)) {
+						$ids[] = $forum['id'];
+					}
+				}
+			}
+			
+			return $ids;
+		}
+		
+		/**
+		 * Get unread forum posts for the given user
+		 * @since Version 3.9.1
+		 * @param \Railpage\Users\User $User
+		 * @return array
+		 */
+		
+		public function getUnreadForumThreadsForUser(User $User, $offset = 0, $items_per_page = false) {
+			$forums = $this->getAllowedForumsIDsForUser($User, "auth_read");
+			
+			if ($items_per_page === false) {
+				$items_per_page = $User->items_per_page;
+			}
+			
+			/**
+			 * Get read forums/threads from Memcached
+			 */
+			
+			try {
+				$tracking_topics = self::getReadItemsForUser($User);
+				$tracking_forums = self::getReadItemsForUser($User, "f");
+				
+				#printArray($tracking_topics);
+				#printArray($tracking_forums);
+			} catch (Exception $e) {
+				// Throw it away
+			}
+			
+			$query = "
+				SELECT 
+					SQL_CALC_FOUND_ROWS
+					plast.post_id, plast.post_time, plast.poster_id AS user_id, u.username, 
+					t.topic_id, t.topic_title, t.url_slug, t.forum_id, f.forum_name
+				FROM 
+					nuke_bbposts AS plast
+					LEFT JOIN nuke_bbtopics AS t ON plast.post_id = t.topic_last_post_id
+					LEFT JOIN nuke_bbforums AS f ON t.forum_id = f.forum_id
+					LEFT JOIN nuke_users AS u ON u.user_id = plast.poster_id
+				WHERE 
+					plast.post_time >= ?
+					AND t.forum_id IN (" . implode(', ', $forums) . ")
+				ORDER BY plast.post_time DESC
+				LIMIT ?, ?";
+			
+			$params = array($User->lastvisit, $offset, $items_per_page); 
+			
+			$posts = $this->db->fetchAll($query, $params); 
+			return array(
+				"offset" => $offset,
+				"items_per_page" => $items_per_page,
+				"total" => $this->db->fetchOne("SELECT FOUND_ROWS() AS total"),
+				"threads" => $posts
+			);
+			
+			#printArray($posts);die;
+			
+			return $posts;
+			
+		}
+	
+		/** 
+		 * Unserialise an array. Extracted from functions.php, phpBB 2.0 stuff
+		 * @since Version 3.9.1
+		 * @param string $str
+		 * @return array
+		 */
+		
+		static public function unserializeArray($str) {
+			$array = array();
+			$list = explode('|', $str);
+			
+			for ($i=0; $i<count($list); $i++) {
+				$row = explode('=', $list[$i], 2);
+				
+				if (count($row) == 2) {
+					$array[$row[0]] = $row[1];
+				}
+			}
+			
+			return $array;
+		}
+		
+		/** 
+		 * Serialise an array. Extracted from functions.php, phpBB 2.0 stuff
+		 * @since Version 3.9.1
+		 * @param array $array
+		 * @return string
+		 */
+		
+		static public function serialize_array($array) {
+			if (!is_array($array)) {
+				return '';
+			}
+			
+			$str = '';
+			
+			foreach($array as $var => $value) {
+				if ($str) {
+					$str .= '|';
+				}
+				$str .= $var . '=' . str_replace('|', '', $value);
+			}
+			return $str;
+		}
+		
+		/**
+		 * Get read threads/forums for a given user
+		 * @since Version 3.9.1
+		 * @param \Railpage\Users\User $User
+		 * @return array
+		 */
+		
+		static public function getReadItemsForUser(User $User, $type = "t") {
+			
+			/**
+			 * Not logged in - no threads/forums
+			 */
+			
+			if ($User->id == 0) {
+				return array(); 
+			}
+			
+			/**
+			 * Find the base name of this cookie/memcached object
+			 */
+			
+			$cookiename = sprintf("%s_%s", "phpbb2mysqlrp2", $type);
+			
+			/**
+			 * Try and get it from Memcached
+			 */
+			
+			try {
+				$key = sprintf("%s:%d", $cookiename, $User->id);
+				$Memcached = AppCore::getMemcached(); 
+				
+				if ($result = $Memcached->fetch($key)) {
+					if (!is_array($result)) {
+						$result = self::unserializeArray($result);
+					}
+					
+					if (!is_array($result)) {
+						return array(); 
+					}
+					
+					return $result;
+				}
+			} catch (Exception $e) {
+				// throw it away
+			}
+			
+			/**
+			 * Fall back to cookies
+			 */
+			
+			if (isset($_COOKIE[$cookiename])) {
+				$cookiedata = $_COOKIE[$cookiename];
+				$data = self::unserializeArray($cookiedata);
+				
+				if (count($data)) {
+					self::saveReadItemsForUser($User, $data, $type);
+						
+					return $data;
+				}
+			}
+			
+			/**
+			 * Couldn't find shit
+			 */
+			
+			return array(); 
+		}
+		
+		/**
+		 * Save read threads/forums for a given user
+		 * @since Version 3.9.1
+		 * @param \Railpage\Users\User $User
+		 * @param array $items
+		 * @param string $type
+		 */
+		
+		static public function saveReadItemsForUser(User $User, $items, $type = "t") {
+			
+			$cookiename = sprintf("%s_%s", "phpbb2mysqlrp2", $type);
+			
+			/**
+			 * Try and get it from Memcached
+			 */
+			
+			try {
+				$key = sprintf("%s:%d", $cookiename, $User->id);
+				$Memcached = AppCore::getMemcached(); 
+				$Memcached->save($key, $items, strtotime("+1 year"));
+			} catch (Exception $e) {
+				// Throw it away
+			}
+			
+			/**
+			 * Save it in a cookie just for good luck
+			 */
+			
+			setcookie($cookiename, self::serialize_array($items), strtotime("+1 year"), RP_AUTOLOGIN_PATH, RP_AUTOLOGIN_DOMAIN, RP_SSL_ENABLED, true); 
+		}
 	}
-?>

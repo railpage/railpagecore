@@ -14,6 +14,8 @@
 	use DateTime;
 	use DateTimeZone;
 	
+	use Railpage\AppCore;
+	use Railpage\BanControl\BanControl;
 	use Railpage\Module;
 	use Railpage\Url;
 	use Railpage\Forums\Thread;
@@ -29,6 +31,30 @@
 	 */
 	
 	class User extends Base {
+		
+		/**
+		 * Status: active
+		 * @since Version 3.9.1
+		 * @const int STATUS_ACTIVE
+		 */
+		 
+		const STATUS_ACTIVE = 100;
+		
+		/**
+		 * Status: unactivated
+		 * @since Version 3.9.1
+		 * @const int STATUS_UNACTIVATED
+		 */
+		
+		const STATUS_UNACTIVATED = 200;
+		
+		/**
+		 * Status: banned
+		 * @since Version 3.9.1
+		 * @const int STATUS_BANNED
+		 */
+		
+		const STATUS_BANNED = 300;
 		
 		/**
 		 * Set the default theme
@@ -236,6 +262,14 @@
 		 */
 		 
 		public $regdate;
+		
+		/**
+		 * Registration date as an instanceof \DateTime
+		 * @since Version 3.9.1
+		 * @var \DateTime $RegistrationDate
+		 */
+		
+		public $RegistrationDate;
 		
 		/** 
 		 * Authentication level
@@ -1306,7 +1340,7 @@
 			 * Update the user registration date if required
 			 */
 		 
-	 		if (empty($data['user_regdate_nice'])) {
+	 		if (empty($data['user_regdate_nice']) || $data['user_regdate_nice'] == "0000-00-00") {
 	 			$datetime = new DateTime($data['user_regdate']);
 	 			
 	 			$data['user_regdate_nice'] = $datetime->format("Y-m-d");
@@ -1314,6 +1348,8 @@
 	 			
 	 			$this->db->update("nuke_users", $update, array("user_id = ?" => $this->id));
 	 		}
+			
+			$this->RegistrationDate = new DateTime($data['user_regdate_nice']);
 			
 			/**
 			 * Fetch the last IP address from the login logs
@@ -1457,7 +1493,18 @@
 			
 			if (!empty($this->mckey) && $this->Memcached->contains($this->mckey)) {
 				$this->Memcached->delete($this->mckey);
-				$this->Redis->delete(sprintf("railpage:users.user=%d", $this->id));
+				
+				try {
+					$this->Redis->delete(sprintf("railpage:users.user=%d", $this->id));
+				} catch (Exception $e) {
+					// throw it away
+				}
+				
+				try {
+					$this->Redis->delete($this->mckey);
+				} catch (Exception $e) {
+					// throw it away
+				}
 			}
 			
 			$dataArray = array();
@@ -1564,6 +1611,10 @@
 			
 			$dataArray['facebook_user_id'] = $this->facebook_user_id;
 			$dataArray['reported_to_sfs'] = $this->reported_to_sfs;
+			
+			if ($this->RegistrationDate instanceof DateTime) {
+				$dataArray['user_regdate_nice'] = $this->RegistrationDate->format("Y-m-d H:i:s");
+			}
 			
 			if ($this->db instanceof \sql_db) {
 				// Escape values for SQL
@@ -2108,6 +2159,7 @@
 		
 		public function tryAutoLogin() {
 			if (empty($_COOKIE['rp_autologin'])) {
+				$this->addNote("Autologin attempted but no autologin cookie was found");
 				return false;
 			} else {
 				$cookie = explode(":", base64_decode($_COOKIE['rp_autologin'])); 
@@ -2177,6 +2229,8 @@
 
 					}
 				}
+				
+				$this->addNote("Autologin attempted but an invalid autologin cookie was found");
 				
 				return false;
 			}
@@ -2283,6 +2337,7 @@
 				$dataArray['login_time'] = time(); 
 				$dataArray['login_ip'] = $this->db->real_escape_string($client_addr); 
 				$dataArray['login_hostname'] = $this->db->real_escape_string($_SERVER['REMOTE_HOST']);
+				$dataArray['server'] = $this->db->real_escape_string($_SERVER['HTTP_HOST']);
 				
 				$query = $this->db->buildQuery($dataArray, "log_logins"); 
 				
@@ -2297,7 +2352,8 @@
 					"user_id" => $this->id,
 					"login_time" => time(),
 					"login_ip" => $client_addr,
-					"login_hostname" => $_SERVER['REMOTE_HOST']
+					"login_hostname" => $_SERVER['REMOTE_HOST'],
+					"server" => $_SERVER['HTTP_HOST']
 				);
 				
 				if ($data['login_ip'] == $data['login_hostname']) {
@@ -3289,6 +3345,12 @@
 				throw new Exception("Cannot set password - no password was provided");
 			}
 			
+			try {
+				$this->Redis->delete($this->mckey);
+			} catch (Exception $e) {
+				// Throw it away, don't care
+			}
+			
 			/**
 			 * Check to make sure it's not a shitty password
 			 */
@@ -3512,6 +3574,31 @@
 		
 		public function isActive() {
 			return (boolean) $this->active;
+		}
+		
+		/**
+		 * Check if this user is pending activation
+		 * @since Version 3.9.1
+		 * @return boolean
+		 */
+		
+		public function getUserAccountStatus() {
+			if ((boolean) $this->active === true) {
+				return self::STATUS_ACTIVE;
+			}
+			
+			$BanControl = new BanControl;
+			$BanControl->loadUsers(true); 
+			
+			if (!empty($BanControl->lookupUser($this->id))) {
+				return self::STATUS_BANNED; 
+			}
+			
+			if ((boolean) $this->active === false) {
+				return self::STATUS_UNACTIVATED;
+			}
+			
+			throw new Exception("Cannot determine the status of this user account");
 		}
 		
 		/**
@@ -3755,6 +3842,75 @@
 			);
 			
 			$this->db->insert("log_useractivity", $data);
+			
+			return $this;
+		}
+		
+		/**
+		 * Find a list of duplicate usernames
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function findDuplicates() {
+			$query = "SELECT 
+	u.user_id, u.username, u.user_active, u.user_regdate, u.user_regdate_nice, u.user_email, u.user_lastvisit, 
+	(SELECT COUNT(p.post_id) AS num_posts FROM nuke_bbposts AS p WHERE p.poster_id = u.user_id) AS num_posts,
+	(SELECT MAX(pt.post_time) AS post_time FROM nuke_bbposts AS pt WHERE pt.poster_id = u.user_id) AS last_post_time
+	FROM nuke_users AS u 
+	WHERE u.username = ? OR u.user_email = ?";
+			
+			$params = array(
+				$this->username,
+				$this->contact_email
+			);
+			
+			return $this->db->fetchAll($query, $params);
+		}
+		
+		/**
+		 * Validate user avatar
+		 * @since Version 3.9.1
+		 * @return \Railpage\Users\User
+		 * @param boolean $force
+		 */
+		
+		public function validateAvatar($force = false) {
+			
+			if (!empty($this->avatar)) {
+				if ($force || (empty($this->avatar_width) || empty($this->avatar_height) || $this->avatar_width == 0 || $this->avatar_height == 0)) {
+					if ($size = @getimagesize($this->avatar)) {
+						
+						$Config = AppCore::getConfig(); 
+						
+						if ($size[0] >= $Config->AvatarMaxWidth || $size[1] >= $Config->AvatarMaxHeight) {
+							$this->avatar = sprintf("https://static.railpage.com.au/image_resize.php?w=%d&h=%d&image=%s", $Config->AvatarMaxWidth, $Config->AvatarMaxHeight, urlencode($this->avatar));
+							$this->avatar_filename = $this->avatar;
+							
+							if ($size = getimagesize($this->avatar)) {
+								$this->avatar_width = $size[0];
+								$this->avatar_height = $size[1];
+							} else {
+								$this->avatar_width = $Config->AvatarMaxWidth;
+								$this->avatar_height = $Config->AvatarMaxHeight; 
+							}
+						} else {
+							$this->avatar_width = $size[0];
+							$this->avatar_height = $size[1];
+							$this->avatar_filename = $this->avatar;
+						}
+						
+						$this->commit(true);
+						
+						return $this;
+					}
+				}
+			}
+			
+			$this->avatar = function_exists("format_avatar") ? format_avatar("http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png", 120, 120) : "http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png";
+			$this->avatar_filename = function_exists("format_avatar") ? format_avatar("http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png", 120, 120) : "http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png";
+			$this->avatar_width = 120;
+			$this->avatar_height = 120;
 			
 			return $this;
 		}

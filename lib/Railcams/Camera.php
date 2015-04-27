@@ -12,6 +12,7 @@
 	use DateTime;
 	use DateTimeZone;
 	use Railpage\Url;
+	use flickr_railpage;
 	
 	use Rezzza\Flickr\Metadata;
 	use Rezzza\Flickr\ApiFactory;
@@ -254,6 +255,7 @@
 				$this->url->recent = sprintf("%s/recent", $this->url->url);
 				$this->url->photo = sprintf("%s/photo/", $this->url->url);
 				$this->url->flickr_auth = sprintf("%s/authenticate", $this->url->url);
+				$this->url->authenticate = $this->url->flickr_auth;
 				
 				switch ($row['provider']) {
 					case "Flickr" : 
@@ -350,6 +352,10 @@
 			if (empty($this->permalink)) {
 				throw new Exception("Could not validate railcam - URL slug (permalink) cannot be empty"); 
 				return false;
+			}
+			
+			if (!$this->Provider instanceof ProviderInterface) {
+				$this->Provider = new Provider\Flickr;
 			}
 			
 			return true;
@@ -470,7 +476,7 @@
 		public function getPhotos($items_per_page = 25, $page_num = 1, $date_from = false, $date_to = false) {
 			if (!empty($this->flickr_oauth_secret) && !empty($this->flickr_oauth_token)) {
 				// Fetch photos using OAuth
-				$f = new \flickr_railpage(RP_FLICKR_API_KEY);
+				$f = new flickr_railpage(RP_FLICKR_API_KEY);
 				$f->oauth_token 	= $this->flickr_oauth_token;
 				$f->oauth_secret 	= $this->flickr_oauth_secret;
 				$f->cache = false;
@@ -637,7 +643,7 @@
 					return $return;
 				}
 				
-				$f = new \flickr_railpage(RP_FLICKR_API_KEY);
+				$f = new flickr_railpage(RP_FLICKR_API_KEY);
 				$f->oauth_token 	= $this->flickr_oauth_token;
 				$f->oauth_secret 	= $this->flickr_oauth_secret;
 				$f->cache = false;
@@ -671,7 +677,7 @@
 				return false;
 			}
 			
-			$f = new \flickr_railpage(RP_FLICKR_API_KEY);
+			$f = new flickr_railpage(RP_FLICKR_API_KEY);
 			$f->oauth_token 	= $this->flickr_oauth_token;
 			$f->oauth_secret 	= $this->flickr_oauth_secret;
 			$f->cache = false;

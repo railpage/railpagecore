@@ -245,5 +245,25 @@
 			
 			return $this->db->lastInsertId();
 		}
+		
+		/**
+		 * Find a list of duplicate usernames
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function findDuplicateUsernames() {
+			$query = "SELECT 
+	u.user_id, u.username, u.user_regdate, u.user_regdate_nice, u.user_email, u.user_lastvisit, 
+	(SELECT COUNT(p.post_id) AS num_posts FROM nuke_bbposts AS p WHERE p.poster_id = u.user_id) AS num_posts,
+	(SELECT MAX(pt.post_time) AS post_time FROM nuke_bbposts AS pt WHERE pt.poster_id = u.user_id) AS last_post_time
+	FROM nuke_users AS u 
+	WHERE u.username IN (
+		SELECT username FROM nuke_users GROUP BY username HAVING COUNT(username) > 1
+	)
+	ORDER BY u.username, u.user_id";
+			
+			return $this->db->fetchAll($query);
+		}
 	}
 ?>

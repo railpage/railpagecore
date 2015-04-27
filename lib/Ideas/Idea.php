@@ -152,7 +152,11 @@
 				$this->fetchVotes();
 				$this->url->implemented = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_IMPLEMENTED);
 				$this->url->declined = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_NO);
+				$this->url->inprogress = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_INPROGRESS);
 				$this->url->active = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_ACTIVE);
+				$this->url->underconsideration = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_UNDERCONSIDERATION);
+				$this->url->active = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_ACTIVE);
+				
 				$this->url->vote = sprintf("%s?mode=idea.vote&id=%d", $this->Module->url, $this->id);
 				$this->url->creatediscussion = sprintf("%s?mode=idea.discuss&id=%d", $this->Module->url, $this->id);
 			}
@@ -340,7 +344,7 @@
 		
 		public function canVote(User $User) {
 			
-			if ($this->status != 1) {
+			if ($this->status == Ideas::STATUS_DELETED || $this->status == Ideas::STATUS_NO || $this->status == Ideas::STATUS_IMPLEMENTED) {
 				return false;
 			}
 			
@@ -403,9 +407,12 @@
 				"id" => $this->id,
 				"title" => $this->title,
 				"description" => function_exists("format_post") ? format_post($this->description) : $this->description,
-				"status" => $this->status,
+				"status" => Ideas::getStatusDescription($this->status),
 				"url" => $this->url->getURLs(),
-				"votes" => $this->getVotes(),
+				"votes" => array(
+					"num" => $this->getVotes(),
+					"text" => $this->getVotes() == 1 ? "1 vote" : sprintf("%d votes", $this->getVotes())
+				),
 				"date" => array(
 					"absolute" => $this->User instanceof User ? $this->Date->format($this->User->date_format) : $this->Date->format("F j, Y, g:i a"),
 					"relative" => time2str($this->Date->getTimestamp())

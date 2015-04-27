@@ -91,7 +91,7 @@
 			
 			$args = array(
 				$Now->format("Y-m-d"),
-				Event::STATUS_APPROVED, 
+				self::STATUS_APPROVED, 
 				($page - 1) * $items_per_page, 
 				$items_per_page
 			); 

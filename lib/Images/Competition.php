@@ -8,12 +8,16 @@
 	
 	namespace Railpage\Images;
 	
+	use Railpage\SiteMessages\SiteMessages;
+	use Railpage\SiteMessages\SiteMessage;
 	use Railpage\AppCore;
 	use Railpage\Url;
 	use Railpage\Module;
 	use Railpage\Users\User;
 	use Exception;
 	use DateTime;
+	use DateInterval;
+	use DatePeriod;
 	use stdClass;
 	
 	/**
@@ -127,6 +131,9 @@
 		public function __construct($id = false) {
 			parent::__construct(); 
 			
+			$this->Module = new Module("images.competitions"); 
+			$this->Module->namespace = sprintf("%s.competition", $this->Module->namespace); 
+			
 			if (is_string($id) && !filter_var($id, FILTER_VALIDATE_INT)) {
 				$query = "SELECT id FROM image_competition WHERE slug = ?";
 				$id = $this->db->fetchOne($query, $id);
@@ -233,6 +240,10 @@
 				throw new Exception("Author is not set (hint: setAuthor(User))");
 			}
 			
+			if (!filter_var($this->Author->id, FILTER_VALIDATE_INT)) {
+				throw new Exception("Invalid user ID for Competition::\$Author");
+			}
+			
 			if (!$this->VotingDateOpen instanceof DateTime) {
 				throw new Exception("VotingDateOpen must be an instance of DateTime");
 			}
@@ -333,23 +344,6 @@
 			$photos = array(); 
 			
 			foreach ($this->db->fetchAll($query, $params) as $row) {
-				/*
-				$Author = new User($row['user_id']);
-				$Image = new Image($row['image_id']);
-				$Date = new DateTime($row['date_added']); 
-				
-				$return = new stdClass;
-				$return->id = $row['id']; 
-				$return->Author = $Author;
-				$return->Image = $Image;
-				$return->DateAdded = $Date;
-				$return->Meta = json_decode($row['meta'], true);
-				$return->url = new Url(sprintf("%s/%d", $this->url->url, $Image->id));
-				$return->url->vote = sprintf("%s/vote", $return->url);
-				
-				yield $return;
-				*/
-				
 				yield $this->getPhoto($row);
 			}
 		}
@@ -424,6 +418,13 @@
 		 */
 		
 		public function getNumVotesForUser(User $User) {
+			if (!filter_var($User->id, FILTER_VALIDATE_INT)) {
+				return array(
+					"cast" => 0,
+					"free" => 0
+				);
+			}
+			
 			$query = "SELECT id FROM image_competition_votes WHERE competition_id = ? AND user_id = ?";
 			
 			$params = array(
@@ -444,6 +445,37 @@
 		}
 		
 		/**
+		 * Get the number of votes for this photo
+		 * @since Version 3.9.1
+		 * @param \Railpage\Images\Image $Image
+		 * @return int
+		 */
+		
+		public function getNumVotesForImage(Image $Image) {
+			$votes = 0;
+			
+			foreach ($this->getVotesForImage($Image) as $row) {
+				$votes += $row['amount'];
+			}
+			
+			return $votes;
+		}
+		
+		/**
+		 * Get the votes cast for a given image in this competition
+		 * @since Version 3.9.1
+		 * @param \Railpage\Images\Image $Image
+		 * @return array
+		 */
+		
+		public function getVotesForImage(Image $Image) {
+			$query = "SELECT u.username, v.user_id, date, amount FROM image_competition_votes AS v LEFT JOIN nuke_users AS u ON u.user_id = v.user_id
+						WHERE v.competition_id = ? AND v.image_id = ?";
+			
+			return $this->db->fetchAll($query, array($this->id, $Image->id));
+		}
+		
+		/**
 		 * Can a user vote in this competition?
 		 * @since Version 3.9.1
 		 * @return boolean
@@ -451,6 +483,10 @@
 		 */
 		
 		public function canUserVote(User $User, $Image = false) {
+			if (!filter_var($User->id, FILTER_VALIDATE_INT)) {
+				return false;
+			}
+			
 			$now = new DateTime;
 			
 			if (!($this->VotingDateOpen instanceof DateTime && $this->VotingDateOpen <= $now) || 
@@ -502,7 +538,6 @@
 		 */
 		
 		public function canUserSubmitPhoto(User $User) {
-			
 			if (!filter_var($User->id, FILTER_VALIDATE_INT)) {
 				return false;
 			}
@@ -538,6 +573,11 @@
 		 */
 		
 		public function submitPhoto(Image $Image, User $User, $meta = array()) {
+			
+			if (!filter_var($User->id, FILTER_VALIDATE_INT)) {
+				throw new Exception("Invalid user ID");
+			}
+			
 			$data = array(
 				"competition_id" => $this->id,
 				"user_id" => $User->id,
@@ -561,6 +601,11 @@
 		 */
 		
 		public function submitVote(User $User, Image $Image) {
+			
+			if (!filter_var($User->id, FILTER_VALIDATE_INT)) {
+				throw new Exception("Invalid user ID");
+			}
+			
 			$data = array(
 				"competition_id" => $this->id,
 				"user_id" => $User->id,
@@ -662,6 +707,22 @@
 		}
 		
 		/**
+		 * Get the number of photos pending approval
+		 * @since Version 3.9.1
+		 * @return int
+		 */
+		
+		public function getNumPendingSubmissions() {
+			$query = "SELECT * FROM image_competition_submissions WHERE competition_id = ? AND status = ? ORDER BY date_added DESC";
+			$where = array(
+				$this->id,
+				Competitions::PHOTO_UNAPPROVED
+			);
+			
+			return count($this->db->fetchAll($query, $where)); 
+		}
+		
+		/**
 		 * Approve a queued submission
 		 * @since Version 3.9.1
 		 * @return \Railpage\Images\Competition
@@ -682,7 +743,17 @@
 				"competition_id = ?" => $this->id
 			);
 			
+			/**
+			 * Update the database table
+			 */
+			
 			$this->db->update("image_competition_submissions", $data, $where);
+			
+			/**
+			 * Update the cached array of photos
+			 */
+			
+			$this->getPhotosAsArray(true);
 			
 			return $this;
 		}
@@ -710,6 +781,18 @@
 			);
 			
 			$this->db->update("image_competition_submissions", $data, $where);
+		
+			/**
+			 * Release all votes cast for this photo
+			 */
+			
+			$this->releaseVotesForImage($Image);
+			
+			/**
+			 * Update the cached array of photos
+			 */
+			
+			$this->getPhotosAsArray(true);
 			
 			return $this;
 		}
@@ -833,7 +916,7 @@
 				$tmp[] = $data; 
 			}
 			
-			$return = array_slice($tmp, -4);
+			$return = array_slice($tmp, -2);
 			
 			/**
 			 * Add the current photo to the array
@@ -853,7 +936,9 @@
 				}
 			}
 			
-			$return = array_merge($return, array_slice($tmp, 0, 4));
+			$return = array_merge($return, array_slice($tmp, 0, 2));
+			
+			$return = array_reverse($return);
 			
 			/**
 			 * Loop through the context and return a stdClass photo
@@ -872,6 +957,107 @@
 				
 				yield $Photo;
 			}
+		}
+		
+		/**
+		 * Get photos as an associative array
+		 * @since Version 3.9.1
+		 * @return array
+		 * @param boolean $force
+		 */
+		
+		public function getPhotosAsArray($force = false) {
+			$key = sprintf("railpage:comp=%d;images.array", $this->id);
+			
+			$this->Memcached = AppCore::getMemcached();
+			
+			if ($force) {
+				$this->Memcached->delete($key);
+			}
+			
+			if (!$photos = $this->Memcached->fetch($key)) {
+				$photos = array(); 
+				
+				foreach ($this->getPhotos() as $Submission) {
+					$photos[] = array(
+						"id" => $Submission->id,
+						"url" => $Submission->url->getURLs(),
+						"image" => $Submission->Image->getArray(),
+						"author" => array(
+							"id" => $Submission->Author->id,
+							"username" => $Submission->Author->username,
+							"url" => $Submission->Author->url instanceof Url ? $Submission->Author->url->getURLs() : array("url" => $Submission->Author->url)
+						),
+						"dateadded" => array(
+							"absolute" => $Submission->DateAdded->format("Y-m-d H:i:s"),
+							"relative" => function_exists("time2str") ? time2str($Submission->DateAdded->getTimestamp()) : null
+						)
+					);
+				}
+				
+				$this->Memcached->save($key, $photos); 
+			}
+			
+			return $photos;
+		}
+		
+		/**
+		 * Release votes cast for a given image
+		 * @since Version 3.9.1
+		 * @param \Railpage\Images\Image $Image
+		 * @return \Railpage\Images\Competition
+		 */
+		
+		public function releaseVotesForImage(Image $Image) {
+			$where = array(
+				"competition_id = ?" => $this->id,
+				"image_id = ?" => $Image->id
+			);
+			
+			$this->db->delete("image_competition_votes", $where);
+			
+			return $this;
+		}
+		
+		/**
+		 * Get site message
+		 * @since Version 3.9.1
+		 * @return \Railpage\SiteMessages\SiteMessage
+		 */
+		
+		public function getSiteMessage() {
+			$Message = (new SiteMessages)->getMessageForObject($this); 
+			
+			if (!$Message instanceof SiteMessage) {
+				$Message = new SiteMessage; 
+				#$Message->
+			}
+		}
+		
+		/**
+		 * Get vote counts per day over the voting period
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getVoteCountsPerDay() {
+			$query = "SELECT COUNT(id) AS votes, DATE(`date`) AS day FROM image_competition_votes WHERE competition_id = ? GROUP BY DATE(`date`)";
+			$params = array($this->id); 
+			$votes = array();
+			$return = array(); 
+			
+			foreach ($this->db->fetchAll($query, $params) as $day) {
+				$votes[$day['day']] = $day['votes'];
+			}
+			
+			$interval = DateInterval::createFromDateString('1 day');
+			$period = new DatePeriod($this->VotingDateOpen, $interval, $this->VotingDateClose);
+			
+			foreach ($period as $Date) {
+				$return[$Date->format("Y-m-d")] = isset($votes[$Date->format("Y-m-d")]) ? $votes[$Date->format("Y-m-d")] : 0;
+			}
+			
+			return $return;
 		}
 	}
 	

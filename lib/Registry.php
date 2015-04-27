@@ -73,6 +73,19 @@
 		}
 		
 		/**
+		 * Remove an object from the registry
+		 * @since Version 3.9.1
+		 * @param string $key Name of the object to remove
+		 * @return mixed
+		 */
+		
+		public function remove($key) {
+			if (isset($this->registry[strtolower($key)])) {
+				unset($this->registry[strtolower($key)]);
+			}
+		}
+		
+		/**
 		 * Private constructor
 		 * @since Version 3.9.1
 		 */

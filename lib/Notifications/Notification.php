@@ -414,7 +414,7 @@
 				throw new Exception("You must specify a username when adding a recipient to a notification");
 			}
 			
-			if (!$destination) {
+			if (!$destination || empty($destination)) {
 				throw new Exception("You must specify a destination (eg email address) when adding a recipient to a notification");
 			}
 			

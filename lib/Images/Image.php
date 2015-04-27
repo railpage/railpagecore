@@ -192,7 +192,7 @@
 				
 				if (!$row = $this->Redis->fetch($this->mckey)) {
 				
-					$query = "SELECT i.id, i.provider, i.photo_id, i.modified, i.meta, i.lat, i.lon FROM image AS i WHERE i.id = ?";
+					$query = "SELECT i.title, i.description, i.id, i.provider, i.photo_id, i.modified, i.meta, i.lat, i.lon FROM image AS i WHERE i.id = ?";
 				
 					$row = $this->db->fetchRow($query, $id);
 					$row['meta'] = json_decode($row['meta'], true);
@@ -222,66 +222,25 @@
 				}
 				
 				/**
+				 * Update the database row
+				 */
+				
+				if (((!isset($row['title']) || empty($row['title']) || is_null($row['title'])) && !empty($this->title)) || 
+					((!isset($row['description']) || empty($row['description']) || is_null($row['description'])) && !empty($this->description))) {
+					$row['title'] = $this->title;
+					$row['description'] = $this->description;
+					
+					$this->Redis->save($this->mckey, $row, strtotime("+24 hours"));
+					
+					$this->commit();
+				}
+				
+				/**
 				 * Normalize some sizes
 				 */
 				
 				if (count($this->sizes)) {
-				
-					if (!isset($this->sizes['thumb'])) {
-						foreach ($this->sizes as $size) {
-							if ($size['width'] >= 280 && $size['height'] >= 150) {
-								$this->sizes['thumb'] = $size;
-								break;
-							}
-						}
-					}
-					
-					if (!isset($this->sizes['small'])) {
-						foreach ($this->sizes as $size) {
-							if ($size['width'] >= 500 && $size['height'] >= 281) {
-								$this->sizes['small'] = $size;
-								break;
-							}
-						}
-					}
-					
-					$width = 0;
-					
-					foreach ($this->sizes as $size) {
-						if ($size['width'] > $width) {
-							$this->sizes['largest'] = $size;
-						
-							$width = $size['width'];
-						}
-					}
-				
-					foreach ($this->sizes as $size) {
-						if ($size['width'] >= 1920) {
-							$this->sizes['fullscreen'] = $size;
-							break;
-						}
-					}
-				
-					foreach ($this->sizes as $size) {
-						if ($size['width'] > 1024 && $size['width'] <= 1920) {
-							$this->sizes['larger'] = $size;
-							break;
-						}
-					}
-				
-					foreach ($this->sizes as $size) {
-						if ($size['width'] == 1024) {
-							$this->sizes['large'] = $size;
-							break;
-						}
-					}
-				
-					foreach ($this->sizes as $size) {
-						if ($size['width'] == 800) {
-							$this->sizes['medium'] = $size;
-							break;
-						}
-					}
+					$this->sizes = Images::normaliseSizes($this->sizes);
 				}
 				
 				if (isset($row['meta']['author'])) {
@@ -358,6 +317,8 @@
 			unset($author->User);
 			
 			$data = array(
+				"title" => $this->title,
+				"description" => $this->description,
 				"provider" => $this->provider,
 				"photo_id" => $this->photo_id,
 				"meta" => json_encode(array(
@@ -448,11 +409,11 @@
 			 */
 			
 			$imageprovider = __NAMESPACE__ . "\\Provider\\" . ucfirst($this->provider);
+			$params = array();
 			
 			switch ($this->provider) {
 				case "picasaweb" :
 					$imageprovider = __NAMESPACE__ . "\\Provider\\PicasaWeb";
-					$params = array();
 					break;
 				
 				case "flickr" : 
@@ -491,7 +452,7 @@
 				 * Load the tags
 				 */
 				
-				if (isset($data['tags']) && count($data['tags'])) {
+				if (isset($data['tags']) && is_array($data['tags']) && count($data['tags'])) {
 					foreach ($data['tags'] as $row) {
 						$this->meta['tags'][] = $row['raw'];
 					}
@@ -510,7 +471,7 @@
 				}
 				
 				$this->links = new stdClass;
-				$this->links->provider = $data['urls']['url'][0]['_content'];
+				$this->links->provider = isset($data['urls']['url'][0]['_content']) ? $data['urls']['url'][0]['_content'] : $data['urls'][key($data['urls'])];
 				
 				$this->commit();
 				
@@ -788,14 +749,16 @@
 		
 		public function getJSON() {
 			$data = array(
-				"id" => $this->title,
+				"id" => $this->id,
 				"title" => $this->title,
 				"description" => $this->description,
 				"provider" => array(
 					"name" => $this->provider,
 					"photo_id" => $this->photo_id
 				),
-				"sizes" => $this->sizes
+				"sizes" => $this->sizes,
+				"author" => json_decode(json_encode($this->author), true),
+				"url" => $this->url instanceof Url ? $this->url->getURLs() : array()
 			);
 			
 			if ($this->Place instanceof Place) {
@@ -977,7 +940,13 @@
 				$where_namespace = "";
 			}
 			
-			return $this->db->fetchAll("SELECT * FROM image_link WHERE image_id = ? " . $where_namespace . " AND ignored = 0", $params);
+			#printArray($params);
+			
+			$rs = $this->db->fetchAll("SELECT * FROM image_link WHERE image_id = ? " . $where_namespace . " AND ignored = 0", $params);
+			
+			#printArray($rs);die;
+			
+			return $rs;
 		}
 		
 		/**
@@ -986,7 +955,7 @@
 		 * @param boolean $ignored
 		 */
 		
-		public function ignored($ignored = true) {
+		public function ignored($ignored = true, $link_id = 0) {
 			$data = array(
 				"ignored" => intval($ignored)
 			);
@@ -994,6 +963,10 @@
 			$where = array(
 				"image_id = ?" => $this->id
 			);
+			
+			if (filter_var($link_id, FILTER_VALIDATE_INT) && $link_id > 0) {
+				$where['id = ?'] = $link_id;
+			}
 			
 			$this->db->update("image_link", $data, $where);
 			

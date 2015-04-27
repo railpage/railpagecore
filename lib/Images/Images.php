@@ -60,7 +60,7 @@
 				throw new Exception("Cannot lookup image from image provider - no provider given (hint: Flickr, WestonLangford)");
 			}
 			
-			if (!filter_var($photo_id, FILTER_VALIDATE_INT) || $photo_id === 0) {
+			if (!preg_match("/([a-zA-Z0-9]+)/", $photo_id) || $photo_id === 0) {
 				throw new Exception("Cannot lookup image from image provider - no provider image ID given");
 			}
 			
@@ -164,12 +164,108 @@
 			}
 			
 			/**
+			 * SmugMug
+			 */
+			
+			if (preg_match("#smugmug.com#", $url)) {
+				$parts = explode("/", $url); 
+				array_reverse($parts); 
+				
+				foreach ($parts as $part) {
+					if (preg_match("#i-([a-zA-Z0-9]+)#", $part, $matches)) {
+						if ($Image = $this->findImage("SmugMug", $matches[1])) {
+							return $Image;
+						}
+					}
+				}
+			}
+			
+			/**
 			 * Vicsig
 			 */
 			
-			if (preg_match("#vicsig.net/photo#")) {
+			if (preg_match("#vicsig.net/photo#", $url, $matches)) {
 				// Do nothing yet
 			}
+		}
+		
+		/**
+		 * Normalise image sizes
+		 * @since Version 3.9.1
+		 * @param array $sizes
+		 * @return array
+		 */
+		
+		static public function normaliseSizes($sizes) {
+			if (!isset($sizes['thumb'])) {
+				foreach ($sizes as $size) {
+					if ($size['width'] >= 280 && $size['height'] >= 150) {
+						$sizes['thumb'] = $size;
+						break;
+					}
+				}
+			}
+			
+			if (!isset($sizes['small'])) {
+				foreach ($sizes as $size) {
+					if ($size['width'] >= 500 && $size['height'] >= 281) {
+						$sizes['small'] = $size;
+						break;
+					}
+				}
+			}
+			
+			$width = 0;
+			
+			foreach ($sizes as $size) {
+				if ($size['width'] > $width) {
+					$sizes['largest'] = $size;
+				
+					$width = $size['width'];
+				}
+			}
+		
+			foreach ($sizes as $size) {
+				if ($size['width'] >= 1920) {
+					$sizes['fullscreen'] = $size;
+					break;
+				}
+			}
+		
+			foreach ($sizes as $size) {
+				if ($size['width'] > 1024 && $size['width'] <= 1920) {
+					$sizes['larger'] = $size;
+					break;
+				}
+			}
+		
+			foreach ($sizes as $size) {
+				if ($size['width'] == 1024) {
+					$sizes['large'] = $size;
+					break;
+				}
+			}
+		
+			foreach ($sizes as $size) {
+				if ($size['width'] == 800) {
+					$sizes['medium'] = $size;
+					break;
+				}
+			}
+			
+			if (!isset($sizes['larger'])) {
+				$sizes['larger'] = $sizes['largest'];
+			}
+			
+			if (!isset($sizes['large'])) {
+				$sizes['large'] = $sizes['larger'];
+			}
+			
+			if (!isset($sizes['medium'])) {
+				$sizes['medium'] = $sizes['large'];
+			}
+			
+			return $sizes;
 		}
 	}
 ?>

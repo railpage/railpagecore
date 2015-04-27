@@ -62,5 +62,39 @@
 				return false;
 			}
 		}
+		
+		/**
+		 * Find a site message matching a given object namespace and object ID
+		 * @since Version 3.9.1
+		 * @param object $Object
+		 * @return \Railpgae\SiteMessages\SiteMessage | boolean
+		 */
+		
+		public function getMessageForObject($Object = false) {
+			if (!is_object($Object)) {
+				throw new Exception("You did not provide an object");
+			} 
+			
+			if (!isset($Object->Module) || !isset($Object->Module->namespace)) {
+				throw new Exception("Object does not have a namespace to lookup");
+			}
+			
+			if (!isset($Object->id) || !filter_var($Object->id, FILTER_VALIDATE_INT) || $Object->id === 0) {
+				throw new Exception("Object does not have a valid ID to lookup");
+			}
+			
+			$params = array(
+				$Object->Module->namespace,
+				$Object->id
+			);
+			
+			$query = "SELECT message_id FROM messages WHERE object_ns = ? AND object_id = ? LIMIT 1";
+			
+			if ($id = $this->db->fetchOne($query, $params)) {
+				return new SiteMessage($id); 
+			} else {
+				return false;
+			}
+		}
 	}
 ?>

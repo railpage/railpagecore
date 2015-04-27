@@ -130,6 +130,10 @@
 					$this->FeaturedImage = new Image($data['featured_photo']);
 				}
 			}
+			
+			if (!empty($this->id) && !preg_match("/([a-zA-Z]+)/", $this->id)) {
+				$this->id = intval($this->id);
+			}
 		}
 		
 		/**

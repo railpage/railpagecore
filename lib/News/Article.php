@@ -429,8 +429,14 @@
 					$this->url->url = $this->source;
 					$this->url->canonical = $this->source;
 				}
+				
+				/**
+				 * Set a cover photo
+				 */
+				
+				$this->guessCoverPhoto(); 
+				
 			} else {
-				#throw new Exception($this->db->error."\n\n".$query);
 				throw new Exception(sprintf("Cannot find news article #%d", $this->id));
 				return false;
 			}
@@ -676,13 +682,11 @@
 			$dataArray = array(); 
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
-				deleteMemcacheObject($this->mckey);
-				deleteMemcacheObject(sprintf("json:railpage.news.article=%d", $this->id));
+				$this->Memcached->delete($this->mckey);
+				$this->Memcached->delete(sprintf("json:railpage.news.article=%d", $this->id));
 				
 				$this->Redis->delete(sprintf("railpage:news.article=%s", $this->id));
 				$this->Redis->delete(sprintf("railpage:news.article=%s", $this->slug));
-				
-				$this->Memcached->delete($this->mckey);
 			}
 			
 			$dataArray['approved'] 	= $this->approved; 
@@ -1041,5 +1045,35 @@
 			
 			return is_object($paragraphs) ? $paragraphs->__toString() : $paragraphs;
 		}
+		
+		/**
+		 * Guess the cover photo for this article
+		 * @since Version 3.9.1
+		 * @return \Railpage\News\Article
+		 */
+		
+		public function guessCoverPhoto() {
+			if (!empty($this->featured_image) || !$this->Topic instanceof Topic) {
+				return $this;
+			}
+			
+			if ($this->Topic->id == 4 && stripos($this->title, "Gheringhap Sightings") !== false) {
+				$this->featured_image = "http://ghaploop.railpage.org.au/House%20%20Train%20(2).jpg"; #"https://farm3.staticflickr.com/2657/3978862684_b0acc234d4_z.jpg";
+			}
+			
+			return $this;
+		}
+		
+		/**
+		 * Get the source of this article
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getSource() {
+			return array(
+				"domain" => parse_url($this->source, PHP_URL_HOST),
+				"source" => $this->source
+			);
+		}
 	}
-?>

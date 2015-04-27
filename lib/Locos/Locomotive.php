@@ -474,6 +474,7 @@
 				$this->url = new Url(strtolower($this->makeLocoURL($this->Class->slug, $this->number)));
 				$this->url->edit = sprintf("%s?mode=loco.edit&id=%d", $this->Module->url, $this->id);
 				$this->url->sightings = sprintf("%s/sightings", $this->url->url);
+				$this->url->photos = sprintf("%s/photos", $this->url->url);
 				$this->fwlink = $this->url->short;
 				
 				/**
