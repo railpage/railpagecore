@@ -1097,6 +1097,7 @@
 		 */
 		
 		static public function saveReadItemsForUser(User $User, $items, $type = "t") {
+			
 			$cookiename = sprintf("%s_%s", "phpbb2mysqlrp2", $type);
 			
 			/**

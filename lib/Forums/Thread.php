@@ -843,5 +843,23 @@
 			
 			return $pinned;
 		}
+		
+		/**
+		 * Is this thread stale?
+		 * @since Version 3.9.1
+		 * @return boolean
+		 */
+		
+		public function isThreadStale() {
+			if (!filter_var($this->lastpost, FILTER_VALIDATE_INT)) {
+				return false;
+			}
+			
+			$stale = new DateTime("6 months ago");
+			
+			$Post = new Post($this->lastpost); 
+			
+			return $Post->Date < $stale; 
+		}
 	}
-?>
+	
