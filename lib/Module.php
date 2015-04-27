@@ -169,6 +169,13 @@
 						$this->name = "Images";
 						$this->url = "/Images";
 						break;
+						
+					case "images.competitions" : 
+						$this->id = 120;
+						$this->name = "Photo competitions";
+						$this->url = "/gallery/comp";
+						$this->namespace = "railpage.images.competitions";
+						break;
 					
 					case "image" : 
 						$this->id = 120;

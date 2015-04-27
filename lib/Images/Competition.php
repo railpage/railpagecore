@@ -8,12 +8,16 @@
 	
 	namespace Railpage\Images;
 	
+	use Railpage\SiteMessages\SiteMessages;
+	use Railpage\SiteMessages\SiteMessage;
 	use Railpage\AppCore;
 	use Railpage\Url;
 	use Railpage\Module;
 	use Railpage\Users\User;
 	use Exception;
 	use DateTime;
+	use DateInterval;
+	use DatePeriod;
 	use stdClass;
 	
 	/**
@@ -126,6 +130,9 @@
 		
 		public function __construct($id = false) {
 			parent::__construct(); 
+			
+			$this->Module = new Module("images.competitions"); 
+			$this->Module->namespace = sprintf("%s.competition", $this->Module->namespace); 
 			
 			if (is_string($id) && !filter_var($id, FILTER_VALIDATE_INT)) {
 				$query = "SELECT id FROM image_competition WHERE slug = ?";
@@ -1010,6 +1017,47 @@
 			$this->db->delete("image_competition_votes", $where);
 			
 			return $this;
+		}
+		
+		/**
+		 * Get site message
+		 * @since Version 3.9.1
+		 * @return \Railpage\SiteMessages\SiteMessage
+		 */
+		
+		public function getSiteMessage() {
+			$Message = (new SiteMessages)->getMessageForObject($this); 
+			
+			if (!$Message instanceof SiteMessage) {
+				$Message = new SiteMessage; 
+				#$Message->
+			}
+		}
+		
+		/**
+		 * Get vote counts per day over the voting period
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getVoteCountsPerDay() {
+			$query = "SELECT COUNT(id) AS votes, DATE(`date`) AS day FROM image_competition_votes WHERE competition_id = ? GROUP BY DATE(`date`)";
+			$params = array($this->id); 
+			$votes = array();
+			$return = array(); 
+			
+			foreach ($this->db->fetchAll($query, $params) as $day) {
+				$votes[$day['day']] = $day['votes'];
+			}
+			
+			$interval = DateInterval::createFromDateString('1 day');
+			$period = new DatePeriod($this->VotingDateOpen, $interval, $this->VotingDateClose);
+			
+			foreach ($period as $Date) {
+				$return[$Date->format("Y-m-d")] = isset($votes[$Date->format("Y-m-d")]) ? $votes[$Date->format("Y-m-d")] : 0;
+			}
+			
+			return $return;
 		}
 	}
 	

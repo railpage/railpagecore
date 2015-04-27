@@ -68,6 +68,16 @@
 		const MAX_VOTES_PER_USER = 5;
 		
 		/**
+		 * Constructor
+		 * @since Version 3.9.1
+		 */
+		
+		public function __construct() {
+			parent::__construct(); 
+			$this->Module = new Module("images.competitions"); 
+		}
+		
+		/**
 		 * Get the list of competitions, optionally filter by status
 		 * @since Version 3.9.1
 		 * @param int $status
