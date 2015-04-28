@@ -541,6 +541,10 @@
 		 */
 		
 		static public function getMemcached() {
+			if (!extension_loaded("memcached")) {
+				return new NullCacheDriver;
+			}
+			
 			$Registry = Registry::getInstance();
 			
 			$Config = self::getConfig();
