@@ -12,7 +12,6 @@ before_script:
   - sudo apt-get update -qq
   - sudo apt-get install -qq zend-framework
   - mysql < db.dist/db.structure.travis.sql
-  - echo "extension = memcached.so" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
 
 script: 
   - composer install
@@ -27,3 +26,6 @@ matrix:
   allow_failures:
     - php: hhvm-nightly
     - php: 7.0
+
+install:
+  - tests/data/travis/memcached-setup.sh
