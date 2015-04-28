@@ -511,6 +511,10 @@
 		 */
 		
 		static public function getRedis() {
+			if (!extension_loaded("redis")) {
+				return new NullCacheDriver;
+			}
+			
 			$Registry = Registry::getInstance();
 			
 			$Config = self::getConfig();
