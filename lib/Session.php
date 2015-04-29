@@ -58,7 +58,11 @@
 			
 			if ($this->Memcached->connected()) {
 				session_module_name('memcached');
-				session_save_path(sprintf("%s:%d", $this->Memcached->host, $this->Memcached->port));
+				session_save_path(
+					sprintf("%s:%d,%s:%d", $this->Memcached->host, $this->Memcached->port,
+										   "203.28.180.19", "11211"
+					)
+				);
 			}
 			
 			if (!defined("RP_SITE_DOMAIN")) {
