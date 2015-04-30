@@ -82,7 +82,8 @@
 			
 			$id = $User->id;
 			
-			$User = new User($id);
+			$User = new User;
+			$User->Redis = new Railpage\NullCacheDriver; // Kept on erroring out with a cached username
 			
 			$this->assertTrue($User->validatePassword("letmein1234", "phpunit6"));
 			$this->assertEquals("phpunit6", $User->username);
@@ -115,8 +116,8 @@
 			$Warning->commit();
 			
 			$this->assertFalse(!filter_var($Warning->id, FILTER_VALIDATE_INT));
-			
 			$this->assertEquals(54, $User->warning_level);
+			
 		}
 	}
 ?>

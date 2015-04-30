@@ -18,6 +18,7 @@
 		const EVENT_DATE = "2015-12-01";
 		const EVENT_START = "7am"; 
 		const EVENT_END = "4pm";
+		const TIMEZONE = "Australia/Melbourne";
 		
 		public function testAddCategory() {
 			$Category = new EventCategory;
@@ -80,10 +81,19 @@
 			
 			$EventDate = new EventDate;
 			
-			$EventDate->Date = new DateTime(self::EVENT_DATE);
+			$Date = new DateTime(self::EVENT_DATE); 
+			$Date->setTimezone(new DateTimeZone("Australia/Melbourne"));
+			
+			$Start = new DateTime(sprintf("%s %s", self::EVENT_DATE, self::EVENT_START));
+			$Start->setTimezone(new DateTimeZone("Australia/Melbourne"));
+			
+			$End = new DateTime(sprintf("%s %s", self::EVENT_DATE, self::EVENT_END));
+			$End->setTimezone(new DateTimeZone("Australia/Melbourne"));
+			
+			$EventDate->Date = $Date;
 			$EventDate->Event = $Event;
-			$EventDate->Start = new DateTime(sprintf("%s %s", self::EVENT_DATE, self::EVENT_START));
-			$EventDate->End = new DateTime(sprintf("%s %s", self::EVENT_DATE, self::EVENT_END));
+			$EventDate->Start = $Start;
+			$EventDate->End = $End;
 			$EventDate->setAuthor(new User(1));
 			$EventDate->commit(); 
 			

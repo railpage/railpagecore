@@ -76,6 +76,11 @@
 					case "slang" : 
 						$this->name = "Slang";
 						break;
+					
+					case "general" :
+					default :
+						$this->name = "General";
+						break;
 				}
 			}
 		}
