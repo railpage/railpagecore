@@ -389,7 +389,7 @@
 		 */
 		
 		public function populate($force = false, $option = NULL) {
-			$RailpageAPI = new API($this->Config->API->Key, $this->Config->API->Secret);
+			//$RailpageAPI = new API($this->Config->API->Key, $this->Config->API->Secret);
 			
 			if ($force === false && !$this->isStale()) {
 				return $this;
@@ -418,10 +418,14 @@
 				
 				case "flickr" : 
 					$params = array(
-						"api_key" => $this->Config->Flickr->APIKey,
 						"oauth_token" => "",
 						"oauth_secret" => ""
 					);
+					
+					if (isset($this->Config->Flickr->APIKey)) {
+						$params['api_key'] = $this->Config->Flickr->APIKey;
+					}
+					
 					break;
 			}
 			

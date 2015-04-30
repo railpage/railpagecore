@@ -46,6 +46,14 @@
 		public $desc;
 		
 		/**
+		 * URL Slug
+		 * @since Version 3.9.1
+		 * @var string $slug
+		 */
+		
+		public $slug;
+		
+		/**
 		 * URL
 		 * @since Version 3.8.7
 		 * @var string $url The URL of this event category, relative to the site root
@@ -98,6 +106,10 @@
 			if (empty($this->desc)) {
 				$this->desc = "";
 				#throw new Exception("Event description cannot be empty");
+			}
+			
+			if (empty($this->slug)) {
+				$this->createSlug();
 			}
 			
 			return true;

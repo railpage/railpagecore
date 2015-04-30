@@ -80,7 +80,9 @@
 			$User->setPassword("letmein1234");
 			$User->commit(); 
 			
-			$User = new User;
+			$id = $User->id;
+			
+			$User = new User($id);
 			
 			$this->assertTrue($User->validatePassword("letmein1234", "phpunit6"));
 			$this->assertEquals("phpunit6", $User->username);

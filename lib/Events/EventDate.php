@@ -237,6 +237,10 @@
 			$this->status = Events::STATUS_APPROVED;
 			$this->commit(); 
 			
+			if ($this->Event->status == Events::STATUS_UNAPPROVED) {
+				$this->Event->approve(); 
+			}
+			
 			return $this;
 		}
 		

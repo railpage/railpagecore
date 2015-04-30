@@ -36,6 +36,18 @@
 		require_once(dirname(__DIR__) . DS . "tests" . DS . "inc.config.railpage.php");
 		
 		/**
+		 * PHPFlickr
+		 */
+		
+		if (file_exists("/srv/railpage.com.au/www/public_html/includes/phpflickr/phpFlickr.php")) {
+			require_once("/srv/railpage.com.au/www/public_html/includes/phpflickr/phpFlickr.php");
+		}
+		
+		if (file_exists("/srv/railpage.com.au/www/public_html/includes/flickr.class.php")) {
+			require_once("/srv/railpage.com.au/www/public_html/includes/flickr.class.php");
+		}
+		
+		/**
 		 * Load the composer autoloader
 		 */
 		
