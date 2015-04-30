@@ -23,10 +23,10 @@ services:
  
 matrix:
   fast_finish: true
-  allow_failures:
-    - php: hhvm
-    - php: hhvm-nightly
-    - php: 7.0
+#  allow_failures:
+#    - php: hhvm
+#    - php: hhvm-nightly
+#    - php: 7.0
 
 install:
   - tests/data/travis/memcached-setup.sh
