@@ -9,6 +9,8 @@
 	namespace Railpage;
 	
 	use Railpage\Memcached;
+	use Railpage\AppCore;
+	use Railpage\SessionHandler;
 	use StatsD;
 	use Memcached as PHPMemcached;
 	use Exception;
@@ -56,21 +58,68 @@
 			
 			$this->Memcached = new Memcached;
 			
+			if (!defined("RP_SITE_DOMAIN")) {
+				define("RP_SITE_DOMAIN", "railpage.com.au");
+			}
+			
+			/*
 			if ($this->Memcached->connected()) {
 				session_module_name('memcached');
 				session_save_path(sprintf("%s:%d", $this->Memcached->host, $this->Memcached->port));
 			}
 			
-			if (!defined("RP_SITE_DOMAIN")) {
-				define("RP_SITE_DOMAIN", "railpage.com.au");
-			}
-			
 			if (empty(trim(ini_get("memcached.sess_prefix")))) {
 				ini_set("memcached.sess_prefix", "memc.sess.key.");
 			}
+			*/
 			
-			// Cross-subdomain cookies n shiz
+			/**
+			 * Get memcached host configuration. If it's empty for whatever reason, fall back to hardcoded host(s)
+			 */
+			
+			$Config = AppCore::getConfig(); 
+			
+			$host['primary']['addr'] = (isset($Config->Memcached->host) && !empty($Config->Memcached->host)) ? $Config->Memcached->host : "203.28.180.12";
+			$host['primary']['port'] = (isset($Config->Memcached->port) && !empty($Config->Memcached->port)) ? $Config->Memcached->host : "11211";
+			$host['secondary']['addr'] = (isset($Config->Memcached->hosts->secondary->addr) && !empty($Config->Memcached->hosts->secondary->addr)) ? $Config->Memcached->hosts->secondary->addr : "203.28.180.19";
+			$host['secondary']['port'] = (isset($Config->Memcached->hosts->secondary->port) && !empty($Config->Memcached->hosts->secondary->port)) ? $Config->Memcached->hosts->secondary->port : "11211";
+			
+			$handlername = isset($Config->SessionHandler) && !empty($Config->SessionHandler) ? $Config->SessionHandler : "MemcachedSessionHandler";
+			$handlername = sprintf("\Railpage\SessionHandler\%s", $handlername);
+			
+			/**
+			 * Create a new \Memcached (aka PHPMemcached) object, connect our hosts to it
+			 */
+			
+			$Memcached = new PHPMemcached;
+			$Memcached->addServer($host['primary']['addr'], $host['primary']['port']); 
+			$Memcached->addServer($host['secondary']['addr'], $host['secondary']['port']); 
+			$Memcached->setOption(PHPMemcached::OPT_DISTRIBUTION, PHPMemcached::DISTRIBUTION_CONSISTENT);
+			$Memcached->setOption(PHPMemcached::OPT_CONNECT_TIMEOUT, 150);
+			$Memcached->setOption(PHPMemcached::OPT_RETRY_TIMEOUT, 0);
+			$Memcached->setOption(PHPMemcached::OPT_HASH, PHPMemcached::HASH_MD5);
+			
+			/**
+			 * Create our MemcachedSessionHandler instance and instruct PHP to use that for session storage
+			 */
+			
+			$options = array(
+				"prefix" => "memc.sess.key.",
+				"expiretime" => 1800
+			);
+			
+			$SessionHandler = new $handlername($Memcached, $options);
+			session_set_save_handler($SessionHandler, true);
+			
+			/**
+			 * Cross-subdomain cookies n shiz
+			 */
+			
 			session_set_cookie_params(0, "/", sprintf(".%s", RP_SITE_DOMAIN)); 
+			
+			/**
+			 * ZOMG ACTUALLY START THE EFFING SESSION
+			 */
 			
 			session_start();
 			

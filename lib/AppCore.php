@@ -511,6 +511,10 @@
 		 */
 		
 		static public function getRedis() {
+			if (!extension_loaded("redis")) {
+				return new NullCacheDriver;
+			}
+			
 			$Registry = Registry::getInstance();
 			
 			$Config = self::getConfig();
@@ -537,6 +541,10 @@
 		 */
 		
 		static public function getMemcached() {
+			if (!extension_loaded("memcached")) {
+				return new NullCacheDriver;
+			}
+			
 			$Registry = Registry::getInstance();
 			
 			$Config = self::getConfig();
