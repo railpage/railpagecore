@@ -35,6 +35,8 @@
 		require_once(dirname(__DIR__) . DS . "tests" . DS . "inc.memcache.php");
 		require_once(dirname(__DIR__) . DS . "tests" . DS . "inc.config.railpage.php");
 		
+		date_default_timezone_set("Australia/Melbourne");
+		
 		/**
 		 * PHPFlickr
 		 */
