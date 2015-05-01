@@ -11,18 +11,28 @@
 			$Manufacturer->name = "Test Manufacturer";
 			$Manufacturer->desc = "Test description";
 			$Manufacturer->commit(); 
+			
+			return $Manufacturer->id;
 		}
 		
-		public function testGet() {
-			$Manufacturer = new Manufacturer(1);
+		/**
+		 * @depends testAdd
+		 */
+		
+		public function testGet($id) {
+			$Manufacturer = new Manufacturer($id); 
 			
-			$this->assertEquals(1, $Manufacturer->id);
+			$this->assertEquals($id, $Manufacturer->id);
 			$this->assertEquals("Test Manufacturer", $Manufacturer->name);
 			$this->assertEquals("Test description", $Manufacturer->desc);
 		}
 		
-		public function testUpdate() {
-			$Manufacturer = new Manufacturer(1);
+		/**
+		 * @depends testAdd
+		 */
+		
+		public function testUpdate($id) {
+			$Manufacturer = new Manufacturer($id);
 			
 			$Manufacturer->name = "Test Manufacturer Updated";
 			$Manufacturer->desc = "Test description updated";
@@ -33,7 +43,7 @@
 			$Manufacturer->commit(); 
 			
 			// Reload the operator
-			$Manufacturer = new Manufacturer(1);
+			$Manufacturer = new Manufacturer($id);
 			
 			$this->assertEquals($updated_name, $Manufacturer->name);
 			$this->assertEquals($updated_desc, $Manufacturer->desc);

@@ -10,17 +10,27 @@
 			
 			$Operator->name = "Test Operator";
 			$Operator->commit(); 
+			
+			return $Operator->id;
 		}
 		
-		public function testGet() {
-			$Operator = new Operator(1);
+		/**
+		 * @depends testAdd
+		 */
+		
+		public function testGet($id) {
+			$Operator = new Operator($id);
 			
-			$this->assertEquals(1, $Operator->id);
+			$this->assertEquals($id, $Operator->id);
 			$this->assertEquals("Test Operator", $Operator->name);
 		}
 		
-		public function testUpdate() {
-			$Operator = new Operator(1);
+		/**
+		 * @depends testAdd
+		 */
+		
+		public function testUpdate($id) {
+			$Operator = new Operator($id);
 			
 			$Operator->name = "Test Operator Updated";
 			$Operator->organisation_id = 200;
@@ -31,7 +41,7 @@
 			$Operator->commit(); 
 			
 			// Reload the operator
-			$Operator = new Operator(1);
+			$Operator = new Operator($id);
 			
 			$this->assertEquals($updated_name, $Operator->name);
 			$this->assertEquals($updated_org_id, $Operator->organisation_id);

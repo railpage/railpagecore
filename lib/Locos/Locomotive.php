@@ -446,7 +446,6 @@
 			if (isset($row) && is_array($row)) {
 				$this->number 		= stripslashes($row['loco_num']); 
 				$this->name			= stripslashes($row['loco_name']);
-				$this->gauge 		= stripslashes($row['loco_gauge']);
 				$this->gauge_id		= $row['loco_gauge_id'];
 				$this->status_id 	= $row['loco_status_id']; 
 				$this->status		= $row['loco_status'];
@@ -702,6 +701,14 @@
 				}
 			}
 			
+			if (!filter_var($this->gauge_id, FILTER_VALIDATE_INT)) {
+				throw new Exception("No gauge has been set");
+			}
+			
+			if (!filter_var($this->status_id, FILTER_VALIDATE_INT)) {
+				throw new Exception("No status has been set");
+			}
+			
 			return true;
 		}
 		
@@ -787,7 +794,7 @@
 					"photo_id" => empty($this->photo_id) ? 0 : $this->photo_id,
 					"manufacturer_id" => empty($this->manufacturer_id) ? 0 : $this->manufacturer_id,
 					"loco_name" => empty($this->name) ? "" : $this->name,
-					"meta" => json_encode($this->meta)
+					"meta" => json_encode((isset($this->meta) && is_array($this->meta)) ? $this->meta : array())
 				);
 				
 				if (empty($this->date_added)) {
@@ -2188,5 +2195,34 @@
 				"url" => $this->url->getURLs()
 			);
 		}
+		
+		/**
+		 * Set the locomotive class
+		 * @since Version 3.9.1
+		 * @param \Railpage\Locos\LocoClass $LocoClass
+		 * @return \Railpage\Locos\Locomotive
+		 */
+		
+		public function setLocoClass(LocoClass $LocoClass) {
+			$this->Class = $LocoClass;
+			$this->class = $LocoClass;
+			$this->class_id = $LocoClass->id;
+			
+			return $this;
+		}
+		
+		/**
+		 * Set the locomotive gauge
+		 * @since Version 3.9.1
+		 * @param \Railpage\Locos\Gauge $Gauge
+		 * @return \Railpage\Locos\Locomotive
+		 */
+		
+		public function setGauge(Gauge $Gauge) {
+			$this->gauge_id = $Gauge->id;
+			$this->gauge = $Gauge->getArray(); 
+			$this->gauge_formatted = (string) $Gauge;
+			
+			return $this;
+		}
 	}
-?>

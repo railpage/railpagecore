@@ -1765,5 +1765,55 @@
 				yield new Date($row['date_id']);
 			}
 		}
+		
+		/**
+		 * Converts a height value given in cm to feet and inches
+		 *
+		 * @param int $cm
+		 * @return array
+		 */
+		
+		public static function convert_to_inches($cm) {
+			$inches = round($cm * 0.393701);
+			$result = [
+				'ft' => intval($inches / 12),
+				'in' => $inches % 12,
+			];
+		
+			return $result;
+		}
+		
+		/**
+		 * Converts a height value given in feet/inches to cm
+		 *
+		 * @param int $feet
+		 * @param int $inches
+		 * @return int
+		 */
+		
+		public static function convert_to_cm($feet, $inches = 0) {
+			$inches = ($feet * 12) + $inches;
+			return (int) round($inches / 0.393701);
+		}
+
+		/**
+		 * Add a locomotive status
+		 * @since Version 3.9.1
+		 * @var string $name
+		 * @return \Railpage\Locos\Locos;
+		 */
+		
+		public function addStatus($name = false) {
+			if (!$name) {
+				throw new Exception("No name was given for this status");
+			}
+			
+			$data = array(
+				"name" => $name
+			);
+			
+			$this->db->insert("loco_status", $data); 
+			
+			return $this;
+		}
 	}
-?>

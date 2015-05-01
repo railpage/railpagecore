@@ -10,17 +10,27 @@
 			
 			$Type->name = "Test Type";
 			$Type->commit(); 
+			
+			return $Type->id;
 		}
 		
-		public function testGet() {
-			$Type = new Type(1);
+		/**
+		 * @depends testAdd
+		 */
+		
+		public function testGet($id) {
+			$Type = new Type($id);
 			
-			$this->assertEquals(1, $Type->id);
+			$this->assertEquals($id, $Type->id);
 			$this->assertEquals("Test Type", $Type->name);
 		}
 		
-		public function testUpdate() {
-			$Type = new Type(1);
+		/**
+		 * @depends testAdd
+		 */
+		
+		public function testUpdate($id) {
+			$Type = new Type($id);
 			
 			$Type->name = "Test Type Updated";
 			
@@ -29,7 +39,7 @@
 			$Type->commit(); 
 			
 			// Reload the operator
-			$Type = new Type(1);
+			$Type = new Type($id);
 			
 			$this->assertEquals($updated_name, $Type->name);
 			

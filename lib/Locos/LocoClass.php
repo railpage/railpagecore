@@ -701,7 +701,7 @@
 				"model" => $this->model,
 				"download_id" => empty($this->download_id) ? 0 : $this->download_id,
 				"slug" => empty($this->slug) ? "" : $this->slug,
-				"meta" => json_encode($this->meta)
+				"meta" => json_encode(isset($this->meta) && is_array($this->meta) ? $this->meta : array())
 			);
 			
 			if (empty($this->date_added)) {
@@ -1496,5 +1496,46 @@
 				)
 			);
 		}
+		
+		/**
+		 * Set the manufacturer
+		 * @since Version 3.9.1
+		 * @param \Railpage\Locos\Manufacturer $Manufacturer
+		 * @return \Railpage\Locos\LocoClass
+		 */
+		
+		public function setManufacturer(Manufacturer $Manufacturer) {
+			$this->manufacturer_id = $Manufacturer->id;
+			$this->manufacturer = $Manufacturer->name;
+			
+			return $this;
+		}
+		
+		/**
+		 * Set the wheel arrrangement
+		 * @since Version 3.9.1
+		 * @param \Railpage\Locos\WheelArrangement $WheelArrangement
+		 * @return \Railpage\Locos\LocoClass
+		 */
+		
+		public function setWheelArrangement(WheelArrangement $WheelArrangement) {
+			$this->wheel_arrangement_id = $WheelArrangement->id;
+			$this->wheel_arrangement = $WheelArrangement->arrangement;
+			
+			return $this;
+		}
+		
+		/**
+		 * Set the type
+		 * @since Version 3.9.1
+		 * @param \Railpage\Locos\Type $Type
+		 * @return \Railpage\Locos\LocoClass
+		 */
+		
+		public function setType(Type $Type) {
+			$this->type_id = $Type->id;
+			$this->type = $Type->name;
+			
+			return $this;
+		}
 	}
-?>

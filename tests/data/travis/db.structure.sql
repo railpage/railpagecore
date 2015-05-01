@@ -1064,7 +1064,9 @@ CREATE TABLE `loco_gauge` (
   `gauge_name` varchar(64) CHARACTER SET latin1 NOT NULL,
   `gauge_imperial` varchar(64) CHARACTER SET latin1 NOT NULL,
   `gauge_metric` varchar(64) CHARACTER SET latin1 NOT NULL,
-  PRIMARY KEY (`gauge_id`)
+  `slug` varchar(12) NOT NULL,
+  PRIMARY KEY (`gauge_id`),
+  KEY `slug` (`slug`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
