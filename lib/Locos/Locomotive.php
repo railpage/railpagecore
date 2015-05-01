@@ -2225,4 +2225,105 @@
 			
 			return $this;
 		}
+		
+		/**
+		 * Get the gauge
+		 * @since Version 3.9.1
+		 * @return \Railpage\Locos\Gauge
+		 */
+		
+		public function getGauge() {
+			return new Gauge($this->gauge_id);
+		}
+		
+		/**
+		 * Get the loco manufacturer
+		 * @since Version 3.9.1
+		 * @return \Railpage\Locos\Manufacturer
+		 */
+		
+		public function getManufacturer() {
+			if (filter_var($this->manufacturer_id, FILTER_VALIDATE_INT)) {
+				return new Manufacturer($this->manufacturer_id); 
+			}
+			
+			return $this->Class->getManufacturer(); 
+		}
+		
+		/**
+		 * Generate descriptive text
+		 * @since Version 3.9.1
+		 * @return string
+		 */
+		
+		public function generateDescription() {
+			$bits = array(); 
+			
+			/**
+			 * Built as... by...
+			 */
+			
+			$bits[] = "Built ";
+			
+			if (!empty($this->builders_num)) {
+				$bits[] = sprintf("as %s ", $this->builders_num); 
+			}
+			
+			$bits[] = sprintf("by %s, ", (string) $this->getManufacturer());
+			
+			/**
+			 * Process the dates
+			 */
+			
+			$dates = $this->loadDates();
+			$dates = array_reverse($dates);
+			
+			foreach ($dates as $row) {
+				$Date = new Date($row['date_id']);
+				
+				if (!isset($bits['inservice']) && $row['date_type_id'] == 1) {
+					$bits['inservice'] = sprintf("%s entered service %s. ", $this->number, $Date->Date->format("F j, Y"));
+				}
+				
+				if ($row['date_type_id'] == 7) {
+					$bits[] = sprintf("On %s, it was withdrawn for preservation. ", $Date->Date->format("F j, Y"));
+				}
+			}
+			
+			/**
+			 * The loco is currently...
+			 */
+			
+			switch ($this->status_id) {
+				case 4: // Preserved - static
+					$bits[] = sprintf("\n%s is preserved statically", $this->number); 
+					break;
+					
+				case 5: // Preserved - operational
+					$bits[] = sprintf("\n%s is preserved in operational condition", $this->number);
+					
+					// Get the latest operator
+					if (!empty($this->operator)) {
+						$bits[] = sprintf(" and can be seen on trains operated by %s", $this->operator);
+					}
+					
+					break;
+				
+				case 9: // Under restoration
+					$bits[] = sprintf("\n%s is currently under restoration.", $this->number);
+					break;
+			}
+			
+			$str = trim(implode("", $bits)); 
+			
+			if (preg_match("/([a-zA-Z0-9]+)/", substr($str, -1))) {
+				$str .= ".";
+			}
+			
+			if (substr($str, -1) == ",") {
+				$str = substr($str, 0, strlen($str) - 1) . ".";
+			}
+			
+			return $str;
+		}
 	}

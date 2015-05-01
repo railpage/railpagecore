@@ -180,5 +180,15 @@
 			
 			return $return;
 		}
+		
+		/**
+		 * Return this as a string
+		 * @since Version 3.9.1
+		 * @return string
+		 */
+		
+		public function __toString() {
+			return $this->name;
+		}
 	}
 ?>

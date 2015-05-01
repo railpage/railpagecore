@@ -191,7 +191,8 @@
 				"gauge_name" => $this->name,
 				"gauge_imperial" => $this->width_imperial,
 				"gauge_metric" => $this->width_metric,
-				"slug" => $this->slug
+				"slug" => $this->slug,
+				"text" => $this->__toString()
 			);
 		}
 		
@@ -202,6 +203,6 @@
 		 */
 		
 		public function __toString() {
-			return sprintf("% %s (%s)", $this->name, $this->width_imperial, $this->width_metric); 
+			return sprintf("%s %s (%s)", $this->name, $this->width_imperial, $this->width_metric); 
 		}
 	}
