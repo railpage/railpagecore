@@ -1638,6 +1638,7 @@
 					if ($this->db->query($query)) {
 						if (!$this->id) {
 							$this->id = $this->db->insert_id;
+							$this->guest = false;
 						} 
 					
 						$return = true;
@@ -1660,6 +1661,7 @@
 				} else {
 					$this->db->insert("nuke_users", $dataArray);
 					$this->id = $this->db->lastInsertId();
+					$this->guest = false;
 					
 					$this->createUrls();
 				}
