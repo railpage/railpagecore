@@ -19,8 +19,8 @@
 	use stdClass;
 	use DomDocument;
 	use GuzzleHttp\Client;
-	use Railpage\Gallery\G1Album;
-	use Railpage\Gallery\G1Image;
+	use Railpage\Gallery\Album as G1Album;
+	use Railpage\Gallery\Image as G1Image;
 	use Railpage\Users;
 	
 	/**
