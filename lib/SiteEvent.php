@@ -103,7 +103,9 @@
 			 * Record this in the debug log
 			 */
 			
-			debug_recordInstance(__CLASS__);
+			if (function_exists("debug_recordInstance")) {
+				debug_recordInstance(__CLASS__);
+			}
 			
 			if ($event_id) {
 				$this->id = $event_id; 
@@ -120,7 +122,7 @@
 		
 		public function fetch() {
 			if (!$this->id) {
-				throw new \Exception("Cannot fetch event - no event ID given"); 
+				throw new Exception("Cannot fetch event - no event ID given"); 
 				return false;
 			}
 			
@@ -163,17 +165,17 @@
 		
 		public function validate() {
 			if (empty($this->title)) {
-				throw new \Exception("Cannot validate site event - title cannot be empty!"); 
+				throw new Exception("Cannot validate site event - title cannot be empty!"); 
 				return false;
 			}
 			
 			if (empty($this->user_id)) {
-				throw new \Exception("Cannot validate site event - user ID cannot be empty!"); 
+				throw new Exception("Cannot validate site event - user ID cannot be empty!"); 
 				return false;
 			}
 			
 			if (empty($this->key)) {
-				throw new \Exception("Cannot validate site event - key cannot be empty!"); 
+				throw new Exception("Cannot validate site event - key cannot be empty!"); 
 				return false;
 			}
 			
@@ -194,7 +196,7 @@
 			try {
 				$this->validate(); 
 			} catch (Exception $e) {
-				throw new \Exception($e->getMessage()); 
+				throw new Exception($e->getMessage()); 
 				return false;
 			}
 			
@@ -218,7 +220,7 @@
 				if ($this->db->query($query)) {
 					return true;
 				} else {
-					throw new \Exception($this->db->error."\n\n".$query); 
+					throw new Exception($this->db->error."\n\n".$query); 
 					return false;
 				}
 			} else {
