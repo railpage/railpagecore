@@ -207,6 +207,10 @@
 				$this->createSlug();
 			}
 			
+			if (!filter_var($this->status, FILTER_VALIDATE_INT)) {
+				$this->status = Ideas::STATUS_ACTIVE;
+			}
+			
 			if (!filter_var($this->forum_thread_id, FILTER_VALIDATE_INT)) {
 				$this->forum_thread_id = 0;
 			}
