@@ -23,9 +23,9 @@ services:
  
 matrix:
   fast_finish: true
-#  allow_failures:
-#    - php: hhvm
+  allow_failures:
     - php: hhvm-nightly
+#    - php: hhvm
 #    - php: 7.0
 
 install:
