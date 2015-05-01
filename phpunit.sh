@@ -15,7 +15,7 @@ echo "Running phpUnit ::"
 time /usr/local/bin/phpunit
 times
 
-if [ -e /usr/local/php7/bin/php ]; then
+if [ -e /usr/local/php7/bin/phpzzlol ]; then
 	echo ""
 	echo ""
     echo "   -- Resetting test environment for php7 --"
