@@ -416,6 +416,10 @@
 					$imageprovider = __NAMESPACE__ . "\\Provider\\PicasaWeb";
 					break;
 				
+				case "rpoldgallery" : 
+					$imageprovider = __NAMESPACE__ . "\\Provider\RPOldGallery";
+					break;
+				
 				case "flickr" : 
 					$params = array(
 						"oauth_token" => "",
