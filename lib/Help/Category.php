@@ -8,6 +8,10 @@
 	
 	namespace Railpage\Help; 
 	
+	use Exception;
+	use DateTime;
+	
+	
 	/**
 	 * Category
 	 */
@@ -68,7 +72,7 @@
 		
 		public function fetch() {
 			if (!$this->id) {
-				throw new \Exception("Cannot fetch category - no category ID given"); 
+				throw new Exception("Cannot fetch category - no category ID given"); 
 				return false;
 			}
 			
@@ -82,11 +86,11 @@
 						$this->name = $row['category_name']; 
 						$this->url_slug = $row['category_url_slug'];
 					} else {
-						throw new \Exception($rs->num_rows." found when fetching category ID ".$this->id." - this should not happen"); 
+						throw new Exception($rs->num_rows." found when fetching category ID ".$this->id." - this should not happen"); 
 						return false;
 					}
 				} else {
-					throw new \Exception($this->db->error."\n\n".$query); 
+					throw new Exception($this->db->error."\n\n".$query); 
 					return false;
 				}
 			} else {
@@ -124,7 +128,7 @@
 					
 					return $return;
 				} else {
-					throw new \Exception($this->db->error."\n\n".$query); 
+					throw new Exception($this->db->error."\n\n".$query); 
 					return false;
 				}
 			} else {
@@ -154,16 +158,32 @@
 		
 		public function validate() {
 			if (empty($this->name)) {
-				throw new \Exception("Cannot validate category - name cannot be empty"); 
+				throw new Exception("Cannot validate category - name cannot be empty"); 
 				return false;
 			}
 			
 			if (empty($this->url_slug)) {
-				throw new \Exception("Cannot validate category - URL slug cannot be empty"); 
-				return false;
+				$this->createSlug();
 			}
 			
 			return true;
+		}
+		
+		/**
+		 * Create a URL slug
+		 * @since Version 3.9.1
+		 */
+		
+		private function createSlug() {
+			$proposal = create_slug($this->name);
+			
+			$result = $this->db->fetchAll("SELECT id_cat FROM nuke_faqCategories WHERE url_slug = ?", $proposal); 
+			
+			if (count($result)) {
+				$proposal .= count($result);
+			}
+			
+			$this->url_slug = $proposal;
 		}
 		
 		/**
@@ -173,12 +193,7 @@
 		 */
 		
 		public function commit() {
-			try {
-				$this->validate(); 
-			} catch (Exception $e) {
-				throw new \Exception($e->getMessage()); 
-				return false;
-			}
+			$this->validate();
 			
 			if ($this->db instanceof \sql_db) {
 				$dataArray = array(); 
@@ -198,7 +213,7 @@
 					
 					return true; 
 				} else {
-					throw new \Exception($this->db->error."\n\n".$query); 
+					throw new Exception($this->db->error."\n\n".$query); 
 					return false;
 				}
 			} else {

@@ -9,6 +9,7 @@
 	namespace Railpage\Help; 
 	
 	use Exception;
+	use DateTime;
 	use Railpage\Url;
 	
 	/**
@@ -114,13 +115,13 @@
 						$this->title 	= $row['item_title']; 
 						$this->text 	= $row['item_text'];
 						$this->url_slug	= $row['item_url_slug']; 
-						$this->timestamp	= new \DateTime($row['item_timestamp']); 
+						$this->timestamp	= new DateTime($row['item_timestamp']); 
 						
-						try {
+						#try {
 							$this->category = new Category($row['category_id']); 
-						} catch (Exception $e) {
-							throw new \Error($e->getMessage()); 
-						}
+						#} catch (Exception $e) {
+						#	throw new \Error($e->getMessage()); 
+						#}
 					} else {
 						throw new Exception($rs->num_rows." found when fetching item ID ".$this->id." - this should not happen"); 
 						return false;
@@ -136,7 +137,7 @@
 					$this->title 		= $row['item_title']; 
 					$this->text 		= $row['item_text'];
 					$this->url_slug		= $row['item_url_slug']; 
-					$this->timestamp	= new \DateTime($row['item_timestamp']); 
+					$this->timestamp	= new DateTime($row['item_timestamp']); 
 					$this->category 	= new Category($row['category_id']); 
 				}
 			}
@@ -166,7 +167,7 @@
 			}
 			
 			if (filter_var($this->url_slug, FILTER_VALIDATE_INT) || empty($this->url_slug) || !is_string($this->url_slug)) {
-				$this->createSlug(); 
+				$this->url_slug = $this->createSlug(); 
 			}
 			
 			return true;
@@ -179,12 +180,7 @@
 		 */
 		
 		public function commit() {
-			try {
-				$this->validate(); 
-			} catch (Exception $e) {
-				throw new Exception($e->getMessage()); 
-				return false;
-			}
+			$this->validate();
 			
 			if ($this->db instanceof \sql_db) {
 				$dataArray = array(); 
@@ -279,29 +275,32 @@
 			 * Check that we haven't used this slug already
 			 */
 			
-			$result = $this->db_readonly->fetchAll("SELECT id FROM nuke_faqAnswer WHERE url_slug = ? AND id != ?", array($proposal, $this->id)); 
+			$result = $this->db->fetchAll("SELECT id FROM nuke_faqAnswer WHERE url_slug = ? AND id != ?", array($proposal, $this->id)); 
 			
 			if (count($result)) {
 				$proposal .= count($result);
 			}
 			
-			if (isset($this->slug)) {
-				$this->slug = $proposal;
-			}
+			#if (isset($this->url_slug)) {
+			#	$this->url_slug = $proposal;
+			#}
 			
 			/**
 			 * Add this slug to the database
 			 */
 			
-			$data = array(
-				"url_slug" => $proposal
-			);
-			
-			$where = array(
-				"id = ?" => $this->id
-			);
-			
-			$rs = $this->db->update("nuke_faqAnswer", $data, $where); 
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				
+				$data = array(
+					"url_slug" => $proposal
+				);
+				
+				$where = array(
+					"id = ?" => $this->id
+				);
+				
+				$rs = $this->db->update("nuke_faqAnswer", $data, $where); 
+			}
 			
 			/**
 			 * Return it
