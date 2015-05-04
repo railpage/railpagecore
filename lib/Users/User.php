@@ -3604,6 +3604,30 @@
 		}
 		
 		/**
+		 * Set this user's account to match a given status flag
+		 * @since Version 3.9.1
+		 * @param int $status
+		 * @return \Railpage\Users\User
+		 */
+		
+		public function setUserAccountStatus($status = false) {
+			if (!$status) {
+				return $this;
+			}
+			
+			switch ($status) {
+				case self::STATUS_ACTIVE : 
+					$this->active = true; 
+					break;
+					
+			}
+			
+			$this->commit(); 
+			
+			return $this;
+		}
+		
+		/**
 		 * Refresh user data from the database
 		 * @since Version 3.8.7
 		 * @return \Railpage\Users\User
@@ -3780,8 +3804,7 @@
 				throw new Exception("Cannot check if username is available because no username was provided");
 			}
 			
-			$Admin = new Admin;
-			return $Admin->username_available($username);
+			return (new Base)->username_available($username);
 		}
 		
 		/**
@@ -3800,8 +3823,7 @@
 				throw new Exception("Cannot check if username is available because no email address was provided");
 			}
 			
-			$Admin = new Admin;
-			return $Admin->email_available($email);
+			return (new Base)->email_available($email);
 		}
 		
 		/**
@@ -3915,5 +3937,114 @@
 			$this->avatar_height = 120;
 			
 			return $this;
+		}
+		
+		/**
+		 * Get alerts for this user
+		 * @since Version 3.9.1
+		 * @param \Zend_Acl $acl
+		 * @return array
+		 */
+		
+		public function getAlerts(\Zend_Acl $acl) {
+			$query = array(); 
+			$params = array(); 
+			
+			if (!$this->guest) {
+				
+				// Replies to my watched threads
+				//$query['forums'] = "SELECT 'Forum replies' AS module, COUNT(t.topic_id) AS num, '/forums/replies' AS url, GROUP_CONCAT(CONCAT(t.forum_id, ':', t.topic_id, ':', p.post_time) SEPARATOR ';') AS extra FROM nuke_bbtopics AS t LEFT JOIN nuke_bbposts AS p ON t.topic_last_post_id = p.post_id WHERE t.topic_id IN (SELECT topic_id FROM nuke_bbtopics_watch WHERE user_id = ?)";
+				//$params[] = $this->id;
+				
+				// Private messages
+				$query['pms'] = "SELECT 'Private Messages' AS module, COUNT(*) AS num, '/messages' AS url, NULL AS extra FROM nuke_bbprivmsgs WHERE privmsgs_to_userid = ? AND privmsgs_type = 5";
+				$params[] = $this->id;
+			}
+			
+			/**
+			 * Staff-level stuff
+			 */
+			
+			$acl_role = $this->aclRole(RP_GROUP_MODERATORS);
+			
+			if ($acl->isAllowed($acl_role, "railpage.downloads", "manage")) {
+				$query['feedback'] = "SELECT 'Feedback' AS module, COUNT(*) AS num, '/feedback/manage' AS url, NULL AS extra FROM feedback WHERE status = 1";
+				$query['events'] = "SELECT 'Events' AS module, COUNT(*) AS num, '/events?mode=pending' AS url, NULL AS extra FROM event WHERE status = 0";
+				$query['eventdates'] = "SELECT 'Event Dates' AS module, COUNT(*) AS num, '/events?mode=pending' AS url, NULL AS extra FROM event_dates WHERE status = 0";
+				$query['locations'] = "SELECT 'Locations' AS module, COUNT(*) AS num, '/locations/pending' AS url, NULL AS extra FROM location WHERE active = 0";
+				$query['reports'] = "SELECT 'Reported posts' AS module, COUNT(*) AS num, '/f-report-cp.htm' AS url, NULL AS extra FROM phpbb_reports_posts WHERE report_status = 1";
+				$query['news'] = "SELECT 'News' AS module, COUNT(*) AS num, '/news/pending' AS url, NULL AS extra FROM nuke_stories WHERE approved = 0";
+				$query['glossary'] = "SELECT 'Glossary' AS module, COUNT(*) AS num, '/glossary?mode=manage.pending' AS url, NULL AS extra FROM glossary WHERE status = 0";
+				$query['locations'] = "SELECT 'Locations' AS module, COUNT(*) AS num, '/locations/pending' AS url, NULL AS extra FROM location WHERE active = 0";
+			}
+			
+			/**
+			 * Maintainer-level stuff
+			 */
+			
+			$acl_role = $this->aclRole(RP_GROUP_LOCOS);
+			
+			if ($acl->isAllowed($acl_role, "railpage.locos", "edit")) {
+				$query['locos'] = "SELECT 'Locos' AS module, COUNT(*) AS num, '/locos/corrections' AS url, NULL AS extra FROM loco_unit_corrections WHERE status = 0";
+			}
+			
+			if (empty($query)) {
+				return false;
+			}
+			
+			// Assemble the query
+			$query = implode(" UNION ", $query); 
+			$query .= " ORDER BY module";
+			
+			/*
+			$query = "SELECT 'Downloads' AS module, COUNT(*) AS num, '/downloads/manage' AS url FROM download_items WHERE active = 1 AND approved = 0
+						UNION SELECT 'Feedback' AS module, COUNT(*) AS num, '/feedback/manage' AS url FROM feedback WHERE status = 1
+						UNION SELECT 'Events' AS module, COUNT(*) AS num, '/events?mode=pending' AS url FROM event WHERE status = 0
+						UNION SELECT 'Event Dates' AS module, COUNT(*) AS num, '/events?mode=pending' AS url FROM event_dates WHERE status = 0
+						UNION SELECT 'Locations' AS module, COUNT(*) AS num, '/locations/pending' AS url FROM location WHERE active = 0
+						UNION SELECT 'Locos' AS module, COUNT(*) AS num, '/locos/manage/corrections' AS url FROM loco_unit_corrections WHERE status = 0
+						UNION SELECT 'Private Messages' AS module, COUNT(*) AS num, '/messages' AS url FROM nuke_bbprivmsgs WHERE privmsgs_to_userid = ? AND privmsgs_type = 5
+						UNION SELECT 'Forum replies' AS module, COUNT(*) AS num, '/forums/replies' AS url FROM nuke_bbtopics WHERE topic_id IN (SELECT topic_id FROM nuke_bbtopics_watch WHERE user_id = ?)
+						UNION SELECT 'Reported posts' AS module, COUNT(*) AS num, '/f-report-cp.htm' AS url FROM phpbb_reports_posts WHERE report_status = 1
+						UNION SELECT 'News' AS module, COUNT(*) AS num, '/news/pending' AS url FROM nuke_stories WHERE approved = 0
+						UNION SELECT 'Glossary' AS module, COUNT(*) AS num, '/glossary?mode=manage.pending' AS url FROM glossary WHERE status = 0
+						ORDER BY module";
+			*/
+			
+			/**
+			 * Get the result from the database
+			 */
+			
+			$result = $this->db->fetchAll($query, $params); 
+			
+			/** 
+			 * Filter the forum posts to exclude ones we've read
+			 */
+			
+			foreach ($result as $id => $row) {
+				if ($row['module'] == "Forum replies") {
+					$topics = explode(";", $row['extra']); 
+					$unread = array(); 
+					
+					$ReadThreads = Forums::getReadItemsForUser($this);
+					$ReadForums = Forums::getReadItemsForUser($this, "f"); 
+					
+					foreach ($topics as $topic) {
+						$topic = explode(":", $topic);
+						
+						if ($topic[2] > strtotime("6 months ago") && (!in_array($topic[1], $ReadThreads) || $ReadThreads[$topic[1]] < $topic[2])) {
+							$unread[] = $topic[1]; 
+						}
+					}
+					
+					if (count($unread) === 0) {
+						unset($result[$id]);
+					} else {
+						$result[$id]['num'] = count($unread);
+					}
+				}
+			}
+			
+			return $result;
 		}
 	}
