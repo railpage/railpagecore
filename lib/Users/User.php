@@ -3976,6 +3976,7 @@
 				$query['news'] = "SELECT 'News' AS module, COUNT(*) AS num, '/news/pending' AS url, NULL AS extra FROM nuke_stories WHERE approved = 0";
 				$query['glossary'] = "SELECT 'Glossary' AS module, COUNT(*) AS num, '/glossary?mode=manage.pending' AS url, NULL AS extra FROM glossary WHERE status = 0";
 				$query['locations'] = "SELECT 'Locations' AS module, COUNT(*) AS num, '/locations/pending' AS url, NULL AS extra FROM location WHERE active = 0";
+				$query['downloads'] = "SELECT 'Downloads' AS module, COUNT(*) AS num, '/downloads/manage' AS url, NULL AS extra FROM download_items WHERE active = 1 AND approved = 0";
 			}
 			
 			/**
@@ -4046,5 +4047,98 @@
 			}
 			
 			return $result;
+		}
+		
+		/**
+		 * Get preferences by section
+		 * @since Version 3.9.1
+		 * @param string $section
+		 * @return array
+		 */
+		
+		public function getPreferences($section = false) {
+			
+			$prefs = is_object($this->preferences) ? json_decode(json_encode($this->preferences), true) : $this->preferences; 
+			
+			/**
+			 * Default preferences
+			 */
+			
+			$defaults = [
+				"platform" => "prod",
+				"home" => "home",
+				"HTTPStaticHost" => "static.railpage.com.au",
+				"homepage" => "smooth",
+				"showads" => true,
+				"notifications" => [
+					"dailynews" => true,
+					"curatednews" => true,
+				]
+			];
+			
+			/**
+			 * Merge default preferences and sort alphabetically
+			 */
+			
+			$prefs = array_merge($defaults, $prefs); 
+			
+			uksort($prefs, "strnatcasecmp");
+			
+			/**
+			 * Return a section of the preferences if asked
+			 */
+			
+			if ($section) {
+				if (!isset($prefs[$section])) {
+					throw new Exception(sprintf("The requested preferences section \"%s\" does not exist", $section));
+				}
+				
+				return $prefs[$section];
+			}
+			
+			return $prefs;
+		}
+		
+		/**
+		 * Save preferences
+		 * @since Version 3.9.1
+		 * @return \Railpage\Users\User
+		 */
+		
+		public function savePreferences() {
+			
+			$args = func_get_args(); 
+			
+			/**
+			 * Single parameter, assume we've been given *all* preferences
+			 */
+			
+			if (count($args) === 1) {
+				$this->preferences = $args[0]; 
+				$this->commit();
+				
+				return $this;
+			}
+			
+			/**
+			 * Two parameters - assume we've been given IN THIS ORDER a section and associated preferences
+			 */
+			
+			if (count($args) === 2) {
+				
+				$prefs = $this->getPreferences();
+				$prefs[$args[0]] = $args[1];
+				
+				$this->preferences = $prefs; 
+				$this->commit();
+				
+				return $this;
+			}
+			
+			/**
+			 * No parameters passed
+			 */
+			
+			return $this;
 		}
 	}
