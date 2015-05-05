@@ -966,10 +966,12 @@
 			 * Look through our approved news articles for a possible duplication
 			 */
 			
+			$olddate = clone ($this->date);
+			
 			$query = $Sphinx->select("*")
 					->from("idx_news_article")
 					->orderBy("story_time_unix", "DESC")
-					->where("story_time_unix", ">=", $this->date->sub(new DateInterval("P7D"))->getTimestamp())
+					->where("story_time_unix", ">=", $olddate->sub(new DateInterval("P7D"))->getTimestamp())
 					->match("story_title", $this->title);
 			
 			$matches = $query->execute();
@@ -996,10 +998,12 @@
 			 * Fall back to a database query
 			 */
 			
+			$olddate = clone ($this->date);
+			
 			$where = array(
 				strtolower($this->title),
 				md5(strtolower($this->title)),
-				$this->date->sub(new DateInterval("P90D"))->format("Y-m-d H:i:s")
+				$olddate->sub(new DateInterval("P90D"))->format("Y-m-d H:i:s")
 			);
 			
 			$query = "SELECT sid FROM nuke_stories WHERE (LOWER(title) = ? OR MD5(LOWER(title)) = ?) AND time >= ?";
