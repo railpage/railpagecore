@@ -26,6 +26,14 @@
 	class Newsletter extends AppCore {
 		
 		/**
+		 * Default template
+		 * @since Version 3.9.1
+		 * @const int DEFAULT_TEMPLATE
+		 */
+		
+		const DEFAULT_TEMPLATE = 1;
+		
+		/**
 		 * Status: draft (unsent)
 		 * @since Version 3.9.1
 		 * @const int STATUS_DRAFT
@@ -208,6 +216,8 @@
 		 */
 		
 		public function getArray() {
+			$hero = $this->getHeroImage();
+			
 			return array(
 				"id" => $this->id,
 				"status" => array(
@@ -216,9 +226,9 @@
 				),
 				"template" => $this->template,
 				"subject" => $this->subject,
-				"hero" => $this->getHeroImage()->getArray(),
+				"hero" => $hero instanceof Image ? $hero->getArray() : array(),
 				"content" => $this->content,
-				"url" => $this->url->getUrls()
+				"url" => isset($this->url) && $this->url instanceof Url ? $this->url->getUrls() : array()
 			);
 		}
 		
