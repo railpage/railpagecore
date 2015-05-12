@@ -487,6 +487,12 @@
 				return $prop;
 			}
 			
+			$prop = RP_SITE_ROOT . DS . "content" . DS . "email" . DS . $template . ".tpl";
+			
+			if (file_exists($prop)) {
+				return $prop;
+			}
+			
 			throw new Exception("Cannot find a template file matching " . $template . " in any directories");
 		}
 		
