@@ -138,6 +138,13 @@
 				$json = $Article->makeJSON();
 			}
 			
+			$data = json_decode($json, true); 
+			
+			if (!isset($data['article']['url']['edit'])) {
+				$data['article']['url']['edit'] = sprintf("/news?mode=article.edit&id=%d", $data['article']['id']);
+				$json = json_encode($data);
+			}
+			
 			return $json;
 		}
 		

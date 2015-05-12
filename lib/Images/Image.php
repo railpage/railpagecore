@@ -992,5 +992,151 @@
 			
 			return json_decode($this->json, true);
 		}
+		
+		/**
+		 * Suggest locos to tag
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function suggestLocos() {
+			
+			$locolookup = array(); 
+			$locos = array(); 
+			
+			$regexes = array(
+				"[a-zA-Z0-9\w+]{4,6}",
+				"[0-9\w+]{3,4}",
+				"[a-zA-Z0-9\w+]{2}",
+				"[a-zA-Z0-9\s\w+]{4,6}"
+			);
+			
+			// Strip dates from our lookup
+			$stripdates = array(
+				"[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{2,4}",  // 12/05/2015
+				"[0-9]{1}\/[0-9]{2}\/[0-9]{2}",        // 1/05/2015
+				"[0-9]{4}\/[0-9]{2}\/[0-9]{2}",        // 2015/05/12
+				"[0-9]{2}\/[0-9]{4}",                  // 05/2015
+				"[0-9]{1,2}-[0-9]{1,2}-[0-9]{4}",      // 12-05-2015
+				"[0-9]{1,2}-[0-9]{1,2}-[0-9]{2}",      // 12-05-15
+				"[0-9]{4}-[0-9]{2}-[0-9]{2}",          // 2015-05-12
+				"[0-9]{4}s",                           // 1990s
+				"[0-9]{2}s",                           // 90s
+				"[0-9]{4}-[0-9]{2}",                   // 2015-05
+				"[0-9]{2}:[0-9]{2}"                    // 16:30
+			);
+			
+			$stripdates = "/(" . implode("|", $stripdates) . ")/";
+			
+			$stripetc = "/([\#0-9]{5})/";
+				
+			$title = $this->title;
+			$desc = $this->description;
+			
+			$title = preg_replace($stripdates, "", $title);
+			$desc = preg_replace($stripdates, "", $desc);
+			
+			$title = preg_replace($stripetc, "", $title);
+			$desc = preg_replace($stripetc, "", $desc);
+			
+			/**
+			 * Loop through all our possible regexes and search
+			 */
+			
+			foreach ($regexes as $regex) {
+				$regex = "/\b(" . $regex . ")\b/";
+			
+				preg_match_all($regex, $title, $matches['title']);
+				preg_match_all($regex, $desc, $matches['description']);
+				
+				if (isset($this->meta['tags']) && count($this->meta['tags'])) {
+					foreach ($this->meta['tags'] as $tag) {
+						preg_match_all($regex, $tag, $matches[]);
+					}
+				}
+				
+				foreach ($matches as $area => $matched) {
+					foreach ($matched as $key => $array) {
+						foreach ($array as $k => $v) {
+							if (preg_match("/([0-9])/", $v) && !preg_match("/(and|to|or|for)/", $v)) {
+								if (!in_array(trim($v), $locolookup)) {
+									$locolookup[] = trim($v);
+								}
+							}
+						}
+					}
+				}
+			}
+			
+			/**
+			 * Try to include loco numbers with spaces (eg RT 40 vs RT40) in the lookup
+			 */
+			
+			foreach ($locolookup as $k => $num) {
+				if (preg_match("/(\s)/", $num)) {
+					preg_match("/([a-zA-Z0-9]+)(\s)([a-zA-Z0-9]+)/", $num, $matches);
+					
+					if (isset($matches[3])) {
+						$prop = sprintf("%s%s", $matches[1], $matches[3]); 
+						if (!in_array($prop, $locolookup)) {
+							$locolookup[] = $prop; 
+						}
+					}
+				}
+			}
+			
+			$locolookup = array_unique($locolookup);
+			
+			/**
+			 * Get existing tags for this image
+			 */
+			
+			$tags = $this->getObjects("railpage.locos.loco"); 
+			
+			$query = "SELECT l.loco_id, l.loco_num, l.class_id, c.name AS class_name, s.name AS status_name, s.id AS status_id, t.id AS type_id, t.title AS type_name, g.gauge_id, CONCAT(g.gauge_name, ' ', g.gauge_imperial) AS gauge_formatted, o.operator_id, o.operator_name
+				FROM loco_unit AS l 
+					LEFT JOIN loco_class AS c ON l.class_id = c.id 
+					LEFT JOIN loco_type AS t ON c.loco_type_id = t.id
+					LEFT JOIN loco_status AS s ON l.loco_status_id = s.id
+					LEFT JOIN loco_gauge AS g ON g.gauge_id = l.loco_gauge_id
+					LEFT JOIN operators AS o ON l.operator_id = o.operator_id
+				WHERE l.loco_num IN ('" . implode("','", $locolookup) . "') 
+					AND l.loco_status_id NOT IN (2)";
+			
+			/**
+			 * Remove existing tags from our DB query
+			 */
+			
+			if (count($tags)) {
+				$ids = array(); 
+				
+				foreach ($tags as $tag) {
+					$ids[] = $tag['namespace_key'];
+				}
+				
+				$query .= " AND l.loco_id NOT IN (" . implode(",", $ids) . ")";
+			}
+			
+			$query .= " ORDER BY CHAR_LENGTH(l.loco_num) DESC";
+			
+			/**
+			 * Loop through the DB results
+			 */
+			
+			$i = 0; 
+			
+			foreach ($this->db->fetchAll($query) as $row) {
+				$row['object'] = "Railpage\Locos\Locomotive";
+				$locos[$row['loco_id']] = $row;
+				
+				$i++; 
+				
+				if ($i == 5) {
+					break;
+				}
+			}
+			
+			return $locos;
+		}
 	}
 ?>

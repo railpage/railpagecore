@@ -343,7 +343,7 @@
 			 * Process and fetch the email template
 			 */
 			
-			$tpl = RP_SITE_ROOT . DS . "content" . DS . "email" . DS . "template.reminder.tpl";
+			$tpl = $Smarty->ResolveTemplate("template.reminder"); #RP_SITE_ROOT . DS . "content" . DS . "email" . DS . "template.reminder.tpl";
 			$Smarty->Assign("email", $email);
 			$body = $Smarty->Fetch($tpl);
 			
@@ -354,7 +354,7 @@
 			$message = Swift_Message::newInstance()
 				->setSubject($this->title)
 				->setFrom(array(
-					"reminders@railpage.com.au" => "Railpage Reminder Alerts"
+					$this->Config->SMTP->username => $this->Config->SiteName
 				))
 				->setTo(array(
 					$this->User->contact_email => !empty($this->User->realname) ? $this->User->realname : $this->User->username
