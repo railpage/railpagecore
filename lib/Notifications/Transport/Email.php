@@ -60,6 +60,9 @@
 			
 			$this->validate();
 			
+			$from_email = $this->data['author']['username'] = "Railpage System User" ? $this->Config->SMTP->username : $this->data['author']['email'];
+			$from_name = $this->data['author']['username'] = "Railpage System User" ? $this->Config->SiteName : $this->data['author']['username'];
+			
 			/**
 			 * Create a new instance of SwiftMail
 			 */
@@ -67,7 +70,7 @@
 			$message = Swift_Message::newInstance()
 				->setEncoder(Swift_Encoding::get8BitEncoding())
 				->setSubject($this->data['subject'])
-				->setFrom(array($this->data['author']['email'] => $this->data['author']['username']))
+				->setFrom(array($from_email => $from_name))
 				->setBody($this->data['body'], 'text/html')
 				->setCharset("UTF-8");
 			
@@ -118,7 +121,7 @@
 				$rs = $mailer->send($message, $fail);
 				
 				$failures = array_merge($failures, $fail); 
-				$return = array_merge($return, $rs); 
+				$result = array_merge($result, $rs); 
 			}
 			
 			$return = array(
