@@ -172,6 +172,10 @@
 				foreach ($loop as $node) {
 					$date = !empty($node->date->__toString()) ? $node->date->__toString() : $node->pubDate->__toString();
 					
+					if (empty($date) && !empty($node->updated->__toString())) {
+						$date = $node->updated->__toString(); 
+					}
+					
 					$link = $node->link->__toString();
 					
 					foreach ($node->link as $link) {
