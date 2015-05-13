@@ -80,7 +80,7 @@
 					$row['time'] = time2str($row['story_time']);
 					
 					// Match the first sentence
-					$line = explode("\n", str_replace("\r\n", "\n", $row['story_blurb']));
+					$line = explode("\n", str_replace("\r\n", "\n", !empty($row['story_lead']) ? $row['story_lead'] : $row['story_blurb']));
 					$row['firstline']	= strip_tags($line[0]);
 					
 					$row['hometext'] = wpautop(process_bbcode($row['story_blurb']));

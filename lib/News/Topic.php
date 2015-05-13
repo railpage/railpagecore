@@ -191,7 +191,7 @@
 						$row['title'] = format_topictitle($row['story_title']);
 						
 						// Match the first sentence
-						$line = explode("\n", $row['story_blurb']); 
+						$line = explode("\n", !empty($row['story_lead']) ? $row['story_lead'] : $row['story_blurb']); 
 						$row['firstline'] = preg_replace('/([^?!.]*.).*/', '\\1', strip_tags($line[0]));
 							
 						if (empty($row['story_slug'])) {
