@@ -38,7 +38,7 @@
 		 */
 		
 		public function getLatest() {
-			$query = "SELECT message_id FROM messages WHERE message_active = 1 AND (date_start = '0000-00-00' OR (date_start <= ? AND date_end >= ?)) %s ORDER BY message_id DESC LIMIT 1";
+			$query = "SELECT message_id FROM messages WHERE message_active = 1 AND (date_start = '0000-00-00' OR (date_start <= ? AND date_end >= ?)) %s AND target_user = 0";
 			
 			$where = array(
 				date("Y-m-d"),
@@ -48,9 +48,16 @@
 			if ($this->User instanceof User) {
 				$user_list = " AND message_id NOT IN (SELECT message_id FROM messages_viewed WHERE user_id = ?)";
 				$where[] = $this->User->id;
+				
+				// Fetch any targeted messages
+				$query .= " UNION SELECT message_id FROM messages WHERE target_user = ? AND message_active = 1 AND message_id NOT IN (SELECT message_id FROM messages_viewed WHERE user_id = ?)"; 
+				$where[] = $this->User->id;
+				$where[] = $this->User->id;
 			} else {
 				$user_list = "";
 			}
+			
+			$query .= " ORDER BY message_id DESC LIMIT 1";
 			
 			$query = sprintf($query, $user_list);
 			
@@ -63,4 +70,4 @@
 			}
 		}
 	}
-?>
+	
