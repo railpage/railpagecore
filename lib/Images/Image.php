@@ -756,6 +756,12 @@
 		 */
 		
 		public function getJSON() {
+			$author = clone $this->author;
+			
+			if (isset($author->User) && $author->User instanceof User) {
+				$author->User = $author->User->getArray(); 
+			}
+			
 			$data = array(
 				"id" => $this->id,
 				"title" => $this->title,
@@ -765,7 +771,7 @@
 					"photo_id" => $this->photo_id
 				),
 				"sizes" => $this->sizes,
-				"author" => json_decode(json_encode($this->author), true),
+				"author" => $author,
 				"url" => $this->url instanceof Url ? $this->url->getURLs() : array()
 			);
 			
