@@ -138,8 +138,11 @@
 					"tags" => $return['photo']['tags']['tag'],
 					"sizes" => $return['photo']['sizes'],
 					"urls" => $return['photo']['urls'],
-					"location" => $return['photo']['location'],
 				);
+				
+				if (isset($return['photo']['location'])) {
+					$this->photo['location'] = $return['photo']['location'];
+				}
 				
 				/*
 				 * Check if the author is on Railpage

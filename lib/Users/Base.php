@@ -175,9 +175,18 @@
 				throw new Exception("Can't find user - no email address provided");
 			}
 			
-			$query = "SELECT user_id FROM nuke_users WHERE user_email = ? AND provider = ?";
+			$query = "SELECT user_id FROM nuke_users WHERE user_email = ?";
 			
-			$user_id = $this->db->fetchOne($query, array($email, $provider));
+			$params = array(
+				$email
+			);
+			
+			if (!is_null($provider)) {
+				$params[] = $provider;
+				$query .= " AND provider = ?";
+			}
+			
+			$user_id = $this->db->fetchOne($query, $params);
 			
 			if (filter_var($user_id, FILTER_VALIDATE_INT)) {
 				return new User($user_id);
@@ -264,6 +273,107 @@
 	ORDER BY u.username, u.user_id";
 			
 			return $this->db->fetchAll($query);
+		}
+		
+		/**
+		 * Get user from Facebook ID
+		 * @since Version 3.9.1
+		 * @return \Railpage\Users\User
+		 * @param int $id
+		 */
+		
+		public function getUserFromFacebookID($id = false) {
+			$query = "SELECT user_id FROM nuke_users WHERE facebook_user_id = ?"; 
+			
+			$user_id = $this->db->fetchOne($query, $id); 
+			
+			if (!filter_var($user_id, FILTER_VALIDATE_INT)) {
+				return false;
+			}
+			
+			return new User($user_id);
+		}
+		
+		/**
+		 * Check username availability
+		 * @since Version 3.9.1
+		 * @version 3.9.1
+		 * @author Michael Greenhill
+		 * @return boolean
+		 * @param string $username
+		 */
+		
+		public function username_available($username = false) {
+			$username = str_replace("_", "\_", $username); 
+			
+			if ($this->db instanceof \sql_db) {
+				$query = "SELECT * FROM nuke_users WHERE username = '".$this->db->real_escape_string($username)."'"; 
+				
+				if ($rs = $this->db->query($query)) {
+					if ($rs->num_rows == 0) {
+						return true;
+					}
+				} else {
+					throw new \Exception("UserAdmin->username_available() : Could not determine if username ".$username." is available.\n\n".$query."\n\n".$this->db->error); 
+				}
+			} else {
+				$query = "SELECT * FROM nuke_users WHERE username = ?"; 
+				
+				$count = $this->db->fetchAll($query, $username);
+				
+				if (is_array($count) && count($count) > 0) {
+					return false;
+				} else {
+					return true;
+				}
+			}
+			
+			return false;
+		}
+		
+		/**
+		 * Check email address availability
+		 * @since Version 3.9.1
+		 * @version 3.9.1
+		 * @author Michael Greenhill
+		 * @return boolean
+		 * @param string $email
+		 */
+		
+		public function email_available($email = false) {
+			if (!$email) {
+				return false;
+			}
+			
+			$email = str_replace("_", "\_", $email); 
+			
+			if ($this->db instanceof \sql_db) {
+				$query = "SELECT * FROM nuke_users WHERE user_email = '".$this->db->real_escape_string($email)."'"; 
+				
+				if ($rs = $this->db->query($query)) {
+					if ($rs->num_rows == 0) {
+						return true;
+					} else {
+						return false;
+					}
+				} elseif ($rs->num_rows == 0) {
+					return true;
+				} else {
+					throw new \Exception("UserAdmin->username_available() : Could not determine if email address ".$email." is available.\n\n".$query."\n\n".$this->db->error); 
+					
+					return false;
+				}
+			} else {
+				$query = "SELECT * FROM nuke_users WHERE user_email = ?"; 
+				
+				$count = $this->db->fetchAll($query, $email);
+				
+				if (is_array($count) && count($count) > 0) {
+					return false;
+				} else {
+					return true;
+				}
+			}
 		}
 	}
 ?>

@@ -157,20 +157,17 @@
 		 * @param int $id
 		 */
 		
-		public function __construct() {
-			foreach (func_get_args() as $arg) {
-				if (filter_var($arg, FILTER_VALIDATE_INT)) {
-					$this->id = $arg;
-				}
+		public function __construct($id = false) {
+			
+			parent::__construct();
+			
+			if (filter_var($id, FILTER_VALIDATE_INT)) {
+				$this->id = $id;
+			} else {
+				$this->id = $this->db->fetchOne("SELECT organisation_id FROM organisation WHERE organisation_slug = ?", $id); 
 			}
 			
-			try {
-				parent::__construct();
-			} catch (Exception $e) {
-				throw new Exception($e->getMessage());
-			}
-			
-			if ($this->id) {
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
 				// Retrieve this organisation from the database
 				
 				if ($this->db instanceof \sql_db) {

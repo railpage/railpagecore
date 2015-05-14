@@ -270,7 +270,10 @@
 			$array = array(
 				"id" => $this->id,
 				"date" => array(
-					"absolute" => $this->Date->format("Y-m-d H:i:s")
+					"absolute" => $this->Date->format("Y-m-d H:i:s"),
+					"iso8601" => $this->Date->format(DateTime::ISO8601),
+					"ymd" => $this->Date->format("Y-m-d"),
+					"nice" => $this->Date->format("l F j, Y")
 				),
 				"start" => $this->Start instanceof DateTime ? $this->Start->format("g:i a") : 0,
 				"end" => $this->End instanceof DateTime ? $this->End->format("g:i a") : 0,

@@ -331,7 +331,7 @@
 			
 			#deleteMemcacheObject($mckey);
 			
-			if ($return = $this->getCache($mckey)) {
+			if ($return = $this->Memcached->fetch($mckey)) {
 				
 				$update = false;
 				
@@ -389,15 +389,16 @@
 		 * @since Version 3.2
 		 * @version 3.2
 		 * @return array
+		 * @param boolean $force Ignore Memcached and force refresh this list
 		 */
 		
-		public function listWheelArrangements() {
+		public function listWheelArrangements($force = false) {
 			$query = "SELECT * FROM wheel_arrangements ORDER BY arrangement";
 			$return = array();
 			
 			$mckey = "railpage:loco.wheelarrangements"; 
 			
-			if ($return = $this->getCache($mckey)) {
+			if (!$force && $return = $this->Memcached->fetch($mckey)) {
 				return $return;
 			} else {
 				$return['stat'] = "ok"; 
@@ -408,7 +409,7 @@
 					$return['wheels'][$row['id']] = $row;
 				}
 				
-				$this->setCache($mckey, $return, strtotime("+1 month")); 
+				$this->Memcached->save($mckey, $return, strtotime("+1 month")); 
 				
 				return $return;
 			}
@@ -419,15 +420,16 @@
 		 * @since Version 3.2
 		 * @version 3.2
 		 * @return array
+		 * @param boolean $force Ignore Memcached and force refresh this list
 		 */
 		
-		public function listManufacturers() {
+		public function listManufacturers($force = false) {
 			$query = "SELECT * FROM loco_manufacturer ORDER BY manufacturer_name";
 			$return = array();
 			
-			$mckey = "railpage:loco.manufacturers"; 
+			$mckey = Manufacturer::MEMCACHED_KEY_ALL;
 			
-			if ($return = getMemcacheObject($mckey)) {
+			if (!$force && $return = $this->Memcached->fetch($mckey)) {
 				return $return;
 			} else {
 				$return['stat'] = "ok"; 
@@ -438,7 +440,7 @@
 					$return['manufacturers'][$row['manufacturer_id']] = $row;
 				}
 				
-				$this->setCache($mckey, $return, strtotime("+1 month")); 
+				$this->Memcached->save($mckey, $return, strtotime("+1 month")); 
 				
 				return $return;
 			}

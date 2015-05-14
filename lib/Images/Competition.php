@@ -335,7 +335,7 @@
 		 */
 		
 		public function getPhotos() {
-			$query = "SELECT * FROM image_competition_submissions WHERE competition_id = ? AND status = ? ORDER BY date_added DESC";
+			$query = "SELECT s.* FROM image_competition_submissions AS s LEFT JOIN image AS i ON s.image_id = i.id WHERE s.competition_id = ? AND s.status = ? AND i.photo_id != 0 ORDER BY s.date_added DESC";
 			$params = array(
 				$this->id,
 				Competitions::PHOTO_APPROVED
@@ -681,7 +681,9 @@
 		 */
 		
 		public function getPendingSubmissions() {
-			$query = "SELECT * FROM image_competition_submissions WHERE competition_id = ? AND status = ? ORDER BY date_added DESC";
+			#$query = "SELECT * FROM image_competition_submissions WHERE competition_id = ? AND status = ? ORDER BY date_added DESC";
+			$query = "SELECT s.* FROM image_competition_submissions AS s LEFT JOIN image AS i ON s.image_id = i.id WHERE s.competition_id = ? AND s.status = ? AND i.photo_id != 0 ORDER BY s.date_added DESC";
+
 			$where = array(
 				$this->id,
 				Competitions::PHOTO_UNAPPROVED
@@ -890,7 +892,8 @@
 		 */
 		
 		public function getPhotoContext(Image $Image) {
-			$query = "SELECT *, 0 AS current FROM image_competition_submissions WHERE competition_id = ? AND status = ? ORDER BY date_added ASC";
+			$query = "SELECT s.*, 0 AS current FROM image_competition_submissions AS s LEFT JOIN image AS i ON s.image_id = i.id WHERE s.competition_id = ? AND s.status = ? AND i.photo_id != 0 ORDER BY s.date_added ASC";
+
 			$where = array(
 				$this->id,
 				Competitions::PHOTO_APPROVED

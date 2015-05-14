@@ -76,7 +76,7 @@
 				$Date = new DateTime;
 			}
 			
-			return $this->db->fetchAll("SELECT ed.* FROM event_dates AS ed LEFT JOIN event AS e ON e.id = ed.event_id WHERE ed.date = ? AND e.status = ?", array($Date->format("Y-m-d"), self::STATUS_APPROVED));
+			return $this->db->fetchAll("SELECT ed.*, e.title, CONCAT('/events/', e.slug) AS url FROM event_dates AS ed LEFT JOIN event AS e ON e.id = ed.event_id WHERE ed.date = ? AND e.status = ?", array($Date->format("Y-m-d"), self::STATUS_APPROVED));
 		}
 		
 		/**

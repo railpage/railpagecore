@@ -19,6 +19,14 @@
 	class Manufacturer extends Locos {
 		
 		/**
+		 * Memcached key for all manufacturers
+		 * @since Version 3.9.1
+		 * @const string MEMCACHED_KEY_ALL
+		 */
+		
+		const MEMCACHED_KEY_ALL = "railpage:loco.manufacturers";
+		
+		/**
 		 * Manufacturer ID
 		 * @since Version 3.8.7
 		 * @var int $id
@@ -133,6 +141,8 @@
 		public function commit() {
 			$this->validate();
 			
+			$this->Memcached->delete(self::MEMCACHED_KEY_ALL);
+			
 			$data = array(
 				"manufacturer_name" => $this->name,
 				"manufacturer_desc" => $this->desc,
@@ -179,6 +189,16 @@
 			}
 			
 			return $return;
+		}
+		
+		/**
+		 * Return this as a string
+		 * @since Version 3.9.1
+		 * @return string
+		 */
+		
+		public function __toString() {
+			return $this->name;
 		}
 	}
 ?>

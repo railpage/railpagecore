@@ -16,6 +16,8 @@
 	use Railpage\Module;
 	use Railpage\Users\User;
 	use Railpage\Url;
+	use Railpage\Images\Images;
+	use Railpage\Images\Image;
 	
 	use Swift_Message;
 	use Swift_Mailer;
@@ -296,15 +298,68 @@
 			
 			$this->validate(); 
 			
+			$Smarty = AppCore::getSmarty(); 
+			
+			/**
+			 * Set some vars
+			 */
+			
+			$email = array(
+				"subject" => $this->title,
+				"body" => wpautop(format_post($this->text)),
+			);
+			
+			/**
+			 * Try and load the object to get some fancy stuff from it
+			 */
+			
+			try {
+				$classname = sprintf("\\%s", $this->object);
+				$Object = new $classname($this->object_id);
+				
+				$email['subtitle'] = "Railpage \ " . $Object->Module->name;
+				
+				if (isset($Object->meta['coverphoto']) && !empty($Object->meta['coverphoto'])) {
+					if ($CoverPhoto = (new Images)->getImageFromUrl($Object->meta['coverphoto'])) {
+						$email['hero'] = array(
+							"title" => isset($Object->name) ? $Object->name : $Object->title,
+							"link" => isset($Object->url->canonical) ? $Object->url->canonical : sprintf("http://www.railpage.com.au%s", (string) $Object->url),
+							"author" => isset($CoverPhoto->author->realname) && !empty($CoverPhoto->author->realname) ? $CoverPhoto->author->realname : $CoverPhoto->author->username
+						);
+						
+						foreach ($CoverPhoto->sizes as $size) {
+							if ($size >= 620) {
+								$email['hero']['image'] = $size['source'];
+							}
+						}
+					}
+				}
+				
+			} catch (Exception $e) {
+				
+			}
+			 
+			/**
+			 * Process and fetch the email template
+			 */
+			
+			$tpl = $Smarty->ResolveTemplate("template.reminder"); #RP_SITE_ROOT . DS . "content" . DS . "email" . DS . "template.reminder.tpl";
+			$Smarty->Assign("email", $email);
+			$body = $Smarty->Fetch($tpl);
+			
+			/**
+			 * Start composing and sending the email
+			 */
+			
 			$message = Swift_Message::newInstance()
 				->setSubject($this->title)
 				->setFrom(array(
-					"reminders@railpage.com.au" => "Railpage Reminder Alerts"
+					$this->Config->SMTP->username => $this->Config->SiteName
 				))
 				->setTo(array(
 					$this->User->contact_email => !empty($this->User->realname) ? $this->User->realname : $this->User->username
 				))
-				->setBody($this->text);
+				->setBody($body, 'text/html');
 			
 			$transport = Swift_SmtpTransport::newInstance($this->Config->SMTP->host, $this->Config->SMTP->port, $this->Config->SMTP->TLS = true ? "tls" : NULL)
 				->setUsername($this->Config->SMTP->username)

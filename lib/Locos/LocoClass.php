@@ -1538,4 +1538,14 @@
 			
 			return $this;
 		}
+		
+		/**
+		 * Get the loco class manufacturer
+		 * @since Version 3.9.1
+		 * @return \Railpage\Locos\Manufacturer
+		 */
+		
+		public function getManufacturer() {
+			return new Manufacturer($this->manufacturer_id); 
+		}
 	}

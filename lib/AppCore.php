@@ -699,6 +699,66 @@
 				$Monolog = new Logger("railpage"); 
 				#$Monolog->pushHandler(new SwiftMailerHandler(
 			}
+			
+			return $Monolog;
+		}
+		
+		/**
+		 * Get our smarty template engine
+		 * @since Version 3.9.1
+		 * @return \Railpage\Template
+		 */
+		
+		static public function getSmarty() {
+			
+			$Registry = Registry::getInstance(); 
+			
+			$Config = self::getConfig(); 
+			
+			try {
+				$Smarty = $Registry->get("smarty"); 
+			} catch (Exception $e) {
+				$Smarty = new Template;
+				
+				/**
+				 * Send the RP config to Smarty
+				 */
+				
+				$Smarty->setRailpageConfig($Config);
+				
+				/**
+				 * Smarty options and configuration
+				 */
+				
+				$Smarty->debugging 		= false;
+				$Smarty->caching 		= false;
+				$Smarty->cache_lifetime = 120;
+				$Smarty->site_root 		= RP_SITE_ROOT; 
+				$Smarty->use_sub_dirs	= true;
+				$Smarty->assign("rp_host", RP_HOST);
+				$Smarty->assign("rand", rand());
+				$Smarty->assign("rp_version", RP_VERSION);
+				$Smarty->assign("rp_web_root", RP_WEB_ROOT);
+				$Smarty->assign("site_name", $Config->SiteName);
+				$Smarty->assign("rp_production", RP_ISPRODUCTION ? true : false);
+				$Smarty->assign("ad_header", $Config->AdHeader);
+				$Smarty->assign("rp_map_styles", json_encode($Config->Google->Maps->Styles));
+				$Smarty->assign("rp_map_icons", json_encode($Config->Google->Maps->Icons));
+				$Smarty->subtheme = "smooth";
+				
+				$Smarty->Assign("rp_ui_show_banner_head", true);
+				
+				/**
+				 * Set the template compile directory
+				 */
+				
+				$Smarty->setCompileDir(dirname(RP_SITE_ROOT) . DS . "smarty" . DS . "compile");
+				
+				$Registry->set("smarty", $Smarty);
+				
+			}
+			
+			return $Smarty;
 		}
 	}
 ?>

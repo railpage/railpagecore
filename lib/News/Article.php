@@ -401,6 +401,7 @@
 				$this->url = new Url($this->makePermaLink($this->slug));
 				$this->url->source = $return['source']; 
 				$this->url->reject = sprintf("/news/pending?task=reject&id=%d&queue=newqueue", $this->id);
+				$this->url->edit = sprintf("/news?mode=article.edit&id=%d", $this->id);
 				$this->fwlink = $this->url->short;
 				
 				/**
@@ -887,6 +888,10 @@
 				)
 			);
 			
+			if (!isset($response['article']['url']['edit'])) {
+				$response['article']['url']['edit'] = sprintf("/news?mode=article.edit&id=%d", $this->id);
+			}
+			
 			$response = json_encode($response);
 			
 			$this->Memcached->save(sprintf("json:railpage.news.article=%d", $this->id), $response);
@@ -966,10 +971,12 @@
 			 * Look through our approved news articles for a possible duplication
 			 */
 			
+			$olddate = clone ($this->date);
+			
 			$query = $Sphinx->select("*")
 					->from("idx_news_article")
 					->orderBy("story_time_unix", "DESC")
-					->where("story_time_unix", ">=", $this->date->sub(new DateInterval("P7D"))->getTimestamp())
+					->where("story_time_unix", ">=", $olddate->sub(new DateInterval("P7D"))->getTimestamp())
 					->match("story_title", $this->title);
 			
 			$matches = $query->execute();
@@ -996,13 +1003,23 @@
 			 * Fall back to a database query
 			 */
 			
+			$olddate = clone ($this->date);
+			
 			$where = array(
 				strtolower($this->title),
 				md5(strtolower($this->title)),
-				$this->date->sub(new DateInterval("P90D"))->format("Y-m-d H:i:s")
 			);
 			
-			$query = "SELECT sid FROM nuke_stories WHERE (LOWER(title) = ? OR MD5(LOWER(title)) = ?) AND time >= ?";
+			$query = "SELECT sid FROM nuke_stories WHERE (LOWER(title) = ? OR MD5(LOWER(title)) = ?)";
+			
+			/**
+			 * @blame PBR for not providing dates on their stories
+			 */
+			
+			if ($olddate->format("Y-m-d") != (new DateTime)->format("Y-m-d")) {
+				$query .= " AND time >= ?";
+				$where[] = $olddate->sub(new DateInterval("P90D"))->format("Y-m-d H:i:s");
+			}
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
 				$query .= " AND sid != ?";
@@ -1053,8 +1070,8 @@
 		 */
 		
 		public function guessCoverPhoto() {
-			if (!empty($this->featured_image) || !$this->Topic instanceof Topic) {
-				return $this;
+			if ($this->featured_image == "http://railindustryworker.com.au/assets/logo-artc.gif" || empty($this->featured_image) && stripos($this->title, "artc") !== false) {
+				$this->featured_image = "https://static.railpage.com.au/i/logos/artc.jpg";
 			}
 			
 			if ($this->Topic->id == 4 && stripos($this->title, "Gheringhap Sightings") !== false) {
