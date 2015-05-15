@@ -8,6 +8,7 @@
 	
 	namespace Railpage\SiteMessages;
 	
+	use Railpage\Users\User;
 	use Railpage\AppCore;
 	use Railpage\Url;
 	use Exception;
@@ -62,6 +63,14 @@
 		 */
 		
 		public $status;
+		
+		/**
+		 * An object that this site message is linked to
+		 * @since Version 3.9.1
+		 * @var object $Object
+		 */
+		
+		public $Object;
 		
 		/**
 		 * Date this message will start from
@@ -150,6 +159,13 @@
 				"date_end" => $this->End instanceof DateTime ? $this->End->format("Y-m-d") : "0000-00-00"
 			);
 			
+			if (is_object($this->Object)) {
+				$data['object_ns'] = isset($this->Object->namespace) ? $this->Object->namespace : $this->Object->Module->namespace;
+				$data['object_id'] = $this->Object->id;
+			}
+			
+			$data['target_user'] = isset($this->User) && $this->User instanceof User ? $this->User->id : 0;
+			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
 				$where = array(
 					"message_id = ?" => $this->id
@@ -176,6 +192,19 @@
 			$this->url = new Url("");
 			$this->url->edit = sprintf("/administrators?mode=messages.edit&id=%d", $this->id);
 			$this->url->dismiss = sprintf("/messages/dismiss/%d", $this->id);
+			
+			return $this;
+		}
+		
+		/**
+		 * Target this site message to a specific user
+		 * @since Version 3.9.1
+		 * @return \Railpage\SiteMessages\SiteMessage
+		 * @param \Railpage\Users\User $User
+		 */
+		
+		public function targetUser(User $User) {
+			$this->User = $User;
 			
 			return $this;
 		}
