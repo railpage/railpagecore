@@ -81,6 +81,14 @@
 		private $forum_thread_id = 0;
 		
 		/**
+		 * Redmine issue ID
+		 * @since Version 3.9.1
+		 * @var int $redmine_id
+		 */
+		
+		public $redmine_id = 0;
+		
+		/**
 		 * Author of this idea
 		 * @var \Railpage\Users\User $Author
 		 */
@@ -126,8 +134,7 @@
 					$this->Category = new Category($row['category_id']);
 					$this->status = $row['status'];
 					$this->forum_thread_id = $row['forum_thread_id'];
-					
-					$this->url = new Url(sprintf("%s/%s", $this->Category->url, $this->slug));
+					$this->redmine_id = $row['redmine_id'];
 				}
 			} elseif (is_string($id) && strlen($id) > 1) {
 				$this->slug = $id;
@@ -143,24 +150,41 @@
 					$this->Category = new Category($row['category_id']);
 					$this->status = $row['status'];
 					$this->forum_thread_id = $row['forum_thread_id'];
+					$this->redmine_id = $row['redmine_id'];
 					
-					$this->url = new Url(sprintf("%s/%s", $this->Category->url, $this->slug));
+					
 				}
 			}
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
 				$this->fetchVotes();
-				$this->url->implemented = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_IMPLEMENTED);
-				$this->url->declined = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_NO);
-				$this->url->inprogress = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_INPROGRESS);
-				$this->url->active = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_ACTIVE);
-				$this->url->underconsideration = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_UNDERCONSIDERATION);
-				$this->url->active = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_ACTIVE);
-				
-				$this->url->vote = sprintf("%s?mode=idea.vote&id=%d", $this->Module->url, $this->id);
-				$this->url->creatediscussion = sprintf("%s?mode=idea.discuss&id=%d", $this->Module->url, $this->id);
+				$this->makeURLs(); 
 			}
+		}
+		
+		/**
+		 * Make URLs for this idea
+		 * @since Version 3.9.1
+		 * @return \Railpage\Ideas\Idea
+		 */
+		
+		private function makeURLs() {
+			$this->url = new Url(sprintf("%s/%s", $this->Category->url, $this->slug));
 			
+			$this->url->implemented = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_IMPLEMENTED);
+			$this->url->declined = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_NO);
+			$this->url->inprogress = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_INPROGRESS);
+			$this->url->active = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_ACTIVE);
+			$this->url->underconsideration = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_UNDERCONSIDERATION);
+			$this->url->active = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_ACTIVE);
+			
+			$this->url->vote = sprintf("%s?mode=idea.vote&id=%d", $this->Module->url, $this->id);
+			$this->url->creatediscussion = sprintf("%s?mode=idea.discuss&id=%d", $this->Module->url, $this->id);
+			$this->url->edit = sprintf("%s?mode=idea.add&id=%d", $this->Module->url, $this->id);
+			
+			if (filter_var($this->redmine_id, FILTER_VALIDATE_INT)) {
+				$this->url->redmine = sprintf("http://redmine.railpage.org/redmine/issues/%d", $this->redmine_id); 
+			}
 		}
 		
 		/**
@@ -215,6 +239,10 @@
 				$this->forum_thread_id = 0;
 			}
 			
+			if (!filter_var($this->redmine_id, FILTER_VALIDATE_INT)) {
+				$this->redmine_id = 0;
+			}
+			
 			return true;
 			
 		}
@@ -257,7 +285,8 @@
 				"category_id" => $this->Category->id,
 				"date" => $this->Date->format("Y-m-d H:i:s"),
 				"status" => $this->status,
-				"forum_thread_id" => $this->forum_thread_id
+				"forum_thread_id" => $this->forum_thread_id,
+				"redmine_id" => $this->redmine_id
 			);
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
@@ -270,7 +299,7 @@
 				$this->db->insert("idea_ideas", $data);
 				$this->id = $this->db->lastInsertId();
 			
-				$this->Author->wheat(5);
+				$this->Author->wheat(10);
 				
 				/**
 				 * Log the creation of this idea
@@ -286,10 +315,12 @@
 					
 					$Event->commit();
 				} catch (Exception $e) {
-					die($e->getMessage());
+					//die($e->getMessage());
 				}
 				
 			}
+			
+			$this->makeURLs(); 
 			
 			return $this;
 			
