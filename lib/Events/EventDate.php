@@ -17,6 +17,8 @@
 	use Railpage\AppCore;
 	use Railpage\Module;
 	use Railpage\Url;
+	use Railpage\Images\Images;
+	use Railpage\Images\Image;
 	
 	/**
 	 * EventDate
@@ -273,7 +275,9 @@
 					"absolute" => $this->Date->format("Y-m-d H:i:s"),
 					"iso8601" => $this->Date->format(DateTime::ISO8601),
 					"ymd" => $this->Date->format("Y-m-d"),
-					"nice" => $this->Date->format("l F j, Y")
+					"nice" => $this->Date->format("l F j, Y"),
+					"day" => $this->Date->format("d"),
+					"month" => $this->Date->format("M")
 				),
 				"start" => $this->Start instanceof DateTime ? $this->Start->format("g:i a") : 0,
 				"end" => $this->End instanceof DateTime ? $this->End->format("g:i a") : 0,
@@ -297,8 +301,15 @@
 			if ($this->Place instanceof Place) {
 				$array['place'] = array(
 					"lat" => $this->Place->lat,
-					"lon" => $this->Place->lon
+					"lon" => $this->Place->lon,
+					"address" => $this->Place->getAddress()
 				);
+			}
+			
+			if (isset($this->Event->meta['coverphoto']) && !empty($this->Event->meta['coverphoto'])) {
+				if ($CoverPhoto = (new Images)->getImageFromUrl($this->Event->meta['coverphoto'])) {
+					$array['event']['coverphoto'] = $CoverPhoto->getArray();
+				}
 			}
 			
 			return $array;
