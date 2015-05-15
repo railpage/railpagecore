@@ -20,6 +20,9 @@
 	use DatePeriod;
 	use stdClass;
 	
+	use Railpage\Notifications\Notifications;
+	use Railpage\Notifications\Notification;
+	
 	/**
 	 * Competition
 	 */
@@ -196,6 +199,9 @@
 			$this->url->submitphoto = sprintf("%s/submit", $this->url->url);
 			$this->url->edit = sprintf("/gallery?mode=competitions.new&id=%d", $this->id);
 			$this->url->pending = sprintf("/gallery?mode=competition.pendingphotos&id=%d", $this->id);
+			$this->url->suggestsubject = sprintf("/gallery?mode=competition.nextsubject&id=%d", $this->id);
+			
+			$this->notifyWinner(); 
 			
 			return $this;
 		}
@@ -1061,6 +1067,90 @@
 			}
 			
 			return $return;
+		}
+		
+		/**
+		 * Notify the winner
+		 * @since Version 3.9.1
+		 * @return \Railpage\Gallery\Competition
+		 */
+		
+		public function notifyWinner() {
+			if ($Photo = $this->getWinningPhoto()) {
+				
+				if (isset($this->meta['winnernotified']) && $this->meta['winnernotified'] == true) {
+					return $this;
+				}
+				
+				/**
+				 * Create a site message
+				 */
+				
+				if (!$SiteMessage = (new SiteMessages)->getMessageForObject($this)) {
+					$SiteMessage = new SiteMessage; 
+					
+					$SiteMessage->title = sprintf("Photo competition: %s", $this->title); 
+					$SiteMessage->text = sprintf("You won the %s photo competition! <a href='%s'>Set the subject of next month's competition</a>.", $this->title, $this->url->suggestsubject); 
+					$SiteMessage->Object = $this;
+					$SiteMessage->targetUser($Photo->Author)->commit(); 
+				}
+				
+				/**
+				 * Create an email
+				 */
+				
+				$Notification = new Notification;
+				$Notification->AddRecipient($Photo->Author->id, $Photo->Author->username, $Photo->Author->contact_email);
+				$Notification->subject = sprintf("Photo competition: %s", $this->title); 
+				
+				/**
+				 * Set our email body
+				 */
+				
+				$body = sprintf("Hi %s,\n\nCongratulations! You won the <a href='%s'>%s</a> photo competition!\n\nAs the winner of this competition, you get to <a href='%s'>select a theme</a> for the next competition. You have seven days to do so, before we automatically select one.\n\nThanks\nThe Railpage team.",
+								$Photo->Author->username, $this->url->canonical, $this->title, "https://www.railpage.com.au" . $this->url->suggestsubject);
+				
+				if (function_exists("wpautop") && function_exists("format_post")) {
+					$body = wpautop(format_post($body));
+				}
+				
+				/**
+				 * Assemble some template vars for our email
+				 */
+				
+				foreach ($Photo->Image->sizes as $size) {
+					$hero = $size['source'];
+					if ($size['width'] >= 600) {
+						break;
+					}
+				}
+				
+				$Smarty = AppCore::getSmarty(); 
+				
+				$Smarty->Assign("email", array(
+					"subject" => $Notification->subject,
+					"hero" => array(
+						"image" => $hero,
+						"title" => sprintf("Winning photo: Yours! <em>%s</em>", $Photo->Image->title),
+						"link" => $this->url->url,
+						"author" => $Photo->Author->username
+					),
+					"body" => $body
+				));
+				
+				$Notification->body = $Smarty->Fetch($Smarty->ResolveTemplate("template.generic"));
+				
+				$Notification->commit(); 
+				
+				/**
+				 * Update the winnernotified flag
+				 */
+				
+				$this->meta['winnernotified'] = true;
+				$this->commit(); 
+			}
+			
+			return $this;
 		}
 	}
 	

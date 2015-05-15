@@ -8,6 +8,8 @@
 	
 	namespace Railpage\Images;
 	
+	use Railpage\Users\User;
+	use Railpage\Config\Base as Config;
 	use Railpage\AppCore;
 	use Railpage\Module;
 	use Exception;
@@ -158,5 +160,51 @@
 			}
 			
 			return $return;
+		}
+		
+		/**
+		 * Get competition theme suggestions
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getSuggestedThemes() {
+			$Config = new Config;
+			
+			$themes = $Config->get("image.competition.suggestedthemes");
+			
+			return $themes === false ? array() : json_decode($themes, true); 
+		}
+		
+		/**
+		 * Suggest a theme to add
+		 * @since Version 3.9.1
+		 * @return \Railpage\Images\Competitions
+		 * @param string $theme
+		 */
+		
+		public function suggestTheme($theme) {
+			if (!$this->Author instanceof User) {
+				throw new Exception("You have not set the author of this theme (hint: Competitions::setAuthor()");
+			}
+			
+			if (empty($theme)) {
+				throw new Exception("You haven't entered any text...");
+			}
+			
+			$themes = $this->getSuggestedThemes(); 
+			
+			$themes[] = array(
+				"user" => array(
+					"id" => $this->Author->id,
+					"username" => $this->Author->username
+				),
+				"theme" => $theme
+			);
+			
+			$Config = new Config;
+			$Config->set("image.competition.suggestedthemes", json_encode($themes), "Photo competition themes"); 
+			
+			return $this;
 		}
 	}
