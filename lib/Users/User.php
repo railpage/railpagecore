@@ -4141,4 +4141,20 @@
 			
 			return $this;
 		}
+		
+		/**
+		 * Get an array of this users' data
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			return array(
+				"id" => $this->id,
+				"username" => $this->username,
+				"realname" => $this->real_name,
+				"contact_email" => $this->contact_email,
+				"avatar" => $this->avatar
+			);
+		}
 	}
