@@ -113,6 +113,8 @@
 				
 				if ($return = $this->cn->photos_getInfo($id)) {
 					$return['photo']['sizes'] = $this->cn->photos_getSizes($id);
+				} else {
+					throw new Exception(sprintf("Unable to get data Flickr for photo ID %d: %s", $id, $this->cn->getErrorMsg()));
 				}
 				
 				/**
@@ -124,8 +126,8 @@
 					"id" => $id,
 					"dates" => array(
 						"taken" => new DateTime($return['photo']['dates']['taken']),
-						"uploaded" => new DateTime(sprintf("@%s", $return['photo']['dateuploaded'])),
-						"updated" => new DateTime(sprintf("@%s", $return['photo']['dates']['lastupdate']))
+						"uploaded" => isset($return['photo']['dateuploaded']) ? new DateTime(sprintf("@%s", $return['photo']['dateuploaded'])) : new DateTime($return['photo']['dates']['taken']),
+						"updated" => isset($return['photo']['dates']['lastupdate']) ? new DateTime(sprintf("@%s", $return['photo']['dates']['lastupdate'])) : new DateTime($return['photo']['dates']['taken'])
 					),
 					"author" => array(
 						"id" => $return['photo']['owner']['nsid'],
