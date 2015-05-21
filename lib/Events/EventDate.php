@@ -30,6 +30,38 @@
 	class EventDate extends AppCore {
 		
 		/**
+		 * Event date status: running
+		 * @since Version 3.9.1
+		 * @const int STATUS_RUNNING
+		 */
+		
+		const STATUS_RUNNING = 1;
+		
+		/**
+		 * Event date status: pending approval
+		 * @since Version 3.9.1
+		 * @const int STATUS_UNAPPROVED
+		 */
+		
+		const STATUS_UNAPPROVED = 0;
+		
+		/**
+		 * Event date status: cancelled
+		 * @since Version 3.9.1
+		 * @const int STATUS_CANCELLED
+		 */
+		
+		const STATUS_CANCELLED = 2;
+		
+		/**
+		 * Event date status: rejected
+		 * @since Version 3.9.1
+		 * @const int STATUS_REJECTED
+		 */
+		
+		const STATUS_REJECTED = 3;
+		
+		/**
 		 * ID
 		 * @var int $id
 		 */
@@ -111,8 +143,12 @@
 					$this->Event = new Event($row['event_id']);
 					$this->Date = new DateTime($row['date']);
 					$this->meta = json_decode($row['meta'], true);
-					$this->url = new Url("/events?mode=event.date&event_id=" . $this->Event->id . "&date_id=" . $this->id);
 					$this->status = $row['status'];
+					
+					$this->url = new Url("/events?mode=event.date&event_id=" . $this->Event->id . "&date_id=" . $this->id);
+					$this->url->approve = sprintf("/events?mode=event.date.setstatus&date_id=%d&status=%d", $this->id, self::STATUS_RUNNING);
+					$this->url->reject = sprintf("/events?mode=event.date.setstatus&date_id=%d&status=%d", $this->id, self::STATUS_REJECTED);
+					$this->url->cancel = sprintf("/events?mode=event.date.setstatus&date_id=%d&status=%d", $this->id, self::STATUS_CANCELLED);
 					
 					$this->setAuthor(new User($row['user_id']));
 					
@@ -313,6 +349,39 @@
 			}
 			
 			return $array;
+		}
+		
+		/**
+		 * Set the status of this date
+		 * @since Version 3.9.1
+		 * @param int $status
+		 * @return \Railpage\Events\EventDate
+		 */
+		
+		public function setStatus($status = NULL) {
+			if (is_null($status)) {
+				throw new Exception("No status flag was specified");
+			}
+			
+			switch ($status) {
+				case self::STATUS_RUNNING :
+				case self::STATUS_REJECTED :
+					$this->status = $status;
+					$this->commit(); 
+					
+					break;
+				
+				case self::STATUS_CANCELLED :
+					$this->status = $status;
+					$this->commit(); 
+					
+					// DO something else in the future
+					
+					break;
+					
+			}
+			
+			return $this;
 		}
 	}
 ?>
