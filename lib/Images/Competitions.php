@@ -14,6 +14,8 @@
 	use Railpage\Module;
 	use Exception;
 	use DateTime;
+	use DateInterval;
+	use DateTimeZone;
 	
 	/**
 	 * Competitions
@@ -180,16 +182,21 @@
 		 * Suggest a theme to add
 		 * @since Version 3.9.1
 		 * @return \Railpage\Images\Competitions
-		 * @param string $theme
+		 * @param string $theme The short descriptive text for the theme (eg "At night", "Close up", etc)
+		 * @param boolean $winner True/false flag indicating if this theme has been suggested by a competition winner
 		 */
 		
-		public function suggestTheme($theme) {
+		public function suggestTheme($theme, $winner = false) {
 			if (!$this->Author instanceof User) {
 				throw new Exception("You have not set the author of this theme (hint: Competitions::setAuthor()");
 			}
 			
 			if (empty($theme)) {
 				throw new Exception("You haven't entered any text...");
+			}
+			
+			if (function_exists("format_topictitle")) {
+				$theme = format_topictitle($theme);
 			}
 			
 			$themes = $this->getSuggestedThemes(); 
@@ -199,12 +206,74 @@
 					"id" => $this->Author->id,
 					"username" => $this->Author->username
 				),
-				"theme" => $theme
+				"theme" => $theme,
+				"winner" => $winner
 			);
 			
 			$Config = new Config;
 			$Config->set("image.competition.suggestedthemes", json_encode($themes), "Photo competition themes"); 
 			
 			return $this;
+		}
+		
+		/**
+		 * Auto generate a competition for the next calendar month
+		 * @since Version 3.9.1
+		 * @return \Railpage\Images\Competition
+		 */
+		
+		public function autoPopulateNextComp() {
+			$month = new DateTime("first day of next month"); 
+			
+			$title = $month->format("F Y");
+			
+			$Competition = new Competition($title);
+			
+			while (filter_var($Competition->id, FILTER_VALIDATE_INT)) {
+				$month->add(new DateInterval("P1M"));
+				$title = $month->format("F Y");
+				$Competition = new Competition($title);
+			}
+			
+			/**
+			 * If the comp ID isn't a valid int assume we need to create a new comp
+			 */
+			
+			if (!filter_var($Competition->id, FILTER_VALIDATE_INT)) {
+				$Competition->title = $title;
+				$Competition->SubmissionsDateOpen = clone $month;
+				$Competition->SubmissionsDateClose = clone $month;
+				$Competition->SubmissionsDateClose->add(new DateInterval("P14D"));
+				$Competition->VotingDateOpen = clone $month;
+				$Competition->VotingDateOpen->add(new DateInterval("P15D"));
+				$Competition->VotingDateClose = clone $month;
+				$Competition->VotingDateClose->add(new DateInterval("P1M"))->sub(new DateInterval("P1D"));
+				$Competition->meta = array(
+					"maxvotes" => self::MAX_VOTES_PER_USER
+				);
+				
+				/**
+				 * Get a suggested theme
+				 */
+				
+				$themes = $this->getSuggestedThemes();
+				$themes = array_reverse($themes, true);
+				
+				foreach ($themes as $theme) {
+					if (!isset($theme['used']) || $theme['used'] == false) {
+						if (function_exists("format_topictitle")) {
+							$theme['theme'] = format_topictitle($theme['theme']);
+						}
+						
+						$Competition->theme = $theme['theme']; #sprintf("%s (suggested by %s)", $theme['theme'], $theme['user']['username']);
+						
+						if ($theme['winner'] == true) {
+							break;
+						}
+					}
+				}
+			}
+			
+			return $Competition;
 		}
 	}

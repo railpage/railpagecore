@@ -8,6 +8,7 @@
 	
 	namespace Railpage\Images;
 	
+	use Railpage\Config\Base as Config;
 	use Railpage\SiteMessages\SiteMessages;
 	use Railpage\SiteMessages\SiteMessage;
 	use Railpage\AppCore;
@@ -139,7 +140,14 @@
 			
 			if (is_string($id) && !filter_var($id, FILTER_VALIDATE_INT)) {
 				$query = "SELECT id FROM image_competition WHERE slug = ?";
-				$id = $this->db->fetchOne($query, $id);
+				$tempid = $this->db->fetchOne($query, $id);
+				
+				if (filter_var($tempid, FILTER_VALIDATE_INT)) {
+					$id = $tempid;
+				} else {
+					$query = "SELECT ID from image_competition WHERE title = ?";
+					$id = $this->db->fetchOne($query, $id);
+				}
 			}
 			
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
@@ -222,7 +230,7 @@
 			}
 			
 			if (empty($this->description)) {
-				throw new Exception("Competition description cannot be empty");
+				$this->description = ""; #throw new Exception("Competition description cannot be empty");
 			}
 			
 			if (empty($this->status) || !filter_var($this->status, FILTER_VALIDATE_INT)) {
@@ -330,6 +338,25 @@
 				$this->db->insert("image_competition", $data);
 				$this->id = $this->db->lastInsertId(); 
 			}
+			
+			/**
+			 * Check our themes and see if we need to mark this theme as used
+			 */
+			
+			$themes = (new Competitions)->getSuggestedThemes(); 
+			
+			foreach ($themes as $key => $theme) {
+				if (function_exists("format_topictitle")) {
+					$theme['theme'] = format_topictitle($theme['theme']);
+				}
+				
+				if ((!isset($theme['used']) || $theme['used'] == false) && $theme['theme'] == $this->theme) {
+					$themes[$key]['used'] = true;
+				}
+			}
+			
+			$Config = new Config;
+			$Config->set("image.competition.suggestedthemes", json_encode($themes), "Photo competition themes"); 
 			
 			return $this;
 		}
@@ -837,7 +864,7 @@
 					"id" => $this->status,
 					"name" => $this->status == Competitions::STATUS_OPEN ? "Open" : "Closed"
 				),
-				"url" => $this->url->getURLs(),
+				"url" => isset($this->url) && $this->url instanceof Url ? $this->url->getURLs() : array(),
 				"voting" => array(
 					"status" => $voting_open,
 					"open" => array(
