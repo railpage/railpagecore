@@ -4157,4 +4157,31 @@
 				"avatar" => $this->avatar
 			);
 		}
+		
+		/**
+		 * Check if we have a valid human identifier tag
+		 * @since Version 3.9.1
+		 * @return boolean
+		 */
+		
+		public function validateHuman() {
+			if (!isset($this->meta['captchaTimestamp']) || empty($this->meta['captchaTimestamp']) || $this->meta['captchaTimestamp'] - 900 <= time()) {
+				return false;
+			}
+			
+			return true;
+		}
+		
+		/**
+		 * Set our valid human tag
+		 * @since Version 3.9.1
+		 * @return \Railpage\Users\User
+		 */
+		
+		public function setValidatedHuman() {
+			$this->meta['captchaTimestamp'] = strtotime("+24 hours");
+			$this->commit(); 
+			
+			return $this;
+		}
 	}
