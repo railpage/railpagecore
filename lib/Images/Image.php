@@ -756,10 +756,12 @@
 		 */
 		
 		public function getJSON() {
-			$author = clone $this->author;
-			
-			if (isset($author->User) && $author->User instanceof User) {
-				$author->User = $author->User->getArray(); 
+			if (isset($this->author)) {
+				$author = clone $this->author;
+				
+				if (isset($author->User) && $author->User instanceof User) {
+					$author->User = $author->User->getArray(); 
+				}
 			}
 			
 			$data = array(
@@ -771,7 +773,7 @@
 					"photo_id" => $this->photo_id
 				),
 				"sizes" => $this->sizes,
-				"author" => $author,
+				"author" => isset($author) ? $author : false,
 				"url" => $this->url instanceof Url ? $this->url->getURLs() : array()
 			);
 			
@@ -1034,7 +1036,13 @@
 			
 			$stripdates = "/(" . implode("|", $stripdates) . ")/";
 			
-			$stripetc = "/([\#0-9]{5})/";
+			$stripetc = array(
+				"[\#0-9]{5}",
+				"railpage:livery=[0-9]+",
+				"railpage:class=[0-9]+"
+			);
+			
+			$stripetc = "/(" . implode("|", $stripetc) . ")/";
 				
 			$title = $this->title;
 			$desc = $this->description;
@@ -1057,14 +1065,19 @@
 				
 				if (isset($this->meta['tags']) && count($this->meta['tags'])) {
 					foreach ($this->meta['tags'] as $tag) {
-						preg_match_all($regex, $tag, $matches[]);
+						// strip the tags
+						$tag = trim(preg_replace($stripetc, "", $tag));
+						
+						if (!empty($tag)) {
+							preg_match_all($regex, $tag, $matches[]);
+						}
 					}
 				}
 				
 				foreach ($matches as $area => $matched) {
 					foreach ($matched as $key => $array) {
 						foreach ($array as $k => $v) {
-							if (preg_match("/([0-9])/", $v) && !preg_match("/(and|to|or|for)/", $v)) {
+							if (!empty($v) && preg_match("/([0-9])/", $v) && !preg_match("/(and|to|or|for)/", $v)) {
 								if (!in_array(trim($v), $locolookup)) {
 									$locolookup[] = trim($v);
 								}
