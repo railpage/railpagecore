@@ -665,4 +665,4 @@
 			return isset($this->users[$user]);
 		}
 	}
-?>
+	

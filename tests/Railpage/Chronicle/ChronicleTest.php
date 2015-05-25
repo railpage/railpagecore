@@ -137,6 +137,11 @@
 			$this->assertInstanceOf("Railpage\\Chronicle\\Decade", $Decade);
 			
 			$this->assertEquals(1980, $Decade->decade);
+			
+			foreach ($Decade->yieldEntries() as $Entry) {
+				$this->assertEquals(true, filter_var($Entry->id, FILTER_VALIDATE_INT)); 
+				$this->assertEquals($Decade->decade, floor($Entry->Date->format("Y") / 10) * 10);
+			}
 		}
 		
 		/**
@@ -151,6 +156,12 @@
 			
 			$this->assertEquals(1997, $Year->year);
 			$this->assertEquals(1990, $Decade->decade);
+			
+			foreach ($Decade->yieldEntries() as $Entry) {
+				$this->assertEquals(true, filter_var($Entry->id, FILTER_VALIDATE_INT)); 
+				$this->assertEquals($Year->decade, $Entry->Date->format("Y"));
+				$this->assertEquals($Decade->decade, floor($Entry->Date->format("Y") / 10) * 10);
+			}
 		}
 	}
 ?>

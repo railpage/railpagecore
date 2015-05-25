@@ -833,4 +833,4 @@
 			return $types;
 		}
 	}
-?>
+	

@@ -323,4 +323,4 @@
 			return $this->db->fetchAll($query, array($From->format("Y-m-d"), $To->format("Y-m-d")));
 		}
 	}
-?>
+	

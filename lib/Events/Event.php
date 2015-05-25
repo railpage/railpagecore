@@ -490,4 +490,4 @@
 			return $array;
 		}
 	}
-?>
+	

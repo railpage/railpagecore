@@ -313,4 +313,4 @@
 			return $data['featured_photo'];
 		}
 	}
-?>
+	

@@ -78,9 +78,7 @@
 			
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
 				$this->id = $id;
-			}
-			
-			if (filter_var($id, FILTER_VALIDATE_INT)) {
+				
 				$query = "SELECT * FROM chronicle_type WHERE id = ?";
 				
 				if ($row = $this->db->fetchRow($query, $this->id)) {

@@ -63,6 +63,14 @@
 		 */
 		
 		public function yieldEntries() {
+			$query = "SELECT id FROM chronicle_item WHERE date BETWEEN ? AND ?";
 			
+			$yearStart = $this->year . "-01-01"; 
+			$yearEnd = $this->year . "-12-31";
+			
+			foreach ($this->db->fetchAll($query, array($yearStart, $yearEnd)) as $row) {
+				yield new Entry($row['id']);
+			}
 		}
 	}
+	
