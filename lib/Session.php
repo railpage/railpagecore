@@ -129,7 +129,7 @@
 			
 			ini_set("session.gc_maxlifetime", 1800);
 			
-			if (empty($_POST) && isset($_SESSION['LAST_ACTIVITY']) && (time() - filter_input(INPUT_SESSION, "LAST_ACTIVITY", FILTER_SANITIZE_NUMBER_INT) > 1800)) {
+			if (empty($_POST) && isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY'] > 1800)) {
 				// last request was more than 30 minutes ago
 				session_unset();     // unset $_SESSION variable for the run-time 
 				session_destroy();   // destroy session data in storage

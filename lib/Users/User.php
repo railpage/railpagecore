@@ -1151,7 +1151,7 @@
 				
 				if (!stristr($data['user_avatar'], "http://") && !stristr($data['user_avatar'], "https://")) {
 					// Assume local avatar
-					$data['user_avatar'] = "http://".$_SERVER['SERVER_NAME']."/modules/Forums/images/avatars/".$data['user_avatar'];
+					$data['user_avatar'] = sprintf("http://%s/modules/Forums/images/avatars/%s", filter_input(INPUT_SERVER, "SERVER_NAME", FILTER_SANITIZE_STRING), $data['user_avatar']);
 				}
 				
 				/**
@@ -1908,8 +1908,8 @@
 					}
 				
 					if ($this->db instanceof \sql_db) {
-						if (!empty($_SERVER['REMOTE_ADDR'])) {
-							$ip_sql = "last_session_ip = '".$this->db->real_escape_string($_SERVER['REMOTE_ADDR'])."', "; 
+						if (!is_null(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING))) {
+							$ip_sql = "last_session_ip = '".$this->db->real_escape_string(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING))."', "; 
 						} else {
 							$ip_sql = "";
 						}
@@ -1924,8 +1924,8 @@
 							"user_session_time" => time()
 						);
 						
-						if (!empty($_SERVER['REMOTE_ADDR'])) {
-							$data['last_session_ip'] = $_SERVER['REMOTE_ADDR']; 
+						if (!is_null(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING))) {
+							$data['last_session_ip'] = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING); 
 						}
 						
 						$rs = $this->db->update("nuke_users", $data, array("user_id = ?" => $user_id));
@@ -2096,10 +2096,10 @@
 				$cookie_expire = RP_AUTOLOGIN_EXPIRE;
 			}
 			
-			if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-				$client_addr = $_SERVER['HTTP_X_FORWARDED_FOR']; 
+			if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+				$client_addr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR']; 
 			} else {
-				$client_addr = $_SERVER['REMOTE_ADDR'];
+				$client_addr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
 			}	
 			
 			if ($this->db instanceof \sql_db) {
@@ -2108,7 +2108,7 @@
 				$dataArray['autologin_token']		= $this->db->real_escape_string(get_random_string("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=<>[]{}|~", 16)); #"#".substr(hash('haval128,5', $this->username.$this->regdate.rand()), 0, 14)."+!";
 				$dataArray['autologin_expire']		= $cookie_expire;
 				$dataArray['autologin_ip']			= $this->db->real_escape_string($client_addr); 
-				$dataArray['autologin_hostname']	= $this->db->real_escape_string($_SERVER['REMOTE_HOST']); 
+				$dataArray['autologin_hostname']	= $this->db->real_escape_string(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING)); 
 				$dataArray['autologin_last']		= time(); 
 				$dataArray['autologin_time']		= time();
 				
@@ -2131,7 +2131,7 @@
 					"autologin_token" => get_random_string("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=<>[]{}|~", 16),
 					"autologin_expire" => $cookie_expire,
 					"autologin_ip" => $client_addr,
-					"autologin_hostname" => $_SERVER['REMOTE_HOST'],
+					"autologin_hostname" => filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING),
 					"autologin_last" => time(),
 					"autologin_time" => time()
 				);
@@ -2160,11 +2160,11 @@
 		 */
 		
 		public function tryAutoLogin() {
-			if (empty($_COOKIE['rp_autologin'])) {
+			if (is_null(filter_input(INPUT_COOKIE, "rp_autologin"))) { #empty($_COOKIE['rp_autologin'])) {
 				$this->addNote("Autologin attempted but no autologin cookie was found");
 				return false;
 			} else {
-				$cookie = explode(":", base64_decode($_COOKIE['rp_autologin'])); 
+				$cookie = explode(":", base64_decode(filter_input(INPUT_COOKIE, "rp_autologin"))); 
 				
 				if (count($cookie) < 2) {
 					return false;
@@ -2177,13 +2177,13 @@
 						if ($row = $rs->fetch_assoc()) {
 							$autologin_id = $row['autologin_id'];
 							
-							if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-								$client_addr = $_SERVER['HTTP_X_FORWARDED_FOR']; 
+							if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+								$client_addr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR']; 
 							} else {
-								$client_addr = $_SERVER['REMOTE_ADDR'];
-							}		
+								$client_addr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
+							}			
 							
-							$query = "UPDATE nuke_users_autologin SET autologin_last = ".time().", autologin_ip = '".$this->db->real_escape_string($client_addr)."', autologin_hostname = '".$this->db->real_escape_string($_SERVER['REMOTE_HOST'])."' WHERE autologin_id = ".$autologin_id; 
+							$query = "UPDATE nuke_users_autologin SET autologin_last = ".time().", autologin_ip = '".$this->db->real_escape_string($client_addr)."', autologin_hostname = '".$this->db->real_escape_string(filter_input(INPUT_SERVER, "REMOTE_HOST", FILTER_SANITIZE_STRING))."' WHERE autologin_id = ".$autologin_id; 
 							
 							$this->db->query($query); 
 							
@@ -2203,17 +2203,17 @@
 					$query = "SELECT autologin_id FROM nuke_users_autologin WHERE user_id = ? AND autologin_token = ?"; 
 					
 					if ($autologin_id = $this->db->fetchOne($query, array($cookie[0], $cookie[1]))) {
-							
-						if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-							$client_addr = $_SERVER['HTTP_X_FORWARDED_FOR']; 
+						
+						if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+							$client_addr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR']; 
 						} else {
-							$client_addr = $_SERVER['REMOTE_ADDR'];
-						}		
+							$client_addr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
+						}	
 						
 						$data = array(
 							"autologin_last" => time(),
 							"autologin_ip" => $client_addr,
-							"autologin_hostname" => $_SERVER['REMOTE_ADDR'],
+							"autologin_hostname" => filter_input(INPUT_SERVER, "REMOTE_HOST", FILTER_SANITIZE_STRING),
 						);
 						
 						$this->db->update("nuke_users_autologin", $data, array("autologin_id = ?" => $autologin_id));
@@ -2327,10 +2327,10 @@
 				return false;
 			}
 			
-			if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-				$client_addr = $_SERVER['HTTP_X_FORWARDED_FOR']; 
+			if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+				$client_addr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR']; 
 			} else {
-				$client_addr = $_SERVER['REMOTE_ADDR'];
+				$client_addr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
 			}
 			
 			if ($this->db instanceof \sql_db) {
@@ -2338,8 +2338,8 @@
 				$dataArray['user_id'] = $this->id;
 				$dataArray['login_time'] = time(); 
 				$dataArray['login_ip'] = $this->db->real_escape_string($client_addr); 
-				$dataArray['login_hostname'] = $this->db->real_escape_string($_SERVER['REMOTE_HOST']);
-				$dataArray['server'] = $this->db->real_escape_string($_SERVER['HTTP_HOST']);
+				$dataArray['login_hostname'] = $this->db->real_escape_string(filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING));
+				$dataArray['server'] = $this->db->real_escape_string(filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING));
 				
 				$query = $this->db->buildQuery($dataArray, "log_logins"); 
 				
@@ -2354,8 +2354,8 @@
 					"user_id" => $this->id,
 					"login_time" => time(),
 					"login_ip" => $client_addr,
-					"login_hostname" => $_SERVER['REMOTE_HOST'],
-					"server" => $_SERVER['HTTP_HOST']
+					"login_hostname" => filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING),
+					"server" => filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING)
 				);
 				
 				if ($data['login_ip'] == $data['login_hostname']) {
@@ -2425,7 +2425,7 @@
 		 */
 		
 		public function updateHash() {
-			$cookie = isset($_COOKIE['rp_userhash']) ? $_COOKIE['rp_userhash'] : ""; 
+			$cookie = is_null(filter_input(INPUT_COOKIE, "rp_userhash")) ? "" : filter_input(INPUT_COOKIE, "rp_userhash"); # isset($_COOKIE['rp_userhash']) ? $_COOKIE['rp_userhash'] : ""; 
 			$hash	= array(); 
 			$update = false;
 			
@@ -2454,10 +2454,11 @@
 					$dataArray['hash']		= $cookie; 
 					$dataArray['date']		= time(); 
 					
-					if (empty($_SERVER['X_FORWARDED_FOR'])) {
-						$dataArray['ip'] = $_SERVER['REMOTE_ADDR']; 
+					
+					if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {
+						$dataArray['ip'] = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING);
 					} else {
-						$dataArray['ip'] = $_SERVER['HTTP_X_FORWARDED_FOR']; 
+						$dataArray['ip'] = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL);
 					}
 					
 					if ($update) {
@@ -2496,10 +2497,10 @@
 						"date" => time()
 					);
 					
-					if (empty($_SERVER['X_FORWARDED_FOR'])) {
-						$data['ip'] = $_SERVER['REMOTE_ADDR']; 
+					if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {
+						$data['ip'] = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING);
 					} else {
-						$data['ip'] = $_SERVER['HTTP_X_FORWARDED_FOR']; 
+						$data['ip'] = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); 
 					}
 					
 					if ($update) {
@@ -3849,8 +3850,8 @@
 				throw new Exception("Cannot log user activity because no pagetitle was provided");
 			}
 			
-			if (!$ip && isset($_SERVER['REMOTE_ADDR'])) {
-				$ip = $_SERVER['REMOTE_ADDR'];
+			if (!$ip && !is_null(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL))) { #isset($_SERVER['REMOTE_ADDR'])) {
+				$ip = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
 			}
 			
 			if (!$ip) {
