@@ -4,6 +4,6 @@ languages:
   JavaScript: true
   PHP: true
   Python: false
-# exclude_paths:
+exclude_paths:
  - "lib/vendor"
  - "tests"

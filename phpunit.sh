@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export CODECLIMATE_REPO_TOKEN=20d76bff65cdc35b5d3450847800ecc6d5646842b55fe9b433cee1da0fa012ba
+
 echo ""
 echo "================================================================"
 echo ""
@@ -34,5 +36,11 @@ if [ -e /usr/local/php7/bin/phpzzlol ]; then
 fi
 
 echo ""
+echo "Code coverage:"
+
+./lib/vendor/bin/test-reporter
+
+echo ""
 echo "================================================================"
 echo ""
+
