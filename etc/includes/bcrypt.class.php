@@ -181,4 +181,4 @@
 	
 	// Start the bcrypt object
 	$bcrypt = new Bcrypt(RP_BCRYPT_ROUNDS);
-?>
+	

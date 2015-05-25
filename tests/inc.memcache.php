@@ -188,4 +188,4 @@
 			return removeMemcacheObject($key); 
 		}
 	}
-?>
+	

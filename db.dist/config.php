@@ -11,4 +11,4 @@
 	$dbpass		= "";
 	$dbname		= "sparta_unittest";
 	$dbadapter	= "Mysqli"; // Case-sensitive!
-?>
+	

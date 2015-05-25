@@ -265,4 +265,4 @@
 	$RailpageConfig->Captcha->SecretKey = "xxxx";
 	
 	setRailpageConfig($RailpageConfig);
-?>
+	

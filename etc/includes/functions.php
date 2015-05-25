@@ -39,4 +39,4 @@
 			return hexdec($hexipbang[0]). '.' . hexdec($hexipbang[1]) . '.' . hexdec($hexipbang[2]) . '.' . hexdec($hexipbang[3]);
 		}
 	}
-?>
+	
