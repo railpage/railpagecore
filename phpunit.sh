@@ -14,7 +14,12 @@ echo " - Importing database structure"
 mysql -h localhost < tests/data/travis/db.structure.sql
 echo ""
 echo "Running phpUnit ::"
-time /usr/local/bin/phpunit --coverage-clover build/logs/clover.xml
+if [ "$1" == "coverage" ]; then
+	time /usr/local/bin/phpunit --coverage-clover build/logs/clover.xml
+else 
+	time /usr/local/bin/phpunit
+fi
+
 times
 
 if [ -e /usr/local/php7/bin/phpzzlol ]; then
@@ -38,7 +43,9 @@ fi
 echo ""
 echo "Code coverage:"
 
-./lib/vendor/bin/test-reporter
+if [ "$1" == "coverage" ]; then
+	./lib/vendor/bin/test-reporter
+fi
 
 echo ""
 echo "================================================================"
