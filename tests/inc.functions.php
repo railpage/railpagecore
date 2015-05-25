@@ -45,7 +45,7 @@
 			if(!ctype_digit($ts))
 				$ts = strtotime($ts);
 			
-			if ($now == false) {
+			if ($now === false) {
 				$now = time();
 			}
 			

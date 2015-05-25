@@ -221,7 +221,7 @@
 			 * Delete existing recipients if this is a new or updated notification
 			 */
 			
-			if ($this->status == Notifications::STATUS_QUEUED) {
+			if ($this->status === Notifications::STATUS_QUEUED) {
 				
 				$where = array(
 					"notification_id = ?" => $this->id,
@@ -290,7 +290,7 @@
 			
 			$this->response = $Transport->send();
 			
-			if ($this->response['stat'] == true) {
+			if ($this->response['stat'] === true) {
 				$this->DateSent = new DateTime; 
 				$this->status = Notifications::STATUS_SENT;
 			} else {
@@ -307,8 +307,8 @@
 			 * Update recipients
 			 */
 			
-			if ($this->status == Notifications::STATUS_SENT) {
-				if (count($this->response['failures']) == 0) {
+			if ($this->status === Notifications::STATUS_SENT) {
+				if (count($this->response['failures']) === 0) {
 					$data = array(
 						"date_sent" => (new DateTime)->format("Y-m-d H:i:s"),
 						"status" => Notifications::STATUS_SENT
