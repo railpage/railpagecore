@@ -40,6 +40,14 @@
 		const STATUS_CLOSED = 1;
 		
 		/**
+		 * Competition status: Future event (for UI purposes only)
+		 * @since Version 3.9.1
+		 * @const int STATUS_FUTURE
+		 */
+		
+		const STATUS_FUTURE = 99;
+		
+		/**
 		 * Photo submission: approved
 		 * @since Version 3.9.1
 		 * @const int PHOTO_APPROVED
@@ -93,8 +101,14 @@
 			$where = array(); 
 			
 			if (!is_null($status)) {
-				$query .= " WHERE status = ?";
-				$where[] = $status;
+				if ($status == self::STATUS_OPEN) {
+					$query .= " WHERE status = ?";
+					$where[] = $status;
+				} elseif ($status == self::STATUS_CLOSED) {
+					$query .= " WHERE status = ? AND voting_date_close < ?";
+					$where[] = $status;
+					$where[] = (new DateTime)->format("Y-m-d H:i:s");
+				}
 			}
 			
 			$comps = array(); 
