@@ -5,5 +5,5 @@ languages:
   PHP: true
   Python: false
 exclude_paths:
- - "lib/vendor"
- - "tests"
+ - "lib/vendor/*"
+ - "tests/*"
