@@ -13,6 +13,15 @@
 			$this->assertTrue(in_array("Test 1", array_keys($Submenu->menu))); 
 			$this->assertTrue(in_array("Test 2", array_keys($Submenu->menu))); 
 			$this->assertTrue(in_array("Test 3", array_keys($Submenu->menu))); 
+			
+			$Submenu->AddGrouping("Test 4");
+			$Submenu->Section("Test 4"); 
+			
+			$this->assertEquals("Test 4", $Submenu->section);
+			$this->setExpectedException('InvalidArgumentException');
+			
+			$Submenu = new Submenu;
+			$Submenu->Section();
 		}
 		
 		public function testSetGroupingSubtitle() {
@@ -46,9 +55,23 @@
 			$this->assertEquals($Submenu->menu['Test 3']['menu'][0]['url'], "/test3");
 			$this->assertTrue(isset($Submenu->menu['Test 3']['menu'][0]['meta'])); 
 			
-			$this->assertFalse(is_null(filter_var($Submenu->GetURL("/test3"), FILTER_SANITIZE_STRING)));
+			$this->assertTrue($Submenu->HasItems());
+			
+			$this->setExpectedException('InvalidArgumentException');
+			
+			$Submenu = new Submenu;
+			$Submenu->Section("Test")->Add("", "/blah");
+		}
+		
+		public function testGetURLExpectedException() {
+			$this->setExpectedException('InvalidArgumentException');
+			
+			$Submenu = new Submenu;
+			$Submenu->Section("Test")->Add("asdfaf", "/blah");
+			
+			$this->assertFalse(is_null(filter_var($Submenu->GetURL("/blah"), FILTER_SANITIZE_STRING)));
 			$this->assertFalse($Submenu->GetURL("/sadfafsdfafdf"));
 			
-			$this->assertTrue($Submenu->HasItems());
+			$Submenu->GetURL();
 		}
 	}
