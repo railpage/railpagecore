@@ -498,8 +498,8 @@
 				
 				case "picasaweb" : 
 					
-					if (empty($this->meta) && isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], "picasaweb.google.com")) {
-						$album = preg_replace("@(http|https)://picasaweb.google.com/([a-zA-Z\-\.]+)/(.+)@", "$2", $_SERVER['HTTP_REFERER']);
+					if (empty($this->meta) && !is_null(filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_URL)) && strpos(filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_URL), "picasaweb.google.com")) {
+						$album = preg_replace("@(http|https)://picasaweb.google.com/([a-zA-Z\-\.]+)/(.+)@", "$2", filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_URL));
 						
 						if (is_string($album)) {
 							$update_url = sprintf("https://picasaweb.google.com/data/feed/api/user/%s/photoid/%s?alt=json", $album, $this->photo_id);
@@ -598,8 +598,8 @@
 				
 				case "vicsig" : 
 					
-					if (strpos($_SERVER['HTTP_REFERER'], "vicsig.net/photo")) {
-						$this->meta['source'] = filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_REFERER'];
+					if (strpos(filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_URL), "vicsig.net/photo")) {
+						$this->meta['source'] = filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_STRING); 
 						
 						$response = $this->GuzzleClient->get($this->meta['source']);
 						
@@ -655,7 +655,7 @@
 									if (preg_match("@Photo: @i", $line)) {
 										$this->author = new stdClass;
 										$this->author->realname = str_replace("Photo: ", "", $line); 
-										$this->author->url = filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_REFERER'];
+										$this->author->url = filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_STRING); 
 										unset($text[$k]);
 									}
 									
@@ -682,7 +682,7 @@
 								}
 								
 								$this->links = new stdClass;
-								$this->links->provider = filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_REFERER'];
+								$this->links->provider = filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_STRING); 
 								
 								$this->commit();
 							}
