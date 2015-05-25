@@ -12,7 +12,7 @@ echo " - Importing database structure"
 mysql -h localhost < tests/data/travis/db.structure.sql
 echo ""
 echo "Running phpUnit ::"
-time /usr/local/bin/phpunit --coverage-clover lib/build/logs/clover.xml
+time /usr/local/bin/phpunit --coverage-clover build/logs/clover.xml
 times
 
 if [ -e /usr/local/php7/bin/phpzzlol ]; then

@@ -12,7 +12,7 @@ php:
 
 before_script:
   - composer self-update
-  - sudo apt-get update -qq
+#  - sudo apt-get update -qq
 #  - sudo apt-get install -qq zend-framework
   - mysql < tests/data/travis/db.structure.sql
 
@@ -21,7 +21,7 @@ after_script:
 
 script: 
   - composer install
-  - phpunit
+  - phpunit --coverage-clover build/logs/clover.xml
 
 services:
   - redis-server
