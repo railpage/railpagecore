@@ -667,7 +667,7 @@
 							
 							// Create a new image size
 							foreach ($return as $key => $data) {
-								$return[$key]['size_sq'] = RP_PROTOCOL."://".$_SERVER['HTTP_HOST']."/image_resize.php?q=90&w=".$square_size."&h=".$square_size."&square=true&image=".str_replace("?zz=1", "", $data['size4']);
+								$return[$key]['size_sq'] = RP_PROTOCOL . "://" . filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING) . "/image_resize.php?q=90&w=" . $square_size . "&h=" . $square_size . "&square=true&image=" . str_replace("?zz=1", "", $data['size4']);
 								$return[$key]['size_sq_w'] = $square_size;
 								$return[$key]['size_sq_h'] = $square_size;
 								
@@ -758,7 +758,7 @@
 				foreach ($this->db->fetchAll($query, $params) as $data) {
 					$key = $data['photo_id'];
 					
-					$return[$key]['size_sq'] = RP_PROTOCOL."://".$_SERVER['HTTP_HOST']."/image_resize.php?q=90&w=".$square_size."&h=".$square_size."&square=true&image=".str_replace("?zz=1", "", $data['size4']);
+					$return[$key]['size_sq'] = RP_PROTOCOL . "://" . filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING) . "/image_resize.php?q=90&w=" . $square_size . "&h=" . $square_size . "&square=true&image=" . str_replace("?zz=1", "", $data['size4']);
 					$return[$key]['size_sq_w'] = $square_size;
 					$return[$key]['size_sq_h'] = $square_size;
 					

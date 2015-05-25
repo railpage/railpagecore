@@ -599,9 +599,9 @@
 				case "vicsig" : 
 					
 					if (strpos($_SERVER['HTTP_REFERER'], "vicsig.net/photo")) {
-						$this->meta['source'] = $_SERVER['HTTP_REFERER'];
+						$this->meta['source'] = filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_REFERER'];
 						
-						$response = $this->GuzzleClient->get($_SERVER['HTTP_REFERER']);
+						$response = $this->GuzzleClient->get($this->meta['source']);
 						
 						if ($response->getStatusCode() != 200) {
 							throw new Exception(sprintf("Failed to fetch image data from %s: HTTP error %s", $this->provider, $response->getStatusCode()));
@@ -655,7 +655,7 @@
 									if (preg_match("@Photo: @i", $line)) {
 										$this->author = new stdClass;
 										$this->author->realname = str_replace("Photo: ", "", $line); 
-										$this->author->url = $_SERVER['HTTP_REFERER'];
+										$this->author->url = filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_REFERER'];
 										unset($text[$k]);
 									}
 									
@@ -682,7 +682,7 @@
 								}
 								
 								$this->links = new stdClass;
-								$this->links->provider = $_SERVER['HTTP_REFERER'];
+								$this->links->provider = filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_REFERER'];
 								
 								$this->commit();
 							}
