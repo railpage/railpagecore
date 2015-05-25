@@ -289,4 +289,4 @@
 			return $locations;
 		}
 	}
-?>
+	

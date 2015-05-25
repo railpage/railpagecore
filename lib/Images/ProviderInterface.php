@@ -69,4 +69,4 @@
 		public function deleteImage(Image $Image);
 		
 	}
-?>
+	

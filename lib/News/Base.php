@@ -612,4 +612,4 @@
 			return $permalink;
 		}
 	}
-?>
+	

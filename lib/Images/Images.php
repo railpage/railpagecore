@@ -268,4 +268,4 @@
 			return $sizes;
 		}
 	}
-?>
+	

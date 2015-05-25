@@ -280,4 +280,4 @@
 			return $this->articles;
 		}
 	}
-?>
+	

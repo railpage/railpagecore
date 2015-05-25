@@ -25,4 +25,4 @@
 	class Index extends Base {
 		// Do nothing
 	}
-?>
+	

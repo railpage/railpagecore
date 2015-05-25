@@ -973,4 +973,4 @@
 			return $this->db->fetchAll("SELECT * FROM location_date WHERE location_id = ?", $this->id); 
 		}
 	}
-?>
+	
