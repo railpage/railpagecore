@@ -60,6 +60,14 @@
 		public $body;
 		
 		/**
+		 * Meta data for this notification
+		 * @since Version 3.9.1
+		 * @var array $meta
+		 */
+		
+		public $meta;
+		
+		/**
 		 * Recipients of this notification
 		 * @since Version 3.9.1
 		 * @var array $recipients
@@ -127,6 +135,7 @@
 			$this->response = json_decode($result['response']);
 			$this->DateQueued = new DateTime($result['date_queued']);
 			$this->DateSent = $result['date_sent'] != "0000-00-00 00:00:00" ? new DateTime($result['date_sent']) : NULL;
+			$this->meta = empty($result['meta']) ? array() : json_decode($result['meta'], true);
 			
 			if (filter_var($result['author'], FILTER_VALIDATE_INT)) {
 				$this->setAuthor(new User($result['author']));
@@ -193,7 +202,8 @@
 				"date_sent" => $this->DateSent instanceof DateTime ? $this->DateSent->format("Y-m-d H:i:s") : "0000-00-00 00:00:00",
 				"subject" => $this->subject,
 				"body" => $this->body,
-				"response" => json_encode($this->response)
+				"response" => json_encode($this->response),
+				"meta" => json_encode($this->meta)
 			);
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
@@ -328,8 +338,12 @@
 				"id" => $this->id,
 				"subject" => $this->subject,
 				"body" => $this->body,
-				"response" => empty($this->response) ? $this->response : json_decode(json_encode($this->response), true)
+				"response" => empty($this->response) ? $this->response : json_decode(json_encode($this->response), true),
 			);
+			
+			if (isset($this->meta['decoration'])) {
+				$array['decoration'] = $this->meta['decoration'];
+			}
 			
 			if ($this->Author instanceof User) {
 				$array['author'] = array(
