@@ -1,5 +1,8 @@
 language: php
 
+env:
+  - CODECLIMATE_REPO_TOKEN=20d76bff65cdc35b5d3450847800ecc6d5646842b55fe9b433cee1da0fa012ba
+
 php:
   - 5.5
   - 5.6
@@ -12,6 +15,9 @@ before_script:
   - sudo apt-get update -qq
   - sudo apt-get install -qq zend-framework
   - mysql < tests/data/travis/db.structure.sql
+
+after_script:
+  - ./vendor/bin/test-reporter
 
 script: 
   - composer install
