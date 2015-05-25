@@ -3980,6 +3980,10 @@
 				$query['downloads'] = "SELECT 'Downloads' AS module, COUNT(*) AS num, '/downloads/manage' AS url, NULL AS extra FROM download_items WHERE active = 1 AND approved = 0";
 			}
 			
+			if ($acl->isAllowed($acl_role, "railpage.gallery.competition", "manage")) {
+				$query['photocomp'] = "SELECT 'Photo comp' AS module, COUNT(*) AS num, '/gallery/comp' AS url, NULL AS extra FROM image_competition_submissions WHERE status = 0";
+			}
+			
 			/**
 			 * Maintainer-level stuff
 			 */

@@ -236,12 +236,8 @@
 				}
 				
 				/**
-				 * Normalize some sizes
+				 * Load the author. If we don't know who it is, attempt to re-populate the data
 				 */
-				
-				if (count($this->sizes)) {
-					$this->sizes = Images::normaliseSizes($this->sizes);
-				}
 				
 				if (isset($row['meta']['author'])) {
 					$this->author = json_decode(json_encode($row['meta']['author']));
@@ -252,6 +248,10 @@
 				} else {
 					$this->populate(true, $option);
 				}
+				
+				/**
+				 * Unless otherwise instructed load the places object if lat/lng are present
+				 */
 				
 				if ($option != Images::OPT_NOPLACE && round($row['lat'], 3) != "0.000" && round($row['lon'], 3) != "0.000") {
 					try {
@@ -275,6 +275,18 @@
 							}
 					}
 				}
+				
+				/**
+				 * Normalize some sizes
+				 */
+				
+				if (count($this->sizes)) {
+					$this->sizes = Images::normaliseSizes($this->sizes);
+				}
+				
+				/**
+				 * Create an array/JSON object
+				 */
 			
 				$this->getJSON();
 			}

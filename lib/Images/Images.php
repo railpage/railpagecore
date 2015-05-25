@@ -215,6 +215,15 @@
 				}
 			}
 			
+			if (!isset($sizes['medium'])) {
+				foreach ($sizes as $size) {
+					if ($size['width'] >= 800 && $size['height'] >= 480) {
+						$sizes['medium'] = $size;
+						break;
+					}
+				}
+			}
+			
 			$width = 0;
 			
 			foreach ($sizes as $size) {
