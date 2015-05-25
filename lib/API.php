@@ -221,35 +221,50 @@
 				if ($response) {
 					return $response; 
 				} else {
-					switch (json_last_error()) {
-						case JSON_ERROR_NONE:
-							$error = 'No errors';
-						break;
-						case JSON_ERROR_DEPTH:
-							$error = 'Maximum stack depth exceeded';
-						break;
-						case JSON_ERROR_STATE_MISMATCH:
-							$error = 'Underflow or the modes mismatch';
-						break;
-						case JSON_ERROR_CTRL_CHAR:
-							$error = 'Unexpected control character found';
-						break;
-						case JSON_ERROR_SYNTAX:
-							$error = 'Syntax error, malformed JSON';
-						break;
-						case JSON_ERROR_UTF8:
-							$error = 'Malformed UTF-8 characters, possibly incorrectly encoded';
-						break;
-						default:
-							$error = 'Unknown error';
-						break;
-					}
-					
-					return array("stat" => "error", "error" => $error);
+					return $this->jsonError(json_last_error());
 				}
 			} else {
 				return false;
 			}
+		}
+		
+		/**
+		 * Return our API response in the case of a JSON error
+		 * Re-factored because, apparently, long functions are "complex" and "too hard to read" and "waaaaaahhh"
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		private function jsonError($lasterror = NULL) {
+			if (is_null($lasterror)) {
+				$lasterror = json_last_error();
+			}
+			
+			switch ($lasterror) {
+				case JSON_ERROR_NONE:
+					$error = 'No errors';
+				break;
+				case JSON_ERROR_DEPTH:
+					$error = 'Maximum stack depth exceeded';
+				break;
+				case JSON_ERROR_STATE_MISMATCH:
+					$error = 'Underflow or the modes mismatch';
+				break;
+				case JSON_ERROR_CTRL_CHAR:
+					$error = 'Unexpected control character found';
+				break;
+				case JSON_ERROR_SYNTAX:
+					$error = 'Syntax error, malformed JSON';
+				break;
+				case JSON_ERROR_UTF8:
+					$error = 'Malformed UTF-8 characters, possibly incorrectly encoded';
+				break;
+				default:
+					$error = 'Unknown error';
+				break;
+			}
+			
+			return array("stat" => "error", "error" => $error);
 		}
 		
 		/**
@@ -290,4 +305,4 @@
 			return $return;
 		}
 	}
-?>
+	
