@@ -1387,9 +1387,7 @@
 			
 			// Generate a new API key and secret
 			if (empty($this->api_key) || empty($this->api_secret)) {
-				require_once("includes/bcrypt.class.php"); 
-				$bcrypted = new \Bcrypt(4); 
-				$this->api_secret 	= $bcrypted->hash($this->username.$this->regdate.$this->id);
+				$this->api_secret 	= password_hash($this->username.$this->regdate.$this->id, PASSWORD_BCRYPT, array("cost" => 4));
 				$this->api_key		= crypt($this->username.$this->id, "rl");
 				
 				try {
@@ -3363,27 +3361,12 @@
 				//throw new Exception("Your desired password is unsafe. Please choose a different password.");
 			}
 			
-			if (function_exists("password_hash")) {
-				$this->password = password_hash($password, PASSWORD_DEFAULT);
-				$this->password_bcrypt = false; // Deliberately deprecate the bcrypt password option
-				
-				if (filter_var($this->id, FILTER_VALIDATE_INT)) {
-					$this->commit();
-					$this->addNote("Password changed or hash updated using password_hash()");
-				}
-			} else {
-				require_once("includes/bcrypt.class.php");
-				
-				$BCrypt = new \Bcrypt(RP_BCRYPT_ROUNDS);
-				
-				$password = trim($password);
-				$this->password = md5($password);
-				$this->password_bcrypt = $BCrypt->hash($password);
-				
-				if (filter_var($this->id, FILTER_VALIDATE_INT)) {
-					$this->commit();
-					$this->addNote("Password changed or hash updated");
-				}
+			$this->password = password_hash($password, PASSWORD_DEFAULT);
+			$this->password_bcrypt = false; // Deliberately deprecate the bcrypt password option
+			
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$this->commit();
+				$this->addNote("Password changed or hash updated using password_hash()");
 			}
 		}
 		
@@ -3490,58 +3473,7 @@
 				
 				return true;
 			}
-			
-			/**
-			 * Older password verification code
-			 */
-			
-			/**
-			 * Load the BCrypt class
-			 */
-			
-			require_once("includes/bcrypt.class.php");
-			
-			$BCrypt = new \Bcrypt(RP_BCRYPT_ROUNDS);
-			
-			/**
-			 * Strip excess whitespace from the password
-			 */
-			
-			$password = trim($password);
-			
-			/**
-			 * Try to validate the password
-			 */
-			
-			if ((empty($stored_password_bcrypt) && $stored_password == md5($password)) || ($BCrypt->verify($password, $stored_password_bcrypt))) {
-				
-				/**
-				 * Password validated! If we haven't populated this user object, do it now
-				 */
-				
-				if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
-					$this->load($stored_user_id);
-				}
-				
-				/**
-				 * No bcrypt password - set it
-				 */
-				
-				if (empty($stored_password_bcrypt)) {
-					$this->setPassword($password);
-				}
-				
-				/**
-				 * Reset the InvalidAuthCounter
-				 */
-				
-				unset($this->meta['InvalidAuthCounter']);
-				unset($this->meta['InvalidAuthTimeout']);
-				$this->commit();
-				
-				return true;
-			}
-			
+						
 			/**
 			 * Unsuccessful login attempt - bump up the invalid auth counter
 			 */
