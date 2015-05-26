@@ -3,5 +3,4 @@ composer.lock
 lib/vendor
 www.pid
 config.railpage.json
-www.pid
 build
