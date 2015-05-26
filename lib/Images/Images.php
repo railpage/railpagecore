@@ -30,6 +30,14 @@
 		const OPT_NOPLACE = 7;
 		
 		/**
+		 * Flag: Force a refresh of this image data
+		 * @since Version 3.9.1
+		 * @const int OPT_REFRESH
+		 */
+		
+		const OPT_REFRESH = 1432;
+		
+		/**
 		 * Constructor
 		 */
 		
@@ -66,7 +74,7 @@
 			
 			$mckey = sprintf("railpage:image;provider=%s;id=%s", $provider, $photo_id);
 			
-			if (!$id = $this->Redis->fetch($mckey)) {
+			if ($option != self::OPT_REFRESH && !$id = $this->Redis->fetch($mckey)) {
 				$id = $this->db->fetchOne("SELECT id FROM image WHERE provider = ? AND photo_id = ?", array($provider, $photo_id));
 				$this->Redis->save($mckey, $id, strtotime("+1 month"));
 			}
@@ -131,17 +139,18 @@
 		 * Get a photo from its source URL
 		 * @since Version 3.9.1
 		 * @param string $url
+		 * @param int|null $option
 		 * @return boolean|\Railpage\Images\Image
 		 */
 		
-		public function getImageFromUrl($url = false) {
+		public function getImageFromUrl($url = false, $option = NULL) {
 			
 			/**
 			 * Flickr
 			 */
 			
 			if (preg_match("#flickr.com/photos/([a-zA-Z0-9\-\_\@]+)/([0-9]+)#", $url, $matches)) {
-				if ($Image = $this->findImage("flickr", $matches[2])) {
+				if ($Image = $this->findImage("flickr", $matches[2], $option)) {
 					return $Image;
 				}
 			}
@@ -158,7 +167,7 @@
 					$matches[1] = substr($matches[1], 0, -1);
 				}
 				
-				if ($Image = $this->findImage("flickr", $decoded)) {
+				if ($Image = $this->findImage("flickr", $decoded, $option)) {
 					return $Image;
 				}
 			}
@@ -173,7 +182,7 @@
 				
 				foreach ($parts as $part) {
 					if (preg_match("#i-([a-zA-Z0-9]+)#", $part, $matches)) {
-						if ($Image = $this->findImage("SmugMug", $matches[1])) {
+						if ($Image = $this->findImage("SmugMug", $matches[1], $option)) {
 							return $Image;
 						}
 					}

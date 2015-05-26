@@ -104,8 +104,9 @@
 		 */
 		
 		private function send($method = false, $data = false) {
-			if (!$method) {
-				throw new Exception("No API method specified");
+			
+			if (is_null(filter_var($method, FILTER_SANITIZE_STRING))) {
+				throw new InvalidArgumentException("Flickr API call failed: no API method requested"); 
 			}
 			
 			$params = array(

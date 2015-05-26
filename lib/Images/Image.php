@@ -198,7 +198,7 @@
 					$row['meta'] = json_decode($row['meta'], true);
 					
 					$this->Redis->save($this->mckey, $row, strtotime("+24 hours"));
-				}
+				} 
 				
 				$this->id = $id;
 				$this->provider = $row['provider'];
@@ -393,32 +393,12 @@
 		}
 		
 		/**
-		 * Populate this image with fresh data
-		 * @since Version 3.8.7
-		 * @return $this
-		 * @param boolean $force
-		 * @param int $option
+		 * Get an instance of the image provider
+		 * @since Version 3.9.1
+		 * @return object
 		 */
 		
-		public function populate($force = false, $option = NULL) {
-			//$RailpageAPI = new API($this->Config->API->Key, $this->Config->API->Secret);
-			
-			if ($force === false && !$this->isStale()) {
-				return $this;
-			}
-			
-			/**
-			 * Start the debug timer
-			 */
-			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
-			
-			/**
-			 * New and improved populator using image providers
-			 */
+		public function getProvider() {
 			
 			$imageprovider = __NAMESPACE__ . "\\Provider\\" . ucfirst($this->provider);
 			$params = array();
@@ -445,7 +425,38 @@
 					break;
 			}
 			
-			$Provider = new $imageprovider($params); 
+			return new $imageprovider($params); 
+			
+		}
+		
+		/**
+		 * Populate this image with fresh data
+		 * @since Version 3.8.7
+		 * @return $this
+		 * @param boolean $force
+		 * @param int $option
+		 */
+		
+		public function populate($force = false, $option = NULL) {
+			
+			if ($force === false && !$this->isStale()) {
+				return $this;
+			}
+			
+			/**
+			 * Start the debug timer
+			 */
+			
+			if (RP_DEBUG) {
+				global $site_debug;
+				$debug_timer_start = microtime(true);
+			}
+			
+			/**
+			 * New and improved populator using image providers
+			 */
+			
+			$Provider = $this->getProvider(); 
 			
 			if ($data = $Provider->getImage($this->photo_id, $force)) {
 				$this->sizes = $data['sizes'];
