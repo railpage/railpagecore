@@ -13,6 +13,9 @@
 			"Yahoo" => array(
 				"ApplicationID" => "wFe9XhLV34Gy7xHCL94iD2.KhfmKHo9WsTH1.7XmXwbTtRN9DQQbI8HOq3_Mdu7FXTA-",
 				"ApplicationEntryPoint" => "http://www.railpage.com.au"
+			),
+			"Flickr" => array(
+				"APIKey" => "e828abc6d87d4d99aa611177e13e1965"
 			)
 		);
 		
