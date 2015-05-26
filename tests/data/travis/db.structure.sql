@@ -2075,7 +2075,7 @@ DROP TABLE IF EXISTS `nuke_bbforums`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `nuke_bbforums` (
-  `forum_id` smallint(5) unsigned NOT NULL DEFAULT '0',
+  `forum_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `cat_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `forum_name` varchar(150) DEFAULT NULL,
   `forum_desc` text,

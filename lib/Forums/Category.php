@@ -70,50 +70,36 @@
 		public function __construct($id = false) {
 			parent::__construct(); 
 			
+			if (filter_var($id, FILTER_VALIDATE_INT)) {
+				$this->load($id);
+			}
+			
+		}
+		
+		/**
+		 * Load the category
+		 * @since Version 3.9.1
+		 * @param int|string $id
+		 * @return \Railpage\Forums\Category
+		 */
+		
+		public function load($id = false) {
+			if ($id === false) {
+				throw new InvalidArgumentException("An invalid category ID was provided"); 
+			}
+			
 			$this->id = $id;
 			
-			$exec_sql = true;
+			$query = "SELECT * FROM nuke_bbcategories WHERE cat_id = ?";
 			
-			if ($this->db instanceof \sql_db) {
-				if ($this->id) {
-					$query = "SELECT * FROM nuke_bbcategories WHERE cat_id = ".$this->db->real_escape_string($this->id);
-					
-					if ($rs = $this->db->query($query)) {
-					
-						$row = $rs->fetch_assoc();
-						
-						$this->title = $row['cat_title'];
-						$this->order = $row['cat_order'];
-						
-						$rs->close();
-						
-						$query = "SELECT forum_id AS id, forum_name AS title FROM nuke_bbforums WHERE cat_id = ".$this->db->real_escape_string($this->id)." ORDER BY forum_order";
-						
-						if ($rs = $this->db->query($query)) {
-							while ($row = $rs->fetch_assoc()) {
-								$result[] = $row;
-							}
-							
-							foreach ($result as $row) {
-								$this->forums[$row['id']] = $row['title'];
-							}
-						}
-					} else {
-						throw new Exception(sprintf("Category ID %d does not exist", $this->id));
-					}
-				}
-			} else {
-				$query = "SELECT * FROM nuke_bbcategories WHERE cat_id = ?";
-				
-				$row = $this->db->fetchRow($query, $this->id);
-				$this->title = $row['cat_title']; 
-				$this->order = $row['cat_order']; 
-				
-				$query = "SELECT forum_id AS id, forum_name AS title FROM nuke_bbforums WHERE cat_id = ? ORDER BY forum_order";
-				
-				foreach ($this->db->fetchAll($query, $this->id) as $row) {
-					$this->forums[$row['id']] = $row['title'];
-				}
+			$row = $this->db->fetchRow($query, $id);
+			$this->title = $row['cat_title']; 
+			$this->order = $row['cat_order']; 
+			
+			$query = "SELECT forum_id AS id, forum_name AS title FROM nuke_bbforums WHERE cat_id = ? ORDER BY forum_order";
+			
+			foreach ($this->db->fetchAll($query, $this->id) as $row) {
+				$this->forums[$row['id']] = $row['title'];
 			}
 		}
 		
@@ -160,6 +146,56 @@
 			foreach ($this->db->fetchAll($query, $this->id) as $row) {
 				yield new Forum($row['forum_id']);
 			}
+		}
+		
+		/**
+		 * Validate changes to this category before committing
+		 * @since Version 3.9.1
+		 * @return boolean
+		 */
+		
+		private function validate() {
+			
+			$this->title = filter_var($this->title, FILTER_SANITIZE_STRING); 
+			
+			if (empty($this->title)) {
+				throw new Exception("No category title has been set"); 
+			}
+			
+			if (!filter_var($this->order, FILTER_VALIDATE_INT)) {
+				$this->order = 0;
+			}
+			
+			return true;
+		}
+		
+		/**
+		 * Commit changes to this forum category
+		 * @since Version 3.9.1
+		 * @return \Railpage\Forums\Category
+		 */
+		
+		public function commit() {
+			
+			$this->validate(); 
+			
+			$data = array(
+				"cat_title" => $this->title,
+				"cat_order" => $this->order
+			);
+			
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$where = array(
+					"cat_id = ?" => $this->id
+				); 
+				
+				$this->db->update("nuke_bbcategories", $data, $where); 
+			} else {
+				$this->db->insert("nuke_bbcategories", $data);
+				$this->id = intval($this->db->lastInsertId()); 
+			}
+			
+			return $this;
 		}
 	}
 	

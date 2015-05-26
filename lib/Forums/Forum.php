@@ -17,6 +17,7 @@
 	
 	use DateTime;
 	use Exception;
+	use InvalidArgumentException;
 	use stdClass;
 	
 	/** 
@@ -27,6 +28,22 @@
 	 */
 	
 	class Forum extends Forums {
+		
+		/**
+		 * Forum status: unlocked
+		 * @since Version 3.9.1
+		 * @const int FORUM_UNLOCKED
+		 */
+		
+		const FORUM_UNLOCKED = 0; 
+		
+		/**
+		 * Forum status: locked
+		 * @since Version 3.9.1
+		 * @const int FORUM_LOCKED
+		 */
+		
+		const FORUM_LOCKED = 1;
 		
 		/**
 		 * Forum ID
@@ -116,7 +133,15 @@
 		 * @var object $category
 		 */
 		
-		var $category;
+		public $category;
+		
+		/**
+		 * Parent forum
+		 * @since Version 3.9.1
+		 * @var \Railpage\Forums\Forum|null $Parent
+		 */
+		
+		public $Parent;
 		
 		/**
 		 * Constructor
@@ -126,7 +151,7 @@
 		 * @param object $database
 		 */
 		
-		function __construct($forumid, $getParent = true) {
+		function __construct($forumid = false, $getParent = true) {
 			parent::__construct();
 			
 			if (RP_DEBUG) {
@@ -135,30 +160,52 @@
 			}
 			
 			$this->Module = new Module("forums");
-			$this->url = new Url(sprintf("/f-f%d.htm", $forumid));
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT * FROM nuke_bbforums f LEFT JOIN (nuke_bbtopics t, nuke_bbposts p, nuke_bbposts_text pt) ON (f.forum_last_post_id = p.post_id AND p.topic_id = t.topic_id AND pt.post_id = p.post_id) WHERE f.forum_id = '".$this->db->real_escape_string($forumid)."' LIMIT 1";
-				
-				$result = $this->db->query($query);
-				
-				if ($result->num_rows == 1) {
-					$row = $result->fetch_assoc();
-						
-					foreach ($row as $key => $val) {
-						//$row[$key] = iconv('windows-1256', 'UTF-8', $val);
-					}
+			if (filter_var($forumid, FILTER_VALIDATE_INT)) {
+				$this->load($forumid, $getParent);
+			} elseif ($shortname = filter_var($forumid, FILTER_SANITIZE_STRING)) {
+				if (!is_null($shortname)) {
+					$this->load($shortname, $getParent);
 				}
+			}
+			
+			if (RP_DEBUG) {
+				$site_debug[] = __CLASS__ . "::" . __METHOD__ . " completed in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+			}
+		}
+		
+		/**
+		 * Load the forum
+		 * @since Version 3.9.1
+		 * @return \Railpage\Forums\Forum
+		 * @param int|string $id
+		 * @param boolean $getParent
+		 */
+		
+		public function load($id = false, $getParent = false) {
+			if ($id === false) {
+				throw new InvalidArgumentException("No valid forum ID or shortname was provided");
+			}
+			
+			$this->url = new Url(sprintf("/f-f%d.htm", $id));
+			
+			if (filter_var($id, FILTER_VALIDATE_INT)) {
+				#$query = "SELECT * FROM nuke_bbforums f LEFT JOIN (nuke_bbtopics t, nuke_bbposts p, nuke_bbposts_text pt) ON (f.forum_last_post_id = p.post_id AND p.topic_id = t.topic_id AND pt.post_id = p.post_id) WHERE f.forum_id = ? LIMIT 1";
 				
-				$result->close();
-			} else {
-				$query = "SELECT * FROM nuke_bbforums f LEFT JOIN (nuke_bbtopics t, nuke_bbposts p, nuke_bbposts_text pt) ON (f.forum_last_post_id = p.post_id AND p.topic_id = t.topic_id AND pt.post_id = p.post_id) WHERE f.forum_id = ? LIMIT 1";
+				$query = "SELECT f.*, p.post_time, p.poster_id, p.post_username, pt.post_subject, pt.post_text, pt.bbcode_uid,
+								t.topic_id, t.topic_title, t.topic_time,
+								f.forum_name, f.forum_desc
+							FROM nuke_bbforums AS f
+								LEFT JOIN nuke_bbposts AS p ON f.forum_last_post_id = p.post_id
+								LEFT JOIN nuke_bbtopics AS t ON p.topic_id = t.topic_id
+								LEFT JOIN nuke_bbposts_text AS pt ON pt.post_id = p.post_id
+							WHERE f.forum_id = ?";
 				
-				$row = $this->db->fetchRow($query, $forumid);
+				$row = $this->db->fetchRow($query, $id);
 			}
 			
 			if (isset($row) && is_array($row)) {
-				$this->id 			= $forumid;
+				$this->id 			= $row['forum_id'];
 				$this->catid 		= $row["cat_id"];
 				$this->name 		= function_exists("html_entity_decode_utf8") ? html_entity_decode_utf8($row["forum_name"]) : $row['forum_name'];
 				$this->description 	= function_exists("html_entity_decode_utf8") ? html_entity_decode_utf8($row["forum_desc"]) : $row['forum_desc'];
@@ -185,11 +232,116 @@
 				if ($getParent) {
 					$this->category = new Category($this->catid);
 				}
+				
+				if (filter_var($row['forum_parent'], FILTER_VALIDATE_INT) && $row['forum_parent'] > 0) {
+					$this->Parent = new Forum($row['forum_parent']);
+				}
+			}
+
+		}
+		
+		/**
+		 * Set the category for this forum
+		 * @since Version 3.9.1
+		 * @return \Railpage\Forums\Forum
+		 * @param \Railpage\Forms\Category $Category
+		 */
+		
+		public function setCategory(Category $Category) {
+			
+			$this->catid = $Category->id;
+			$this->category = $Category;
+			
+			return $this;
+		}
+		
+		/**
+		 * Validate changes to this forum
+		 * @since Version 3.9.1
+		 * @return boolean
+		 */
+		
+		private function validate() {
+			
+			if (!filter_var($this->catid, FILTER_VALIDATE_INT) && !$this->category instanceof Category) {
+				throw new Exception("No valid forum category has been set (hint: Forum::setCategory");
 			}
 			
-			if (RP_DEBUG) {
-				$site_debug[] = __CLASS__ . "::" . __METHOD__ . " completed in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+			/**
+			 * Sanitize
+			 */
+			
+			$vars = array(
+				"name",
+				"description"
+			);
+			
+			foreach ($vars as $var) {
+				$this->$var = filter_var($this->$var, FILTER_SANITIZE_STRING); 
 			}
+			
+			if (empty($this->name)) {
+				throw new Exception("No forum name has been set");
+			}
+			
+			if (!filter_var($this->status, FILTER_VALIDATE_INT)) {
+				$this->status = self::FORUM_UNLOCKED;
+			}
+			
+			/**
+			 * Set some default ints
+			 */
+			
+			$vars = array(
+				"order", 
+				"posts",
+				"topics", 
+				"last_post",
+			);
+			
+			foreach ($vars as $var) {
+				if (!filter_var($this->$var, FILTER_VALIDATE_INT)) {
+					$this->$var = 0;
+				}
+			}
+			
+			return true;
+		}
+		
+		/**
+		 * Commit changes to this forum
+		 * @since Version 3.9.1
+		 * @return \Railpage\Forums\Forum
+		 */
+		
+		public function commit() {
+			
+			$this->validate(); 
+			
+			$data = array(
+				"cat_id" => $this->catid,
+				"forum_name" => $this->name,
+				"forum_desc" => $this->description,
+				"forum_status" => $this->status,
+				"forum_order" => $this->order,
+				"forum_posts" => $this->posts,
+				"forum_topics" => $this->topics,
+				"forum_last_post_id" => $this->last_post,
+				"forum_parent" => $this->Parent instanceof Forum ? $this->Parent->id : 0
+			);
+			
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$where = array(
+					"forum_id = ?" => $this->id
+				);
+				
+				$this->db->update("nuke_bbforums", $data, $where); 
+			} else {
+				$this->db->insert("nuke_bbforums", $data); 
+				$this->id = intval($this->db->lastInsertId());
+			}
+			
+			return $this;
 		}
 		
 		/**
@@ -506,20 +658,12 @@
 			
 			$stats = $this->db->fetchAll($query, $where);
 			
-			if ($this->id == 63) {
-				printArray($stats);
-			}
-			
 			if (isset($stats[0])) {
 				$data = $stats[0];
 				
 				$where = array(
 					"forum_id = ?" => $this->id
 				);
-				
-				if ($this->id == 63) {
-					printArray($data);
-				}
 				
 				$this->db->update("nuke_bbforums", $data, $where);
 			}
