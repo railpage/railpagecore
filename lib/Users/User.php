@@ -1153,29 +1153,6 @@
 					// Assume local avatar
 					$data['user_avatar'] = sprintf("http://%s/modules/Forums/images/avatars/%s", filter_input(INPUT_SERVER, "SERVER_NAME", FILTER_SANITIZE_STRING), $data['user_avatar']);
 				}
-				
-				/**
-				 * Get user avatar dimensions. If we can't get the avatar dimensions it stands to reason that the avatar no longer exists, so we should unset it
-				 */
-				
-				# MGH 8/02/2015 - commented out as it's blowing out page gen times. @todo: make a validateAvatar() function that does this shit once and then sets it forever
-				
-				/*
-				if (is_null($data['user_avatar_width']) || is_null($data['user_avatar_height'])) {
-					if (!$size = $this->Memcached->fetch(sprintf("rp:user.avatar.sizes=%s", $data['user_avatar']))) {
-						if ($size = @getimagesize($data['user_avatar'])) {
-							$this->Memcached->save(sprintf("rp:user.avatar.sizes=%s", $data['user_avatar']), $size, strtotime("+1 year"));
-						}
-					}
-					
-					if (isset($size) && is_array($size)) {
-						$data['user_avatar_width'] = $size[0];
-						$data['user_avatar_height'] = $size[1];
-					} else {
-						$data['user_avatar'] = ""; // Empty the avatar to enforce the defaults below
-					}
-				}
-				*/	
 			
 				if (RP_DEBUG) {
 					$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") user avatar processed in " . round(microtime(true) - $debug_timer_start, 5) . "s";
