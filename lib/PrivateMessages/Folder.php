@@ -125,9 +125,6 @@
 			$cachepms = false; // For the future
 			
 			if ($cachepms && $result = $this->Redis->fetch($mckey)) {
-				if (RP_DEBUG) {
-					$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->folder . ") fetched from redis in " . round(microtime(true) - $debug_timer_start_z, 5) . "s";
-				}
 				// Do nothing
 			} elseif ($this->db instanceof \sql_db) {
 				if ($rs = $this->db->query($query)) {
@@ -141,11 +138,6 @@
 				}
 			} else {
 				$result = $this->db->fetchAll($query);
-				
-				if (RP_DEBUG) {
-					$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->folder . ") fetched from db in " . round(microtime(true) - $debug_timer_start_z, 5) . "s";
-					$site_debug[] = $query;
-				}
 				
 				if ($cachepms) {
 					$this->Redis->save($mckey, $result, strtotime("+12 hours"));
@@ -219,4 +211,4 @@
 			
 		}
 	}
-?>
+	

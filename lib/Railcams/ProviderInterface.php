@@ -68,4 +68,4 @@
 		public function deletePhoto(Photo $Photo);
 		
 	}
-?>
+	

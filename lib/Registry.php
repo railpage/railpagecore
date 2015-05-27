@@ -99,3 +99,4 @@
 		
 		private function __clone() {}
 	}
+	

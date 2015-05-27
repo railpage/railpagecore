@@ -23,6 +23,22 @@
 	class Location extends Locations {
 		
 		/**
+		 * Status: inactive
+		 * @since Version 3.9.1
+		 * @const int STATUS_INACTIVE
+		 */
+		
+		const STATUS_INACTIVE = 0; 
+		
+		/**
+		 * Status: active
+		 * @since Version 3.9.1
+		 * @const int STATUS_ACTIVE
+		 */
+		
+		const STATUS_ACTIVE = 1;
+		
+		/**
 		 * Location ID
 		 * @since Version 3.0.1
 		 * @version 3.0.1
@@ -391,27 +407,63 @@
 		public function validate() {
 			// TODO: Validate the object
 			
-			if (empty($this->lat)) {
+			if (!filter_var($this->lat, FILTER_VALIDATE_FLOAT)) {
 				throw new Exception("Cannot validate location - no latitude value"); 
-				return false;
-			} elseif (empty($this->lon)) {
-				throw new Exception("Cannot validate location - no longitude value"); 
-				return false;
-			} elseif (empty($this->country)) {
-				throw new Exception("Cannot validate location - no country value"); 
-				return false;
-			} elseif (empty($this->region)) {
-				throw new Exception("Cannot validate location - no region value"); 
-				return false;
-			} elseif (empty($this->name)) {
-				throw new Exception("Cannot validate location - no name specified"); 
-				return false;
-			} elseif (empty($this->desc)) {
-				throw new Exception("Cannot validate location - no description specified"); 
-				return false;
-			} else {
-				return true;
 			}
+			
+			if (!filter_var($this->lon, FILTER_VALIDATE_FLOAT)) {
+				throw new Exception("Cannot validate location - no longitude value"); 
+			}
+				
+			if (is_null(filter_var($this->country, FILTER_SANITIZE_STRING))) {
+				throw new Exception("Cannot validate location - no country value"); 
+			}
+				
+			if (is_null(filter_var($this->region, FILTER_SANITIZE_STRING))) {
+				throw new Exception("Cannot validate location - no region value"); 
+			}
+			
+			if (is_null(filter_var($this->name, FILTER_SANITIZE_STRING))) {
+				throw new Exception("Cannot validate location - no name specified"); 
+			}
+			
+			if (is_null(filter_var($this->desc, FILTER_SANITIZE_STRING))) {
+				throw new Exception("Cannot validate location - no description specified"); 
+			}
+			
+			if (is_null($this->traffic)) {
+				$this->traffic = "";
+			}
+			
+			if (is_null($this->environment)) {
+				$this->environment = "";
+			}
+			
+			if (is_null($this->amenities)) {
+				$this->amenities = "";
+			}
+			
+			if (is_null($this->directions_pt)) {
+				$this->directions_pt = "";
+			}
+			
+			if (is_null($this->directions_driving)) {
+				$this->directions_driving = "";
+			}
+			
+			if (is_null($this->directions_parking)) {
+				$this->directions_parking = "";
+			}
+			
+			if (!filter_var($this->zoom, FILTER_VALIDATE_INT)) {
+				$this->zoom = 12;
+			}
+			
+			if (!filter_var($this->active)) {
+				$this->active = self::STATUS_INACTIVE; 
+			}
+			
+			return true;
 		}
 		
 		/**
@@ -667,7 +719,7 @@
 							
 							// Create a new image size
 							foreach ($return as $key => $data) {
-								$return[$key]['size_sq'] = RP_PROTOCOL."://".$_SERVER['HTTP_HOST']."/image_resize.php?q=90&w=".$square_size."&h=".$square_size."&square=true&image=".str_replace("?zz=1", "", $data['size4']);
+								$return[$key]['size_sq'] = RP_PROTOCOL . "://" . filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING) . "/image_resize.php?q=90&w=" . $square_size . "&h=" . $square_size . "&square=true&image=" . str_replace("?zz=1", "", $data['size4']);
 								$return[$key]['size_sq_w'] = $square_size;
 								$return[$key]['size_sq_h'] = $square_size;
 								
@@ -758,7 +810,7 @@
 				foreach ($this->db->fetchAll($query, $params) as $data) {
 					$key = $data['photo_id'];
 					
-					$return[$key]['size_sq'] = RP_PROTOCOL."://".$_SERVER['HTTP_HOST']."/image_resize.php?q=90&w=".$square_size."&h=".$square_size."&square=true&image=".str_replace("?zz=1", "", $data['size4']);
+					$return[$key]['size_sq'] = RP_PROTOCOL . "://" . filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING) . "/image_resize.php?q=90&w=" . $square_size . "&h=" . $square_size . "&square=true&image=" . str_replace("?zz=1", "", $data['size4']);
 					$return[$key]['size_sq_w'] = $square_size;
 					$return[$key]['size_sq_h'] = $square_size;
 					
@@ -973,4 +1025,4 @@
 			return $this->db->fetchAll("SELECT * FROM location_date WHERE location_id = ?", $this->id); 
 		}
 	}
-?>
+	

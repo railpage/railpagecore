@@ -1151,31 +1151,8 @@
 				
 				if (!stristr($data['user_avatar'], "http://") && !stristr($data['user_avatar'], "https://")) {
 					// Assume local avatar
-					$data['user_avatar'] = "http://".$_SERVER['SERVER_NAME']."/modules/Forums/images/avatars/".$data['user_avatar'];
+					$data['user_avatar'] = sprintf("http://%s/modules/Forums/images/avatars/%s", filter_input(INPUT_SERVER, "SERVER_NAME", FILTER_SANITIZE_STRING), $data['user_avatar']);
 				}
-				
-				/**
-				 * Get user avatar dimensions. If we can't get the avatar dimensions it stands to reason that the avatar no longer exists, so we should unset it
-				 */
-				
-				# MGH 8/02/2015 - commented out as it's blowing out page gen times. @todo: make a validateAvatar() function that does this shit once and then sets it forever
-				
-				/*
-				if (is_null($data['user_avatar_width']) || is_null($data['user_avatar_height'])) {
-					if (!$size = $this->Memcached->fetch(sprintf("rp:user.avatar.sizes=%s", $data['user_avatar']))) {
-						if ($size = @getimagesize($data['user_avatar'])) {
-							$this->Memcached->save(sprintf("rp:user.avatar.sizes=%s", $data['user_avatar']), $size, strtotime("+1 year"));
-						}
-					}
-					
-					if (isset($size) && is_array($size)) {
-						$data['user_avatar_width'] = $size[0];
-						$data['user_avatar_height'] = $size[1];
-					} else {
-						$data['user_avatar'] = ""; // Empty the avatar to enforce the defaults below
-					}
-				}
-				*/	
 			
 				if (RP_DEBUG) {
 					$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") user avatar processed in " . round(microtime(true) - $debug_timer_start, 5) . "s";
@@ -1387,9 +1364,7 @@
 			
 			// Generate a new API key and secret
 			if (empty($this->api_key) || empty($this->api_secret)) {
-				require_once("includes/bcrypt.class.php"); 
-				$bcrypted = new \Bcrypt(4); 
-				$this->api_secret 	= $bcrypted->hash($this->username.$this->regdate.$this->id);
+				$this->api_secret 	= password_hash($this->username.$this->regdate.$this->id, PASSWORD_BCRYPT, array("cost" => 4));
 				$this->api_key		= crypt($this->username.$this->id, "rl");
 				
 				try {
@@ -1908,8 +1883,8 @@
 					}
 				
 					if ($this->db instanceof \sql_db) {
-						if (!empty($_SERVER['REMOTE_ADDR'])) {
-							$ip_sql = "last_session_ip = '".$this->db->real_escape_string($_SERVER['REMOTE_ADDR'])."', "; 
+						if (!is_null(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING))) {
+							$ip_sql = "last_session_ip = '".$this->db->real_escape_string(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING))."', "; 
 						} else {
 							$ip_sql = "";
 						}
@@ -1924,8 +1899,8 @@
 							"user_session_time" => time()
 						);
 						
-						if (!empty($_SERVER['REMOTE_ADDR'])) {
-							$data['last_session_ip'] = $_SERVER['REMOTE_ADDR']; 
+						if (!is_null(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING))) {
+							$data['last_session_ip'] = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING); 
 						}
 						
 						$rs = $this->db->update("nuke_users", $data, array("user_id = ?" => $user_id));
@@ -2096,10 +2071,10 @@
 				$cookie_expire = RP_AUTOLOGIN_EXPIRE;
 			}
 			
-			if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-				$client_addr = $_SERVER['HTTP_X_FORWARDED_FOR']; 
+			if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+				$client_addr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR']; 
 			} else {
-				$client_addr = $_SERVER['REMOTE_ADDR'];
+				$client_addr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
 			}	
 			
 			if ($this->db instanceof \sql_db) {
@@ -2108,7 +2083,7 @@
 				$dataArray['autologin_token']		= $this->db->real_escape_string(get_random_string("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=<>[]{}|~", 16)); #"#".substr(hash('haval128,5', $this->username.$this->regdate.rand()), 0, 14)."+!";
 				$dataArray['autologin_expire']		= $cookie_expire;
 				$dataArray['autologin_ip']			= $this->db->real_escape_string($client_addr); 
-				$dataArray['autologin_hostname']	= $this->db->real_escape_string($_SERVER['REMOTE_HOST']); 
+				$dataArray['autologin_hostname']	= $this->db->real_escape_string(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING)); 
 				$dataArray['autologin_last']		= time(); 
 				$dataArray['autologin_time']		= time();
 				
@@ -2131,7 +2106,7 @@
 					"autologin_token" => get_random_string("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=<>[]{}|~", 16),
 					"autologin_expire" => $cookie_expire,
 					"autologin_ip" => $client_addr,
-					"autologin_hostname" => $_SERVER['REMOTE_HOST'],
+					"autologin_hostname" => filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING),
 					"autologin_last" => time(),
 					"autologin_time" => time()
 				);
@@ -2160,11 +2135,11 @@
 		 */
 		
 		public function tryAutoLogin() {
-			if (empty($_COOKIE['rp_autologin'])) {
+			if (is_null(filter_input(INPUT_COOKIE, "rp_autologin"))) { #empty($_COOKIE['rp_autologin'])) {
 				$this->addNote("Autologin attempted but no autologin cookie was found");
 				return false;
 			} else {
-				$cookie = explode(":", base64_decode($_COOKIE['rp_autologin'])); 
+				$cookie = explode(":", base64_decode(filter_input(INPUT_COOKIE, "rp_autologin"))); 
 				
 				if (count($cookie) < 2) {
 					return false;
@@ -2177,13 +2152,13 @@
 						if ($row = $rs->fetch_assoc()) {
 							$autologin_id = $row['autologin_id'];
 							
-							if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-								$client_addr = $_SERVER['HTTP_X_FORWARDED_FOR']; 
+							if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+								$client_addr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR']; 
 							} else {
-								$client_addr = $_SERVER['REMOTE_ADDR'];
-							}		
+								$client_addr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
+							}			
 							
-							$query = "UPDATE nuke_users_autologin SET autologin_last = ".time().", autologin_ip = '".$this->db->real_escape_string($client_addr)."', autologin_hostname = '".$this->db->real_escape_string($_SERVER['REMOTE_HOST'])."' WHERE autologin_id = ".$autologin_id; 
+							$query = "UPDATE nuke_users_autologin SET autologin_last = ".time().", autologin_ip = '".$this->db->real_escape_string($client_addr)."', autologin_hostname = '".$this->db->real_escape_string(filter_input(INPUT_SERVER, "REMOTE_HOST", FILTER_SANITIZE_STRING))."' WHERE autologin_id = ".$autologin_id; 
 							
 							$this->db->query($query); 
 							
@@ -2203,17 +2178,17 @@
 					$query = "SELECT autologin_id FROM nuke_users_autologin WHERE user_id = ? AND autologin_token = ?"; 
 					
 					if ($autologin_id = $this->db->fetchOne($query, array($cookie[0], $cookie[1]))) {
-							
-						if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-							$client_addr = $_SERVER['HTTP_X_FORWARDED_FOR']; 
+						
+						if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+							$client_addr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR']; 
 						} else {
-							$client_addr = $_SERVER['REMOTE_ADDR'];
-						}		
+							$client_addr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
+						}	
 						
 						$data = array(
 							"autologin_last" => time(),
 							"autologin_ip" => $client_addr,
-							"autologin_hostname" => $_SERVER['REMOTE_ADDR'],
+							"autologin_hostname" => filter_input(INPUT_SERVER, "REMOTE_HOST", FILTER_SANITIZE_STRING),
 						);
 						
 						$this->db->update("nuke_users_autologin", $data, array("autologin_id = ?" => $autologin_id));
@@ -2327,10 +2302,10 @@
 				return false;
 			}
 			
-			if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-				$client_addr = $_SERVER['HTTP_X_FORWARDED_FOR']; 
+			if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+				$client_addr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR']; 
 			} else {
-				$client_addr = $_SERVER['REMOTE_ADDR'];
+				$client_addr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
 			}
 			
 			if ($this->db instanceof \sql_db) {
@@ -2338,8 +2313,8 @@
 				$dataArray['user_id'] = $this->id;
 				$dataArray['login_time'] = time(); 
 				$dataArray['login_ip'] = $this->db->real_escape_string($client_addr); 
-				$dataArray['login_hostname'] = $this->db->real_escape_string($_SERVER['REMOTE_HOST']);
-				$dataArray['server'] = $this->db->real_escape_string($_SERVER['HTTP_HOST']);
+				$dataArray['login_hostname'] = $this->db->real_escape_string(filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING));
+				$dataArray['server'] = $this->db->real_escape_string(filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING));
 				
 				$query = $this->db->buildQuery($dataArray, "log_logins"); 
 				
@@ -2354,8 +2329,8 @@
 					"user_id" => $this->id,
 					"login_time" => time(),
 					"login_ip" => $client_addr,
-					"login_hostname" => $_SERVER['REMOTE_HOST'],
-					"server" => $_SERVER['HTTP_HOST']
+					"login_hostname" => filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING),
+					"server" => filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING)
 				);
 				
 				if ($data['login_ip'] == $data['login_hostname']) {
@@ -2425,7 +2400,7 @@
 		 */
 		
 		public function updateHash() {
-			$cookie = isset($_COOKIE['rp_userhash']) ? $_COOKIE['rp_userhash'] : ""; 
+			$cookie = is_null(filter_input(INPUT_COOKIE, "rp_userhash")) ? "" : filter_input(INPUT_COOKIE, "rp_userhash"); # isset($_COOKIE['rp_userhash']) ? $_COOKIE['rp_userhash'] : ""; 
 			$hash	= array(); 
 			$update = false;
 			
@@ -2454,10 +2429,11 @@
 					$dataArray['hash']		= $cookie; 
 					$dataArray['date']		= time(); 
 					
-					if (empty($_SERVER['X_FORWARDED_FOR'])) {
-						$dataArray['ip'] = $_SERVER['REMOTE_ADDR']; 
+					
+					if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {
+						$dataArray['ip'] = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING);
 					} else {
-						$dataArray['ip'] = $_SERVER['HTTP_X_FORWARDED_FOR']; 
+						$dataArray['ip'] = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL);
 					}
 					
 					if ($update) {
@@ -2496,10 +2472,10 @@
 						"date" => time()
 					);
 					
-					if (empty($_SERVER['X_FORWARDED_FOR'])) {
-						$data['ip'] = $_SERVER['REMOTE_ADDR']; 
+					if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {
+						$data['ip'] = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING);
 					} else {
-						$data['ip'] = $_SERVER['HTTP_X_FORWARDED_FOR']; 
+						$data['ip'] = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); 
 					}
 					
 					if ($update) {
@@ -3362,27 +3338,12 @@
 				//throw new Exception("Your desired password is unsafe. Please choose a different password.");
 			}
 			
-			if (function_exists("password_hash")) {
-				$this->password = password_hash($password, PASSWORD_DEFAULT);
-				$this->password_bcrypt = false; // Deliberately deprecate the bcrypt password option
-				
-				if (filter_var($this->id, FILTER_VALIDATE_INT)) {
-					$this->commit();
-					$this->addNote("Password changed or hash updated using password_hash()");
-				}
-			} else {
-				require_once("includes/bcrypt.class.php");
-				
-				$BCrypt = new \Bcrypt(RP_BCRYPT_ROUNDS);
-				
-				$password = trim($password);
-				$this->password = md5($password);
-				$this->password_bcrypt = $BCrypt->hash($password);
-				
-				if (filter_var($this->id, FILTER_VALIDATE_INT)) {
-					$this->commit();
-					$this->addNote("Password changed or hash updated");
-				}
+			$this->password = password_hash($password, PASSWORD_DEFAULT);
+			$this->password_bcrypt = false; // Deliberately deprecate the bcrypt password option
+			
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$this->commit();
+				$this->addNote("Password changed or hash updated using password_hash()");
 			}
 		}
 		
@@ -3489,58 +3450,7 @@
 				
 				return true;
 			}
-			
-			/**
-			 * Older password verification code
-			 */
-			
-			/**
-			 * Load the BCrypt class
-			 */
-			
-			require_once("includes/bcrypt.class.php");
-			
-			$BCrypt = new \Bcrypt(RP_BCRYPT_ROUNDS);
-			
-			/**
-			 * Strip excess whitespace from the password
-			 */
-			
-			$password = trim($password);
-			
-			/**
-			 * Try to validate the password
-			 */
-			
-			if ((empty($stored_password_bcrypt) && $stored_password == md5($password)) || ($BCrypt->verify($password, $stored_password_bcrypt))) {
-				
-				/**
-				 * Password validated! If we haven't populated this user object, do it now
-				 */
-				
-				if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
-					$this->load($stored_user_id);
-				}
-				
-				/**
-				 * No bcrypt password - set it
-				 */
-				
-				if (empty($stored_password_bcrypt)) {
-					$this->setPassword($password);
-				}
-				
-				/**
-				 * Reset the InvalidAuthCounter
-				 */
-				
-				unset($this->meta['InvalidAuthCounter']);
-				unset($this->meta['InvalidAuthTimeout']);
-				$this->commit();
-				
-				return true;
-			}
-			
+						
 			/**
 			 * Unsuccessful login attempt - bump up the invalid auth counter
 			 */
@@ -3849,8 +3759,8 @@
 				throw new Exception("Cannot log user activity because no pagetitle was provided");
 			}
 			
-			if (!$ip && isset($_SERVER['REMOTE_ADDR'])) {
-				$ip = $_SERVER['REMOTE_ADDR'];
+			if (!$ip && !is_null(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL))) { #isset($_SERVER['REMOTE_ADDR'])) {
+				$ip = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
 			}
 			
 			if (!$ip) {
@@ -3977,6 +3887,10 @@
 				$query['glossary'] = "SELECT 'Glossary' AS module, COUNT(*) AS num, '/glossary?mode=manage.pending' AS url, NULL AS extra FROM glossary WHERE status = 0";
 				$query['locations'] = "SELECT 'Locations' AS module, COUNT(*) AS num, '/locations/pending' AS url, NULL AS extra FROM location WHERE active = 0";
 				$query['downloads'] = "SELECT 'Downloads' AS module, COUNT(*) AS num, '/downloads/manage' AS url, NULL AS extra FROM download_items WHERE active = 1 AND approved = 0";
+			}
+			
+			if ($acl->isAllowed($acl_role, "railpage.gallery.competition", "manage")) {
+				$query['photocomp'] = "SELECT 'Photo comp' AS module, COUNT(*) AS num, '/gallery/comp' AS url, NULL AS extra FROM image_competition_submissions WHERE status = 0";
 			}
 			
 			/**
@@ -4138,6 +4052,49 @@
 			/**
 			 * No parameters passed
 			 */
+			
+			return $this;
+		}
+		
+		/**
+		 * Get an array of this users' data
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			return array(
+				"id" => $this->id,
+				"username" => $this->username,
+				"realname" => $this->real_name,
+				"contact_email" => $this->contact_email,
+				"avatar" => $this->avatar
+			);
+		}
+		
+		/**
+		 * Check if we have a valid human identifier tag
+		 * @since Version 3.9.1
+		 * @return boolean
+		 */
+		
+		public function validateHuman() {
+			if (!isset($this->meta['captchaTimestamp']) || empty($this->meta['captchaTimestamp']) || $this->meta['captchaTimestamp'] - 900 <= time()) {
+				return false;
+			}
+			
+			return true;
+		}
+		
+		/**
+		 * Set our valid human tag
+		 * @since Version 3.9.1
+		 * @return \Railpage\Users\User
+		 */
+		
+		public function setValidatedHuman() {
+			$this->meta['captchaTimestamp'] = strtotime("+24 hours");
+			$this->commit(); 
 			
 			return $this;
 		}

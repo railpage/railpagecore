@@ -640,13 +640,15 @@ CREATE TABLE `idea_ideas` (
   `date` datetime NOT NULL,
   `status` tinyint(2) NOT NULL DEFAULT '1',
   `forum_thread_id` int(11) NOT NULL DEFAULT '0',
+  `redmine_id` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `slug` (`slug`,`votes`),
   KEY `author` (`author`),
   KEY `category_id` (`category_id`),
   KEY `date` (`date`),
   KEY `status` (`status`),
-  KEY `forum_thread_id` (`forum_thread_id`)
+  KEY `forum_thread_id` (`forum_thread_id`),
+  KEY `redmine_id` (`redmine_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -2073,7 +2075,7 @@ DROP TABLE IF EXISTS `nuke_bbforums`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `nuke_bbforums` (
-  `forum_id` smallint(5) unsigned NOT NULL DEFAULT '0',
+  `forum_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `cat_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `forum_name` varchar(150) DEFAULT NULL,
   `forum_desc` text,

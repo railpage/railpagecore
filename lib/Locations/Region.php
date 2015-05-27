@@ -180,4 +180,4 @@
 			return $locations;
 		}
 	}
-?>
+	

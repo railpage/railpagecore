@@ -380,7 +380,7 @@
 			}
 			
 			if (empty($this->ip)) {
-				$this->ip = $_SERVER['REMOTE_ADDR'];
+				$this->ip = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
 			}
 			
 			if (empty($this->url_slug)) {
@@ -833,4 +833,4 @@
 			return $types;
 		}
 	}
-?>
+	

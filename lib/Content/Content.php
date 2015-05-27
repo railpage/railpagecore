@@ -17,4 +17,4 @@
 	class Content extends AppCore {
 		// Do stuff...? Maybe....?
 	}
-?>
+	

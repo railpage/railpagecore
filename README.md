@@ -1,6 +1,6 @@
 # Railpage Core Code
 
-[![Build Status](https://travis-ci.org/railpage/railpagecore.svg?branch=master)](https://travis-ci.org/railpage/railpagecore) [![Latest Stable Version](https://poser.pugx.org/railpage/railpagecore/v/stable.svg)](https://packagist.org/packages/railpage/railpagecore) [![Gitter chat](https://badges.gitter.im/railpage/railpagecore.png)](https://gitter.im/railpage/railpagecore)
+[![Build Status](https://travis-ci.org/railpage/railpagecore.svg?branch=master)](https://travis-ci.org/railpage/railpagecore) [![Latest Stable Version](https://poser.pugx.org/railpage/railpagecore/v/stable.svg)](https://packagist.org/packages/railpage/railpagecore) [![Code Climate](https://codeclimate.com/github/railpage/railpagecore/badges/gpa.svg)](https://codeclimate.com/github/railpage/railpagecore) [![Test Coverage](https://codeclimate.com/github/railpage/railpagecore/badges/coverage.svg)](https://codeclimate.com/github/railpage/railpagecore/coverage) [![Gitter chat](https://badges.gitter.im/railpage/railpagecore.png)](https://gitter.im/railpage/railpagecore)
 
 This repository contains the core Railpage PHP objects formerly located under their respective modules. 
 

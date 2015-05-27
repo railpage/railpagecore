@@ -138,9 +138,7 @@
 			
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
 				$this->id = $id;
-			}
-			
-			if (filter_var($id, FILTER_VALIDATE_INT)) {
+				
 				$query = "SELECT id, status, date, type_id, blurb, text, X(point) as lat, Y(point) AS lon, user_id, meta FROM chronicle_item WHERE id = ?";
 				
 				if ($row = $this->db->fetchRow($query, $this->id)) {
@@ -311,4 +309,4 @@
 			return $this;
 		}
 	}
-?>
+	

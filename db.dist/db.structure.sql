@@ -640,13 +640,15 @@ CREATE TABLE `idea_ideas` (
   `date` datetime NOT NULL,
   `status` tinyint(2) NOT NULL DEFAULT '1',
   `forum_thread_id` int(11) NOT NULL DEFAULT '0',
+  `redmine_id` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `slug` (`slug`,`votes`),
   KEY `author` (`author`),
   KEY `category_id` (`category_id`),
   KEY `date` (`date`),
   KEY `status` (`status`),
-  KEY `forum_thread_id` (`forum_thread_id`)
+  KEY `forum_thread_id` (`forum_thread_id`),
+  KEY `redmine_id` (`redmine_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

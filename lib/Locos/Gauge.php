@@ -206,3 +206,4 @@
 			return sprintf("%s %s (%s)", $this->name, $this->width_imperial, $this->width_metric); 
 		}
 	}
+	

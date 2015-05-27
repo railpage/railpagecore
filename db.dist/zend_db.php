@@ -192,4 +192,4 @@
 	} else {
 		$ZendDB_ReadOnly =& $ZendDB;
 	}
-?>
+	

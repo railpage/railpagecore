@@ -1070,8 +1070,8 @@
 			 * Fall back to cookies
 			 */
 			
-			if (isset($_COOKIE[$cookiename])) {
-				$cookiedata = $_COOKIE[$cookiename];
+			if (!is_null(filter_input(INPUT_COOKIE, $cookiename))) { #isset($_COOKIE[$cookiename])) {
+				$cookiedata = filter_input(INPUT_COOKIE, $cookiename); #$_COOKIE[$cookiename];
 				$data = self::unserializeArray($cookiedata);
 				
 				if (count($data)) {

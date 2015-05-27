@@ -401,9 +401,15 @@
 						}
 						
 						// Match the first sentence
-						$line = explode("\n", str_replace("\r\n", "\n", $row['hometext'])); 
-						#$row['firstline'] 	= preg_replace('/([^?!.]*.).*/', '\\1', strip_tags($line[0]));
-						$row['firstline']	= strip_tags($line[0]);
+						$line = explode("\n", str_replace("\r\n", "\n", !empty($row['lead']) ? $row['lead'] : $row['hometext']));
+						$row['firstline']	= trim(strip_tags($line[0]));
+						
+						$row['story_lead'] = !empty($row['lead']) ? $row['lead'] : $row['hometext'];
+						$row['story_body'] = !empty($row['paragraphs']) ? $row['paragraphs'] : $row['bodytext'];
+						
+						$row['hometext'] = wpautop(process_bbcode(!empty($row['lead']) ? $row['lead'] : $row['hometext']));
+						$row['bodytext'] = wpautop(process_bbcode(!empty($row['paragraphs']) ? $row['paragraphs'] : $row['bodytext']));
+						$row['title'] = format_topictitle($row['title']);
 						
 						if (empty($row['slug'])) {
 							$row['slug'] = $this->createSlug($row['sid']); 
@@ -606,4 +612,4 @@
 			return $permalink;
 		}
 	}
-?>
+	

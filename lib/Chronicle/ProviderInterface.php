@@ -75,4 +75,4 @@
 		public function getEventsForYear($Date);
 		
 	}
-?>
+	

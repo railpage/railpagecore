@@ -27,4 +27,4 @@
 			return $this->db->fetchAll($query, array($parent_id, $parent_id)); 
 		}
 	}
-?>
+	

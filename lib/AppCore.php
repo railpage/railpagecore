@@ -169,7 +169,7 @@
 			
 			$this->log = self::getLogger();
 			
-			if (isset($PHPUnitTest) && $PHPUnitTest == true) {
+			if (isset($PHPUnitTest) && $PHPUnitTest === true) {
 				
 				require("db.dist" . DS . "zend_db.php"); 
 				$this->db = $ZendDB;
@@ -761,4 +761,4 @@
 			return $Smarty;
 		}
 	}
-?>
+	

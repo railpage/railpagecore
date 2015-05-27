@@ -198,7 +198,7 @@
 					$row['meta'] = json_decode($row['meta'], true);
 					
 					$this->Redis->save($this->mckey, $row, strtotime("+24 hours"));
-				}
+				} 
 				
 				$this->id = $id;
 				$this->provider = $row['provider'];
@@ -236,12 +236,8 @@
 				}
 				
 				/**
-				 * Normalize some sizes
+				 * Load the author. If we don't know who it is, attempt to re-populate the data
 				 */
-				
-				if (count($this->sizes)) {
-					$this->sizes = Images::normaliseSizes($this->sizes);
-				}
 				
 				if (isset($row['meta']['author'])) {
 					$this->author = json_decode(json_encode($row['meta']['author']));
@@ -252,6 +248,10 @@
 				} else {
 					$this->populate(true, $option);
 				}
+				
+				/**
+				 * Unless otherwise instructed load the places object if lat/lng are present
+				 */
 				
 				if ($option != Images::OPT_NOPLACE && round($row['lat'], 3) != "0.000" && round($row['lon'], 3) != "0.000") {
 					try {
@@ -275,6 +275,18 @@
 							}
 					}
 				}
+				
+				/**
+				 * Normalize some sizes
+				 */
+				
+				if (count($this->sizes)) {
+					$this->sizes = Images::normaliseSizes($this->sizes);
+				}
+				
+				/**
+				 * Create an array/JSON object
+				 */
 			
 				$this->getJSON();
 			}
@@ -381,32 +393,12 @@
 		}
 		
 		/**
-		 * Populate this image with fresh data
-		 * @since Version 3.8.7
-		 * @return $this
-		 * @param boolean $force
-		 * @param int $option
+		 * Get an instance of the image provider
+		 * @since Version 3.9.1
+		 * @return object
 		 */
 		
-		public function populate($force = false, $option = NULL) {
-			//$RailpageAPI = new API($this->Config->API->Key, $this->Config->API->Secret);
-			
-			if ($force === false && !$this->isStale()) {
-				return $this;
-			}
-			
-			/**
-			 * Start the debug timer
-			 */
-			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
-			
-			/**
-			 * New and improved populator using image providers
-			 */
+		public function getProvider() {
 			
 			$imageprovider = __NAMESPACE__ . "\\Provider\\" . ucfirst($this->provider);
 			$params = array();
@@ -433,7 +425,38 @@
 					break;
 			}
 			
-			$Provider = new $imageprovider($params); 
+			return new $imageprovider($params); 
+			
+		}
+		
+		/**
+		 * Populate this image with fresh data
+		 * @since Version 3.8.7
+		 * @return $this
+		 * @param boolean $force
+		 * @param int $option
+		 */
+		
+		public function populate($force = false, $option = NULL) {
+			
+			if ($force === false && !$this->isStale()) {
+				return $this;
+			}
+			
+			/**
+			 * Start the debug timer
+			 */
+			
+			if (RP_DEBUG) {
+				global $site_debug;
+				$debug_timer_start = microtime(true);
+			}
+			
+			/**
+			 * New and improved populator using image providers
+			 */
+			
+			$Provider = $this->getProvider(); 
 			
 			if ($data = $Provider->getImage($this->photo_id, $force)) {
 				$this->sizes = $data['sizes'];
@@ -498,8 +521,8 @@
 				
 				case "picasaweb" : 
 					
-					if (empty($this->meta) && isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], "picasaweb.google.com")) {
-						$album = preg_replace("@(http|https)://picasaweb.google.com/([a-zA-Z\-\.]+)/(.+)@", "$2", $_SERVER['HTTP_REFERER']);
+					if (empty($this->meta) && !is_null(filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_URL)) && strpos(filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_URL), "picasaweb.google.com")) {
+						$album = preg_replace("@(http|https)://picasaweb.google.com/([a-zA-Z\-\.]+)/(.+)@", "$2", filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_URL));
 						
 						if (is_string($album)) {
 							$update_url = sprintf("https://picasaweb.google.com/data/feed/api/user/%s/photoid/%s?alt=json", $album, $this->photo_id);
@@ -598,10 +621,10 @@
 				
 				case "vicsig" : 
 					
-					if (strpos($_SERVER['HTTP_REFERER'], "vicsig.net/photo")) {
-						$this->meta['source'] = $_SERVER['HTTP_REFERER'];
+					if (strpos(filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_URL), "vicsig.net/photo")) {
+						$this->meta['source'] = filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_STRING); 
 						
-						$response = $this->GuzzleClient->get($_SERVER['HTTP_REFERER']);
+						$response = $this->GuzzleClient->get($this->meta['source']);
 						
 						if ($response->getStatusCode() != 200) {
 							throw new Exception(sprintf("Failed to fetch image data from %s: HTTP error %s", $this->provider, $response->getStatusCode()));
@@ -655,7 +678,7 @@
 									if (preg_match("@Photo: @i", $line)) {
 										$this->author = new stdClass;
 										$this->author->realname = str_replace("Photo: ", "", $line); 
-										$this->author->url = $_SERVER['HTTP_REFERER'];
+										$this->author->url = filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_STRING); 
 										unset($text[$k]);
 									}
 									
@@ -682,7 +705,7 @@
 								}
 								
 								$this->links = new stdClass;
-								$this->links->provider = $_SERVER['HTTP_REFERER'];
+								$this->links->provider = filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_STRING); 
 								
 								$this->commit();
 							}
@@ -756,6 +779,14 @@
 		 */
 		
 		public function getJSON() {
+			if (isset($this->author)) {
+				$author = clone $this->author;
+				
+				if (isset($author->User) && $author->User instanceof User) {
+					$author->User = $author->User->getArray(); 
+				}
+			}
+			
 			$data = array(
 				"id" => $this->id,
 				"title" => $this->title,
@@ -765,7 +796,7 @@
 					"photo_id" => $this->photo_id
 				),
 				"sizes" => $this->sizes,
-				"author" => json_decode(json_encode($this->author), true),
+				"author" => isset($author) ? $author : false,
 				"url" => $this->url instanceof Url ? $this->url->getURLs() : array()
 			);
 			
@@ -1028,7 +1059,13 @@
 			
 			$stripdates = "/(" . implode("|", $stripdates) . ")/";
 			
-			$stripetc = "/([\#0-9]{5})/";
+			$stripetc = array(
+				"[\#0-9]{5}",
+				"railpage:livery=[0-9]+",
+				"railpage:class=[0-9]+"
+			);
+			
+			$stripetc = "/(" . implode("|", $stripetc) . ")/";
 				
 			$title = $this->title;
 			$desc = $this->description;
@@ -1051,14 +1088,19 @@
 				
 				if (isset($this->meta['tags']) && count($this->meta['tags'])) {
 					foreach ($this->meta['tags'] as $tag) {
-						preg_match_all($regex, $tag, $matches[]);
+						// strip the tags
+						$tag = trim(preg_replace($stripetc, "", $tag));
+						
+						if (!empty($tag)) {
+							preg_match_all($regex, $tag, $matches[]);
+						}
 					}
 				}
 				
 				foreach ($matches as $area => $matched) {
 					foreach ($matched as $key => $array) {
 						foreach ($array as $k => $v) {
-							if (preg_match("/([0-9])/", $v) && !preg_match("/(and|to|or|for)/", $v)) {
+							if (!empty($v) && preg_match("/([0-9])/", $v) && !preg_match("/(and|to|or|for)/", $v)) {
 								if (!in_array(trim($v), $locolookup)) {
 									$locolookup[] = trim($v);
 								}
@@ -1139,4 +1181,4 @@
 			return $locos;
 		}
 	}
-?>
+	

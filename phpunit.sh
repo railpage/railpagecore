@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export CODECLIMATE_REPO_TOKEN=20d76bff65cdc35b5d3450847800ecc6d5646842b55fe9b433cee1da0fa012ba
+
 echo ""
 echo "================================================================"
 echo ""
@@ -12,7 +14,12 @@ echo " - Importing database structure"
 mysql -h localhost < tests/data/travis/db.structure.sql
 echo ""
 echo "Running phpUnit ::"
-time /usr/local/bin/phpunit
+if [ "$1" == "coverage" ]; then
+	time /usr/local/bin/phpunit --coverage-clover build/logs/clover.xml
+else 
+	time /usr/local/bin/phpunit
+fi
+
 times
 
 if [ -e /usr/local/php7/bin/phpzzlol ]; then
@@ -34,5 +41,13 @@ if [ -e /usr/local/php7/bin/phpzzlol ]; then
 fi
 
 echo ""
+echo "Code coverage:"
+
+if [ "$1" == "coverage" ]; then
+	./lib/vendor/bin/test-reporter
+fi
+
+echo ""
 echo "================================================================"
 echo ""
+

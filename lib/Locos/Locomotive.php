@@ -1027,7 +1027,7 @@
 				$dataArray['date']			= $this->db->real_escape_string($date); 
 				
 				if (!empty($text) && $text != false) {
-					$dataArray['text'] = $this->db->real_escape_string($_POST['loco_date_text']);
+					$dataArray['text'] = $this->db->real_escape_string(filter_input(INPUT_POST, "loco_date_text", FILTER_SANITIZE_STRING));
 				}
 				
 				$query = $this->db->buildQuery($dataArray, "loco_unit_date"); 
@@ -1046,7 +1046,7 @@
 				);
 				
 				if (!empty($text) && $text != false) {
-					$data['text'] = $_POST['loco_date_text'];
+					$data['text'] = filter_input(INPUT_POST, "loco_date_text", FILTER_SANITIZE_STRING);
 				}
 				
 				$this->db->insert("loco_unit_date", $data);
@@ -1067,7 +1067,7 @@
 				$dataArray['loco_id']	= $this->id;
 				$dataArray['class_id'] 	= $this->Class->id;
 				$dataArray['time']		= time(); 
-				$dataArray['ip']		= $_SERVER['REMOTE_ADDR'];
+				$dataArray['ip']		= filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL);
 				$dataArray['user_id']	= $_SESSION['user_id']; 
 				
 				$query = $this->db->buildQuery($dataArray, "loco_hits"); 
@@ -1083,7 +1083,7 @@
 					"loco_id" => $this->id,
 					"class_id" => $this->Class->id,
 					"time" => time(),
-					"ip" => $_SERVER['REMOTE_ADDR'],
+					"ip" => filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL),
 					"user_id" => $_SESSION['user_id']
 				);
 				

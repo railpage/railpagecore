@@ -76,7 +76,13 @@
 				$Date = new DateTime;
 			}
 			
-			return $this->db->fetchAll("SELECT ed.*, e.title, CONCAT('/events/', e.slug) AS url FROM event_dates AS ed LEFT JOIN event AS e ON e.id = ed.event_id WHERE ed.date = ? AND e.status = ?", array($Date->format("Y-m-d"), self::STATUS_APPROVED));
+			$args = array(
+				$Date->format("Y-m-d"), 
+				self::STATUS_APPROVED, 
+				EventDate::STATUS_RUNNING
+			);
+			
+			return $this->db->fetchAll("SELECT ed.*, e.title, CONCAT('/events/', e.slug) AS url FROM event_dates AS ed LEFT JOIN event AS e ON e.id = ed.event_id WHERE ed.date = ? AND e.status = ? AND ed.status = ?", $args);
 		}
 		
 		/**
@@ -92,11 +98,12 @@
 			$args = array(
 				$Now->format("Y-m-d"),
 				self::STATUS_APPROVED, 
+				EventDate::STATUS_RUNNING,
 				($page - 1) * $items_per_page, 
 				$items_per_page
 			); 
 			
-			return $this->db->fetchAll("SELECT ed.* FROM event_dates AS ed LEFT JOIN event AS e ON e.id = ed.event_id WHERE ed.date >= ? AND e.status = ? ORDER BY ed.date LIMIT ?, ?", $args);
+			return $this->db->fetchAll("SELECT ed.* FROM event_dates AS ed LEFT JOIN event AS e ON e.id = ed.event_id WHERE ed.date >= ? AND e.status = ? AND ed.status = ? ORDER BY ed.date LIMIT ?, ?", $args);
 		}
 		
 		/**
@@ -120,11 +127,11 @@
 				throw new Exception("Cannot fetch upcoming events because the specified organisation is invalid or doesn't exist");
 			}
 			
-			$query = "SELECT ed.id, ed.event_id, ed.date FROM event_dates AS ed LEFT JOIN event AS e ON e.id = ed.event_id WHERE ed.date >= ? AND e.organisation_id = ? AND e.status = ?";
+			$query = "SELECT ed.id, ed.event_id, ed.date FROM event_dates AS ed LEFT JOIN event AS e ON e.id = ed.event_id WHERE ed.date >= ? AND e.organisation_id = ? AND e.status IN (" . EventDate::STATUS_RUNNING . ")";
 			
 			$return = array(); 
 			
-			foreach ($this->db->fetchAll($query, array(date("Y-m-d"), $Org->id, self::STATUS_APPROVED)) as $row) {
+			foreach ($this->db->fetchAll($query, array(date("Y-m-d"), $Org->id)) as $row) {
 				$Event = new Event($row['event_id']);
 				$return[$row['date']][] = array(
 					"id" => $Event->id,
@@ -164,4 +171,4 @@
 			}
 		}
 	}
-?>
+	

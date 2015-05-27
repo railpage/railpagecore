@@ -764,7 +764,7 @@
 			
 			$dataArray['class_id'] 	= $this->id;
 			$dataArray['time']		= time(); 
-			$dataArray['ip']		= $_SERVER['REMOTE_ADDR'];
+			$dataArray['ip']		= filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL);
 			$dataArray['user_id']	= $_SESSION['user_id']; 
 			
 			if ($this->db instanceof \sql_db) {

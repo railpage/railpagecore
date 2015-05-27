@@ -36,4 +36,4 @@
 			$this->assertCount(14, $weather);
 		}
 	}
-?>
+	

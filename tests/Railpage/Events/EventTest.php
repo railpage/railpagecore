@@ -127,3 +127,4 @@
 			$this->assertEquals(self::EVENT_NAME, $EventDate->Event->title);
 		}
 	}
+	

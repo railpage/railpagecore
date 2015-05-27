@@ -245,4 +245,4 @@
 			return true; // throws an exception if any SQl queries fail
 		}
 	}
-?>
+	

@@ -217,7 +217,7 @@
 		 */
 		
 		public function load() {
-			if (empty($this->id) || $this->id == false) {
+			if (empty($this->id) || $this->id === false) {
 				throw new Exception("Cannot load Railcam - empty or invalid ID given"); 
 				return false;
 			}
@@ -311,7 +311,7 @@
 					$date = $timestamp->format("Y-m-d");
 					$hour = $timestamp->format("H");
 					
-					if ($date == $yesterday->format("Y-m-d")) {
+					if ($date === $yesterday->format("Y-m-d")) {
 						if (!isset($photos[$date][$hour]['count'])) {
 							$photos[$date][$hour]['count'] = 1;
 						} else {
@@ -738,4 +738,4 @@
 			);
 		}
 	}
-?>
+	

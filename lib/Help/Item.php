@@ -345,4 +345,4 @@
 			$this->url = new Url($url);
 		}
 	}
-?>
+	

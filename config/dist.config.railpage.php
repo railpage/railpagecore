@@ -55,7 +55,7 @@
 	$RailpageConfig->AvatarMaxHeight = 128;
 	$RailpageConfig->AvatarMaxSize = 131027; // 128kb
 	$RailpageConfig->DefaultTheme = "jiffy_simple";
-	$RailpageConfig->HTTPHost = defined("RP_HOST") ? RP_HOST : $_SERVER['HTTP_HOST'];
+	$RailpageConfig->HTTPHost = defined("RP_HOST") ? RP_HOST : filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING);
 	$RailpageConfig->HTTPStaticHost = "static.railpage.com.au";
 	$RailpageConfig->TwitterName = "@railpage";
 	$RailpageConfig->OpenGraphMapWidth = 640;
@@ -265,4 +265,4 @@
 	$RailpageConfig->Captcha->SecretKey = "xxxx";
 	
 	setRailpageConfig($RailpageConfig);
-?>
+	

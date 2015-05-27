@@ -582,4 +582,4 @@
 			return new Location(array_rand($locations));
 		}
 	}
-?>
+	

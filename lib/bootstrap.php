@@ -67,11 +67,11 @@
 		 * Set some server vars to compensate for the fact that we're not interacting with the internet
 		 */
 		
-		if (!isset($_SERVER['REMOTE_ADDR'])) {
+		if (is_null(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL))) { #!isset($_SERVER['REMOTE_ADDR'])) {
 			$_SERVER['REMOTE_ADDR'] = "127.0.0.1";
 		}
 		
-		if (!isset($_SERVER['REMOTE_HOST'])) {
+		if (is_null(filter_input(INPUT_SERVER, "REMOTE_HOST", FILTER_SANITIZE_URL))) { #!isset($_SERVER['REMOTE_HOST'])) {
 			$_SERVER['REMOTE_HOST'] = "phpunit";
 		}
 	}
@@ -88,4 +88,3 @@
 	
 	require_once("autoload.php");
 	
-?>

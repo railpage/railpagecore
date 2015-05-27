@@ -10,6 +10,7 @@
 	
 	use Railpage\AppCore;
 	use Exception;
+	use InvalidArgumentException;
 	
 	/**
 	 * Submenu class
@@ -27,6 +28,14 @@
 		public $menu;
 		
 		/**
+		 * The internal pointer for the submenu section we're defaulting to
+		 * @since Version 3.9.1
+		 * @var string $section
+		 */
+		
+		public $section;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.4
 		 */
@@ -38,7 +47,9 @@
 			 * Record this in the debug log
 			 */
 			
-			debug_recordInstance(__CLASS__);
+			if (function_exists("debug_recordInstance")) {
+				debug_recordInstance(__CLASS__);
+			}
 		}
 		
 		/**
@@ -49,9 +60,8 @@
 		 */
 		
 		public function AddGrouping($title = false, $subtitle = NULL) {
-			if (!$title) {
-				throw new Exception("Cannot add menu grouping - no title given"); 
-				return false;
+			if (empty(filter_var($title, FILTER_SANITIZE_STRING))) {
+				throw new InvalidArgumentException("Cannot add menu grouping - no title given"); 
 			}
 			
 			if (!isset($this->menu[$title])) {
@@ -92,9 +102,8 @@
 		 */
 		
 		public function Add($title = false, $url = false, $grouping = false, $meta = false) {
-			if (!$title) {
-				throw new Exception("Cannot add item to menu - no title given"); 
-				return $this;
+			if (empty(filter_var($title, FILTER_SANITIZE_STRING))) {
+				throw new InvalidArgumentException("Cannot add item to menu - no title given"); 
 			}
 			
 			$i = count($this->menu); 
@@ -148,9 +157,8 @@
 		 */
 		
 		public function GetURL($title = false) {
-			if (!$title) {
-				throw new Exception("Cannot return submenu URL - no title provided to look for");
-				return false;
+			if (empty(filter_var($title, FILTER_SANITIZE_STRING))) {
+				throw new InvalidArgumentException("Cannot return submenu URL - no title provided to look for");
 			}
 			
 			foreach ($this->menu as $key => $data) {
@@ -219,4 +227,4 @@
 			return false;
 		}
 	}
-?>
+	

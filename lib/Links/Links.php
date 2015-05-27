@@ -583,4 +583,4 @@
 			return $permalink;
 		}
 	}
-?>
+	

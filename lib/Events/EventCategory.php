@@ -206,4 +206,4 @@
 			$this->url = new Url(sprintf("%s/category/%s", $this->Module->url, $this->slug));
 		}
 	}
-?>
+	

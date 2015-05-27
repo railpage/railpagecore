@@ -14,4 +14,4 @@
 	
 	// Connect to the database
 	$db = new \sql_db($dbhost, $dbuname, $dbpass, $dbname);
-?>
+	

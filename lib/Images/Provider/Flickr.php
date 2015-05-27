@@ -17,6 +17,7 @@
 	use DateTime;
 	use DateTimeZone;
 	use flickr_railpage;
+	use GuzzleHttp\Client;
 	
 	/**
 	 * Flickr image provider
@@ -31,6 +32,14 @@
 		 */
 		
 		const PROVIDER_NAME = "Flickr";
+		
+		/**
+		 * API endpoint
+		 * @since Version 3.9.1
+		 * @const string API_ENDPOINT
+		 */
+		
+		const API_ENDPOINT = "https://api.flickr.com/services/rest/";
 		
 		/**
 		 * Flickr OAuth token
@@ -57,12 +66,20 @@
 		private $flickr_api_key;
 		
 		/**
+		 * Flickr API secret
+		 * @since Version 3.9
+		 * @var string $flickr_api_secret
+		 */
+		
+		private $flickr_api_secret;
+		
+		/**
 		 * Object representing the connection to Flickr
 		 * @since Version 3.9
 		 * @var \flickr_railpage $cn
 		 */
 		
-		private $cn;
+		public $cn;
 		
 		/**
 		 * The photo data as extracted from Flickr
@@ -71,6 +88,22 @@
 		 */
 		
 		private $photo;
+		
+		/**
+		 * API response format
+		 * @since Version 3.9.1
+		 * @var string $format
+		 */
+		
+		public $format = "json";
+		
+		/**
+		 * GuzzleHTTP Client
+		 * @since Version 3.9.1
+		 * @var \GuzzleHttp\Client $Client
+		 */
+		
+		private $Client;
 		
 		/**
 		 * Constructor
@@ -82,16 +115,41 @@
 			
 			parent::__construct(); 
 			
-			if (is_array($params) && isset($params['oauth_token']) && isset($params['oauth_secret']) && isset($params['api_key'])) {
-				$this->oauth_token = $params['oauth_token'];
-				$this->oauth_secret = $params['oauth_secret'];
-				$this->flickr_api_key = $params['api_key'];
+			if ($params === false) {
+				$Config = AppCore::getConfig();
 				
-				$this->cn = new flickr_railpage($this->flickr_api_key);
-				$this->cn->oauth_token = $this->oauth_token;
-				$this->cn->oauth_secret = $this->oauth_secret;
-				$this->cn->cache = false;
+				$params = array(
+					"api_key" => $Config->Flickr->APIKey,
+					"api_secret" => $Config->Flickr->APISecret
+				);
 			}
+			
+			$opts = array(
+				"flickr_api_key" => "api_key",
+				"flickr_api_secret" => "api_secret",
+				"oauth_token" => "oauth_token",
+				"oauth_secret" => "oauth_secret"
+			);
+			
+			foreach ($opts as $var => $val) {
+				if (!isset($params[$val]) || is_null(filter_var($params[$val], FILTER_SANITIZE_STRING))) {
+					$this->$var = NULL;
+				} else {
+					$this->$var = $params[$val];
+				}
+			}
+			
+			if (!is_null($this->flickr_api_key)) {
+				$this->cn = new flickr_railpage($this->flickr_api_key);
+				$this->cn->cache = false;
+				
+				if (!is_null($this->oauth_token) && !is_null($this->oauth_secret)) {
+					$this->cn->oauth_token = $this->oauth_token;
+					$this->cn->oauth_secret = $this->oauth_secret;
+				}
+			}
+			
+			$this->Client = new Client;
 			
 		}
 		
@@ -111,8 +169,8 @@
 			} else {
 				$return = array(); 
 				
-				if ($return = $this->cn->photos_getInfo($id)) {
-					$return['photo']['sizes'] = $this->cn->photos_getSizes($id);
+				if ($return = $this->get("flickr.photos.getInfo", array("photo_id" => $id))) {
+					$return['photo']['sizes'] = $this->get("flickr.photos.getSizes", array("photo_id" => $id));
 				}
 				
 				/**
@@ -124,8 +182,8 @@
 					"id" => $id,
 					"dates" => array(
 						"taken" => new DateTime($return['photo']['dates']['taken']),
-						"uploaded" => new DateTime(sprintf("@%s", $return['photo']['dateuploaded'])),
-						"updated" => new DateTime(sprintf("@%s", $return['photo']['dates']['lastupdate']))
+						"uploaded" => isset($return['photo']['dateuploaded']) ? new DateTime(sprintf("@%s", $return['photo']['dateuploaded'])) : new DateTime($return['photo']['dates']['taken']),
+						"updated" => isset($return['photo']['dates']['lastupdate']) ? new DateTime(sprintf("@%s", $return['photo']['dates']['lastupdate'])) : new DateTime($return['photo']['dates']['taken'])
 					),
 					"author" => array(
 						"id" => $return['photo']['owner']['nsid'],
@@ -261,6 +319,80 @@
 		
 		public function deleteImage(Image $Image) {
 			return $this->cn->photos_delete($Image->id);
+		}
+		
+		/**
+		 * Fetch a request from Flickr's API
+		 * @since Version 3.9.1
+		 * @param string $method
+		 * @param array $params
+		 * @return array
+		 */
+		
+		public function get($method = false, $params = array()) {
+			
+			if (is_null(filter_var($method, FILTER_SANITIZE_STRING))) {
+				throw new InvalidArgumentException("Flickr API call failed: no API method requested"); 
+			}
+			
+			$params['method'] = $method;
+			$params['api_key'] = $this->flickr_api_key;
+			$params['format'] = $this->format;
+			
+			if ($params['format'] === "json") {
+				$params['nojsoncallback'] = "1";
+			}
+			
+			$params = http_build_query($params);
+			$url = sprintf("%s?%s", self::API_ENDPOINT, $params);
+			
+			$response = $this->Client->get($url); 
+			
+			if ($response->getStatusCode() != 200) {
+				throw new Exception(sprintf("An unexpected HTTP response code of %s was returned from %s", $response->getStatusCode(), self::PROVIDER_NAME));
+			}
+			
+			$result = $response->json(); 
+			
+			$result = $this->normaliseContent($result);
+			$result = $this->normaliseSizes($result);
+			
+			return $result;
+			
+		}
+		
+		/**
+		 * Normalise the array content
+		 * @since Version 3.9.1
+		 * @return array
+		 * @param array $array
+		 */
+		
+		private function normaliseContent($array) {
+			foreach ($array as $key => $val) {
+				if (is_array($val) && count($val) === 1 && isset($val['_content'])) {
+					$array[$key] = $val['_content'];
+				} elseif (is_array($val)) {
+					$array[$key] = $this->normaliseContent($val); 
+				}
+			}
+			
+			return $array;
+		}
+		
+		/**
+		 * Normalise the image sizes
+		 * @since Version 3.9.1
+		 * @return array
+		 * @param array $result
+		 */
+		
+		private function normaliseSizes($result) {
+			if (isset($result['sizes']['size']) && is_array($result['sizes']['size'])) {
+				return $result['sizes']['size'];
+			}
+			
+			return $result;
 		}
 	}
 	
