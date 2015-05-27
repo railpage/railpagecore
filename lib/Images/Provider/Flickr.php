@@ -98,6 +98,22 @@
 		public $format = "json";
 		
 		/**
+		 * Last error code returned from the provider's API
+		 * @since Version 3.9.1
+		 * @var int $errcode
+		 */
+		
+		private $errcode;
+		
+		/**
+		 * Last error message returned from the provider's API
+		 * @since Version 3.9.1
+		 * @var string $errmessage
+		 */
+		
+		private $errmessage;
+		
+		/**
 		 * GuzzleHTTP Client
 		 * @since Version 3.9.1
 		 * @var \GuzzleHttp\Client $Client
@@ -171,6 +187,10 @@
 				
 				if ($return = $this->get("flickr.photos.getInfo", array("photo_id" => $id))) {
 					$return['photo']['sizes'] = $this->get("flickr.photos.getSizes", array("photo_id" => $id));
+				}
+				
+				if (empty($return)) {
+					throw new Exception(sprintf("Unable to fetch data from %s: %s (%d)", self::PROVIDER_NAME, $this->getErrorMessage(), $this->getErrorCode()));
 				}
 				
 				/**
@@ -354,11 +374,38 @@
 			
 			$result = $response->json(); 
 			
+			if ($result['stat'] != "ok") {
+				$this->errcode = $result['code'];
+				$this->errmessage = $result['message'];
+				
+				return false;
+			}
+			
 			$result = $this->normaliseContent($result);
 			$result = $this->normaliseSizes($result);
 			
 			return $result;
 			
+		}
+		
+		/**
+		 * Get error code
+		 * @since Version 3.9.1
+		 * @return int
+		 */
+		
+		public function getErrorCode() {
+			return $this->errcode;
+		}
+		
+		/**
+		 * Get the last error message
+		 * @since Version 3.9.1
+		 * @return string
+		 */
+		
+		public function getErrorMessage() {
+			return $this->errmessage;
 		}
 		
 		/**

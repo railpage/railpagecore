@@ -138,7 +138,7 @@
 	
 	$RailpageConfig->Flickr = new stdClass;
 	$RailpageConfig->Flickr->GroupID = "297283@N25";
-	$RailpageConfig->Flickr->APIKey = "xxxx";
+	$RailpageConfig->Flickr->APIKey = "e828abc6d87d4d99aa611177e13e1965";
 	$RailpageConfig->Flickr->APISecret = "xxxx";
 	
 	// StopForumSpam.com API
@@ -263,6 +263,13 @@
 	$RailpageConfig->Captcha = new stdClass;
 	$RailpageConfig->Captcha->SiteKey = "xxxx";
 	$RailpageConfig->Captcha->SecretKey = "xxxx";
+	
+	/**
+	 * SmugMug API
+	 */
+	
+	$RailpageConfig->SmugMug = new stdClass;
+	$RailpageConfig->SmugMug->APIKey = "gWWt5GljrNuwYNB5FZK1CKduQMI3MXPp";
 	
 	setRailpageConfig($RailpageConfig);
 	

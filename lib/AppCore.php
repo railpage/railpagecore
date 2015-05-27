@@ -474,7 +474,6 @@
 		static public function getConfig() {
 			$Registry = Registry::getInstance();
 			
-			
 			try {
 				$Config = $Registry->get("config");
 			} catch (Exception $e) {
@@ -484,6 +483,9 @@
 					$Config = json_decode(file_get_contents(RP_SITE_ROOT . DS . "config" . DS . "config.railpage.json")); 
 				} elseif (file_exists(dirname(__DIR__) . DS . "config.railpage.json")) {
 					$Config = json_decode(file_get_contents(dirname(__DIR__) . DS . "config.railpage.json"));
+				} elseif (file_exists(dirname(__DIR__) . DS . "config" . DS . "dist.config.railpage.php")) {
+					require_once(dirname(__DIR__) . DS . "config" . DS . "dist.config.railpage.php");
+					$Config = $RailpageConfig;
 				}
 				
 				if (!isset($Config)) {
