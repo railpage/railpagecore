@@ -49,7 +49,7 @@
 			
 			$this->folder = $folder;
 			$this->name = ucwords($folder);
-			$this->url = sprintf("/messages/%s", $folder);
+			$this->url = new Url(sprintf("/messages/%s", $folder));
 		}
 		
 		/**
