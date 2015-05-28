@@ -8,6 +8,7 @@
 	
 	namespace Railpage\Locos;
 	
+	use Railpage\Url;
 	use Exception;
 	
 	/**
@@ -77,7 +78,7 @@
 						$this->commit();
 					}
 					
-					$this->url = sprintf("%s/type/%s", $this->Module->url, $this->slug);
+					$this->url = new Url(sprintf("%s/type/%s", $this->Module->url, $this->slug));
 				}
 			}
 		}
@@ -139,6 +140,39 @@
 			}
 			
 			return $this;
+		}
+		
+		/**
+		 * Get an associative array of this data
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			return array(
+				"id" => $this->id,
+				"name" => $this->name,
+				"url" => $this->url->getURLs()
+			);
+		}
+		
+		/**
+		 * Get locomotive classes by this type
+		 * @return array
+		 */
+		
+		public function getClasses() {
+			$query = "SELECT id FROM loco_class WHERE loco_type_id = ? ORDER BY name";
+			
+			$return = array();
+			
+			foreach ($this->db->fetchAll($query, $this->id) as $row) {
+				$LocoClass = new LocoClass($row['id']);
+				
+				$return[] = $LocoClass->getArray();
+			}
+			
+			return $return;
 		}
 	}
 	

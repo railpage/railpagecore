@@ -1478,22 +1478,21 @@
 		 */
 		
 		public function getArray() {
+			$Manufacturer = new Manufacturer($this->manufacturer_id); 
+			$Arrangement = new WheelArrangement($this->wheel_arrangement_id); 
+			$Type = new Type($this->type_id);
+			
 			return array(
 				"id" => $this->id,
 				"name" => $this->name,
 				"desc" => $this->desc,
-				"type" => array(
-					"id" => $this->type_id,
-					"text" => $this->type,
-				),
+				"type" => $Type->getArray(),
 				"introduced" => $this->introduced,
 				"weight" => $this->weight,
 				"axle_load" => $this->axle_load,
 				"tractive_effort" => $this->tractive_effort,
-				"wheel_arrangement" => array(
-					"id" => $this->wheel_arrangement_id,
-					"text" => $this->wheel_arrangement
-				)
+				"wheel_arrangement" => $Arrangement->getArray(),
+				"manufacturer" => $Manufacturer->getArray()
 			);
 		}
 		

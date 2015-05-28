@@ -9,6 +9,7 @@
 	namespace Railpage\Locos;
 	
 	use Exception;
+	use Railpage\Url;
 	
 	/**
 	 * Locomotive wheel arrangement object
@@ -86,7 +87,7 @@
 						$this->commit();
 					}
 					
-					$this->url = sprintf("/locos/wheelset/%s", $this->slug);
+					$this->url = new Url(sprintf("/locos/wheelset/%s", $this->slug));
 				}
 			}
 		}
@@ -163,20 +164,25 @@
 			
 			foreach ($this->db->fetchAll($query, $this->id) as $row) {
 				$LocoClass = new LocoClass($row['id']);
-				$Manufacturer = new Manufacturer($row['manufacturer_id']);
-				$LocoType = new Type($row['loco_type_id']);
 				
-				$row['url'] = $LocoClass->url;
-				$row['manufacturer'] = $Manufacturer->name;
-				$row['manufacturer_url'] = $Manufacturer->url;
-				$row['loco_type'] = $LocoType->name;
-				$row['loco_type_url'] = $LocoType->url;
-				$row['year_introduced_url'] = $this->makeYearURL($row['year_introduced']);
-				
-				$return[] = $row;
+				$return[] = $LocoClass->getArray();
 			}
 			
 			return $return;
+		}
+		
+		/**
+		 * Get an associative array of this data
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			return array(
+				"id" => $this->id,
+				"arrangement" => $this->arrangement,
+				"url" => $this->url->getURLs()
+			);
 		}
 	}
 	
