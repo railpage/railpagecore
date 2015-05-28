@@ -211,7 +211,7 @@
 					"id = ?" => $this->id
 				);
 				
-				$rs = $this->db->update("nuke_faqAnswer", $data, $where); 
+				$this->db->update("nuke_faqAnswer", $data, $where); 
 			}
 			
 			/**
