@@ -10,6 +10,7 @@
 	
 	use stdClass;
 	use Exception;
+	use InvalidArgumentException;
 	use DateTime;
 	use Railpage\Place;
 	
@@ -81,7 +82,12 @@
 		 * @param string $region
 		 */
 		
-		public function __construct($country, $region = false) {
+		public function __construct($country = null, $region = false) {
+			
+			if (is_null(filter_var($country, FILTER_SANITIZE_STRING))) {
+				throw new InvalidArgumentException("No country was specified"); 
+			}
+			
 			parent::__construct(); 
 			
 			/**
@@ -101,16 +107,7 @@
 				$debug_timer_start = microtime(true);
 			}
 			
-			/**
-			 * Fetch the WOE (Where On Earth) data from Yahoo
-			 */
-			
-			if ($region == false && !preg_match("@[a-zA-Z]+@", $country)) {
-				// Assume a WOE ID
-				$woe = Place::getWOEData($country);
-			} else {
-				$woe = Place::getWOEData($region . ", " . strtoupper($country));
-			}
+			$this->load($country, $region); 
 			
 			/**
 			 * End the debug timer
@@ -118,6 +115,28 @@
 				
 			if (RP_DEBUG) {
 				$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : fetched WOE data from Yahoo in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+			}
+		}
+		
+		/**
+		 * Populate this object
+		 * @since Version 3.9.1
+		 * @param string $country
+		 * @param string $region
+		 * @return void
+		 */
+		
+		private function load($country, $region) {
+			
+			/**
+			 * Fetch the WOE (Where On Earth) data from Yahoo
+			 */
+			
+			if ($region === false && !preg_match("@[a-zA-Z]+@", $country)) {
+				// Assume a WOE ID
+				$woe = Place::getWOEData($country);
+			} else {
+				$woe = Place::getWOEData($region . ", " . strtoupper($country));
 			}
 			
 			if (isset($woe['places']['place'][0]['name'])) {
