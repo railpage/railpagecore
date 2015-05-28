@@ -34,7 +34,7 @@
 		
 		public function __construct($default_url = false) {
 				
-			if (RP_DEBUG) {
+			if (!is_null(filter_input(INPUT_SERVER, "debug", FILTER_VALIDATE_BOOLEAN))) {
 				global $site_debug;
 				$debug_timer_start = microtime(true);
 			}
@@ -61,7 +61,7 @@
 				
 			}
 			
-			if (RP_DEBUG) {
+			if (!is_null(filter_input(INPUT_SERVER, "debug", FILTER_VALIDATE_BOOLEAN))) {
 				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $default_url . ") instantiated in " . round(microtime(true) - $debug_timer_start, 5) . "s";
 			}
 			
