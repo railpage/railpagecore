@@ -155,189 +155,20 @@
 					 * Set the module namespace
 					 */
 					
-					$Module = new \Railpage\Module($row['module']);
-					$row['meta']['namespace'] = $Module->namespace;
+					
+					$row['meta']['namespace'] = Timeline\Utility\General::getModuleNamespace($row);
 					
 					/**
 					 * Attempt to create a link to this object or action if none exists
 					 */
 					
-					if (!isset($row['meta']['url'])) {
-						
-						switch ($row['key']) {
-							
-							/**
-							 * Forum post
-							 */
-							
-							case "post_id" : 
-								
-								$row['meta']['url'] = "/f-p" . $row['value'] . ".htm#" . $row['value'];
-								
-							break;
-							
-							/**
-							 * Locomotive
-							 */
-							
-							case "loco_id" : 
-								
-								$Loco = new \Railpage\Locos\Locomotive($row['value']); 
-								$row['meta']['url'] = $Loco->url;
-							
-							break;
-							
-							/**
-							 * Locomotive class
-							 */
-							
-							case "class_id" : 
-								
-								$LocoClass = new \Railpage\Locos\LocoClass($row['value']); 
-								$row['meta']['url'] = $LocoClass->url;
-							
-							break;
-						}
-						
-					}
+					$row['meta']['url'] = Timeline\Utility\Url::createUrl($row);
 					
 					/**
 					 * Attempt to create a meta object title for this object or action if none exists
 					 */
 					
-					if (!isset($row['meta']['object']['title'])) {
-						
-						switch ($row['key']) {
-							
-							/**
-							 * Forum post
-							 */
-							
-							case "post_id" : 
-								
-								$Post = new \Railpage\Forums\Post($row['value']);
-								$row['meta']['object']['title'] = $Post->thread->title;
-								
-							break;
-							
-							/**
-							 * Locomotive
-							 */
-							
-							case "loco_id" : 
-								
-								$Loco = new \Railpage\Locos\Locomotive($row['value']); 
-								
-								$row['meta']['namespace'] = $Loco->namespace;
-								$row['meta']['id'] = $Loco->id;
-								
-								if ($row['event']['action'] == "added" && $row['event']['object'] == "loco") {
-									$row['meta']['object']['title'] = $Loco->class->name;
-								} else {
-									$row['meta']['object']['title'] = $Loco->number;
-									$row['meta']['object']['subtitle'] = $Loco->class->name;
-								}
-							
-							break;
-							
-							/**
-							 * Locomotive class
-							 */
-							
-							case "class_id" : 
-								
-								$LocoClass = new \Railpage\Locos\LocoClass($row['value']); 
-								$row['meta']['object']['title'] = $LocoClass->name;
-								
-								$row['meta']['namespace'] = $LocoClass->namespace;
-								$row['meta']['id'] = $LocoClass->id;
-							
-							break;
-							
-							/**
-							 * Location
-							 */
-							
-							case "id" :
-								
-								if ($row['module'] == "locations") {
-									$Location = new \Railpage\Locations\Location($row['value']);
-									$row['meta']['object']['title'] = $Location->name;
-									$row['meta']['url'] = $Location->url;
-									unset($row['event']['article']);
-									unset($row['event']['object']);
-									unset($row['event']['preposition']);
-								}
-								
-							break;
-							
-							/**
-							 * Photo
-							 */
-							
-							case "photo_id" : 
-								
-								$row['meta']['object']['title'] = "photo";
-								$row['meta']['url'] = "/flickr/" . $row['value'];
-								
-								if ($row['event']['action'] == "commented") {
-									$row['event']['object'] = "";
-									$row['event']['article'] = "on";
-									$row['event']['preposition'] = "a";
-								}
-							
-							break;
-							
-							/**
-							 * Sighting
-							 */
-							
-							case "sighting_id" : 
-								
-								if (empty($row['module']) || !isset($row['module'])) {
-									$row['module'] = "sightings";
-								}
-								
-								$row['event']['preposition'] = "of";
-								$row['event']['article'] = "a";
-								
-								if (count($row['args']['locos']) === 1) {
-									$row['meta']['object']['title'] = $row['args']['locos'][key($row['args']['locos'])]['Locomotive'];
-								} elseif (count($row['args']['locos']) === 2) {
-									$row['meta']['object']['title'] = $row['args']['locos'][key($row['args']['locos'])]['Locomotive'];
-									next($row['args']['locos']);
-									
-									$row['meta']['object']['title'] .= " and " . $row['args']['locos'][key($row['args']['locos'])]['Locomotive'];
-								} else {
-									$locos = array();
-									foreach ($row['args']['locos'] as $loco) {
-										$locos[] = $loco['Locomotive'];
-									}
-									
-									$last = array_pop($locos);
-									
-									$row['meta']['object']['title'] = implode(", ", $locos) . " and " . $last;
-								}
-							
-							break;
-							
-							/**
-							 * Idea
-							 */
-							
-							case "idea_id" : 
-							
-								$Idea = new \Railpage\Ideas\Idea($row['value']);
-								$row['meta']['object']['title'] = $Idea->title;
-								$row['meta']['url'] = $Idea->url;
-								$row['glyphicon'] = "thumbs-up";
-								$row['event']['object'] = "idea:";
-								$row['event']['article'] = "an";
-							
-							break;
-						}
-						
-					}
+					$row = Timeline\Utility\ObjectTitle::generateTitle($row); 
 					
 					/**
 					 * Compact it all together and create a succinct message

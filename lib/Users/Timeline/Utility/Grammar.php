@@ -138,7 +138,7 @@
 		}
 		
 		/**
-		 * Process the "article" where the proposition is "a" or "an"
+		 * Process the "article" where the proposition is "an" or "a"
 		 * @since Version 3.9.1
 		 * @param arrray $row
 		 * @return string
