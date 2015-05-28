@@ -8,7 +8,7 @@ php:
   - 5.6
   - 7.0
   - hhvm
-  - hhvm-nightly
+#  - hhvm-nightly
 
 before_script:
   - composer self-update
@@ -21,7 +21,7 @@ after_script:
 
 script: 
   - composer install
-  - phpunit --coverage-clover build/logs/clover.xml
+  - phpunit # --coverage-clover build/logs/clover.xml # Disabled
 
 services:
   - redis-server
