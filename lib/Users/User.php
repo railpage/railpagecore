@@ -2578,7 +2578,7 @@
 		
 		public function timeline($date_start, $date_end) {
 			
-			return Utility::GenerateTimeline($this, $date_start, $date_end); 
+			return Timeline::GenerateTimeline($this, $date_start, $date_end); 
 			
 		}
 		
