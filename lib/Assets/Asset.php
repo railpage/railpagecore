@@ -9,9 +9,13 @@
 	 */
 	
 	namespace Railpage\Assets; 
+	
 	use Railpage\AppCore;
+	use Railpage\Url;
 	use Railpage\Users\User;
 	use Exception;
+	use InvalidArgumentException;
+	use DateTime;
 	
 	/**
 	 * Asset class
@@ -106,57 +110,67 @@
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
 				$this->id = $id;
 				
-				if ($row = $this->db->fetchRow("SELECT * FROM asset WHERE id = ?", $this->id)) {
-					$this->hash = $row['hash'];
-					$this->type_id = $row['type_id']; 
-					$this->meta = json_decode($row['meta'], true);
-					
-					if (function_exists("get_domain")) {
-						$this->meta['domain'] = get_domain($this->meta['url']);
+				$this->load(); 
+			}
+		}
+		
+		/**
+		 * Populate this object
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function load() {
+			if ($row = $this->db->fetchRow("SELECT * FROM asset WHERE id = ?", $this->id)) {
+				$this->hash = $row['hash'];
+				$this->type_id = $row['type_id']; 
+				$this->meta = json_decode($row['meta'], true);
+				
+				if (function_exists("get_domain")) {
+					$this->meta['domain'] = get_domain($this->meta['url']);
+				}
+				
+				$this->url = new Url("/assets?id=" . $this->id);
+				
+				foreach ($this->meta as $key => $val) {
+					if (is_string($val)) {
+						$this->meta[$key] = trim($val); 
 					}
 					
-					$this->url = "/assets?id=" . $this->id;
-					
-					foreach ($this->meta as $key => $val) {
-						if (is_string($val)) {
-							$this->meta[$key] = trim($val); 
-						}
-						
-						if (is_array($val)) {
-							foreach ($val as $k => $v) {
-								if (is_string($v)) {
-									$this->meta[$key][$k] = trim($v);
-								}
+					if (is_array($val)) {
+						foreach ($val as $k => $v) {
+							if (is_string($v)) {
+								$this->meta[$key][$k] = trim($v);
 							}
 						}
 					}
+				}
+				
+				/**
+				 * Update the unique hash if we need to
+				 */
+				
+				if (empty($this->hash)) {
+					$data = array(
+						"hash" => md5($this->meta['url'])
+					);
 					
-					/**
-					 * Update the unique hash if we need to
-					 */
+					$where = array(
+						"id = ?" => $this->id
+					);
 					
-					if (empty($this->hash)) {
-						$data = array(
-							"hash" => md5($this->meta['url'])
-						);
-						
-						$where = array(
-							"id = ?" => $this->id
-						);
-						
-						$this->db->update("asset", $data, $where);
-					}
+					$this->db->update("asset", $data, $where);
+				}
+				
+				/**
+				 * Get uses/instances from the database
+				 */
+				
+				foreach ($this->db->fetchAll("SELECT * FROM asset_link WHERE asset_id = ? ORDER BY date DESC", $this->id) as $row) {
+					$this->instances[$row['asset_link_id']] = $row;
 					
-					/**
-					 * Get uses/instances from the database
-					 */
-					
-					foreach ($this->db->fetchAll("SELECT * FROM asset_link WHERE asset_id = ? ORDER BY date DESC", $this->id) as $row) {
-						$this->instances[$row['asset_link_id']] = $row;
-						
-						$this->Date = new \DateTime($row['date']);
-						$this->User = new \Railpage\Users\User($row['user_id']);
-					}
+					$this->Date = new DateTime($row['date']);
+					$this->User = new User($row['user_id']);
 				}
 			}
 		}

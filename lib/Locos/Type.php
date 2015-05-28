@@ -9,6 +9,7 @@
 	namespace Railpage\Locos;
 	
 	use Railpage\Url;
+	use Railpage\ContentUtility;
 	use Exception;
 	
 	/**
@@ -64,8 +65,7 @@
 					$this->slug = $row['slug'];
 					
 					if (empty($this->slug)) {
-						$proposal = create_slug($this->name);
-						$proposal = substr($proposal, 0, 30);
+						$proposal = ContentUtility::generateUrlSlug($this->name, 30);
 						
 						$query = "SELECT id FROM loco_type WHERE slug = ?";
 						$result = $this->db->fetchAll($query, $proposal);
@@ -97,8 +97,7 @@
 			}
 					
 			if (empty($this->slug)) {
-				$proposal = create_slug($this->name);
-				$proposal = substr($proposal, 0, 30);
+				$proposal = ContentUtility::generateUrlSlug($this->name, 30);
 				
 				$query = "SELECT id FROM loco_type WHERE slug = ?";
 				$result = $this->db->fetchAll($query, $proposal);
@@ -108,7 +107,7 @@
 				}
 				
 				$this->slug = $proposal;
-				$this->url = sprintf("%s/type/%s", $this->Module->url, $this->slug);
+				$this->url = new Url(sprintf("%s/type/%s", $this->Module->url, $this->slug));
 			}
 			
 			return true;

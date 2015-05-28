@@ -10,6 +10,7 @@
 	
 	use Exception;
 	use Railpage\Url;
+	use Railpage\ContentUtility;
 	
 	/**
 	 * Locomotive wheel arrangement object
@@ -73,8 +74,7 @@
 					$this->slug = $row['slug'];
 					
 					if (empty($this->slug)) {
-						$proposal = create_slug($this->arrangement);
-						$proposal = substr($proposal, 0, 30);
+						$proposal = ContentUtility::generateUrlSlug($this->arrangement, 30);
 						
 						$query = "SELECT id FROM wheel_arrangements WHERE slug = ?";
 						$result = $this->db->fetchAll($query, $proposal);
@@ -106,8 +106,7 @@
 			}
 					
 			if (empty($this->slug)) {
-				$proposal = create_slug($this->arrangement);
-				$proposal = substr($proposal, 0, 30);
+				$proposal = ContentUtility::generateUrlSlug($this->arrangement, 30);
 				
 				$query = "SELECT id FROM wheel_arrangements WHERE slug = ?";
 				$result = $this->db->fetchAll($query, $proposal);
@@ -117,7 +116,7 @@
 				}
 				
 				$this->slug = $proposal;
-				$this->url = sprintf("/locos/wheelset/%s", $this->slug);
+				$this->url = new Url(sprintf("/locos/wheelset/%s", $this->slug));
 			}
 			
 			return true;

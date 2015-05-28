@@ -112,6 +112,7 @@
 			global $handheld;
 			
 			foreach ($this->controls as $control) {
+				
 				$string .= "<a href=\"" . $control['href'] . "\"";
 				
 				if (isset($control['title'])) {
@@ -162,10 +163,6 @@
 				}
 				
 				$string .= " class=\"" . $control['class'] . "\">";
-				
-				if (!$handheld && isset($control['class']) && !empty($control['class'])) {
-					#$string .= "<span class='icon'></span>";
-				}
 				
 				if (!$handheld && isset($control['glyphicon']) && !empty($control['glyphicon'])) {
 					$string .= "<span class='glyphicon " . $control['glyphicon'] . "'></span>&nbsp;";

@@ -18,6 +18,7 @@
 	use Railpage\Assets\Asset;
 	use Railpage\Locos\Liveries\Livery;
 	use Railpage\Users\User;
+	use Railpage\ContentUtility;
 		
 	/**
 	 * Locomotive class (eg X class or 92 class) class
@@ -943,7 +944,7 @@
 		
 		private function createSlug() {
 			// Assume ZendDB
-			$proposal = create_slug($this->name);
+			$proposal = ContentUtility::generateUrlSlug($this->name);
 			
 			$result = $this->db->fetchAll("SELECT id FROM loco_class WHERE slug = ?", $proposal); 
 			

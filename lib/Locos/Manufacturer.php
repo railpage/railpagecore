@@ -10,6 +10,7 @@
 	
 	use Railpage\Organisations\Organisation;
 	use Railpage\Url;
+	use Railpage\ContentUtility;
 	use Exception;
 	use DateTime;
 	
@@ -84,8 +85,7 @@
 					$this->slug = $row['slug'];
 					
 					if (empty($this->slug)) {
-						$proposal = create_slug($this->name);
-						$proposal = substr($proposal, 0, 30);
+						$proposal = ContentUtility::generateUrlSlug($this->name, 30);
 						
 						$query = "SELECT manufacturer_id FROM loco_manufacturer WHERE slug = ?";
 						$result = $this->db->fetchAll($query, $proposal);
@@ -116,8 +116,7 @@
 			}
 			
 			if (empty($this->slug)) {
-				$proposal = create_slug($this->name);
-				$proposal = substr($proposal, 0, 30);
+				$proposal = ContentUtility::generateUrlSlug($this->name, 30);
 				
 				$query = "SELECT manufacturer_id FROM loco_manufacturer WHERE slug = ?";
 				$result = $this->db->fetchAll($query, $proposal);
@@ -127,7 +126,7 @@
 				}
 				
 				$this->slug = $proposal;
-				$this->url = sprintf("/locos/builder/%s", $this->slug);
+				$this->url = new Url(sprintf("/locos/builder/%s", $this->slug));
 			}
 			
 			return true;

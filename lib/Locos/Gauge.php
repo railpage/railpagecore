@@ -11,6 +11,7 @@
 	use Railpage\AppCore;
 	use Railpage\Module;
 	use Railpage\Url;
+	use Railpage\ContentUtility;
 	use Exception;
 	use DateTime;
 	
@@ -166,7 +167,7 @@
 		 */
 		
 		private function createSlug() {
-			$proposal = create_slug($this->width_metric);
+			$proposal = ContentUtility::generateUrlSlug($this->width_metric);
 			
 			$result = $this->db->fetchAll("SELECT gauge_id FROM loco_gauge WHERE slug = ?", $proposal); 
 			
