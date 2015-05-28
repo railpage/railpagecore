@@ -185,8 +185,8 @@
 			} else {
 				$return = array(); 
 				
-				if ($return = $this->get("flickr.photos.getInfo", array("photo_id" => $id))) {
-					$return['photo']['sizes'] = $this->get("flickr.photos.getSizes", array("photo_id" => $id));
+				if ($return = $this->execute("flickr.photos.getInfo", array("photo_id" => $id))) {
+					$return['photo']['sizes'] = $this->execute("flickr.photos.getSizes", array("photo_id" => $id));
 				}
 				
 				if (empty($return)) {
@@ -306,7 +306,8 @@
 		 */
 		
 		public function getImageContext(Image $Image) {
-			$rs = $this->cn->photos_getContext($Image->id);
+			#$rs = $this->cn->photos_getContext($Image->id);
+			$rs = $this->execute("flickr.photos.getContext", array("photo_id" => $Image->id));
 			
 			$return = array(
 				"previous" => false,
@@ -349,7 +350,7 @@
 		 * @return array
 		 */
 		
-		public function get($method = false, $params = array()) {
+		public function execute($method = false, $params = array()) {
 			
 			if (is_null(filter_var($method, FILTER_SANITIZE_STRING))) {
 				throw new InvalidArgumentException("Flickr API call failed: no API method requested"); 
