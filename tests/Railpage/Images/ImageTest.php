@@ -6,11 +6,13 @@
 	class ImageTest extends PHPUnit_Framework_TestCase {
 		
 		public function testFetchFlickr() {
-			$Image = (new Images)->getImageFromUrl("https://www.flickr.com/photos/doctorjbeam/17309304565/", Images::OPT_REFRESH);
+			$Image = (new Images)->getImageFromUrl("https://www.flickr.com/photos/raichase/18184061975/", Images::OPT_REFRESH);
 			
-			$this->assertEquals("Escale", $Image->title);
+			$this->assertEquals("CSR001 Passing Crystal Brook", $Image->title);
 			$this->assertEquals("flickr", $Image->provider);
 			$this->assertFalse(!filter_var($Image->id, FILTER_VALIDATE_INT)); 
+			
+			return $Image;
 		}
 		
 		public function testFetchSmugMug() {
@@ -20,6 +22,8 @@
 			$this->assertEquals("7kHVHtX", $Image->photo_id); 
 			$this->assertTrue(count($Image->sizes) > 1);
 			$this->assertFalse(!filter_var($Image->id, FILTER_VALIDATE_INT)); 
+			
+			return $Image;
 		}
 	}
 	

@@ -16,8 +16,10 @@
 	use Exception;
 	use DateTime;
 	use DateTimeZone;
-	use flickr_railpage;
 	use GuzzleHttp\Client;
+	use GuzzleHttp\Subscriber\Oauth\Oauth1;
+	
+	#use flickr_railpage;
 	
 	/**
 	 * Flickr image provider
@@ -55,23 +57,23 @@
 		 * @var string $oauth_secret
 		 */
 		
-		public $oauth_secret;
+		private $oauth_secret;
 		
 		/**
-		 * Flickr API key
-		 * @since Version 3.9
-		 * @var string $flickr_api_key
+		 * OAuth consumer key
+		 * @since VErsion 3.9.1
+		 * @var string $oauth_consumer_key
 		 */
 		
-		private $flickr_api_key;
+		private $oauth_consumer_key;
 		
 		/**
-		 * Flickr API secret
-		 * @since Version 3.9
-		 * @var string $flickr_api_secret
+		 * OAuth consumer secret
+		 * @since Version 3.9.1
+		 * @var string $oauth_consumer_secret
 		 */
 		
-		private $flickr_api_secret;
+		private $oauth_consumer_secret;
 		
 		/**
 		 * Object representing the connection to Flickr
@@ -141,10 +143,10 @@
 			}
 			
 			$opts = array(
-				"flickr_api_key" => "api_key",
-				"flickr_api_secret" => "api_secret",
 				"oauth_token" => "oauth_token",
-				"oauth_secret" => "oauth_secret"
+				"oauth_secret" => "oauth_secret",
+				"oauth_consumer_key" => "api_key",
+				"oauth_consumer_secret" => "api_secret"
 			);
 			
 			foreach ($opts as $var => $val) {
@@ -155,8 +157,9 @@
 				}
 			}
 			
-			if (!is_null($this->flickr_api_key)) {
-				$this->cn = new flickr_railpage($this->flickr_api_key);
+			/*
+			if (!is_null($this->oauth_consumer_key)) {
+				$this->cn = new flickr_railpage($this->oauth_consumer_key);
 				$this->cn->cache = false;
 				
 				if (!is_null($this->oauth_token) && !is_null($this->oauth_secret)) {
@@ -164,6 +167,7 @@
 					$this->cn->oauth_secret = $this->oauth_secret;
 				}
 			}
+			*/
 			
 			$this->Client = new Client;
 			
@@ -339,7 +343,19 @@
 		 */
 		
 		public function deleteImage(Image $Image) {
-			return $this->cn->photos_delete($Image->id);
+			#return $this->cn->photos_delete($Image->id);
+			
+			if (is_null(filter_var($Image->photo_id, FILTER_SANITIZE_STRING))) {
+				throw new InvalidArgumentException("The supplied instance of Railpage\\Images\\Image does not provide a valid photo ID");
+			}
+			
+			$result = $this->execute("flickr.photos.delete", array("photo_id" => $Image->photo_id));
+			
+			if ($result['stat'] == "ok") {
+				return true;
+			}
+			
+			return false;
 		}
 		
 		/**
@@ -356,8 +372,12 @@
 				throw new InvalidArgumentException("Flickr API call failed: no API method requested"); 
 			}
 			
+			/**
+			 * Build our query string
+			 */
+			
 			$params['method'] = $method;
-			$params['api_key'] = $this->flickr_api_key;
+			$params['api_key'] = $this->oauth_consumer_key;
 			$params['format'] = $this->format;
 			
 			if ($params['format'] === "json") {
@@ -366,6 +386,16 @@
 			
 			$params = http_build_query($params);
 			$url = sprintf("%s?%s", self::API_ENDPOINT, $params);
+			
+			/**
+			 * Oauth handling
+			 */
+			
+			$this->configureOAuth();
+			
+			/**
+			 * Fetch the API request
+			 */
 			
 			$response = $this->Client->get($url); 
 			
@@ -387,6 +417,29 @@
 			
 			return $result;
 			
+		}
+		
+		/**
+		 * Make an OAuth URL if we have the required information
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function configureOAuth() {
+			if (!is_null($this->oauth_token) && !is_null($this->oauth_secret) && !is_null($this->oauth_consumer_key) && !is_null($this->oauth_consumer_secret)) {
+				$oauth = new Oauth1(array(
+					"consumer_key" => $this->oauth_consumer_key,
+					"consumer_secret" => $this->oauth_consumer_secret,
+					"token" => $this->oauth_token,
+					"token_secret" => $this->oauth_secret
+				));
+			
+				$this->Client = new Client(array(
+					'defaults' => array('auth' => 'oauth')
+				));
+				
+				$this->Client->getEmitter()->attach($oauth);
+			}
 		}
 		
 		/**
