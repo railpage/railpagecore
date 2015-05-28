@@ -16,6 +16,8 @@ echo ""
 echo "Running phpUnit ::"
 if [ "$1" == "coverage" ]; then
 	time /usr/local/bin/phpunit --coverage-clover build/logs/clover.xml
+elif [ "$1" == "html" ]; then
+	time /usr/local/bin/phpunit --coverage-html build/logs/html
 else 
 	time /usr/local/bin/phpunit
 fi
