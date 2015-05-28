@@ -13,6 +13,7 @@
 	use InvalidArgumentException;
 	use DateTime;
 	use Railpage\Place;
+	use Railpage\Url;
 	
 	/**
 	 * Class
@@ -132,6 +133,43 @@
 			 * Fetch the WOE (Where On Earth) data from Yahoo
 			 */
 			
+			$woe = $this->fetchWoE($country, $region);
+			
+			if (empty($this->Country->name) && !preg_match("@[a-zA-Z]+@", $country) && isset($woe['country'])) {
+				$this->Country = new Country($woe['country']);
+			}
+			
+			$this->name = $woe['name'];
+			$this->url = new Url(sprintf("%s/%s", $this->Country->url, $this->slug));
+			
+			$this->centre = new stdClass; 
+			$this->centre->lat = $woe['centroid']['latitude'];
+			$this->centre->lon = $woe['centroid']['longitude'];
+			
+			$this->boundingBox = new stdClass;
+			$this->boundingBox->northEast = new stdClass;
+			$this->boundingBox->northEast->lat = $woe['boundingBox']['northEast']['latitude'];
+			$this->boundingBox->northEast->lon = $woe['boundingBox']['northEast']['longitude'];
+			
+			$this->boundingBox->southWest = new stdClass;
+			$this->boundingBox->southWest->lat = $woe['boundingBox']['southWest']['latitude'];
+			$this->boundingBox->southWest->lon = $woe['boundingBox']['southWest']['longitude'];
+			
+			if (isset($woe['timezone'])) {
+				$this->timezone = $woe['timezone'];
+			}
+		}
+		
+		/**
+		 * Get the WoE for this place
+		 * @since Version 3.9.1
+		 * @param string $country
+		 * @param string $region
+		 * @return array
+		 */
+		
+		private function fetchWoE($country, $region) {
+			
 			if ($region === false && !preg_match("@[a-zA-Z]+@", $country)) {
 				// Assume a WOE ID
 				$woe = Place::getWOEData($country);
@@ -140,41 +178,20 @@
 			}
 			
 			if (isset($woe['places']['place'][0]['name'])) {
-				$row = $woe['places']['place'][0];
-				
 				$this->slug = $region;
 				$this->Country = new Country($country);
-			} elseif (isset($woe['place'])) {
-				$row = $woe['place'];
 				
-				$this->slug = $this->makeRegionSlug($row['name']);
+				return $woe['places']['place'][0];
 			}
 			
-			if (isset($row)) {
-				if (empty($this->Country->name) && !preg_match("@[a-zA-Z]+@", $country) && isset($row['country'])) {
-					$this->Country = new Country($row['country']);
-				}
+			if (isset($woe['place'])) {
+				$this->slug = $this->makeRegionSlug($woe['place']['name']);
 				
-				$this->name = $row['name'];
-				$this->url = $this->Country->url . "/" . $this->slug;
-				
-				$this->centre = new stdClass; 
-				$this->centre->lat = $row['centroid']['latitude'];
-				$this->centre->lon = $row['centroid']['longitude'];
-				
-				$this->boundingBox = new stdClass;
-				$this->boundingBox->northEast = new stdClass;
-				$this->boundingBox->northEast->lat = $row['boundingBox']['northEast']['latitude'];
-				$this->boundingBox->northEast->lon = $row['boundingBox']['northEast']['longitude'];
-				
-				$this->boundingBox->southWest = new stdClass;
-				$this->boundingBox->southWest->lat = $row['boundingBox']['southWest']['latitude'];
-				$this->boundingBox->southWest->lon = $row['boundingBox']['southWest']['longitude'];
-				
-				if (isset($row['timezone'])) {
-					$this->timezone = $row['timezone'];
-				}
+				return $woe['place'];
 			}
+			
+			return $woe;
+			
 		}
 		
 		/**
@@ -187,6 +204,7 @@
 		 */
 		
 		public function getLocations($region = false, $country = false) {
+			
 			$query = "SELECT * FROM location WHERE country = ? AND region_slug = ? ORDER BY name";
 			
 			$locations = array(); 
@@ -197,6 +215,7 @@
 			}
 			
 			return $locations;
+			
 		}
 	}
 	
