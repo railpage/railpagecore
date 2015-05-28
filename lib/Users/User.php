@@ -2578,7 +2578,9 @@
 		
 		public function timeline($date_start, $date_end) {
 			
-			return Timeline::GenerateTimeline($this, $date_start, $date_end); 
+			return (new Timeline)->setUser($this)->generateTimeline($date_start, $date_end);
+			
+			#return Timeline::GenerateTimeline($this, $date_start, $date_end); 
 			
 		}
 		

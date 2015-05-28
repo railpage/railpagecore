@@ -83,6 +83,8 @@
 			"Railpage\\Statistics\\" : "lib/Statistics/",
 			"Railpage\\Timetables\\" : "lib/Timetables/",
 			"Railpage\\Users\\" : "lib/Users/",
+			"Railpage\\Users\\Timeline\\" : "lib/Users/Timeline/",
+			"Railpage\\Users\\Timeline\\Utility\\" : "lib/Users/Timeline/Utility/",
 			"Railpage\\Warnings\\" : "lib/Warnings/"
 		}
 	},

@@ -22,20 +22,23 @@
 	use Railpage\Forums\Forums;
 	use Railpage\Forums\Index;
 	
-	class Timeline {
+	use Railpage\Users\Timeline\Utility\Grammar;
+	
+	class Timeline extends AppCore {
 		
 		/**
 		 * Extract a user's timeline 
 		 * @since Version 3.9.1
-		 * @param \Railpage\Users\User $User
 		 * @param \DateTime|int $DateFrom
 		 * @param \DateTime|int $DateTo
 		 * @return array
 		 */
 		
-		static public function GenerateTimeline($User, $DateFrom, $DateTo) {
+		public function GenerateTimeline($DateFrom, $DateTo) {
 			
-			$database = (new AppCore)->getDatabaseConnection();
+			if (!$this->User instanceof User) {
+				throw new InvalidArgumentException("No user object has been provided (hint: " . __CLASS__ . "::setUser(\$User))"); 
+			}
 			
 			if (filter_var($DateFrom, FILTER_VALIDATE_INT)) {
 				$page = $DateFrom;
@@ -49,14 +52,14 @@
 			 * Filter out forums this user doesn't have access to
 			 */
 			
-			$forum_post_filter = self::getFilteredForums($User); 			
+			$forum_post_filter = $this->getFilteredForums();
 			
 			if ($page && $items_per_page) {
 				$query = "SELECT SQL_CALC_FOUND_ROWS * FROM log_general WHERE user_id = ? " . $forum_post_filter . " ORDER BY timestamp DESC LIMIT ?, ?";
 				$offset = ($page - 1) * $items_per_page; 
 				
 				$params = array(
-					$User->id, 
+					$this->User->id, 
 					$offset, 
 					$items_per_page
 				);
@@ -64,7 +67,7 @@
 				$query = "SELECT SQL_CALC_FOUND_ROWS * FROM log_general WHERE user_id = ? " . $forum_post_filter . " AND timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC";
 				
 				$params = array(
-					$User->id, 
+					$this->User->id, 
 					$DateFrom->format("Y-m-d H:i:s"), 
 					$DateTo->format("Y-m-d H:i:s")
 				);
@@ -74,7 +77,7 @@
 				"total" => 0
 			); 
 			
-			if ($result = $database->fetchAll($query, $params)) {
+			if ($result = $this->db->fetchAll($query, $params)) {
 				if ($page && $items_per_page) {
 					$timeline['page'] = $page;
 					$timeline['perpage'] = $items_per_page;
@@ -83,7 +86,7 @@
 					$timeline['end'] = $DateTo->format("Y-m-d H:i:s");
 				}
 				
-				$timeline['total'] = $database->fetchOne("SELECT FOUND_ROWS() AS total"); 
+				$timeline['total'] = $this->db->fetchOne("SELECT FOUND_ROWS() AS total"); 
 				
 				foreach ($result as $row) {
 					$row['args'] = json_decode($row['args'], true);
@@ -100,12 +103,12 @@
 			if (isset($timeline['timeline'])) {
 				foreach ($timeline['timeline'] as $key => $row) {
 					// Set their timezone
-					$row['timestamp']->setTimezone(new DateTimeZone($User->timezone));
+					$row['timestamp']->setTimezone(new DateTimeZone($this->User->timezone));
 					
-					$relative_cutoff = new DateTime("12 hours ago", new DateTimeZone($User->timezone));
+					$relative_cutoff = new DateTime("12 hours ago", new DateTimeZone($this->User->timezone));
 					
-					$moments_ago = new DateTime("60 seconds ago", new DateTimeZone($User->timezone)); 
-					$minutes_ago = new DateTime("60 minutes ago", new DateTimeZone($User->timezone));
+					$moments_ago = new DateTime("60 seconds ago", new DateTimeZone($this->User->timezone)); 
+					$minutes_ago = new DateTime("60 minutes ago", new DateTimeZone($this->User->timezone));
 					
 					if (stristr($row['title'], "loco") && empty($row['module'])) {
 						$row['module'] = "locos";
@@ -128,7 +131,7 @@
 					 * Format our data for grammatical and sentence structural purposes
 					 */
 					
-					$row = self::processGrammar($row); 
+					$row = $this->processGrammar($row); 
 					
 					/**
 					 * Alter the object if needed
@@ -445,25 +448,25 @@
 		 * @return string
 		 */
 		
-		static private function getFilteredForums(User $User) {
-			if (!isset($User->Guest) || !$User->Guest instanceof User) {
+		private function getFilteredForums() {
+			if (!isset($this->User->Guest) || !$this->User->Guest instanceof User) {
 				return "";
 			}
 			
-			$mckey = sprintf("forum.post.filter.user:%d", $User->Guest->id);
+			$mckey = sprintf("forum.post.filter.user:%d", $this->User->Guest->id);
 			
-			if (!$forum_post_filter = $User->Memcached->fetch($mckey)) {
+			if (!$forum_post_filter = $this->Memcached->fetch($mckey)) {
 				$Forums = new Forums;
 				$Index = new Index;
 				
-				$acl = $Forums->setUser($User->Guest)->getACL();
+				$acl = $Forums->setUser($this->User->Guest)->getACL();
 				
 				$allowed_forums = array(); 
 				
 				foreach ($Index->forums() as $row) {
 					$Forum = new Forum($row['forum_id']);
 					
-					if ($Forum->setUser($User->Guest)->isAllowed(Forums::AUTH_READ)) {
+					if ($Forum->setUser($this->User->Guest)->isAllowed(Forums::AUTH_READ)) {
 						$allowed_forums[] = $Forum->id;
 					}
 				}
@@ -480,7 +483,7 @@
 					WHERE l.key = 'post_id' 
 					" . $forum_filter . ")";
 				
-				$User->Memcached->save($mckey, $forum_post_filter, strtotime("+1 week"));
+				$this->Memcached->save($mckey, $forum_post_filter, strtotime("+1 week"));
 				
 				return $forum_post_filter;
 			}
@@ -493,11 +496,18 @@
 		 * @return array
 		 */
 		
-		static private function processGrammar($row) {
+		function processGrammar($row) {
 			
-			$row = self::processGrammarAction($row);
-			$row = self::processGrammarPreposition($row); 
-			$row = self::processGrammarArticle($row); 
+			$row['event']['action'] = ""; 
+			$row['event']['article'] = ""; 
+			$row['event']['object'] = ""; 
+			$row['event']['preposition'] = ""; 
+			
+			$row['title'] = str_ireplace(array("loco link created"), array("linked a locomotive"), $row['title']);
+			
+			$row = $this->processGrammarAction($row);
+			$row = $this->processGrammarPreposition($row); 
+			$row = $this->processGrammarArticle($row); 
 			
 			return $row;
 		}
@@ -509,19 +519,10 @@
 		 * @return array
 		 */
 		
-		static private function processGrammarAction($row) {
+		private function processGrammarAction($row) {
 			
-			$row['event']['action'] = ""; $row['event']['article'] = ""; $row['event']['object'] = ""; $row['event']['preposition'] = ""; 
-			
-			$row['title'] = str_ireplace(array("loco link created"), array("linked a locomotive"), $row['title']);
-			
-			if (preg_match("@(favourited|suggested|ignored|accepted|closed|commented|removed|re-ordered|edited|edit|added|add|sorted|sort|deleted|delete|rejected|reject|tagged|tag|changed|modified|linked|created|create)@Di", $row['title'], $matches)) {
-				$row['event']['action'] = strtolower($matches[1]);
-			}
-			
-			if (preg_match("@(idea|suggestion|correction|sighting|date|post|thread|digital asset|loco photo|loco class|loco|class|location|grouping|owners|owner|operators|operator|article|story|topic|railcam photo|photo|railcam|download|event|calendar|image)@Di", $row['title'], $matches)) {
-				$row['event']['object'] = strtolower($matches[1]);
-			}
+			$row['event']['action'] = Grammar::getAction($row);
+			$row['event']['object'] = Grammar::getObject($row);
 			
 			if ($row['title'] == "Loco link removed") {
 				$row['event']['action'] = "removed";
@@ -541,27 +542,12 @@
 		 * @return array
 		 */
 		
-		static private function processGrammarPreposition($row) {
+		private function processGrammarPreposition($row) {
 			
-			if (preg_match("@(added|add|linked)@Di", $row['event']['action']) && preg_match("@(locos)@Di", $row['module'])) {
-				$row['event']['preposition'] = "to";
-			}
-			
-			if (preg_match("@(removed)@Di", $row['title'])) {
-				$row['event']['preposition'] = "from";
-			}
-			
-			if (preg_match("@(correction|re-ordered|sorted|sort|tagged|tag|changed|modified)@Di", $row['title'])) {
-				$row['event']['preposition'] = "of";
-			}
-			
-			if (preg_match("@(added|add|edited|edit|deleted|delete|rejected|reject|created|create)@Di", $row['title']) && preg_match("@(forums|news)@Di", $row['module'])) {
-				$row['event']['preposition'] = "in";
-			}
-			
-			if (preg_match("@(unlinked)@Di", $row['title']) && preg_match("@(locos)@Di", $row['module'])) {
-				$row['event']['preposition'] = "from";
-			}
+			$row['event']['preposition'] = Grammar::getPrepositionTo($row);
+			$row['event']['preposition'] = Grammar::getPrepositionFrom($row);
+			$row['event']['preposition'] = Grammar::getPrepositionOf($row);
+			$row['event']['preposition'] = Grammar::getPrepositionIn($row);
 			
 			return $row;
 			
@@ -574,40 +560,17 @@
 		 * @return array
 		 */
 		
-		static private function processGrammarArticle($row) {
+		private function processGrammarArticle($row) {
 			
-			if ($row['event']['preposition'] == "of") {
-				$row['event']['article'] = "the";
+			$row['event']['article'] = Grammar::getArticle_OfIn($row); 
+			$row['event']['article'] = Grammar::getArticle_AnA($row);
+			
+			
+			if (preg_match("@(date)@Di", $row['event']['object'], $matches) && preg_match("@(edited)@Di", $row['event']['action'], $matches)) {
+				$row['event']['preposition'] = "for";
 			}
 			
-			if ($row['event']['preposition'] == "in") {
-				$row['event']['article'] = "a";
-			}
-			
-			if (preg_match("@(date)@Di", $row['event']['object'], $matches)) {
-				if (preg_match("@(edited)@Di", $row['event']['action'], $matches)) {
-					$row['event']['preposition'] = "for";
-				}
-			}
-			
-			if (preg_match("@(correction|date|post|thread|digital asset|loco|class|location|story|topic|railcam photo|photo|railcam|download)@Di", $row['event']['object'], $matches)) {
-				if (!($matches[1] == "loco" && $row['event']['action'] == "edited")) {
-					$row['event']['article'] = "a";
-				}
-			}
-			
-			if (preg_match("@(cover photo)@Di", $row['event']['object'], $matches)) {
-				$row['event']['article'] = "the";
-			}
-			
-			if (preg_match("@(operator)@Di", $row['event']['object'], $matches)) {
-				$row['event']['article'] = "an";
-			}
-			
-			if ($row['event']['action'] == "re-ordered" && preg_match("@(owners|owner|operators|operator)@Di", $row['title'], $matches)) {
-				$row['event']['object'] = "owners/operators";
-				$row['event']['article'] = "the";
-			}
+			$row = Grammar::getArticle_The($row); 
 			
 			return $row;
 		}
