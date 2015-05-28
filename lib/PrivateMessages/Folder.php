@@ -22,6 +22,14 @@
 	class Folder extends PrivateMessages {
 		
 		/**
+		 * Do we want to cache the contents of this folder?
+		 * @since Version 3.9.1
+		 * @var boolean $cachepms
+		 */
+		
+		public $cachepms = false;
+		
+		/**
 		 * Inbox type
 		 * @since Version 3.3
 		 * @var string $folder
@@ -86,37 +94,41 @@
 			$start = $page === 1 ? 0 : $page * $items_per_page; 
 			
 			/**
-			 * Caching
+			 * Set our intial response
 			 */
-						
-			$mckey = sprintf("railpage:privatemessages;user_id=%d;folder=%s", $this->User->id, $this->folder);
-			$cachepms = false; // For the future
 			
-			if (!$cachepms || !$result = $this->Redis->fetch($mckey)) {
-				$query = $this->generateSQLQuery(); 
-				$result = $this->db->fetchAll($query);
-				
-				if ($cachepms) {
-					$this->Redis->save($mckey, $result, strtotime("+12 hours"));
-				}
+			$return = array(); 
+			$return['stat'] = "ok";
+			$return['page'] = $page; 
+			$return['perpage'] = $items_per_page; 
+			$return['messages'] = array(); 
+			
+			/**
+			 * Get the contents of this folder from the database
+			 */
+			
+			$folderContents = $this->fetchMessages(); 
+			
+			/**
+			 * If we don't have any PMs return now and save some bother
+			 */
+			
+			if (count($folderContents) === 0) {
+				return $return;
 			}
 			
-			if (isset($result) && count($result)) {
-				$return = array(); 
-				$return['stat'] = "ok";
-				$return['page'] = $page; 
-				$return['perpage'] = $items_per_page; 
-				$return['messages'] = array(); 
+			/**
+			 * Group the PMs we do have into conversations
+			 */
+			
+			foreach ($folderContents as $row) {
+				$row['privmsgs_subject'] = str_replace("Re: ", "", $row['privmsgs_subject']);
 				
-				foreach ($result as $row) {
-					$row['privmsgs_subject'] = str_replace("Re: ", "", $row['privmsgs_subject']);
-					
-					$pm_from = $row['privmsgs_from_userid'] == $this->User->id ? $row['privmsgs_to_userid'] : $row['privmsgs_from_userid'];
-					
-					$id = md5($row['privmsgs_subject'] . $pm_from);
-					
-					$return['messages'][$id] = $row;				
-				}
+				$pm_from = $row['privmsgs_from_userid'] == $this->User->id ? $row['privmsgs_to_userid'] : $row['privmsgs_from_userid'];
+				
+				$privmsg_id = md5($row['privmsgs_subject'] . $pm_from);
+				
+				$return['messages'][$privmsg_id] = $row;				
 			}
 					
 			/**
@@ -218,6 +230,36 @@
 			}
 			
 			return $conversations;
+		}
+		
+		/**
+		 * Fetch the folder contents from the database
+		 * @since Version 3.9.1
+		 * return array
+		 */
+		
+		private function fetchMessages() {
+
+			/**
+			 * Caching
+			 */
+						
+			$mckey = sprintf("railpage:privatemessages;user_id=%d;folder=%s", $this->User->id, $this->folder);
+			
+			/**
+			 * Fetch the folder contents
+			 */
+			
+			if (!$this->cachepms || !$folderContents = $this->Redis->fetch($mckey)) {
+				$query = $this->generateSQLQuery(); 
+				$folderContents = $this->db->fetchAll($query);
+				
+				if ($this->cachepms) {
+					$this->Redis->save($mckey, $folderContents, strtotime("+12 hours"));
+				}
+			}
+			
+			return $folderContents;
 		}
 	}
 	
