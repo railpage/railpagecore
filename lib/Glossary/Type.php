@@ -58,26 +58,20 @@
 				
 				switch ($type) {
 					case "code" : 
-						$this->name = "Codes";
+					case "acronym" :
+					case "station" : 
+						$this->name = ucfirst($type . "s");
+						break;
+					
+					case "slang" : 
+					case "general" : 
+						$this->name = ucfirst($type);
 						break;
 						
 					case "term" : 
 						$this->name = "Terminology";
 						break;
-					
-					case "acronym" : 
-						$this->name = "Acronyms";
-						break;
-					
-					case "station" : 
-						$this->name = "Stations";
-						break;
-					
-					case "slang" : 
-						$this->name = "Slang";
-						break;
-					
-					case "general" :
+						
 					default :
 						$this->name = "General";
 						break;
