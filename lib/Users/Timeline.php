@@ -35,7 +35,7 @@
 		
 		static public function GenerateTimeline($User, $DateFrom, $DateTo) {
 			
-			$db = (new AppCore)->getDatabaseConnection();
+			$database = (new AppCore)->getDatabaseConnection();
 			
 			if (filter_var($DateFrom, FILTER_VALIDATE_INT)) {
 				$page = $DateFrom;
@@ -74,7 +74,7 @@
 				"total" => 0
 			); 
 			
-			if ($result = $db->fetchAll($query, $params)) {
+			if ($result = $database->fetchAll($query, $params)) {
 				if ($page && $items_per_page) {
 					$timeline['page'] = $page;
 					$timeline['perpage'] = $items_per_page;
@@ -83,7 +83,7 @@
 					$timeline['end'] = $DateTo->format("Y-m-d H:i:s");
 				}
 				
-				$timeline['total'] = $db->fetchOne("SELECT FOUND_ROWS() AS total"); 
+				$timeline['total'] = $database->fetchOne("SELECT FOUND_ROWS() AS total"); 
 				
 				foreach ($result as $row) {
 					$row['args'] = json_decode($row['args'], true);
@@ -128,7 +128,7 @@
 					 * Format our data for grammatical and sentence structural purposes
 					 */
 					
-					$row = self::makeGoodEnglishBetter($row); 
+					$row = self::processGrammar($row); 
 					
 					/**
 					 * Alter the object if needed
@@ -446,44 +446,44 @@
 		 */
 		
 		static private function getFilteredForums(User $User) {
-			if (isset($User->Guest) && $User->Guest instanceof User) {
-				$forum_post_filter_mckey = sprintf("forum.post.filter.user:%d", $User->Guest->id);
-				
-				if (!$forum_post_filter = $User->Memcached->fetch($forum_post_filter_mckey)) {
-					$Forums = new Forums;
-					$Index = new Index;
-					
-					$acl = $Forums->setUser($User->Guest)->getACL();
-					
-					$allowed_forums = array(); 
-					
-					foreach ($Index->forums() as $row) {
-						$Forum = new Forum($row['forum_id']);
-						
-						if ($Forum->setUser($User->Guest)->isAllowed(Forums::AUTH_READ)) {
-							$allowed_forums[] = $Forum->id;
-						}
-					}
-					
-					$forum_filter = "AND p.forum_id IN (" . implode(",", $allowed_forums) . ")";
-					
-					if (count($allowed_forums) === 0) {
-						return "";
-					}
-					
-					$forum_post_filter = "AND id NOT IN (SELECT l.id AS log_id
-						FROM log_general AS l 
-						LEFT JOIN nuke_bbposts AS p ON p.post_id = l.value
-						WHERE l.key = 'post_id' 
-						" . $forum_filter . ")";
-					
-					$User->Memcached->save($forum_post_filter_mckey, $forum_post_filter, strtotime("+1 week"));
-					
-					return $forum_post_filter;
-				}
+			if (!isset($User->Guest) || !$User->Guest instanceof User) {
+				return "";
 			}
 			
-			return "";
+			$mckey = sprintf("forum.post.filter.user:%d", $User->Guest->id);
+			
+			if (!$forum_post_filter = $User->Memcached->fetch($mckey)) {
+				$Forums = new Forums;
+				$Index = new Index;
+				
+				$acl = $Forums->setUser($User->Guest)->getACL();
+				
+				$allowed_forums = array(); 
+				
+				foreach ($Index->forums() as $row) {
+					$Forum = new Forum($row['forum_id']);
+					
+					if ($Forum->setUser($User->Guest)->isAllowed(Forums::AUTH_READ)) {
+						$allowed_forums[] = $Forum->id;
+					}
+				}
+				
+				$forum_filter = "AND p.forum_id IN (" . implode(",", $allowed_forums) . ")";
+				
+				if (count($allowed_forums) === 0) {
+					return "";
+				}
+				
+				$forum_post_filter = "AND id NOT IN (SELECT l.id AS log_id
+					FROM log_general AS l 
+					LEFT JOIN nuke_bbposts AS p ON p.post_id = l.value
+					WHERE l.key = 'post_id' 
+					" . $forum_filter . ")";
+				
+				$User->Memcached->save($mckey, $forum_post_filter, strtotime("+1 week"));
+				
+				return $forum_post_filter;
+			}
 		}
 		
 		/**
@@ -493,11 +493,23 @@
 		 * @return array
 		 */
 		
-		static private function makeGoodEnglishBetter($row) {
+		static private function processGrammar($row) {
 			
-			/**
-			 * Determine the action taken and on what kind of object
-			 */
+			$row = self::processGrammarAction($row);
+			$row = self::processGrammarPreposition($row); 
+			$row = self::processGrammarArticle($row); 
+			
+			return $row;
+		}
+		
+		/**
+		 * Process and format the action (removed/suggested/etc) of a timeline item
+		 * @since Version 3.9.1
+		 * @param array $row
+		 * @return array
+		 */
+		
+		static private function processGrammarAction($row) {
 			
 			$row['event']['action'] = ""; $row['event']['article'] = ""; $row['event']['object'] = ""; $row['event']['preposition'] = ""; 
 			
@@ -518,9 +530,18 @@
 				$row['event']['preposition'] = "from";
 			}
 			
-			/** 
-			 * Preposition of this action
-			 */
+			return $row;
+			
+		}
+		
+		/**
+		 * Process and format the preposition (to/from/of) of a timeline item
+		 * @since Version 3.9.1
+		 * @param array $row
+		 * @return array
+		 */
+		
+		static private function processGrammarPreposition($row) {
 			
 			if (preg_match("@(added|add|linked)@Di", $row['event']['action']) && preg_match("@(locos)@Di", $row['module'])) {
 				$row['event']['preposition'] = "to";
@@ -541,11 +562,19 @@
 			if (preg_match("@(unlinked)@Di", $row['title']) && preg_match("@(locos)@Di", $row['module'])) {
 				$row['event']['preposition'] = "from";
 			}
-
 			
-			/**
-			 * Article of this action
-			 */
+			return $row;
+			
+		}
+		
+		/**
+		 * Process and format the article (the/a/an) of a timeline item
+		 * @since Version 3.9.1
+		 * @param array $row
+		 * @return array
+		 */
+		
+		static private function processGrammarArticle($row) {
 			
 			if ($row['event']['preposition'] == "of") {
 				$row['event']['article'] = "the";
