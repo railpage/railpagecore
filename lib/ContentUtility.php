@@ -52,6 +52,10 @@
 			$text = strtolower(preg_replace('/[^A-Za-z0-9-]+/', '-', trim($text)));
 			$text = substr($text, 0, $maxlength); 
 			
+			if (substr($text, -1) === "-") {
+				$text = substr($text, 0, -1);
+			}
+			
 			return $text;
 		}
 	}
