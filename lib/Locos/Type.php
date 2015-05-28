@@ -53,52 +53,50 @@
 		public function __construct($id = NULL) {
 			parent::__construct();
 			
+			if (filter_var($id, FILTER_VALIDATE_INT)) {
+				$row = $this->db->fetchRow("SELECT * FROM loco_type WHERE id = ?", $id);
+				$this->load($row); 
+			}
+			
+			$id = filter_var($id, FILTER_SANITIZE_STRING); 
+			
 			if (!is_null($id)) {
-				$this->load($id); 
+				$row = $this->db->fetchRow("SELECT * FROM loco_type WHERE slug = ?", $id);
+				$this->load($row);
 			}
 		}
 		
 		/**
 		 * Populate this object
 		 * @since Version 3.9.1
-		 * @param int|string $id
+		 * @param array $row
 		 * @return void
 		 */
 		
-		private function load($id) {
-			if (filter_var($id, FILTER_VALIDATE_INT)) {
-				$row = $this->db->fetchRow("SELECT * FROM loco_type WHERE id = ?", $id);
-			} else {
-				$id = filter_var($id, FILTER_SANITIZE_STRING); 
-				
-				if (is_null($id)) {
-					throw new InvalidArgumentException(sprintf("\"%s\" is an invalid locomotive type", $id));
-				}
-				
-				$row = $this->db->fetchRow("SELECT * FROM loco_type WHERE slug = ?", $id);
+		private function load($row) {
+			if (!is_array($row) || count($row) === 0) {
+				return false;
 			}
 			
-			if (isset($row) && count($row)) {
-				$this->id = $row['id']; 
-				$this->name = $row['title'];
-				$this->slug = $row['slug'];
+			$this->id = $row['id']; 
+			$this->name = $row['title'];
+			$this->slug = $row['slug'];
+			
+			if (empty($this->slug)) {
+				$proposal = ContentUtility::generateUrlSlug($this->name, 30);
 				
-				if (empty($this->slug)) {
-					$proposal = ContentUtility::generateUrlSlug($this->name, 30);
-					
-					$query = "SELECT id FROM loco_type WHERE slug = ?";
-					$result = $this->db->fetchAll($query, $proposal);
-					
-					if (count($result)) {
-						$proposal = $proposal . count($result);
-					}
-					
-					$this->slug = $proposal;
-					$this->commit();
+				$query = "SELECT id FROM loco_type WHERE slug = ?";
+				$result = $this->db->fetchAll($query, $proposal);
+				
+				if (count($result)) {
+					$proposal = $proposal . count($result);
 				}
 				
-				$this->url = new Url(sprintf("%s/type/%s", $this->Module->url, $this->slug));
+				$this->slug = $proposal;
+				$this->commit();
 			}
+			
+			$this->url = new Url(sprintf("%s/type/%s", $this->Module->url, $this->slug));
 		}
 		
 		/**
