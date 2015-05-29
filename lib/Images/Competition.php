@@ -171,27 +171,25 @@
 			
 			$row = $this->db->fetchRow($query, $this->id);
 			
-			$this->title = $row['title'];
-			$this->description = $row['description'];
-			$this->status = $row['status'];
-			$this->slug = $row['slug'];
-			$this->theme = $row['theme'];
+			$lookup = [ "title", "description", "status", "slug", "theme" ];
+			
+			foreach ($lookup as $var) {
+				$this->$var = $row[$var];
+			}
+			
 			$this->meta = json_decode($row['meta'], true);
 			
-			if ($row['voting_date_open'] != "0000-00-00 00:00:00") {
-				$this->VotingDateOpen = new DateTime($row['voting_date_open']);
-			}
+			$lookup = array(
+				"voting_date_open" => "VotingDateOpen",
+				"voting_date_close" => "VotingDateClose",
+				"submissions_date_open" => "SubmissionsDateOpen",
+				"submissions_date_close" => "SubmissionsDateClose"
+			);
 			
-			if ($row['voting_date_close'] != "0000-00-00 00:00:00") {
-				$this->VotingDateClose = new DateTime($row['voting_date_close']);
-			}
-			
-			if ($row['submissions_date_open'] != "0000-00-00 00:00:00") {
-				$this->SubmissionsDateOpen = new DateTime($row['submissions_date_open']);
-			}
-			
-			if ($row['submissions_date_close'] != "0000-00-00 00:00:00") {
-				$this->SubmissionsDateClose = new DateTime($row['submissions_date_close']);
+			foreach ($lookup as $db => $var) {
+				if ($row[$db] != "0000-00-00 00:00:00") {
+					$this->$var = new DateTime($row[$db]);
+				}
 			}
 			
 			if ($this->VotingDateClose->format("H:i:s") === "00:00:00") {
@@ -202,7 +200,24 @@
 				$this->SubmissionsDateClose = new DateTime($this->SubmissionsDateClose->format("Y-m-d 23:59:59"));
 			}
 			
-			$this->Author = new User($row['author']);
+			$this->setAuthor(new User($row['author']));
+			
+			$this->makeURLs(); 
+			
+			$this->notifySubmissionsOpen();
+			$this->notifyVotingOpen(); 
+			$this->notifyWinner(); 
+			
+			return $this;
+		}
+		
+		/**
+		 * Load the URL object for this competition
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function makeURLs() {
 			
 			$this->url = new Url(sprintf("/gallery/comp/%s", $this->slug));
 			$this->url->submitphoto = sprintf("%s/submit", $this->url->url);
@@ -210,11 +225,6 @@
 			$this->url->pending = sprintf("/gallery?mode=competition.pendingphotos&id=%d", $this->id);
 			$this->url->suggestsubject = sprintf("/gallery?mode=competition.nextsubject&id=%d", $this->id);
 			
-			$this->notifySubmissionsOpen();
-			$this->notifyVotingOpen(); 
-			$this->notifyWinner(); 
-			
-			return $this;
 		}
 		
 		/**
@@ -534,20 +544,18 @@
 			
 			$result = $this->db->fetchAll($query, $params);
 			
-			if ($Image instanceof Image) {
-				if ($result != false || count($result)) {
-					return false;
-				}
-			} else {
-				if (isset($result[0]) && isset($result[0]['user_id']) && $result[0]['user_id'] === $User->id) {
-					return false;
-				}
-				
-				$max_votes = isset($this->meta['maxvotes']) && filter_var($this->meta['maxvotes'], FILTER_VALIDATE_INT) ? $this->meta['maxvotes'] : Competitions::MAX_VOTES_PER_USER;
-				
-				if (count($result) >= $max_votes) {
-					return false;
-				}
+			if ($Image instanceof Image && count($result) > 0) {
+				return false;
+			}
+			
+			if (isset($result[0]) && isset($result[0]['user_id']) && (int) $result[0]['user_id'] === (int) $User->id) {
+				return false;
+			}
+			
+			$max_votes = isset($this->meta['maxvotes']) && filter_var($this->meta['maxvotes'], FILTER_VALIDATE_INT) ? $this->meta['maxvotes'] : Competitions::MAX_VOTES_PER_USER;
+			
+			if (count($result) >= $max_votes) {
+				return false;
 			}
 			
 			return true;
