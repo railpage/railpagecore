@@ -109,7 +109,6 @@
 		
 			if ($diff < 30) {
 				$diff = floor($diff / 7);
-		
 				return sprintf($diff > 1 ? '%s weeks ago' : 'one week ago', $diff);
 			}
 		
