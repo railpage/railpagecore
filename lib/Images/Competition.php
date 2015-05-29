@@ -20,6 +20,7 @@
 	use DateInterval;
 	use DatePeriod;
 	use stdClass;
+	use Railpage\ContentUtility;
 	
 	use Railpage\Notifications\Notifications;
 	use Railpage\Notifications\Notification;
@@ -193,11 +194,11 @@
 				$this->SubmissionsDateClose = new DateTime($row['submissions_date_close']);
 			}
 			
-			if ($this->VotingDateClose->format("H:i:s") == "00:00:00") {
+			if ($this->VotingDateClose->format("H:i:s") === "00:00:00") {
 				$this->VotingDateClose = new DateTime($this->VotingDateClose->format("Y-m-d 23:59:59"));
 			}
 			
-			if ($this->SubmissionsDateClose->format("H:i:s") == "00:00:00") {
+			if ($this->SubmissionsDateClose->format("H:i:s") === "00:00:00") {
 				$this->SubmissionsDateClose = new DateTime($this->SubmissionsDateClose->format("Y-m-d 23:59:59"));
 			}
 			
@@ -240,7 +241,7 @@
 			}
 			
 			if (empty($this->slug)) {
-				$proposal = create_slug($this->title); 
+				$proposal = ContentUtility::generateUrlSlug($this->title); 
 				
 				$query = "SELECT id FROM image_competition WHERE slug = ?";
 				$num = count($this->db->fetchAll($query, $proposal));
@@ -252,28 +253,16 @@
 				$this->slug = $proposal;
 			}
 			
-			if (!$this->Author instanceof User) {
+			if (!$this->Author instanceof User || !filter_var($this->Author->id, FILTER_VALIDATE_INT)) {
 				throw new Exception("Author is not set (hint: setAuthor(User))");
 			}
 			
-			if (!filter_var($this->Author->id, FILTER_VALIDATE_INT)) {
-				throw new Exception("Invalid user ID for Competition::\$Author");
-			}
+			$dates = [ "VotingDateOpen", "VotingDateClose", "SubmissionsDateOpen", "SubmissionsDateClose" ];
 			
-			if (!$this->VotingDateOpen instanceof DateTime) {
-				throw new Exception("VotingDateOpen must be an instance of DateTime");
-			}
-			
-			if (!$this->VotingDateClose instanceof DateTime) {
-				throw new Exception("VotingDateClose must be an instance of DateTime");
-			}
-			
-			if (!$this->SubmissionsDateOpen instanceof DateTime) {
-				throw new Exception("SubmissionsDateOpen must be an instance of DateTime");
-			}
-			
-			if (!$this->SubmissionsDateClose instanceof DateTime) {
-				throw new Exception("SubmissionsDateClose must be an instance of DateTime");
+			foreach ($dates as $date) {
+				if (!$this->$date instanceof DateTime) {
+					throw new Exception(sprintf("%s::%s must be an instance of DateTime", __CLASS__, $date)); 
+				}
 			}
 			
 			if ($this->VotingDateOpen > $this->VotingDateClose) {
@@ -296,11 +285,11 @@
 				$this->status = Competitions::STATUS_CLOSED;
 			}
 			
-			if ($this->VotingDateClose->format("H:i:s") == "00:00:00") {
+			if ($this->VotingDateClose->format("H:i:s") === "00:00:00") {
 				$this->VotingDateClose = new DateTime($this->VotingDateClose->format("Y-m-d 23:59:59"));
 			}
 			
-			if ($this->SubmissionsDateClose->format("H:i:s") == "00:00:00") {
+			if ($this->SubmissionsDateClose->format("H:i:s") === "00:00:00") {
 				$this->SubmissionsDateClose = new DateTime($this->SubmissionsDateClose->format("Y-m-d 23:59:59"));
 			}
 			
@@ -352,7 +341,7 @@
 					$theme['theme'] = format_topictitle($theme['theme']);
 				}
 				
-				if ((!isset($theme['used']) || $theme['used'] == false) && $theme['theme'] == $this->theme) {
+				if ((!isset($theme['used']) || $theme['used'] === false) && $theme['theme'] === $this->theme) {
 					$themes[$key]['used'] = true;
 				}
 			}
@@ -436,9 +425,9 @@
 				$Image->id
 			);
 			
-			$rs = $this->db->fetchAll($query, $params); 
+			$result = $this->db->fetchAll($query, $params); 
 			
-			if (count($rs)) {
+			if (count($result)) {
 				return true;
 			}
 			
@@ -467,13 +456,13 @@
 				$User->id
 			);
 			
-			$rs = $this->db->fetchAll($query, $params); 
+			$result = $this->db->fetchAll($query, $params); 
 			
 			$max_votes = isset($this->meta['maxvotes']) && filter_var($this->meta['maxvotes'], FILTER_VALIDATE_INT) ? $this->meta['maxvotes'] : Competitions::MAX_VOTES_PER_USER;
 			
 			$return = array(
-				"cast" => count($rs),
-				"free" => $max_votes - count($rs)
+				"cast" => count($result),
+				"free" => $max_votes - count($result)
 			);
 			
 			return $return;
@@ -544,20 +533,20 @@
 				$params[] = $Image->id;
 			}
 			
-			$rs = $this->db->fetchAll($query, $params);
+			$result = $this->db->fetchAll($query, $params);
 			
 			if ($Image instanceof Image) {
-				if ($rs != false || count($rs)) {
+				if ($result != false || count($result)) {
 					return false;
 				}
 			} else {
-				if (isset($rs[0]) && isset($rs[0]['user_id']) && $rs[0]['user_id'] == $User->id) {
+				if (isset($result[0]) && isset($result[0]['user_id']) && $result[0]['user_id'] === $User->id) {
 					return false;
 				}
 				
 				$max_votes = isset($this->meta['maxvotes']) && filter_var($this->meta['maxvotes'], FILTER_VALIDATE_INT) ? $this->meta['maxvotes'] : Competitions::MAX_VOTES_PER_USER;
 				
-				if (count($rs) >= $max_votes) {
+				if (count($result) >= $max_votes) {
 					return false;
 				}
 			}
@@ -864,7 +853,7 @@
 				"description" => $this->description,
 				"status" => array(
 					"id" => $this->status,
-					"name" => $this->status == Competitions::STATUS_OPEN ? "Open" : "Closed"
+					"name" => $this->status === Competitions::STATUS_OPEN ? "Open" : "Closed"
 				),
 				"url" => isset($this->url) && $this->url instanceof Url ? $this->url->getURLs() : array(),
 				"voting" => array(
@@ -927,6 +916,7 @@
 		 */
 		
 		public function getPhotoContext(Image $Image) {
+			
 			$query = "SELECT s.*, 0 AS current FROM image_competition_submissions AS s LEFT JOIN image AS i ON s.image_id = i.id WHERE s.competition_id = ? AND s.status = ? AND i.photo_id != 0 ORDER BY s.date_added ASC";
 
 			$where = array(
@@ -936,65 +926,19 @@
 			
 			$photos = $this->db->fetchAll($query, $where);
 			
-			/**
-			 * Loop through the array once until we find the provided image. Add photos to a temporary array, and then we slice it to return the last 4 entries to the array
-			 */
-			
-			$return = array(); 
-			$split = 0;
-			$tmp = array(); 
-			
-			foreach ($photos as $key => $data) {
-				
-				if ($data['image_id'] == $Image->id) {
-					$split = $key;
-					break;
-				}
-				
-				$tmp[] = $data; 
-			}
-			
-			$return = array_slice($tmp, -2);
-			
-			/**
-			 * Add the current photo to the array
-			 */
-			
-			$return[] = array_merge($photos[$split], array("current" => true));
-			
-			/**
-			 * Loop through the array starting at $split
-			 */
-			
-			$tmp = array(); 
-			
-			foreach ($photos as $key => $data) {
-				if ($key >= $split + 1) {
-					$tmp[] = $data;
-				}
-			}
-			
-			$return = array_merge($return, array_slice($tmp, 0, 2));
-			
-			$return = array_reverse($return);
+			$return = Utility\CompetitionUtility::getPhotoContext($photos, $Image); 
 			
 			/**
 			 * Loop through the context and return a stdClass photo
 			 */
 			
 			foreach ($return as $data) {
-				$Photo = new stdClass;
-				$Photo->id = $data['id']; 
-				$Photo->Author = new User($data['user_id']);
-				$Photo->Image = new Image($data['image_id']);
-				$Photo->DateAdded = new DateTime($data['date_added']);
-				$Photo->Meta = json_decode($data['meta'], true);
-				$Photo->url = new Url(sprintf("%s/%d", $this->url->url, $Photo->Image->id));
-				$Photo->url->vote = sprintf("%s/vote", $Photo->url);
+				$Photo = $this->getPhoto($data); 
 				$Photo->current = (bool) $data['current'];
 				
 				yield $Photo;
 			}
+			
 		}
 		
 		/**
@@ -1108,7 +1052,7 @@
 		public function notifyWinner() {
 			if ($Photo = $this->getWinningPhoto()) {
 				
-				if (isset($this->meta['winnernotified']) && $this->meta['winnernotified'] == true) {
+				if (isset($this->meta['winnernotified']) && $this->meta['winnernotified'] === true) {
 					return $this;
 				}
 				
@@ -1116,14 +1060,7 @@
 				 * Create a site message
 				 */
 				
-				if (!$SiteMessage = (new SiteMessages)->getMessageForObject($this)) {
-					$SiteMessage = new SiteMessage; 
-					
-					$SiteMessage->title = sprintf("Photo competition: %s", $this->title); 
-					$SiteMessage->text = sprintf("You won the %s photo competition! <a href='%s'>Set the subject of next month's competition</a>.", $this->title, $this->url->suggestsubject); 
-					$SiteMessage->Object = $this;
-					$SiteMessage->targetUser($Photo->Author)->commit(); 
-				}
+				Utility\CompetitionUtility::createSiteNotificationForWinner($this);
 				
 				/**
 				 * Create an email
@@ -1207,7 +1144,7 @@
 			 * Check if the notification sent flag has been set
 			 */
 			
-			if (!isset($this->meta['notifySubmissionsOpen']) || !filter_var($this->meta['notifySubmissionsOpen']) || $this->meta['notifySubmissionsOpen'] == false) {
+			if (!isset($this->meta['notifySubmissionsOpen']) || !filter_var($this->meta['notifySubmissionsOpen']) || $this->meta['notifySubmissionsOpen'] === false) {
 				
 				/**
 				 * Create the notification
@@ -1313,7 +1250,7 @@
 			 * Check if the notification sent flag has been set
 			 */
 			
-			if (!isset($this->meta['notifyVotingOpen']) || !filter_var($this->meta['notifyVotingOpen']) || $this->meta['notifyVotingOpen'] == false) {
+			if (!isset($this->meta['notifyVotingOpen']) || !filter_var($this->meta['notifyVotingOpen']) || $this->meta['notifyVotingOpen'] === false) {
 				
 				/**
 				 * Create the notification
