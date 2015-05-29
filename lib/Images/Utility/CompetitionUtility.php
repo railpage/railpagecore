@@ -15,7 +15,9 @@
 	use Railpage\Debug;
 	use Railpage\SiteMessages\SiteMessages;
 	use Railpage\SiteMessages\SiteMessage;
+	use Railpage\Notifications\Notification;
 	use DateTime;
+	use Railpage\AppCore;
 	
 	class CompetitionUtility {
 		
@@ -141,5 +143,101 @@
 			
 			return true;
 			
+		}
+		
+		/**
+		 * Process the recipients of the notification email
+		 * @since Version 3.9.1
+		 * @param \Railpage\Notifications\Notification $Notification
+		 * @return \Railpage\Notifications\Notification
+		 */
+		 
+		public static function notificationDoRecipients(Notification $Notification) {
+			
+			$contestants = (new Competitions)->getPreviousContestants(); 
+			
+			$replacements = array(); 
+			
+			foreach ($contestants as $row) {
+				$Notification->AddRecipient($row['user_id'], $row['username'], $row['contact_email']);
+				
+				// Add to the decorator
+				$replacements[$row['contact_email']] = array(
+					"[username]" => $row['username']
+				);
+			}
+			
+			$Notification->meta['decoration'] = $replacements;
+			
+			return $Notification;
+
+		}
+		
+		/**
+		 * Send an email notification for this competition
+		 * @since Version 3.9.1
+		 * @param \Railpage\Images\Competition $Comp
+		 * @param array $notificationOptions
+		 * @return void
+		 */
+		
+		public static function sendNotification(Competition $Comp, $notificationOptions) {
+			
+			$flag = $notificationOptions['flag'];
+			
+			/**
+			 * Check if the notification sent flag has been set
+			 */
+			
+			if (!isset($Comp->meta[$flag]) || !filter_var($Comp->meta[$flag]) || $Comp->meta[$flag] === false) {
+				
+				/**
+				 * Create the notification
+				 */
+				
+				$Notification = new Notification;
+				$Notification->subject = $notificationOptions['subject'];
+				
+				/**
+				 * Add recipients and decoration
+				 */
+				
+				$Notification = self::notificationDoRecipients(); 
+								
+				/**
+				 * Set our email body
+				 */
+				
+				if (function_exists("wpautop") && function_exists("format_post")) {
+					$notificationOptions['body'] = wpautop(format_post($body));
+				}
+				
+				/**
+				 * Assemble some template vars for our email
+				 */
+				
+				$Smarty = AppCore::getSmarty(); 
+				
+				$Smarty->Assign("email", array(
+					"subject" => $notificationOptions['subject'],
+					"body" => $notificationOptions['body']
+				));
+				
+				/**
+				 * Set the body, submit the notification to the dispatch queue
+				 */
+				
+				$Notification->body = $Smarty->Fetch($Smarty->ResolveTemplate("template.generic"));
+				$Notification->commit();
+				
+				/**
+				 * Set the notification flag
+				 */
+				
+				$Comp->meta[$flag] = true;
+				$Comp->commit(); 
+				
+			}
+
 		}
 	}

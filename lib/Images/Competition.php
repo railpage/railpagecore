@@ -151,7 +151,7 @@
 				}
 			}
 			
-			if (filter_var($id, FILTER_VALIDATE_INT)) {
+			if ($id = filter_var($id, FILTER_VALIDATE_INT)) {
 				$this->cachekey = sprintf("railpage:photo.comp=%d", $id);
 				
 				$this->id = $id;
@@ -225,6 +225,29 @@
 			$this->url->pending = sprintf("/gallery?mode=competition.pendingphotos&id=%d", $this->id);
 			$this->url->suggestsubject = sprintf("/gallery?mode=competition.nextsubject&id=%d", $this->id);
 			
+			/**
+			 * Get the UTM email campaign link
+			 */
+			
+			if (function_exists("http_build_str")) {
+				$url = http_build_str($parts, $this->url->canonical);
+			} else {
+				if (strpos($this->url->canonical, "?") !== false) {
+					$joiner = "&";
+				} else {
+					$joiner = "?";
+				}
+				
+				$parts = array(
+					"utm_medium" => "email",
+					"utm_source" => "Newsletter",
+					"utm_campaign" => str_replace(" ", "+", $this->title)
+				);
+				
+				$url = $this->url->canonical . $joiner . http_build_query($parts);
+			}
+			
+			$this->url->email = $url;
 		}
 		
 		/**
@@ -1129,96 +1152,27 @@
 			 * Return if we're not within the submissions bounds
 			 */
 			
-			$now = new DateTime;
-			
 			if (!Utility\CompetitionUtility::isSubmissionWindowOpen($this)) {
 				return $this;
 			}
 			
 			/**
-			 * Check if the notification sent flag has been set
+			 * Assemble our options to send to the mailer
 			 */
 			
-			if (!isset($this->meta['notifySubmissionsOpen']) || !filter_var($this->meta['notifySubmissionsOpen']) || $this->meta['notifySubmissionsOpen'] === false) {
-				
-				/**
-				 * Create the notification
-				 */
-				
-				$Notification = new Notification;
-				$Notification->subject = sprintf("Submissions open: %s", $this->title); 
-				
-				$query = "SELECT DISTINCT user_id FROM image_competition_submissions";
-				$replacements = array(); 
-				
-				foreach ($this->db->fetchAll($query) as $row) {
-					$Recipient = new User($row['user_id']); 
-					$Notification->AddRecipient($Recipient->id, $Recipient->username, $Recipient->contact_email);
-					
-					// Add to the decorator
-					$replacements[$Recipient->contact_email] = array(
-						"[username]" => $Recipient->username
-					);
-				}
-				
-				$Notification->meta['decoration'] = $replacements;
-				
-				/**
-				 * Set our email body
-				 */
-				
-				$parts = array(
-					"utm_medium" => "email",
-					"utm_source" => "Newsletter",
-					"utm_campaign" => str_replace(" ", "+", $this->title)
-				);
-					
-				if (function_exists("http_build_str")) {
-					$url = http_build_str($parts, $this->url->canonical);
-				} else {
-					if (strpos($this->url->canonical, "?") !== false) {
-						$joiner = "&";
-					} else {
-						$joiner = "?";
-					}
-					
-					$url = $this->url->canonical . $joiner . http_build_query($parts);
-				}
-				
-				$body = sprintf("Hi [username],\n\nWe wanted to let you know that a new photo competition, <a href='%s'>%s</a>, is open for submissions until %s.\n\nYou've received this email because you've participated in a previous photo competition.\n\nThanks\nThe Railpage team.",
-								$url, $this->title, $this->SubmissionsDateClose->format("F jS"));
-				
-				if (function_exists("wpautop") && function_exists("format_post")) {
-					$body = wpautop(format_post($body));
-				}
-				
-				/**
-				 * Assemble some template vars for our email
-				 */
-				
-				$Smarty = AppCore::getSmarty(); 
-				
-				$Smarty->Assign("email", array(
-					"subject" => $Notification->subject,
-					"body" => $body
-				));
-				
-				/**
-				 * Set the body, submit the notification to the dispatch queue
-				 */
-				
-				$Notification->body = $Smarty->Fetch($Smarty->ResolveTemplate("template.generic"));
-				$Notification->commit(); 
-				
-				/**
-				 * Set the notification flag
-				 */
-				
-				$this->meta['notifySubmissionsOpen'] = true;
-				$this->commit(); 
-			}
+			$body = sprintf("Hi [username],\n\nWe wanted to let you know that a new photo competition, <a href='%s'>%s</a>, is open for submissions until %s.\n\nYou've received this email because you've participated in a previous photo competition.\n\nThanks\nThe Railpage team.",
+								$this->url->email, $this->title, $this->SubmissionsDateClose->format("F jS"));
+			
+			$notificationOptions = array(
+				"flag" => __FUNCTION__, 
+				"subject" => sprintf("Submissions open: %s", $this->title),
+				"body" => $body
+			);
+			
+			Utility\CompetitionUtility::sendNotification($this, $notificationOptions); 
 			
 			return $this;
+			
 		}
 		
 		/**
@@ -1234,96 +1188,23 @@
 			 * Return if we're not within the voting bounds
 			 */
 			
-			$now = new DateTime;
-			
 			if (!Utility\CompetitionUtility::isVotingWindowOpen($this)) {
 				return $this;
 			}
+				
+			$body = sprintf("Hi [username],\n\nWe wanted to let you know that the <a href='%s'>%s</a> photo competition is open for voting until %s.\n\nYou've received this email because you've participated in a previous photo competition.\n\nThanks\nThe Railpage team.",
+							$this->url->email, $this->title, $this->SubmissionsDateClose->format("F jS"));
 			
-			/**
-			 * Check if the notification sent flag has been set
-			 */
+			$notificationOptions = array(
+				"flag" => __FUNCTION__, 
+				"subject" => sprintf("Voting open: %s", $this->title),
+				"body" => $body
+			);
 			
-			if (!isset($this->meta['notifyVotingOpen']) || !filter_var($this->meta['notifyVotingOpen']) || $this->meta['notifyVotingOpen'] === false) {
-				
-				/**
-				 * Create the notification
-				 */
-				
-				$Notification = new Notification;
-				$Notification->subject = sprintf("Voting open: %s", $this->title); 
-				
-				$query = "SELECT DISTINCT user_id FROM image_competition_submissions";
-				$replacements = array(); 
-				
-				foreach ($this->db->fetchAll($query) as $row) {
-					$Recipient = new User($row['user_id']); 
-					$Notification->AddRecipient($Recipient->id, $Recipient->username, $Recipient->contact_email);
-					
-					// Add to the decorator
-					$replacements[$Recipient->contact_email] = array(
-						"[username]" => $Recipient->username
-					);
-				}
-				
-				$Notification->meta['decoration'] = $replacements;
-				
-				/**
-				 * Set our email body
-				 */
-				
-				$parts = array(
-					"utm_medium" => "email",
-					"utm_source" => "Newsletter",
-					"utm_campaign" => str_replace(" ", "+", $this->title)
-				);
-					
-				if (function_exists("http_build_str")) {
-					$url = http_build_str($parts, $this->url->canonical);
-				} else {
-					if (strpos($this->url->canonical, "?") !== false) {
-						$joiner = "&";
-					} else {
-						$joiner = "?";
-					}
-					
-					$url = $this->url->canonical . $joiner . http_build_query($parts);
-				}
-				
-				$body = sprintf("Hi [username],\n\nWe wanted to let you know that the <a href='%s'>%s</a> photo competition is open for voting until %s.\n\nYou've received this email because you've participated in a previous photo competition.\n\nThanks\nThe Railpage team.",
-								$url, $this->title, $this->SubmissionsDateClose->format("F jS"));
-				
-				if (function_exists("wpautop") && function_exists("format_post")) {
-					$body = wpautop(format_post($body));
-				}
-				
-				/**
-				 * Assemble some template vars for our email
-				 */
-				
-				$Smarty = AppCore::getSmarty(); 
-				
-				$Smarty->Assign("email", array(
-					"subject" => $Notification->subject,
-					"body" => $body
-				));
-				
-				/**
-				 * Set the body, submit the notification to the dispatch queue
-				 */
-				
-				$Notification->body = $Smarty->Fetch($Smarty->ResolveTemplate("template.generic"));
-				$Notification->commit(); 
-				
-				/**
-				 * Set the notification flag
-				 */
-				
-				$this->meta['notifyVotingOpen'] = true;
-				$this->commit(); 
-			}
+			Utility\CompetitionUtility::sendNotification($this, $notificationOptions); 
 			
 			return $this;
+			
 		}
 	}
 	
