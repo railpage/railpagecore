@@ -14,6 +14,7 @@
 	use Railpage\Debug;
 	use Railpage\SiteMessages\SiteMessages;
 	use Railpage\SiteMessages\SiteMessage;
+	use DateTime;
 	
 	class CompetitionUtility {
 		
@@ -89,5 +90,43 @@
 				$SiteMessage->Object = $Comp;
 				$SiteMessage->targetUser($Photo->Author)->commit(); 
 			}
+		}
+		
+		/**
+		 * Check if the image submission window is open
+		 * @since Version 3.9.1
+		 * @param \Railpage\Images\Competition $Comp
+		 * @return boolean
+		 */
+		
+		public static function isSubmissionWindowOpen(Competition $Comp) {
+			
+			$Now = new DateTime;
+			
+			if (!($Comp->SubmissionsDateOpen instanceof DateTime && $Comp->SubmissionsDateOpen <= $Now) || 
+				!($Comp->SubmissionsDateClose instanceof DateTime && $Comp->SubmissionsDateClose >= $Now)) {
+					return false;
+			}
+			
+			return true;
+		}
+		
+		/**
+		 * Check if the voting window is open
+		 * @since Version 3.9.1
+		 * @param \Railpage\Images\Competition $Comp
+		 * @return boolean
+		 */
+		
+		public static function isVotingWindowOpen(Competition $Comp) {
+			
+			$Now = new DateTime;
+			
+			if (!($Comp->VotingDateOpen instanceof DateTime && $Comp->VotingDateOpen <= $Now) || 
+				!($Comp->VotingDateClose instanceof DateTime && $Comp->VotingDateClose >= $Now)) {
+					return false;
+			}
+			
+			return true;
 		}
 	}

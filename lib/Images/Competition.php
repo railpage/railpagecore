@@ -165,7 +165,7 @@
 		 * @return \Railpage\Images\Competition
 		 */
 		
-		public function load() {
+		private function load() {
 			
 			$query = "SELECT * FROM image_competition WHERE id = ?";
 			
@@ -513,9 +513,8 @@
 			
 			$now = new DateTime;
 			
-			if (!($this->VotingDateOpen instanceof DateTime && $this->VotingDateOpen <= $now) || 
-				!($this->VotingDateClose instanceof DateTime && $this->VotingDateClose >= $now)) {
-					return false;
+			if (!Utility\CompetitionUtility::isVotingWindowOpen($this)) {
+				return false;
 			}
 			
 			$query = "SELECT id FROM image_competition_votes WHERE competition_id = ? AND user_id = ?";
@@ -832,19 +831,8 @@
 		public function getArray() {
 			$now = new DateTime;
 			
-			$voting_open = true;
-			
-			if (!($this->VotingDateOpen instanceof DateTime && $this->VotingDateOpen <= $now) || 
-				!($this->VotingDateClose instanceof DateTime && $this->VotingDateClose >= $now)) {
-					$voting_open = false;
-			}
-			
-			$submissions_open = true;
-			
-			if (!($this->SubmissionsDateOpen instanceof DateTime && $this->SubmissionsDateOpen <= $now) || 
-				!($this->SubmissionsDateClose instanceof DateTime && $this->SubmissionsDateClose >= $now)) {
-					$submissions_open = false;
-			}
+			$voting_open = Utility\CompetitionUtility::isVotingWindowOpen($this);
+			$submissions_open = Utility\CompetitionUtility::isSubmissionWindowOpen($this);
 			
 			$return = array(
 				"id" => $this->id,
@@ -990,7 +978,7 @@
 		 * @return \Railpage\Images\Competition
 		 */
 		
-		public function releaseVotesForImage(Image $Image) {
+		private function releaseVotesForImage(Image $Image) {
 			$where = array(
 				"competition_id = ?" => $this->id,
 				"image_id = ?" => $Image->id
@@ -1049,7 +1037,7 @@
 		 * @todo Check recipient preferences for email notifications
 		 */
 		
-		public function notifyWinner() {
+		private function notifyWinner() {
 			if ($Photo = $this->getWinningPhoto()) {
 				
 				if (isset($this->meta['winnernotified']) && $this->meta['winnernotified'] === true) {
@@ -1127,7 +1115,7 @@
 		 * @todo Check recipient preferences for email notifications
 		 */
 		
-		public function notifySubmissionsOpen() {
+		private function notifySubmissionsOpen() {
 			
 			/**
 			 * Return if we're not within the submissions bounds
@@ -1135,9 +1123,8 @@
 			
 			$now = new DateTime;
 			
-			if (!($this->SubmissionsDateOpen instanceof DateTime && $this->SubmissionsDateOpen <= $now) || 
-				!($this->SubmissionsDateClose instanceof DateTime && $this->SubmissionsDateClose >= $now)) {
-					return $this;
+			if (!Utility\CompetitionUtility::isSubmissionWindowOpen($this)) {
+				return $this;
 			}
 			
 			/**
@@ -1233,7 +1220,7 @@
 		 * @todo Check recipient preferences for email notifications
 		 */
 		
-		public function notifyVotingOpen() {
+		private function notifyVotingOpen() {
 			
 			/**
 			 * Return if we're not within the voting bounds
@@ -1241,9 +1228,8 @@
 			
 			$now = new DateTime;
 			
-			if (!($this->VotingDateOpen instanceof DateTime && $this->VotingDateOpen <= $now) || 
-				!($this->VotingDateClose instanceof DateTime && $this->VotingDateClose >= $now)) {
-					return $this;
+			if (!Utility\CompetitionUtility::isVotingWindowOpen($this)) {
+				return $this;
 			}
 			
 			/**
