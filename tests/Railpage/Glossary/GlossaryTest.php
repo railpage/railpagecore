@@ -13,13 +13,27 @@
 		const EXAMPLE = "I'm testing Railpage's code by running it through PHPUnit";
 		const AUTHOR = "Glossary tester";
 		
-		public function testAddEntry() {
+		public function testAddUser() {
 			
 			$User = new User;
 			$User->username = self::AUTHOR;
 			$User->setPassword('zasdfasdfadfag');
 			$User->contact_email = "phpunit+glossary@railpage.com.au";
 			$User->commit(); 
+			
+			$this->assertFalse(!filter_var($User->id, FILTER_VALIDATE_INT));
+			
+			return $User->id;
+			
+		}
+		
+		/**
+		 * @depends testAddUser
+		 */
+		
+		public function testAddEntry($user_id) {
+			
+			$User = new User($user_id);
 			
 			$Type = new Type(self::TYPE);
 			$Entry = new Entry;
@@ -33,17 +47,28 @@
 			
 			$this->assertFalse(!filter_var($Entry->id, FILTER_VALIDATE_INT));
 			
+			return $Entry;
+			
 		}
 		
-		public function testCompareEntry() {
+		/**
+		 * @depends testAddEntry
+		 * @depends testAddUser
+		 */
+		
+		public function testCompareEntry($Entry, $user_id) {
 			
-			$Entry = new Entry(1); 
+			$entry_id = $Entry->id;
+			$User = new User($user_id);
+			unset($Entry);
+			
+			$Entry = new Entry($entry_id); 
 			
 			$this->assertEquals(self::TYPE, $Entry->Type->name); 
 			$this->assertEquals(self::NAME, $Entry->name);
 			$this->assertEquals(self::TEXT, $Entry->text); 
 			$this->assertEquals(self::EXAMPLE, $Entry->example); 
-			$this->assertEquals(self::AUTHOR, $Entry->Author->username); 
+			$this->assertEquals($User->username, $Entry->Author->username); 
 			
 		}
 		

@@ -132,7 +132,7 @@
 				"user_allowsmile" => "enable_emoticons",
 				"user_allow_pm" => "enable_privmsg",
 				"user_popup_pm" => "enable_privmsg_popup",
-				"user_enableautlogin" => "enable_autologin",
+				"user_enableautologin" => "enable_autologin",
 				"sidebar_type" => "sidebar_type",
 				"user_enablessl" => "ssl",
 				"user_dateformat" => "date_format",
