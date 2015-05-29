@@ -1219,7 +1219,7 @@
 			
 			$mckey = sprintf("railpage:locos.class.coverimage;id=%d", $this->id);
 			
-			if ($result = getMemcacheObject($mckey)) {
+			if ($result = $this->Memcached->fetch($mckey)) {
 				return $result;
 			}
 			
@@ -1247,7 +1247,7 @@
 					"url" => $Image->url->getURLs()
 				);
 				
-				setMemcacheObject($mckey, $return, strtotime("+1 month"));
+				$this->Memcached->save($mckey, $return, strtotime("+1 month"));
 				
 				return $return;
 			}
@@ -1280,7 +1280,7 @@
 					)
 				);
 				
-				setMemcacheObject($mckey, $return, strtotime("+1 month"));
+				$this->Memcached->save($mckey, $return, strtotime("+1 month"));
 				
 				return $return;
 			}
@@ -1310,7 +1310,7 @@
 					"url" => $Image->url->getURLs()
 				);
 				
-				setMemcacheObject($mckey, $return, strtotime("+1 month"));
+				$this->Memcached->save($mckey, $return, strtotime("+1 month"));
 				
 				return $return;
 			}
@@ -1333,7 +1333,7 @@
 			
 			$mckey = sprintf("railpage:locos.class.coverimage;id=%d", $this->id);
 			
-			deleteMemcacheObject($mckey);
+			$this->Memcached->delete($mckey);
 			
 			/**
 			 * Zero out any existing images

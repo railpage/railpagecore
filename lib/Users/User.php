@@ -1058,7 +1058,7 @@
 			 * Process some of the returned values
 			 */
 			
-			$data = UserUtility::normaliseAvatarPath($data);
+			$data = Utility\UserUtility::normaliseAvatarPath($data);
 			
 			// Backwards compatibility
 			if ($data['timezone']) {
@@ -1095,7 +1095,7 @@
 			 * Map database fields to class vars
 			 */
 			
-			$fields = UserUtility::getColumnMapping(); 
+			$fields = Utility\UserUtility::getColumnMapping(); 
 			
 			foreach ($fields as $key => $var) {
 				$this->$var = $data[$key];
