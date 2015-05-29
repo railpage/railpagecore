@@ -70,6 +70,60 @@
 		 */
 		
 		static public function relativeTime($timestamp, $now = false, $format = false) {
+			
+			if ($timestamp instanceof DateTime) {
+				$timestamp = $timestamp->getTimestamp(); 
+			}
+			
+			if ($now instanceof DateTime) {
+				$now = $now->getTimestamp(); 
+			}
+			
+			if (!filter_var($now, FILTER_VALIDATE_INT)) {
+				$now = time();
+			}
+			
+			$diff = $now - $timestamp;
+		
+			if ($diff < 60) {
+				return sprintf($diff > 1 ? '%s seconds ago' : 'a second ago', $diff);
+			}
+		
+			$diff = floor($diff / 60);
+		
+			if ($diff < 60) {
+				return sprintf($diff > 1 ? '%s minutes ago' : 'one minute ago', $diff);
+			}
+		
+			$diff = floor($diff / 60);
+		
+			if ($diff < 24) {
+				return sprintf($diff > 1 ? '%s hours ago' : 'an hour ago', $diff);
+			}
+		
+			$diff = floor($diff / 24);
+		
+			if ($diff < 7) {
+				return sprintf($diff > 1 ? '%s days ago' : 'yesterday', $diff);
+			}
+		
+			if ($diff < 30) {
+				$diff = floor($diff / 7);
+		
+				return sprintf($diff > 1 ? '%s weeks ago' : 'one week ago', $diff);
+			}
+		
+			$diff = floor($diff / 30);
+		
+			if ($diff < 12) {
+				return sprintf($diff > 1 ? '%s months ago' : 'last month', $diff);
+			}
+		
+			$diff = date('Y', $now) - date('Y', $date);
+		
+			return sprintf($diff > 1 ? '%s years ago' : 'last year', $diff);
+			
+			/*
 			if ($timestamp instanceof DateTime) {
 				$timestamp = $timestamp->getTimestamp(); 
 			}
@@ -125,6 +179,6 @@
 			if (ceil($day_diff / 7) < 4) return 'in ' . ceil($day_diff / 7) . ' weeks';
 			if (date('n', $timestamp) == date('n') + 1) return 'next month';
 			return date('F Y', $timestamp);
-
+			*/
 		}
 	}

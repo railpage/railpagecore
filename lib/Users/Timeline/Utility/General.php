@@ -68,7 +68,8 @@
 				"cover photo" => "picture",
 				"tagged" => "tag",
 				"sighting" => "eye-open",
-				"suggested" => "thumbs-up"
+				"suggested" => "thumbs-up",
+				"closed" => "ok"
 			);
 			
 			$keys = [ "action", "object" ];
