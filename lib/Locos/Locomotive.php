@@ -646,6 +646,30 @@
 				throw new Exception("No status has been set");
 			}
 			
+			/**
+			 * Validate integers and set to zero if neccessary
+			 */
+			
+			$ints = [ "owner_id", "operator_id", "photo_id", "manufacturer_id" ];
+			
+			foreach ($ints as $int) {
+				if (!filter_var($this->$int, FILTER_VALIDATE_INT)) {
+					$this->$int = 0;
+				}
+			}
+			
+			/**
+			 * The database doesn't like NULLs so set them to an empty character
+			 */
+			
+			$texts = [ "entered_service", "withdrawal_date", "builders_num", "name" ];
+			
+			foreach ($texts as $text) {
+				if (is_null($this->$text)) {
+					$this->$text = "";
+				}
+			}
+			
 			return true;
 		}
 		
@@ -658,47 +682,16 @@
 		
 		public function commit() {
 			
-			$this->validate();
-			
-			// Drop whitespace from loco numbers of all types except steam
-			if (in_array($this->class_id, array(2, 3, 4, 5, 6)) || in_array($this->Class->type_id, array(2, 3, 4, 5, 6))) {
-				$this->number = str_replace(" ", "", $this->number);
-			}
-			
 			if (RP_DEBUG) {
 				global $site_debug;
 				$debug_timer_start = microtime(true);
 			}
 			
-			$data = array(
-				"loco_num" => $this->number,
-				"loco_gauge_id" => $this->gauge_id,
-				"loco_status_id" => $this->status_id,
-				"class_id" => $this->class_id,
-				"owner_id" => empty($this->owner_id) ? 0 : $this->owner_id,
-				"operator_id" => empty($this->operator_id) ? 0 : $this->operator_id,
-				"entered_service" => empty($this->entered_service) ? "" : $this->entered_service,
-				"withdrawn" => empty($this->withdrawal_date) ? "" : $this->withdrawal_date,
-				"builders_number" => empty($this->builders_num) ? "" : $this->builders_num,
-				"photo_id" => empty($this->photo_id) ? 0 : $this->photo_id,
-				"manufacturer_id" => empty($this->manufacturer_id) ? 0 : $this->manufacturer_id,
-				"loco_name" => empty($this->name) ? "" : $this->name,
-				"meta" => json_encode((isset($this->meta) && is_array($this->meta)) ? $this->meta : array())
-			);
+			$this->validate();
 			
-			if (empty($this->date_added)) {
-				$data['date_added'] = time(); 
-			} else {
-				$data['date_modified'] = time(); 
-			}
+			$data = Utility\LocomotiveUtility::getSubmitData($this);
 			
-			if ($this->Asset instanceof \Railpage\Assets\Asset) {
-				$data['asset_id'] = $this->Asset->id;
-			} else {
-				$data['asset_id'] = 0;
-			}
-			
-			if (empty($this->id)) {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				$rs = $this->db->insert("loco_unit", $data); 
 				$this->id = $this->db->lastInsertId(); 
 				
@@ -1208,109 +1201,6 @@
 			return true;
 		}
 		
-		/**
-		 * Change the order of an org link
-		 * @since Version 3.4
-		 * @param int $org_link_id
-		 * @param string $direction
-		 * @return boolean
-		 */
-		
-		public function changeOrgLinkWeight($org_link_id = false, $direction = false) {
-			throw new Exception(__CLASS__ . "::" . __METHOD__ . " is deprecated");
-			
-			if (!$org_link_id) {
-				throw new Exception("Could not set org link weight - no org link ID given"); 
-				return false;
-			} 
-			
-			if (!$direction) {
-				throw new Exception("Could not set org link weight - no direction given"); 
-				return false;
-			}
-			
-			$query = "SELECT * FROM loco_org_link WHERE id = '".$this->db->real_escape_string($org_link_id)."'"; 
-			
-			if ($rs = $this->db->query($query)) {
-				if ($rs->num_rows == 1) {
-					$row = $rs->fetch_assoc(); 
-					$current_weight = $row['link_weight']; 
-					
-					$loco_id = $row['loco_id']; 
-					$link_type = $row['link_type']; 
-					
-					// Get the other links that match the above criteria
-					$query = "SELECT * FROM loco_org_link WHERE loco_id = '".$this->db->real_escape_string($loco_id)."' AND link_type = '".$this->db->real_escape_string($link_type)."' ORDER BY link_weight DESC"; 
-					
-					if ($rs = $this->db->query($query)) {
-						$links = array(); 
-						
-						$noweight = true;
-						
-						while ($row = $rs->fetch_assoc()) {
-							$links[] = $row; 
-						}
-						
-						foreach ($links as $id => $row) {
-							if ($row['link_weight'] > 0) {
-								$noweight = false;
-								break;
-							}
-						}
-						
-						if ($noweight) {
-							$weight = 1; 
-						} else {
-							$prevweight = 0; 
-							
-							foreach ($links as $id => $row) {
-								if ($row['id'] != $org_link_id) {
-									$prevweight = $row['link_weight']; 
-								}
-								
-								if ($row['id'] == $org_link_id) {
-									break;
-								}
-							}
-							
-							if ($direction == "up" || $direction == "UP") {
-								$weight = $prevweight + 1; 
-							} else {
-								$weight = $current_weight - 1;
-							}
-						}
-						
-						$dataArray = array(); 
-						$dataArray['link_weight'] = $weight; 
-						
-						$where = array(); 
-						$where['id'] = $org_link_id; 
-						
-						$query = $this->db->buildQuery($dataArray, "loco_org_link", $where);
-						
-						if ($direction == "down") {
-							#printArray($query);die;
-						}
-						
-						if ($this->db->query($query)) {
-							return true;
-						} else {
-							throw new Exception($this->db->query); 
-							return false;
-						}
-					} else {
-						throw new Exception($this->db->error); 
-						return false;
-					}
-				} else {
-					throw new Exception("Could not set org link weight - no match found for ID ".$org_link_id); 
-				}
-			} else {
-				throw new Exception($this->db->error); 
-				return false;
-			}
-		}
-		
 		/** 
 		 * Log an event 
 		 * @since Version 3.5
@@ -1810,63 +1700,31 @@
 		 */
 		
 		public function generateDescription() {
+			
 			$bits = array(); 
 			
 			/**
 			 * Built as... by...
 			 */
 			
-			$bits[] = "Built ";
-			
-			if (!empty($this->builders_num)) {
-				$bits[] = sprintf("as %s ", $this->builders_num); 
-			}
-			
-			$bits[] = sprintf("by %s, ", (string) $this->getManufacturer());
+			$bits = Utility\LocomotiveUtility::getDescriptionBits_Manufacturer($this, $bits); 
 			
 			/**
 			 * Process the dates
 			 */
 			
-			$dates = $this->loadDates();
-			$dates = array_reverse($dates);
-			
-			foreach ($dates as $row) {
-				$Date = new Date($row['date_id']);
-				
-				if (!isset($bits['inservice']) && $row['date_type_id'] == 1) {
-					$bits['inservice'] = sprintf("%s entered service %s. ", $this->number, $Date->Date->format("F j, Y"));
-				}
-				
-				if ($row['date_type_id'] == 7) {
-					$bits[] = sprintf("On %s, it was withdrawn for preservation. ", $Date->Date->format("F j, Y"));
-				}
-			}
-			
+			$bits = Utility\LocomotiveUtility::getDescriptionBits_Dates($this, $bits); 
+						
 			/**
 			 * The loco is currently...
 			 */
 			
-			switch ($this->status_id) {
-				case 4: // Preserved - static
-					$bits[] = sprintf("\n%s is preserved statically", $this->number); 
-					break;
-					
-				case 5: // Preserved - operational
-					$bits[] = sprintf("\n%s is preserved in operational condition", $this->number);
-					
-					// Get the latest operator
-					if (!empty($this->operator)) {
-						$bits[] = sprintf(" and can be seen on trains operated by %s", $this->operator);
-					}
-					
-					break;
-				
-				case 9: // Under restoration
-					$bits[] = sprintf("\n%s is currently under restoration.", $this->number);
-					break;
-			}
+			$bits = Utility\LocomotiveUtility::getDescriptionBits_Status($this, $bits); 
 			
+			/**
+			 * Join it all together
+			 */
+						
 			$str = trim(implode("", $bits)); 
 			
 			if (preg_match("/([a-zA-Z0-9]+)/", substr($str, -1))) {
@@ -1874,7 +1732,7 @@
 			}
 			
 			if (substr($str, -1) == ",") {
-				$str = substr($str, 0, strlen($str) - 1) . ".";
+				$str = substr($str, 0, -1) . ".";
 			}
 			
 			return $str;
