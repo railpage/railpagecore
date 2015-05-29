@@ -8,6 +8,7 @@
 	
 	namespace Railpage\Images\Utility;
 	
+	use Railpage\Images\Competition;
 	use Railpage\Images\Image;
 	use Railpage\Images\Images;
 	use Railpage\ContentUtility;
@@ -101,14 +102,8 @@
 		
 		public static function isSubmissionWindowOpen(Competition $Comp) {
 			
-			$Now = new DateTime;
+			return self::compareWindows($Comp, "Submissions");
 			
-			if (!($Comp->SubmissionsDateOpen instanceof DateTime && $Comp->SubmissionsDateOpen <= $Now) || 
-				!($Comp->SubmissionsDateClose instanceof DateTime && $Comp->SubmissionsDateClose >= $Now)) {
-					return false;
-			}
-			
-			return true;
 		}
 		
 		/**
@@ -120,13 +115,31 @@
 		
 		public static function isVotingWindowOpen(Competition $Comp) {
 			
+			return self::compareWindows($Comp, "Voting");
+			
+		}
+		
+		/**
+		 * Compare voting / submission windows to current time
+		 * @since Version 3.9.1
+		 * @param \Railpage\Images\Competition $Comp
+		 * @param string $window
+		 * @return boolean
+		 */
+		
+		private static function compareWindows(Competition $Comp, $window) {
+			
 			$Now = new DateTime;
 			
-			if (!($Comp->VotingDateOpen instanceof DateTime && $Comp->VotingDateOpen <= $Now) || 
-				!($Comp->VotingDateClose instanceof DateTime && $Comp->VotingDateClose >= $Now)) {
+			$open = sprintf("%sDateOpen", $window);
+			$close = sprintf("%sDateClose", $window);
+			
+			if (!($Comp->$open instanceof DateTime && $Comp->$open <= $Now) || 
+				!($Comp->$close instanceof DateTime && $Comp->$close >= $Now)) {
 					return false;
 			}
 			
 			return true;
+			
 		}
 	}
