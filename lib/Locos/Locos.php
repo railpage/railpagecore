@@ -23,6 +23,7 @@
 	use stdClass;
 	use Railpage\AppCore;
 	use Railpage\Module;
+	use Railpage\Debug;
 	use Zend_Db_Expr;
 	
 	require_once(__DIR__ . DIRECTORY_SEPARATOR . "functions.php");

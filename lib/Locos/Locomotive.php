@@ -15,6 +15,7 @@
 	use Railpage\Images\Image;
 	use Railpage\Assets\Asset;
 	use Railpage\Url;
+	use Railpage\Debug;
 	use DateTime;
 	use Exception;
 	use stdClass;
@@ -297,10 +298,7 @@
 		public function __construct($id = NULL, $class_id_or_slug = NULL, $number = NULL) {
 			parent::__construct(); 
 			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
+			$timer = Debug::getTimer();
 			
 			/**
 			 * Record this in the debug log
@@ -323,9 +321,7 @@
 				$this->fetch(); 
 			}
 			
-			if (RP_DEBUG) {
-				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") instantiated in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-			}
+			Debug::logEvent(sprintf("Railpage: %s(%d)", __CLASS__, $this->id), $timer); 
 		}
 		
 		/**

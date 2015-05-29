@@ -13,6 +13,7 @@
 	use Railpage\Module;
 	use Railpage\Locos\Locomotive;
 	use Railpage\Locos\Date;
+	use Railpage\Debug;
 	use DateTime;
 	use Exception;
 	use InvalidArgumentException;
@@ -32,10 +33,8 @@
 			$Database = (new AppCore)->getDatabaseConnection();
 			
 			if (!$row = $Memcached->fetch($Loco->mckey)) {
-				if (RP_DEBUG) {
-					global $site_debug;
-					$debug_timer_start = microtime(true);
-				}
+				
+				$timer = Debug::getTimer(); 
 				
 				$query = "SELECT l.*, s.name AS loco_status, ow.operator_name AS owner_name, op.operator_name AS operator_name
 							FROM loco_unit AS l
@@ -46,13 +45,7 @@
 				
 				$row = $Database->fetchRow($query, $Loco->id);
 				
-				if (RP_DEBUG) {
-					if ($row === false) {
-						$site_debug[] = "Zend_DB: FAILED select loco ID " . $Loco->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-					} else {
-						$site_debug[] = "Zend_DB: SUCCESS select loco ID " . $Loco->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-					}
-				}
+				Debug::logEvent("Zend_DB: Fetch loco ID", $timer); 
 					
 				$Memcached->save($Loco->mckey, $row, strtotime("+1 month")); 
 			}
