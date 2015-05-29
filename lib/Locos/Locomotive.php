@@ -399,6 +399,79 @@
 		}
 		
 		/**
+		 * Populate this object with data returned from Memcached/Redis/DB
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function populate() {
+			$row = Utility\LocomotiveUtility::fetchLocomotive($this); 
+			
+			if (!is_array($row) || count($row) === 0) {
+				throw new Exception("Data for this locomotive could not be retrieved") ;
+			}
+			
+			$lookup = array(
+				"loco_num" => "number",
+				"loco_name" => "name",
+				"loco_gauge_id" => "gauge_id",
+				"loco_status_id" => "status_id",
+				"loco_status" => "status",
+				"class_id" => "class_id",
+				"owner_id" => "owner_id",
+				"owner_name" => "owner",
+				"operator_id" => "operator_id",
+				"operator_name" => "operator",
+				"entered_service" => "entered_service",
+				"withdrawn" => "withdrawal_date",
+				"date_added" => "date_added",
+				"date_modified" => "date_modified",
+				"builders_number" => "builders_num",
+				"photo_id" => "photo_id",
+				"manufacturer_id" => "manufacturer_id"
+			);
+			
+			foreach ($row as $key => $val) {
+				if (isset($lookup[$key])) {
+					$var = $lookup[$key];
+					$this->$var = $val;
+				}
+			}
+			
+			$ints = [ "gauge_id", "status_id", "class_id", "owner_id", "operator_id", "photo_id", "manufacturer_id" ];
+			
+			foreach ($ints as $int) {
+				$this->$int = filter_var($this->$int, FILTER_VALIDATE_INT); 
+			}
+			
+			$this->Class = new LocoClass($this->class_id);
+			$this->class = &$this->Class;
+			$this->flickr_tag = trim(str_replace(" ", "", $this->Class->flickr_tag . "-" . $this->number));
+			
+			$this->gauge_formatted = format_gauge($this->gauge);
+			
+			$this->makeLinks();
+			
+			return $row; 
+		}
+		
+		/**
+		 * Load the URL object
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function makeLinks() {
+			
+			$this->url = new Url(strtolower($this->makeLocoURL($this->Class->slug, $this->number)));
+			$this->url->edit = sprintf("%s?mode=loco.edit&id=%d", $this->Module->url, $this->id);
+			$this->url->sightings = sprintf("%s/sightings", $this->url->url);
+			$this->url->photos = sprintf("%s/photos", $this->url->url);
+			$this->fwlink = $this->url->short;
+			
+		}
+		
+		/**
 		 * Load the locomotive object
 		 * @since Version 3.2
 		 * @version 3.2
@@ -413,204 +486,163 @@
 			
 			$this->mckey = sprintf("railpage:locos.loco_id=%d", $this->id);
 			
-			$row = Utility\LocomotiveUtility::fetchLocomotive($this); 
+			$row = $this->populate(); 
+				
+			/**
+			 * Set the meta data
+			 */
 			
-			if (isset($row) && is_array($row)) {
-				$this->number 		= stripslashes($row['loco_num']); 
-				$this->name			= stripslashes($row['loco_name']);
-				$this->gauge_id		= $row['loco_gauge_id'];
-				$this->status_id 	= $row['loco_status_id']; 
-				$this->status		= $row['loco_status'];
-				$this->class_id 	= $row['class_id']; 
-				$this->owner_id 	= $row['owner_id']; 
-				$this->owner		= $row['owner_name'];
-				$this->operator_id 	= $row['operator_id']; 
-				$this->operator		= $row['operator_name'];
-				$this->entered_service	= $row['entered_service'];
-				$this->withdrawal_date	= $row['withdrawn'];
+			$this->meta = isset($row['meta']) ? json_decode($row['meta'], true) : array(); 
+			
+			// Fetch the gauge data
+			if ($this->gauge = $this->Memcached->fetch(sprintf("railpage:locos.gauge_id=%d", $row['loco_gauge_id']))) {
+				// Do nothing
+			} elseif ($this->db instanceof \sql_db) {
+				$query = "SELECT * FROM loco_gauge WHERE gauge_id = '".$this->db->real_escape_string($row['loco_gauge_id'])."'";
 				
-				$this->date_added		= $row['date_added']; 
-				$this->date_modified	= $row['date_modified'];
-				
-				$this->builders_num		= $row['builders_number'];
-				$this->photo_id			= intval($row['photo_id']);
-				$this->manufacturer_id	= $row['manufacturer_id'];
-				
-				$this->Class 		= new LocoClass($this->class_id);
-				$this->class = &$this->Class;
-				$this->flickr_tag	= trim(str_replace(" ", "", $this->Class->flickr_tag."-".$this->number));
-				
-				$this->gauge_formatted = format_gauge($this->gauge);
-				
-				$this->url = new Url(strtolower($this->makeLocoURL($this->Class->slug, $this->number)));
-				$this->url->edit = sprintf("%s?mode=loco.edit&id=%d", $this->Module->url, $this->id);
-				$this->url->sightings = sprintf("%s/sightings", $this->url->url);
-				$this->url->photos = sprintf("%s/photos", $this->url->url);
-				$this->fwlink = $this->url->short;
-				
-				/**
-				 * Set the meta data
-				 */
-				
-				if (isset($row['meta'])) {
-					$this->meta = json_decode($row['meta'], true); 
-				} else {
-					$this->meta = array(); 
+				if ($rs = $this->db->query($query)) {
+					$this->gauge = $rs->fetch_assoc(); 
+					
+					$this->Memcached->save("rp-locos-gauge-" . $row['loco_gauge_id'], $this->gauge);
 				}
-				
-				// Fetch the gauge data
-				if ($this->gauge = $this->Memcached->fetch(sprintf("railpage:locos.gauge_id=%d", $row['loco_gauge_id']))) {
-					// Do nothing
-				} elseif ($this->db instanceof \sql_db) {
-					$query = "SELECT * FROM loco_gauge WHERE gauge_id = '".$this->db->real_escape_string($row['loco_gauge_id'])."'";
-					
-					if ($rs = $this->db->query($query)) {
-						$this->gauge = $rs->fetch_assoc(); 
-						
-						$this->Memcached->save("rp-locos-gauge-" . $row['loco_gauge_id'], $this->gauge);
-					}
-				} else {
-					$query = "SELECT * FROM loco_gauge WHERE gauge_id = ?";
-					
-					$this->gauge = $this->db->fetchRow($query, $row['loco_gauge_id']);
-					
-					$this->Memcached->save("railpage:locos.gauge_id=" . $row['loco_gauge_id'], $this->gauge, strtotime("+2 months"));
-				}
-				
-				/**
-				 * If an asset ID exists and is greater than 0, create the asset object
-				 */
-				
-				if (isset($row['asset_id']) && $row['asset_id'] > 0) {
-					try {
-						$this->Asset = new Asset($row['asset_id']);
-					} catch (Exception $e) {
-						global $Error; 
-						$Error->save($e); 
-					}
-				}
-				
-				/**
-				 * Get all owners of this locomotive
-				 */
-				
-				try {
-					$this->owners = $this->getOrganisations(1); 
-					
-					if (!empty($this->owner_id) && empty($this->owners)) {
-						$this->addOrganisation($this->owner_id, 1); 
-						
-						// Re-fetch the owners
-						$this->owners = $this->getOrganisations(1); 
-					}
-						
-					reset($this->owners);
-					
-					if (isset($this->owners[0]['organisation_id']) && isset($this->owners[0]['organisation_name'])) {
-						$this->owner_id = $this->owners[0]['organisation_id']; 
-						$this->owner 	= $this->owners[0]['organisation_name']; 
-					} else {
-						$this->owner_id = 0;
-						$this->owner 	= "Unknown";
-					}
-				} catch (Exception $e) {
-					global $Error; 
-					$Error->save($e); 
-				}
-				
-				/**
-				 * Get all operators of this locomotive
-				 */
-				
-				try {
-					$this->operators = $this->getOrganisations(2);
-					
-					if (!empty($this->operator_id) && empty($this->operators)) {
-						$this->addOrganisation($this->operator_id, 2); 
-						
-						// Re-fetch the operators
-						$this->operators = $this->getOrganisations(2);
-					} 
-						
-					reset($this->operators);
-					
-					if (isset($this->operators[0]['organisation_id']) && isset($this->operators[0]['organisation_name'])) {
-						$this->operator_id 	= $this->operators[0]['organisation_id']; 
-						$this->operator 	= $this->operators[0]['organisation_name']; 
-					} else {
-						$this->operator_id 	= 0;
-						$this->operator 	= "Unknown";
-					}
-				} catch (Exception $e) {
-					global $Error; 
-					$Error->save($e); 
-				}
-				
-				/**
-				 * Get the manufacturer
-				 */
-				
-				if (empty($this->manufacturer_id)) {
-					$this->manufacturer_id 	= $this->Class->manufacturer_id;
-					$this->manufacturer 	= $this->Class->manufacturer;
-				} else {
-					try {
-						$builders = $this->listManufacturers(); 
-						
-						if (count($builders['manufacturers'])) {
-							$this->manufacturer = $builders['manufacturers'][$this->manufacturer_id]['manufacturer_name'];
-						}
-					} catch (Exception $e) {
-						// I hate globals, but I don't want to throw an exception here...
-						global $Error; 
-						
-						$Error->save($e);
-					}
-				}
-				
-				/**
-				 * Update the latest owner/operator stored in this row
-				 */
-				
-				$owners 	= $this->getOrganisations(1, 1); 
-				$operators 	= $this->getOrganisations(2, 1); 
-				
-				if (count($owners) && intval(trim($this->owner_id)) != intval(trim($owners[0]['operator_id']))) {
-					if (RP_DEBUG) {
-						global $site_debug; 
-						$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : committing changes to owner for loco ID " . $this->id;
-						$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : Current owner_id: " . $this->owner_id . ", Proposed owner_id: " . $owners[0]['operator_id']; 
-					}
-					
-					$this->owner = $owners[0]['organisation_name']; 
-					$this->owner_id = $owners[0]['operator_id']; 
-					
-					$this->commit(); 
-				}
-				
-				if (count($operators) && intval(trim($this->operator_id)) != intval(trim($operators[0]['operator_id']))) {
-					if (RP_DEBUG) {
-						global $site_debug; 
-						$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : committing changes to operator for loco ID " . $this->id;
-						$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : Current operator_id: " . $this->operator_id . ", Proposed operator_id: " . $owners[0]['operator_id']; 
-					}
-					
-					$this->operator = $operators[0]['organisation_name']; 
-					$this->operator_id = $operators[0]['operator_id']; 
-					
-					$this->commit();
-				}
-				
-				/**
-				 * Set the StatsD namespaces
-				 */
-				
-				$this->StatsD->target->view = sprintf("%s.%d.view", $this->namespace, $this->id);
-				$this->StatsD->target->edit = sprintf("%s.%d.view", $this->namespace, $this->id);
 			} else {
-				throw new Exception("No data found for Loco ID " . $this->id);
-				return false;
+				$query = "SELECT * FROM loco_gauge WHERE gauge_id = ?";
+				
+				$this->gauge = $this->db->fetchRow($query, $row['loco_gauge_id']);
+				
+				$this->Memcached->save("railpage:locos.gauge_id=" . $row['loco_gauge_id'], $this->gauge, strtotime("+2 months"));
 			}
+			
+			/**
+			 * If an asset ID exists and is greater than 0, create the asset object
+			 */
+			
+			if (isset($row['asset_id']) && $row['asset_id'] > 0) {
+				try {
+					$this->Asset = new Asset($row['asset_id']);
+				} catch (Exception $e) {
+					global $Error; 
+					$Error->save($e); 
+				}
+			}
+			
+			/**
+			 * Get all owners of this locomotive
+			 */
+			
+			try {
+				$this->owners = $this->getOrganisations(1); 
+				
+				if (!empty($this->owner_id) && empty($this->owners)) {
+					$this->addOrganisation($this->owner_id, 1); 
+					
+					// Re-fetch the owners
+					$this->owners = $this->getOrganisations(1); 
+				}
+					
+				reset($this->owners);
+				
+				if (isset($this->owners[0]['organisation_id']) && isset($this->owners[0]['organisation_name'])) {
+					$this->owner_id = $this->owners[0]['organisation_id']; 
+					$this->owner 	= $this->owners[0]['organisation_name']; 
+				} else {
+					$this->owner_id = 0;
+					$this->owner 	= "Unknown";
+				}
+			} catch (Exception $e) {
+				global $Error; 
+				$Error->save($e); 
+			}
+			
+			/**
+			 * Get all operators of this locomotive
+			 */
+			
+			try {
+				$this->operators = $this->getOrganisations(2);
+				
+				if (!empty($this->operator_id) && empty($this->operators)) {
+					$this->addOrganisation($this->operator_id, 2); 
+					
+					// Re-fetch the operators
+					$this->operators = $this->getOrganisations(2);
+				} 
+					
+				reset($this->operators);
+				
+				if (isset($this->operators[0]['organisation_id']) && isset($this->operators[0]['organisation_name'])) {
+					$this->operator_id 	= $this->operators[0]['organisation_id']; 
+					$this->operator 	= $this->operators[0]['organisation_name']; 
+				} else {
+					$this->operator_id 	= 0;
+					$this->operator 	= "Unknown";
+				}
+			} catch (Exception $e) {
+				global $Error; 
+				$Error->save($e); 
+			}
+			
+			/**
+			 * Get the manufacturer
+			 */
+			
+			if (empty($this->manufacturer_id)) {
+				$this->manufacturer_id 	= $this->Class->manufacturer_id;
+				$this->manufacturer 	= $this->Class->manufacturer;
+			} else {
+				try {
+					$builders = $this->listManufacturers(); 
+					
+					if (count($builders['manufacturers'])) {
+						$this->manufacturer = $builders['manufacturers'][$this->manufacturer_id]['manufacturer_name'];
+					}
+				} catch (Exception $e) {
+					// I hate globals, but I don't want to throw an exception here...
+					global $Error; 
+					
+					$Error->save($e);
+				}
+			}
+			
+			/**
+			 * Update the latest owner/operator stored in this row
+			 */
+			
+			$owners 	= $this->getOrganisations(1, 1); 
+			$operators 	= $this->getOrganisations(2, 1); 
+			
+			if (count($owners) && intval(trim($this->owner_id)) != intval(trim($owners[0]['operator_id']))) {
+				if (RP_DEBUG) {
+					global $site_debug; 
+					$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : committing changes to owner for loco ID " . $this->id;
+					$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : Current owner_id: " . $this->owner_id . ", Proposed owner_id: " . $owners[0]['operator_id']; 
+				}
+				
+				$this->owner = $owners[0]['organisation_name']; 
+				$this->owner_id = $owners[0]['operator_id']; 
+				
+				$this->commit(); 
+			}
+			
+			if (count($operators) && intval(trim($this->operator_id)) != intval(trim($operators[0]['operator_id']))) {
+				if (RP_DEBUG) {
+					global $site_debug; 
+					$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : committing changes to operator for loco ID " . $this->id;
+					$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : Current operator_id: " . $this->operator_id . ", Proposed operator_id: " . $owners[0]['operator_id']; 
+				}
+				
+				$this->operator = $operators[0]['organisation_name']; 
+				$this->operator_id = $operators[0]['operator_id']; 
+				
+				$this->commit();
+			}
+			
+			/**
+			 * Set the StatsD namespaces
+			 */
+			
+			$this->StatsD->target->view = sprintf("%s.%d.view", $this->namespace, $this->id);
+			$this->StatsD->target->edit = sprintf("%s.%d.view", $this->namespace, $this->id);
 		}
 		
 		/**
@@ -714,6 +746,8 @@
 					$site_debug[] = "Zend_DB: SUCCESS " . $verb . " loco ID " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
 				}
 			}
+			
+			$this->makeLinks(); 
 			
 			return true;
 		}
