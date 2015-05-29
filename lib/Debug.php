@@ -54,7 +54,7 @@
 			}
 			
 			if (filter_var($timer, FILTER_VALIDATE_FLOAT)) {
-				$text = sprintf("%s - completed in %ss", round(microtime(true) - $debug_timer_start, 5));
+				$text = sprintf("%s - completed in %ss", $text, round(microtime(true) - $timer, 5));
 			}
 			
 			self::$log[] = $text;

@@ -71,16 +71,34 @@
 				$this->id = $this->db->fetchOne($query, $id); 
 			}
 			
-			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+			$this->populate(); 
+			
+		}
+		
+		/**
+		 * Populate this object
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function populate() {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
+				return;
+			}
+			
+			$key = sprintf("railpage:locos.gauge_id=%d", $this->id);
+			 
+			if (!$row = $this->Memcached->fetch($key)) {
 				$query = "SELECT * FROM loco_gauge WHERE gauge_id = ?";
 				
 				$row = $this->db->fetchRow($query, $this->id); 
-				
-				$this->name = $row['gauge_name'];
-				$this->width_metric = $row['gauge_metric'];
-				$this->width_imperial = $row['gauge_imperial'];
-				$this->slug = isset($row['slug']) && !empty($row['slug']) ? $row['slug'] : $this->createSlug(); 
+				$this->Memcached->save($key, $row); 
 			}
+			
+			$this->name = $row['gauge_name'];
+			$this->width_metric = $row['gauge_metric'];
+			$this->width_imperial = $row['gauge_imperial'];
+			$this->slug = isset($row['slug']) && !empty($row['slug']) ? $row['slug'] : $this->createSlug(); 
 		}
 		
 		/**

@@ -352,6 +352,9 @@
 		 */
 		
 		private function getLocoId($class, $number) {
+			
+			$timer = Debug::getTimer();
+			
 			if (!filter_var($class, FILTER_VALIDATE_INT) && is_string($class)) {
 				// Assume Zend_DB
 				$slug_mckey = sprintf("railpage:loco.id;fromslug=%s;v2", $class);
@@ -378,7 +381,7 @@
 				if (preg_match("/_/", $number)) {
 					$params[1] = str_replace("_", " ", $number);
 				} else {
-					if (strlen($number) == 5 && preg_match("/([a-zA-Z]{1})([0-9]{4})/", $number)) {
+					if (strlen($number) === 5 && preg_match("/([a-zA-Z]{1})([0-9]{4})/", $number)) {
 						$params[] = sprintf("%s %s", substr($number, 0, 2), substr($number, 2, 3));
 						$query = "SELECT loco_id FROM loco_unit WHERE class_id = ? AND (loco_num = ? OR loco_num = ?)";
 					}
@@ -392,6 +395,8 @@
 			if (filter_var($loco_id, FILTER_VALIDATE_INT)) {
 				$this->id = $loco_id;
 			}
+			
+			Debug::logEvent(sprintf("Railpage: %s()", __METHOD__), $timer); 
 		}
 		
 		/**
@@ -401,6 +406,9 @@
 		 */
 		
 		private function populate() {
+			
+			$timer = Debug::getTimer();
+			
 			$row = Utility\LocomotiveUtility::fetchLocomotive($this); 
 			
 			if (!is_array($row) || count($row) === 0) {
@@ -448,6 +456,8 @@
 			
 			$this->makeLinks();
 			
+			Debug::logEvent(sprintf("Railpage: %s()", __METHOD__), $timer); 
+			
 			return $row; 
 		}
 		
@@ -480,6 +490,8 @@
 				return false;
 			}
 			
+			$timer = Debug::getTimer();
+			
 			$this->mckey = sprintf("railpage:locos.loco_id=%d", $this->id);
 			
 			$row = $this->populate(); 
@@ -490,24 +502,11 @@
 			
 			$this->meta = isset($row['meta']) ? json_decode($row['meta'], true) : array(); 
 			
-			// Fetch the gauge data
-			if ($this->gauge = $this->Memcached->fetch(sprintf("railpage:locos.gauge_id=%d", $row['loco_gauge_id']))) {
-				// Do nothing
-			} elseif ($this->db instanceof \sql_db) {
-				$query = "SELECT * FROM loco_gauge WHERE gauge_id = '".$this->db->real_escape_string($row['loco_gauge_id'])."'";
-				
-				if ($rs = $this->db->query($query)) {
-					$this->gauge = $rs->fetch_assoc(); 
-					
-					$this->Memcached->save("rp-locos-gauge-" . $row['loco_gauge_id'], $this->gauge);
-				}
-			} else {
-				$query = "SELECT * FROM loco_gauge WHERE gauge_id = ?";
-				
-				$this->gauge = $this->db->fetchRow($query, $row['loco_gauge_id']);
-				
-				$this->Memcached->save("railpage:locos.gauge_id=" . $row['loco_gauge_id'], $this->gauge, strtotime("+2 months"));
-			}
+			/**
+			 * Fetch a nicely formatted gauge
+			 */
+			
+			$this->setGauge(new Gauge($row['loco_gauge_id'])); 
 			
 			/**
 			 * If an asset ID exists and is greater than 0, create the asset object
@@ -608,11 +607,8 @@
 			$operators 	= $this->getOrganisations(2, 1); 
 			
 			if (count($owners) && intval(trim($this->owner_id)) != intval(trim($owners[0]['operator_id']))) {
-				if (RP_DEBUG) {
-					global $site_debug; 
-					$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : committing changes to owner for loco ID " . $this->id;
-					$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : Current owner_id: " . $this->owner_id . ", Proposed owner_id: " . $owners[0]['operator_id']; 
-				}
+				Debug::logEvent(__METHOD__ . "() : committing changes to owner for loco ID " . $this->id);
+				Debug::logEvent(__METHOD__ . "() : Current owner_id: " . $this->owner_id . ", Proposed owner_id: " . $owners[0]['operator_id']); 
 				
 				$this->owner = $owners[0]['organisation_name']; 
 				$this->owner_id = $owners[0]['operator_id']; 
@@ -621,11 +617,8 @@
 			}
 			
 			if (count($operators) && intval(trim($this->operator_id)) != intval(trim($operators[0]['operator_id']))) {
-				if (RP_DEBUG) {
-					global $site_debug; 
-					$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : committing changes to operator for loco ID " . $this->id;
-					$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : Current operator_id: " . $this->operator_id . ", Proposed operator_id: " . $owners[0]['operator_id']; 
-				}
+				Debug::logEvent(__METHOD__ . "() : committing changes to operator for loco ID " . $this->id);
+				Debug::logEvent(__METHOD__ . "() : Current operator_id: " . $this->operator_id . ", Proposed operator_id: " . $owners[0]['operator_id']); 
 				
 				$this->operator = $operators[0]['organisation_name']; 
 				$this->operator_id = $operators[0]['operator_id']; 
@@ -639,6 +632,8 @@
 			
 			$this->StatsD->target->view = sprintf("%s.%d.view", $this->namespace, $this->id);
 			$this->StatsD->target->edit = sprintf("%s.%d.view", $this->namespace, $this->id);
+			
+			Debug::logEvent(sprintf("Railpage: %s()", __METHOD__), $timer); 
 		}
 		
 		/**
@@ -710,10 +705,7 @@
 		
 		public function commit() {
 			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
+			$timer = Debug::getTimer();
 			
 			$this->validate();
 			
@@ -735,13 +727,7 @@
 				$rs = $this->db->update("loco_unit", $data, $where); 
 			}
 			
-			if (RP_DEBUG) {
-				if ($rs === false) {
-					$site_debug[] = "Zend_DB: FAILED " . $verb . " loco ID " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-				} else {
-					$site_debug[] = "Zend_DB: SUCCESS " . $verb . " loco ID " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-				}
-			}
+			Debug::logEvent("Zend_DB: commit loco ID " . $this->id, $timer); 
 			
 			$this->makeLinks(); 
 			
@@ -902,16 +888,16 @@
 			$return = array();
 			
 			foreach ($this->db->fetchAll($query, array($this->id, $this->id)) as $row) {
-				if ($row['loco_id_a'] == $this->id) {
-					if ($row['link_type_id'] == RP_LOCO_RENUMBERED) {
+				if ($row['loco_id_a'] === $this->id) {
+					if ($row['link_type_id'] === RP_LOCO_RENUMBERED) {
 						$return[$row['link_id']][$row['loco_id_b']] = "Renumbered to";
-					} elseif ($row['link_type_id'] == RP_LOCO_REBUILT) {
+					} elseif ($row['link_type_id'] === RP_LOCO_REBUILT) {
 						$return[$row['link_id']][$row['loco_id_b']] = "Rebuilt to";
 					}
 				} else {
-					if ($row['link_type_id'] == RP_LOCO_RENUMBERED) {
+					if ($row['link_type_id'] === RP_LOCO_RENUMBERED) {
 						$return[$row['link_id']][$row['loco_id_a']] = "Renumbered from";
-					} elseif ($row['link_type_id'] == RP_LOCO_REBUILT) {
+					} elseif ($row['link_type_id'] === RP_LOCO_REBUILT) {
 						$return[$row['link_id']][$row['loco_id_a']] = "Rebuilt from";
 					}
 				}
@@ -1258,7 +1244,7 @@
 			$Event->value = $this->id;
 			$Event->module_name = "locos";
 			
-			if ($title == "Photo tagged") {
+			if ($title === "Photo tagged") {
 				$Event->module_name = "flickr";
 			}
 			
@@ -1375,7 +1361,7 @@
 			 * Handle UTF8 errors
 			 */
 			
-			if (!$meta && json_last_error() == JSON_ERROR_UTF8) {
+			if (!$meta && json_last_error() === JSON_ERROR_UTF8) {
 				// Loop through meta and re-encode
 				
 				foreach ($data['meta'] as $key => $val) {
@@ -1408,17 +1394,17 @@
 		public function next() {
 			$members = $this->Class->members(); 
 			
-			if ($members['stat'] == "ok") {
+			if ($members['stat'] === "ok") {
 				// Get the previous loco in this class
 				
 				$break = false;
 				
 				foreach ($members['locos'] as $row) {
-					if ($break == true) {
+					if ($break === true) {
 						return new Locomotive($row['loco_id']);
 					}
 					
-					if ($row['loco_id'] == $this->id) {
+					if ($row['loco_id'] === $this->id) {
 						$break = true;
 					}
 				}
@@ -1435,17 +1421,17 @@
 			$members = $this->Class->members(); 
 			
 			// Get the next loco in this class
-			if ($members['stat'] == "ok") {
+			if ($members['stat'] === "ok") {
 				
 				$break = false;
 				
 				$members['locos'] = array_reverse($members['locos']);
 				foreach ($members['locos'] as $row) {
-					if ($break == true) {
+					if ($break === true) {
 						return new Locomotive($row['loco_id']);
 					}
 					
-					if ($row['loco_id'] == $this->id) {
+					if ($row['loco_id'] === $this->id) {
 						$break = true;
 					}
 				}
@@ -1476,7 +1462,7 @@
 			 * $Image is a Flickr image
 			 */
 			
-			if ($Image instanceof Image && $Image->provider == "flickr") {
+			if ($Image instanceof Image && $Image->provider === "flickr") {
 				$this->photo_id = $Image->photo_id;
 				$this->commit(); 
 				
@@ -1761,7 +1747,7 @@
 				$str .= ".";
 			}
 			
-			if (substr($str, -1) == ",") {
+			if (substr($str, -1) === ",") {
 				$str = substr($str, 0, -1) . ".";
 			}
 			
