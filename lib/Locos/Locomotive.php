@@ -311,7 +311,7 @@
 			$this->bootstrap(); 
 			
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
-				$this->id = $id; 
+				$this->id = filter_var($id, FILTER_VALIDATE_INT);
 			} else {
 				$this->getLocoId($class_id_or_slug, $number); 
 			}
@@ -393,7 +393,7 @@
 			}
 			
 			if (filter_var($loco_id, FILTER_VALIDATE_INT)) {
-				$this->id = $loco_id;
+				$this->id = filter_var($loco_id, FILTER_VALIDATE_INT);
 			}
 			
 			Debug::logEvent(sprintf("Railpage: %s()", __METHOD__), $timer); 
