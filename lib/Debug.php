@@ -30,7 +30,7 @@
 		 * @return float
 		 */
 		
-		public static function startTimer() {
+		public static function getTimer() {
 			
 			if (!defined("RP_DEBUG") || !RP_DEBUG) {
 				return; 
