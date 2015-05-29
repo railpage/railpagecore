@@ -229,23 +229,15 @@
 			 * Get the UTM email campaign link
 			 */
 			
-			if (function_exists("http_build_str")) {
-				$url = http_build_str($parts, $this->url->canonical);
-			} else {
-				if (strpos($this->url->canonical, "?") !== false) {
-					$joiner = "&";
-				} else {
-					$joiner = "?";
-				}
-				
-				$parts = array(
-					"utm_medium" => "email",
-					"utm_source" => "Newsletter",
-					"utm_campaign" => str_replace(" ", "+", $this->title)
-				);
-				
-				$url = $this->url->canonical . $joiner . http_build_query($parts);
-			}
+			$joiner = strpos($this->url->canonical, "?") !== false ? "&" : "?";
+			
+			$parts = array(
+				"utm_medium" => "email",
+				"utm_source" => "Newsletter",
+				"utm_campaign" => str_replace(" ", "+", $this->title)
+			);
+			
+			$url = $this->url->canonical . $joiner . http_build_query($parts);
 			
 			$this->url->email = $url;
 		}
@@ -1193,7 +1185,7 @@
 			}
 				
 			$body = sprintf("Hi [username],\n\nWe wanted to let you know that the <a href='%s'>%s</a> photo competition is open for voting until %s.\n\nYou've received this email because you've participated in a previous photo competition.\n\nThanks\nThe Railpage team.",
-							$this->url->email, $this->title, $this->SubmissionsDateClose->format("F jS"));
+							$this->url->email, $this->title, $this->VotingDateClose->format("F jS"));
 			
 			$notificationOptions = array(
 				"flag" => __FUNCTION__, 
