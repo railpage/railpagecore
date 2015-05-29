@@ -35,6 +35,6 @@
 					break;
 			}
 			
-			return $row['meta']['url'];
+			return isset($row['meta']['url']) ? $row['meta']['url'] : "";
 		}
 	}

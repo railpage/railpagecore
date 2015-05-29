@@ -21,6 +21,7 @@
 	use Railpage\Forums\Forum;
 	use Railpage\Forums\Forums;
 	use Railpage\Forums\Index;
+	use Railpage\ContentUtility;
 	
 	use Railpage\Users\Timeline\Utility\Grammar;
 	
@@ -105,10 +106,9 @@
 					// Set their timezone
 					$row['timestamp']->setTimezone(new DateTimeZone($this->User->timezone));
 					
-					$relative_cutoff = new DateTime("12 hours ago", new DateTimeZone($this->User->timezone));
-					
-					$moments_ago = new DateTime("60 seconds ago", new DateTimeZone($this->User->timezone)); 
-					$minutes_ago = new DateTime("60 minutes ago", new DateTimeZone($this->User->timezone));
+					#$relative_cutoff = new DateTime("12 hours ago", new DateTimeZone($this->User->timezone));
+					#$moments_ago = new DateTime("60 seconds ago", new DateTimeZone($this->User->timezone)); 
+					#$minutes_ago = new DateTime("60 minutes ago", new DateTimeZone($this->User->timezone));
 					
 					if (stristr($row['title'], "loco") && empty($row['module'])) {
 						$row['module'] = "locos";
@@ -137,19 +137,7 @@
 					 * Alter the object if needed
 					 */
 					
-					if ($row['module'] == "locos" && $row['event']['object'] == "class") {
-						$row['event']['object'] = "locomotive class";
-						
-						if ($row['event']['action'] == "modified") {
-							unset($row['event']['preposition']);
-							unset($row['event']['article']);
-							unset($row['event']['object']);
-						}
-					}
-					
-					if (isset($row['event']['object']) && $row['module'] == "locos" && $row['event']['object'] == "loco photo") {
-						$row['event']['object'] = "cover photo";
-					}
+					$row = Timeline\Utility\General::formatObject($row);
 					
 					/**
 					 * Set the module namespace
@@ -174,95 +162,19 @@
 					 * Compact it all together and create a succinct message
 					 */
 					
-					foreach ($row['event'] as $k => $v) {
-						if (empty($v)) {
-							unset($row['event'][$k]);
-						}
-					}
+					$row['action'] = Timeline\Utility\General::compactEvents($row); 
 					
-					$row['action'] = implode(" ", $row['event']);
+					/**
+					 * Create the timestamp
+					 */
 					
-					
-					if ($row['timestamp'] > $moments_ago) {
-						$row['timestamp_nice'] = "moments ago"; 
-					} elseif ($row['timestamp'] > $minutes_ago) {
-						$diff = $row['timestamp']->diff($minutes_ago);
-						$row['timestamp_nice'] = $diff->format("%s minutes ago");
-					} elseif ($row['timestamp'] > $relative_cutoff) {
-						$diff = $row['timestamp']->diff($relative_cutoff);
-						$row['timestamp_nice'] = $diff->format("About %s hours ago");
-					} else {
-						$row['timestamp_nice'] = $row['timestamp']->format("d/m/Y H:i"); 
-					}
-					
-					$row['timestamp_nice'] = relative_date($row['timestamp']->getTimestamp());
+					$row['timestamp_nice'] = ContentUtility::relativeTime($row['timestamp']);
 					
 					/**
 					 * Determine the icon
 					 */
 					
-					if (!isset($row['glyphicon'])) {
-						$row['glyphicon'] = "";
-					}
-					
-					if (isset($row['event']['object'])) {
-						switch (strtolower($row['event']['object'])) {
-							case "photo" :
-								$row['glyphicon'] = "picture";
-								break;
-								
-							case "cover photo" :
-								$row['glyphicon'] = "picture";
-								break;
-						}
-					}
-					
-					switch (strtolower($row['event']['action'])) {
-						case "edited" : 
-							$row['glyphicon'] = "pencil";
-							break;
-						
-						case "modified" : 
-							$row['glyphicon'] = "pencil";
-							break;
-						
-						case "added" : 
-							$row['glyphicon'] = "plus";
-							break;
-						
-						case "created" : 
-							$row['glyphicon'] = "plus";
-							break;
-							
-						case "tagged" : 
-							$row['glyphicon'] = "tag";
-							break;
-							
-						case "linked" : 
-							$row['glyphicon'] = "link";
-							break;
-							
-						case "re-ordered" : 
-							$row['glyphicon'] = "random";
-							break;
-							
-						case "removed" : 
-							$row['glyphicon'] = "minus";
-							break;
-							
-						case "commented" : 
-							$row['glyphicon'] = "comment";
-							break;
-						
-					}
-					
-					if (isset($row['event']['object'])) {
-						switch (strtolower($row['event']['object'])) {
-							case "sighting" :
-								$row['glyphicon'] = "eye-open";
-								break;
-						}
-					}
+					$row['glyphicon'] = Timeline\Utility\General::getIcon($row); 
 					
 					$timeline['timeline'][$key] = $row;
 				}

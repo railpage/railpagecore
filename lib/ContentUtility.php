@@ -9,6 +9,7 @@
 	namespace Railpage;
 	
 	use Railpage\Url;
+	use DateTime;
 	use Exception;
 	use InvalidArgumentException;
 	
@@ -57,5 +58,73 @@
 			}
 			
 			return $text;
+		}
+		
+		/**
+		 * Take a DateTime instance, or unix timestamp, and convert it to a relative time (eg x minutes ago)
+		 * @since Version 3.9.1
+		 * @return string
+		 * @param \DateTime|int $timestamp
+		 * @param \DateTime|int $now
+		 * @param string $format
+		 */
+		
+		static public function relativeTime($timestamp, $now = false, $format = false) {
+			if ($timestamp instanceof DateTime) {
+				$timestamp = $timestamp->getTimestamp(); 
+			}
+			
+			if (!ctype_digit($timestamp)) {
+				$timestamp = strtotime($timestamp);
+			}
+			
+			if ($now === false) {
+				$now = time();
+			}
+			
+			$diff = $now - $timestamp;
+			
+			if ($diff === 0) {
+				return 'now';
+			}
+			
+			if ($diff > 0) {
+				$day_diff = floor($diff / 86400);
+				if ($day_diff == 0) {
+					if ($diff < 60) return 'just now';
+					if ($diff < 120) return 'a moment ago';
+					if ($diff < 3600) return floor($diff / 60) . ' minutes ago';
+					if ($diff < 7200) return '1 hour ago';
+					if ($diff < 86400) return floor($diff / 3600) . ' hours ago';
+				}
+				
+				if ($format) {
+					return date($format, $timestamp);
+				} 
+				
+				if ($day_diff == 1) return 'Yesterday';
+				if ($day_diff < 7) return $day_diff . ' days ago';
+				if ($day_diff < 31) return ceil($day_diff / 7) . ' weeks ago';
+				if ($day_diff < 60) return 'last month';
+				return date('F Y', $timestamp);
+			}
+			
+			$diff = abs($diff);
+			$day_diff = floor($diff / 86400);
+			
+			if ($day_diff == 0) {
+				if ($diff < 120) return 'in a minute';
+				if ($diff < 3600) return 'in ' . floor($diff / 60) . ' minutes';
+				if ($diff < 7200) return 'in an hour';
+				if ($diff < 86400) return 'in ' . floor($diff / 3600) . ' hours';
+			}
+			
+			if ($day_diff == 1) return 'Tomorrow';
+			if ($day_diff < 4) return date('l', $timestamp);
+			if ($day_diff < 7 + (7 - date('w'))) return 'next week';
+			if (ceil($day_diff / 7) < 4) return 'in ' . ceil($day_diff / 7) . ' weeks';
+			if (date('n', $timestamp) == date('n') + 1) return 'next month';
+			return date('F Y', $timestamp);
+
 		}
 	}
