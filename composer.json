@@ -68,6 +68,7 @@
 			"Railpage\\Locations\\" : "lib/Locations/",
 			"Railpage\\Locos\\" : "lib/Locos/",
 			"Railpage\\Locos\\Liveries\\" : "lib/Locos/Liveries/",
+			"Railpage\\Locos\\Utility\\" : "lib/Locos/Utility/",
 			"Railpage\\Modules\\" : "lib/Modules/",
 			"Railpage\\News\\" : "lib/News/",
 			"Railpage\\Organisations\\" : "lib/Organisations/",

@@ -310,6 +310,31 @@
 				debug_recordInstance(__CLASS__);
 			}
 			
+			$this->bootstrap(); 
+			
+			if (filter_var($id, FILTER_VALIDATE_INT)) {
+				$this->id = $id; 
+			} else {
+				$this->getLocoId($class_id_or_slug, $number); 
+			}
+			
+			// Load the loco object
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$this->fetch(); 
+			}
+			
+			if (RP_DEBUG) {
+				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") instantiated in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+			}
+		}
+		
+		/**
+		 * Bootstrap this class
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function bootstrap() {
 			$this->namespace = sprintf("%s.%s", $this->Module->namespace, "loco");
 			
 			/**
@@ -320,69 +345,56 @@
 			$this->Templates->view = "loco";
 			$this->Templates->edit = "loco.edit";
 			$this->Templates->sightings = "loco.sightings";
-			
-			if (filter_var($id, FILTER_VALIDATE_INT)) {
-				$this->id = $id; 
-			}
-			
-			if ((is_null($id) || $id == false) && !is_null($number)) {
-				if (!filter_var($class_id_or_slug, FILTER_VALIDATE_INT) && is_string($class_id_or_slug)) {
-					// Assume Zend_DB
-					$slug_mckey = sprintf("railpage:loco.id;fromslug=%s;v2", $class_id_or_slug);
-					
-					if ($mcresult = $this->Memcached->fetch($slug_mckey)) {
-						$class_id_or_slug = $mcresult;
-					} else {
-						$class_id_or_slug = $this->db->fetchOne("SELECT id FROM loco_class WHERE slug = ?", $class_id_or_slug); 
-						
-						$this->Memcached->save($slug_mckey, $class_id_or_slug, strtotime("+48 hours"));
-					}
-				}
+		}
+		
+		/**
+		 * Get the ID of this locomotive from class and loco number
+		 * @since Version 3.9.1
+		 * @param string $class
+		 * @param string $number
+		 * @return void
+		 */
+		
+		private function getLocoId($class, $number) {
+			if (!filter_var($class, FILTER_VALIDATE_INT) && is_string($class)) {
+				// Assume Zend_DB
+				$slug_mckey = sprintf("railpage:loco.id;fromslug=%s;v2", $class);
 				
-				// We are searching by loco number - we need to find it first
-				if ($this->db instanceof \sql_db) {
-					$query = "SELECT loco_id FROM loco_unit WHERE class_id = ".$this->db->real_escape_string($class_id_or_slug)." AND loco_num = '".$this->db->real_escape_string($number)."'"; 
-				
-					if ($rs = $this->db->query($query)) {
-						$row = $rs->fetch_assoc(); 
-						
-						$this->id = $row['loco_id'];
-					}
+				if ($mcresult = $this->Memcached->fetch($slug_mckey)) {
+					$class = $mcresult;
 				} else {
-					if (!$this->id = $this->Memcached->fetch(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id_or_slug, $number))) {
-						
-						$params = array(
-							$class_id_or_slug,
-							$number
-						);
-						
-						$query = "SELECT loco_id FROM loco_unit WHERE class_id = ? AND loco_num = ?";
-						
-						if (preg_match("/_/", $number)) {
-							$params[1] = str_replace("_", " ", $number);
-						} else {
-							if (strlen($number) == 5 && preg_match("/([a-zA-Z]{1})([0-9]{4})/", $number)) {
-								$params[] = sprintf("%s %s", substr($number, 0, 2), substr($number, 2, 3));
-								$query = "SELECT loco_id FROM loco_unit WHERE class_id = ? AND (loco_num = ? OR loco_num = ?)";
-							}
-						}
-						
-						$this->id = $this->db->fetchOne($query, $params);
-						
-						$this->Memcached->save(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id_or_slug, $number), $this->id, strtotime("+1 month"));
+					$class = $this->db->fetchOne("SELECT id FROM loco_class WHERE slug = ?", $class); 
+					
+					$this->Memcached->save($slug_mckey, $class, strtotime("+48 hours"));
+				}
+			}
+			
+			// We are searching by loco number - we need to find it first
+			if (!$loco_id = $this->Memcached->fetch(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class, $number))) {
+				
+				$params = array(
+					$class,
+					$number
+				);
+				
+				$query = "SELECT loco_id FROM loco_unit WHERE class_id = ? AND loco_num = ?";
+				
+				if (preg_match("/_/", $number)) {
+					$params[1] = str_replace("_", " ", $number);
+				} else {
+					if (strlen($number) == 5 && preg_match("/([a-zA-Z]{1})([0-9]{4})/", $number)) {
+						$params[] = sprintf("%s %s", substr($number, 0, 2), substr($number, 2, 3));
+						$query = "SELECT loco_id FROM loco_unit WHERE class_id = ? AND (loco_num = ? OR loco_num = ?)";
 					}
 				}
-			} else {
-				$this->id = $id;
+				
+				$loco_id = $this->db->fetchOne($query, $params);
+				
+				$this->Memcached->save(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class, $number), $loco_id, strtotime("+1 month"));
 			}
 			
-			// Load the loco object
-			if (!empty($this->id)) {
-				$this->fetch(); 
-			}
-			
-			if (RP_DEBUG) {
-				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") instantiated in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+			if (filter_var($loco_id, FILTER_VALIDATE_INT)) {
+				$this->id = $loco_id;
 			}
 		}
 		
@@ -394,54 +406,14 @@
 		 */
 		
 		public function fetch() {
-			if (!$this->id) {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				throw new Exception("Cannot load loco object - loco ID not provided");
 				return false;
 			}
 			
 			$this->mckey = sprintf("railpage:locos.loco_id=%d", $this->id);
-			#deleteMemcacheObject($this->mckey);
 			
-			if ($row = $this->Memcached->fetch($this->mckey)) {
-				// Do nothing
-			} elseif ($this->db instanceof \sql_db) {
-				$query = "SELECT l.*, s.name AS loco_status, ow.operator_name AS owner_name, op.operator_name AS operator_name
-							FROM loco_unit AS l
-							LEFT JOIN loco_status AS s ON l.loco_status_id = s.id
-							LEFT JOIN operators AS ow ON ow.operator_id = l.owner_id
-							LEFT JOIN operators AS op ON op.operator_id = l.operator_id
-							WHERE l.loco_id = ".$this->id;
-				
-				if ($rs = $this->db->query($query)) {
-					$row = $rs->fetch_assoc(); 
-					
-					$this->Memcached->save($this->mckey, $row, strtotime("+1 week")); 
-				}
-			} else {
-				if (RP_DEBUG) {
-					global $site_debug;
-					$debug_timer_start = microtime(true);
-				}
-				
-				$query = "SELECT l.*, s.name AS loco_status, ow.operator_name AS owner_name, op.operator_name AS operator_name
-							FROM loco_unit AS l
-							LEFT JOIN loco_status AS s ON l.loco_status_id = s.id
-							LEFT JOIN operators AS ow ON ow.operator_id = l.owner_id
-							LEFT JOIN operators AS op ON op.operator_id = l.operator_id
-							WHERE l.loco_id = ?";
-				
-				$row = $this->db->fetchRow($query, $this->id);
-				
-				if (RP_DEBUG) {
-					if ($row === false) {
-						$site_debug[] = "Zend_DB: FAILED select loco ID " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-					} else {
-						$site_debug[] = "Zend_DB: SUCCESS select loco ID " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-					}
-				}
-					
-				$this->Memcached->save($this->mckey, $row, strtotime("+1 month")); 
-			}
+			$row = Utility\LocomotiveUtility::fetchLocomotive($this); 
 			
 			if (isset($row) && is_array($row)) {
 				$this->number 		= stripslashes($row['loco_num']); 
@@ -630,41 +602,6 @@
 				}
 				
 				/**
-				 * Populate the list of liveries
-				 */
-				
-				/*
-				foreach ($this->db->fetchAll("SELECT lu.livery_id FROM loco_unit_livery AS lu LEFT JOIN loco_livery AS li ON lu.livery_id = li.livery_id WHERE lu.loco_id = ? ORDER BY li.livery", $this->id) as $row) {
-					$Livery = new Livery($row['livery_id']);
-					
-					$livery = array(
-						"id" => $Livery->id,
-						"name" => $Livery->name,
-						"tag" => $Livery->tag,
-						"country" => array(
-							"code" => $Livery->country,
-						),
-						"region" => array(
-							"code" => $Livery->region
-						)
-					);
-					
-					if ($Livery->Image instanceof \Railpage\Images\Image) {
-						$livery['image'] = array(
-							"id" => $Livery->Image->id,
-							"title" => $Livery->Image->title,
-							"description" => $Livery->Image->description,
-							"provider" => $Livery->Image->provider,
-							"photo_id" => $Livery->Image->photo_id,
-							"sizes" => $Livery->Image->sizes,
-						);
-					}
-					
-					$this->liveries[] = $livery;
-				}
-				*/
-				
-				/**
 				 * Set the StatsD namespaces
 				 */
 				
@@ -733,108 +670,59 @@
 				$debug_timer_start = microtime(true);
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$dataArray = array();
-				$dataArray['loco_num'] 			= $this->db->real_escape_string($this->number);
-				$dataArray['loco_gauge_id'] 	= $this->db->real_escape_string($this->gauge_id);
-				$dataArray['loco_status_id'] 	= $this->db->real_escape_string($this->status_id);
-				$dataArray['class_id'] 			= $this->db->real_escape_string($this->class_id);
-				$dataArray['owner_id'] 			= $this->db->real_escape_string($this->owner_id); 
-				$dataArray['operator_id'] 		= $this->db->real_escape_string($this->operator_id); 
-				$dataArray['entered_service'] 	= $this->entered_service;
-				$dataArray['withdrawn'] 		= $this->withdrawal_date;
-				$dataArray['builders_number']	= $this->builders_num; 
-				$dataArray['photo_id']			= $this->db->real_escape_string($this->photo_id);
-				$dataArray['manufacturer_id']	= $this->db->real_escape_string($this->manufacturer_id);
-				$dataArray['loco_name']			= $this->db->real_escape_string($this->name);
-				$dataArray['meta'] = $this->db->real_escape_string(json_encode($this->meta));
-				
-				if ($this->Asset instanceof Asset) {
-					$dataArray['asset_id'] = $this->db->real_escape_string($this->Asset->id);
-				} else {
-					$dataArray['asset_id'] = 0;
-				}
-				
-				if (empty($this->date_added)) {
-					$dataArray['date_added'] = time(); 
-				} else {
-					$dataArray['date_modified'] = time(); 
-				}
-				
-				if (!empty($this->id)) {
-					$where = array(); 
-					$where['loco_id'] = $this->id;
-					
-					$query = $this->db->buildQuery($dataArray, "loco_unit", $where); 
-				} else {
-					$query = $this->db->buildQuery($dataArray, "loco_unit");
-				}
-				
-				if ($rs = $this->db->query($query)) {
-					if (!$this->id) {
-						$this->id = $this->db->insert_id;
-					}
-					
-					return $this->id;
-				} else {
-					throw new Exception("Could create / edit loco number ".$this->number."\n".$this->db->error."\nQuery: ".$query);
-					return false;
-				}
+			$data = array(
+				"loco_num" => $this->number,
+				"loco_gauge_id" => $this->gauge_id,
+				"loco_status_id" => $this->status_id,
+				"class_id" => $this->class_id,
+				"owner_id" => empty($this->owner_id) ? 0 : $this->owner_id,
+				"operator_id" => empty($this->operator_id) ? 0 : $this->operator_id,
+				"entered_service" => empty($this->entered_service) ? "" : $this->entered_service,
+				"withdrawn" => empty($this->withdrawal_date) ? "" : $this->withdrawal_date,
+				"builders_number" => empty($this->builders_num) ? "" : $this->builders_num,
+				"photo_id" => empty($this->photo_id) ? 0 : $this->photo_id,
+				"manufacturer_id" => empty($this->manufacturer_id) ? 0 : $this->manufacturer_id,
+				"loco_name" => empty($this->name) ? "" : $this->name,
+				"meta" => json_encode((isset($this->meta) && is_array($this->meta)) ? $this->meta : array())
+			);
+			
+			if (empty($this->date_added)) {
+				$data['date_added'] = time(); 
 			} else {
-				$data = array(
-					"loco_num" => $this->number,
-					"loco_gauge_id" => $this->gauge_id,
-					"loco_status_id" => $this->status_id,
-					"class_id" => $this->class_id,
-					"owner_id" => empty($this->owner_id) ? 0 : $this->owner_id,
-					"operator_id" => empty($this->operator_id) ? 0 : $this->operator_id,
-					"entered_service" => empty($this->entered_service) ? "" : $this->entered_service,
-					"withdrawn" => empty($this->withdrawal_date) ? "" : $this->withdrawal_date,
-					"builders_number" => empty($this->builders_num) ? "" : $this->builders_num,
-					"photo_id" => empty($this->photo_id) ? 0 : $this->photo_id,
-					"manufacturer_id" => empty($this->manufacturer_id) ? 0 : $this->manufacturer_id,
-					"loco_name" => empty($this->name) ? "" : $this->name,
-					"meta" => json_encode((isset($this->meta) && is_array($this->meta)) ? $this->meta : array())
+				$data['date_modified'] = time(); 
+			}
+			
+			if ($this->Asset instanceof \Railpage\Assets\Asset) {
+				$data['asset_id'] = $this->Asset->id;
+			} else {
+				$data['asset_id'] = 0;
+			}
+			
+			if (empty($this->id)) {
+				$rs = $this->db->insert("loco_unit", $data); 
+				$this->id = $this->db->lastInsertId(); 
+				
+				$verb = "Insert";
+			} else {
+				$this->deleteCache($this->mckey);
+				$where = array(
+					"loco_id = ?" => $this->id
 				);
 				
-				if (empty($this->date_added)) {
-					$data['date_added'] = time(); 
-				} else {
-					$data['date_modified'] = time(); 
-				}
+				$verb = "Update";
 				
-				if ($this->Asset instanceof \Railpage\Assets\Asset) {
-					$data['asset_id'] = $this->Asset->id;
-				} else {
-					$data['asset_id'] = 0;
-				}
-				
-				if (empty($this->id)) {
-					$rs = $this->db->insert("loco_unit", $data); 
-					$this->id = $this->db->lastInsertId(); 
-					
-					$verb = "Insert";
-				} else {
-					$this->deleteCache($this->mckey);
-					$where = array(
-						"loco_id = ?" => $this->id
-					);
-					
-					$verb = "Update";
-					
-					$rs = $this->db->update("loco_unit", $data, $where); 
-				}
-				
-				if (RP_DEBUG) {
-					if ($rs === false) {
-						$site_debug[] = "Zend_DB: FAILED " . $verb . " loco ID " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-					} else {
-						$site_debug[] = "Zend_DB: SUCCESS " . $verb . " loco ID " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-					}
-				}
-				
-				return true;
+				$rs = $this->db->update("loco_unit", $data, $where); 
 			}
+			
+			if (RP_DEBUG) {
+				if ($rs === false) {
+					$site_debug[] = "Zend_DB: FAILED " . $verb . " loco ID " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+				} else {
+					$site_debug[] = "Zend_DB: SUCCESS " . $verb . " loco ID " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+				}
+			}
+			
+			return true;
 		}
 		
 		/**
@@ -852,54 +740,26 @@
 				return false;
 			} 
 			
-			if ($this->db instanceof \sql_db) {
-				$dataArray = array(); 
-				$dataArray['loco_id'] = $this->id; 
-				
-				if (!empty($user_id)) {
-					$dataArray['user_id'] = $this->db->real_escape_string($user_id); 
-				} 
-				
-				$dataArray['note_date'] = time(); 
-				$dataArray['note_text'] = $this->db->real_escape_string($note_text); 
-				
-				if ($note_id) {
-					$where = array(); 
-					$where['note_id'] = $this->db->real_escape_string($note_id); 
-					
-					$query = $this->db->buildQuery($dataArray, "loco_notes", $note_id); 
-				} else {
-					$query = $this->db->buildQuery($dataArray, "loco_notes"); 
-				}
-				
-				if ($rs = $this->db->query($query)) {
-					return $this->db->insert_id;
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				$data = array(
-					"loco_id" => $this->id,
-					"note_date" => time(),
-					"note_text" => $note_text
+			$data = array(
+				"loco_id" => $this->id,
+				"note_date" => time(),
+				"note_text" => $note_text
+			);
+			
+			if (!empty($user_id)) {
+				$data['user_id'] = $user_id;
+			}
+			
+			if ($note_id) {
+				$where = array(
+					"note_id = ?" => $note_id
 				);
 				
-				if (!empty($user_id)) {
-					$data['user_id'] = $user_id;
-				}
-				
-				if ($note_id) {
-					$where = array(
-						"note_id = ?" => $note_id
-					);
-					
-					$this->db->update("loco_notes", $data, $where);
-					return true;
-				} else {
-					$this->db->insert("loco_notes", $data);
-					return $this->db->lastInsertId(); 
-				}
+				$this->db->update("loco_notes", $data, $where);
+				return true;
+			} else {
+				$this->db->insert("loco_notes", $data);
+				return $this->db->lastInsertId(); 
 			}
 		}
 		
@@ -911,53 +771,27 @@
 		 */
 		
 		public function loadNotes() {
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT n.*, u.username, user_avatar FROM loco_notes AS n LEFT JOIN nuke_users AS u ON n.user_id = u.user_id WHERE n.loco_id = ".$this->id; 
-				
-				if ($rs = $this->db->query($query)) {
-					$notes = array(); 
-					
-					while ($row = $rs->fetch_assoc()) {
-						if (!empty($row['user_avatar'])) {
-							try {
-								$row['user_avatar'] = format_avatar($row['user_avatar'], 50);
-							} catch (Exception $e) {
-								global $Error; 
-								$Error->save($e); 
-							}
-						}
+			$query = "SELECT n.*, u.username, user_avatar FROM loco_notes AS n LEFT JOIN nuke_users AS u ON n.user_id = u.user_id WHERE n.loco_id = ?";
+			
+			$notes = array(); 
+			
+			foreach ($this->db->fetchAll($query, $this->id) as $row) {
+				if (!empty($row['user_avatar'])) {
+					try {
+						$User = new User($row['user_id']);
 						
-						$notes[$row['note_id']] = $row; 
+						$row['user_avatar'] = format_avatar($row['user_avatar'], 50);
+						$row['user_url'] = $User->url;
+					} catch (Exception $e) {
+						global $Error; 
+						$Error->save($e); 
 					}
-					
-					return $notes; 
-				} else {
-					throw new Exception($this->db->error."\n".$query); 
-					return false;
-				}
-			} else {
-				$query = "SELECT n.*, u.username, user_avatar FROM loco_notes AS n LEFT JOIN nuke_users AS u ON n.user_id = u.user_id WHERE n.loco_id = ?";
-				
-				$notes = array(); 
-				
-				foreach ($this->db->fetchAll($query, $this->id) as $row) {
-					if (!empty($row['user_avatar'])) {
-						try {
-							$User = new User($row['user_id']);
-							
-							$row['user_avatar'] = format_avatar($row['user_avatar'], 50);
-							$row['user_url'] = $User->url;
-						} catch (Exception $e) {
-							global $Error; 
-							$Error->save($e); 
-						}
-					}
-					
-					$notes[$row['note_id']] = $row; 
 				}
 				
-				return $notes;
+				$notes[$row['note_id']] = $row; 
 			}
+			
+			return $notes;
 		}
 		
 		/**
@@ -968,36 +802,13 @@
 		 */
 		
 		public function loadDates() {
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT d.date_id, d.date, d.text, dt.loco_date_text AS title, dt.loco_date_id AS date_type_id
-							FROM loco_unit_date AS d
-							LEFT JOIN loco_date_type AS dt ON d.loco_date_id = dt.loco_date_id
-							WHERE d.loco_unit_id = ".$this->id."
-							ORDER BY d.date DESC";
-							
-				if ($rs = $this->db->query($query)) {
-					if ($rs->num_rows > 0) {
-						while ($row = $rs->fetch_assoc()) {
-							$return[] = $row;
-						}
-						
-						return $return;
-					} else {
-						return false;
-					}
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				$query = "SELECT d.date_id, d.date, d.text, dt.loco_date_text AS title, dt.loco_date_id AS date_type_id
-							FROM loco_unit_date AS d
-							LEFT JOIN loco_date_type AS dt ON d.loco_date_id = dt.loco_date_id
-							WHERE d.loco_unit_id = ?
-							ORDER BY d.date DESC";
-				
-				return $this->db->fetchAll($query, $this->id);
-			}
+			$query = "SELECT d.date_id, d.date, d.text, dt.loco_date_text AS title, dt.loco_date_id AS date_type_id
+						FROM loco_unit_date AS d
+						LEFT JOIN loco_date_type AS dt ON d.loco_date_id = dt.loco_date_id
+						WHERE d.loco_unit_id = ?
+						ORDER BY d.date DESC";
+			
+			return $this->db->fetchAll($query, $this->id);
 		}
 		
 		/**
@@ -1021,37 +832,18 @@
 				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$dataArray['loco_unit_id']	= $this->id;
-				$dataArray['loco_date_id'] 	= $this->db->real_escape_string($loco_date_id); 
-				$dataArray['date']			= $this->db->real_escape_string($date); 
-				
-				if (!empty($text) && $text != false) {
-					$dataArray['text'] = $this->db->real_escape_string(filter_input(INPUT_POST, "loco_date_text", FILTER_SANITIZE_STRING));
-				}
-				
-				$query = $this->db->buildQuery($dataArray, "loco_unit_date"); 
-				
-				if ($rs = $this->db->query($query)) {
-					return true; 
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				$data = array(
-					"loco_unit_id" => $this->id,
-					"loco_date_id" => $loco_date_id,
-					"date" => $date
-				);
-				
-				if (!empty($text) && $text != false) {
-					$data['text'] = filter_input(INPUT_POST, "loco_date_text", FILTER_SANITIZE_STRING);
-				}
-				
-				$this->db->insert("loco_unit_date", $data);
-				return true;
+			$data = array(
+				"loco_unit_id" => $this->id,
+				"loco_date_id" => $loco_date_id,
+				"date" => $date
+			);
+			
+			if (!empty($text) && $text != false) {
+				$data['text'] = filter_input(INPUT_POST, "loco_date_text", FILTER_SANITIZE_STRING);
 			}
+			
+			$this->db->insert("loco_unit_date", $data);
+			return true;
 		}
 		
 		/**
@@ -1063,34 +855,17 @@
 		public function hit() {
 			return false;
 			
-			if ($this->db instanceof \sql_db) {
-				$dataArray['loco_id']	= $this->id;
-				$dataArray['class_id'] 	= $this->Class->id;
-				$dataArray['time']		= time(); 
-				$dataArray['ip']		= filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL);
-				$dataArray['user_id']	= $_SESSION['user_id']; 
-				
-				$query = $this->db->buildQuery($dataArray, "loco_hits"); 
-				
-				if ($this->db->query($query)) {
-					return true;
-				} else {
-					throw new Exception($this->db->error);
-					return false;
-				}
-			} else {
-				$data = array(
-					"loco_id" => $this->id,
-					"class_id" => $this->Class->id,
-					"time" => time(),
-					"ip" => filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL),
-					"user_id" => $_SESSION['user_id']
-				);
-				
-				$this->db->insert("loco_hits", $data); 
-				
-				return true;
-			}
+			$data = array(
+				"loco_id" => $this->id,
+				"class_id" => $this->Class->id,
+				"time" => time(),
+				"ip" => filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL),
+				"user_id" => $_SESSION['user_id']
+			);
+			
+			$this->db->insert("loco_hits", $data); 
+			
+			return true;
 		}
 		
 		/**
@@ -1100,57 +875,26 @@
 		 */
 		
 		public function links() {
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT * FROM loco_link WHERE loco_id_a = '".$this->id."' OR loco_id_b = '".$this->id."'";
-				
-				if ($rs = $this->db->query($query)) {
-					$return = array(); 
-					
-					while ($row = $rs->fetch_assoc()) {
-						if ($row['loco_id_a'] == $this->id) {
-							if ($row['link_type_id'] == RP_LOCO_RENUMBERED) {
-								$return[$row['link_id']][$row['loco_id_b']] = "Renumbered to";
-								#$return[$row['loco_id_b']] = "Renumbered to";
-							} elseif ($row['link_type_id'] == RP_LOCO_REBUILT) {
-								$return[$row['link_id']][$row['loco_id_b']] = "Rebuilt to";
-								#$return[$row['loco_id_b']] = "Rebuilt to";
-							}
-						} else {
-							if ($row['link_type_id'] == RP_LOCO_RENUMBERED) {
-								$return[$row['link_id']][$row['loco_id_a']] = "Renumbered from";
-							} elseif ($row['link_type_id'] == RP_LOCO_REBUILT) {
-								$return[$row['link_id']][$row['loco_id_a']] = "Rebuilt from";
-							}
-						}
+			$query = "SELECT * FROM loco_link WHERE loco_id_a = ? OR loco_id_b = ?";
+			$return = array();
+			
+			foreach ($this->db->fetchAll($query, array($this->id, $this->id)) as $row) {
+				if ($row['loco_id_a'] == $this->id) {
+					if ($row['link_type_id'] == RP_LOCO_RENUMBERED) {
+						$return[$row['link_id']][$row['loco_id_b']] = "Renumbered to";
+					} elseif ($row['link_type_id'] == RP_LOCO_REBUILT) {
+						$return[$row['link_id']][$row['loco_id_b']] = "Rebuilt to";
 					}
-					
-					return $return;
 				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				$query = "SELECT * FROM loco_link WHERE loco_id_a = ? OR loco_id_b = ?";
-				$return = array();
-				
-				foreach ($this->db->fetchAll($query, array($this->id, $this->id)) as $row) {
-					if ($row['loco_id_a'] == $this->id) {
-						if ($row['link_type_id'] == RP_LOCO_RENUMBERED) {
-							$return[$row['link_id']][$row['loco_id_b']] = "Renumbered to";
-						} elseif ($row['link_type_id'] == RP_LOCO_REBUILT) {
-							$return[$row['link_id']][$row['loco_id_b']] = "Rebuilt to";
-						}
-					} else {
-						if ($row['link_type_id'] == RP_LOCO_RENUMBERED) {
-							$return[$row['link_id']][$row['loco_id_a']] = "Renumbered from";
-						} elseif ($row['link_type_id'] == RP_LOCO_REBUILT) {
-							$return[$row['link_id']][$row['loco_id_a']] = "Rebuilt from";
-						}
+					if ($row['link_type_id'] == RP_LOCO_RENUMBERED) {
+						$return[$row['link_id']][$row['loco_id_a']] = "Renumbered from";
+					} elseif ($row['link_type_id'] == RP_LOCO_REBUILT) {
+						$return[$row['link_id']][$row['loco_id_a']] = "Rebuilt from";
 					}
 				}
-				
-				return $return;
 			}
+			
+			return $return;
 		}
 		
 		/**
@@ -1166,32 +910,15 @@
 				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$dataArray = array(); 
-				$dataArray['text'] 		= $this->db->real_escape_string($correction_text); 
-				$dataArray['loco_id']	= $this->db->real_escape_string($this->id); 
-				$dataArray['user_id']	= $this->db->real_escape_string($user_id);
-				$dataArray['date']		= "NOW()"; 
-				
-				$query = $this->db->buildQuery($dataArray, "loco_unit_corrections"); 
-				
-				if ($this->db->query($query)) {
-					return true;
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				$data = array(
-					"text" => $correction_text,
-					"loco_id" => $this->id,
-					"user_id" => $user_id,
-					"date" => new \Zend_Db_Expr('NOW()')
-				);
-				
-				$this->db->insert("loco_unit_corrections", $data); 
-				return true;
-			}
+			$data = array(
+				"text" => $correction_text,
+				"loco_id" => $this->id,
+				"user_id" => $user_id,
+				"date" => new \Zend_Db_Expr('NOW()')
+			);
+			
+			$this->db->insert("loco_unit_corrections", $data); 
+			return true;
 		}
 		
 		/**
@@ -1235,81 +962,32 @@
 				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				if ($detailed) {
-					$query = "SELECT AVG(rating) as dec_avg, COUNT(rating) AS number_votes, SUM(rating) AS total_points FROM rating_loco WHERE loco_id = ".$this->db->real_escape_string($this->id); 
-					
-					$row = array();
-					
-					$row['dec_avg'] = 0;
-					$row['whole_avg'] = 0;
-					$row['total_points'] = 0;
-					$row['number_votes'] = 0;
-					
-					if ($rs = $this->db->query($query)) {
-						if ($rs->num_rows == 1) {
-							$row = $rs->fetch_assoc(); 	
-					
-							$row['dec_avg'] = empty($row['dec_avg']) ? 0 : $row['dec_avg'];
-							$row['total_points'] = empty($row['total_points']) ? 0 : $row['total_points'];
-							$row['number_votes'] = empty($row['number_votes']) ? 0 : $row['number_votes'];
-							
-							$row['whole_avg'] = round($row['dec_avg']);
-						}
-						
-						return $row;
-					} else {
-						throw new Exception($this->db->error); 
-						return false;
-					}
-				} else {
-					$query = "SELECT AVG(rating) as average_rating FROM rating_loco WHERE loco_id = ".$this->db->real_escape_string($this->id); 
-					
-					if ($rs = $this->db->query($query)) {
-						if ($rs->num_rows == 1) {
-							$row = $rs->fetch_assoc(); 
-							
-							if ($row['average_rating']) {
-								return $row['average_rating'];
-							} else {
-								return floatval("2.5");
-							}
-						} else {
-							return floatval("2.5"); // Unrated; give it a 2.5 out of 5
-						}
-					} else {
-						throw new Exception($this->db->error); 
-						return false;
-					}
-				}
+			if ($detailed) {
+				$query = "SELECT AVG(rating) as dec_avg, COUNT(rating) AS number_votes, SUM(rating) AS total_points FROM rating_loco WHERE loco_id = ?"; 
+				
+				$row = array();
+				
+				$row['dec_avg'] = 0;
+				$row['whole_avg'] = 0;
+				$row['total_points'] = 0;
+				$row['number_votes'] = 0;
+				
+				$row = $this->db->fetchRow($query, $this->id); 
+				
+				$row['dec_avg'] = empty($row['dec_avg']) ? 0 : $row['dec_avg'];
+				$row['total_points'] = empty($row['total_points']) ? 0 : $row['total_points'];
+				$row['number_votes'] = empty($row['number_votes']) ? 0 : $row['number_votes'];
+				$row['whole_avg'] = round($row['dec_avg']);
+				
+				return $row;
 			} else {
-				if ($detailed) {
-					$query = "SELECT AVG(rating) as dec_avg, COUNT(rating) AS number_votes, SUM(rating) AS total_points FROM rating_loco WHERE loco_id = ?"; 
-					
-					$row = array();
-					
-					$row['dec_avg'] = 0;
-					$row['whole_avg'] = 0;
-					$row['total_points'] = 0;
-					$row['number_votes'] = 0;
-					
-					$row = $this->db->fetchRow($query, $this->id); 
-					
-					$row['dec_avg'] = empty($row['dec_avg']) ? 0 : $row['dec_avg'];
-					$row['total_points'] = empty($row['total_points']) ? 0 : $row['total_points'];
-					$row['number_votes'] = empty($row['number_votes']) ? 0 : $row['number_votes'];
-					$row['whole_avg'] = round($row['dec_avg']);
-					
-					return $row;
+				$query = "SELECT AVG(rating) as average_rating FROM rating_loco WHERE loco_id = ?"; 
+				$row = $this->db->fetchRow($query, $this->id);
+				
+				if ($row['average_rating']) {
+					return $row['average_rating'];
 				} else {
-					$query = "SELECT AVG(rating) as average_rating FROM rating_loco WHERE loco_id = ?"; 
-					$row = $this->db->fetchRow($query, $this->id);
-					
-					if ($row['average_rating']) {
-						return $row['average_rating'];
-					} else {
-						return floatval("2.5");
-					}
+					return floatval("2.5");
 				}
 			}
 		}
@@ -1326,29 +1004,14 @@
 				throw new Exception("Cannot fetch user rating for this loco - no user given"); 
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT rating FROM rating_loco WHERE user_id = ".$this->db->real_escape_string($user_id)." AND loco_id = ".$this->db->real_escape_string($this->id)." LIMIT 1"; 
-				
-				if ($rs = $this->db->query($query)) {
-					if ($rs->num_rows > 0) {
-						return true;
-					} else {
-						return false;
-					}
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
+			$query = "SELECT rating FROM rating_loco WHERE user_id = ? AND loco_id = ? LIMIT 1"; 
+			
+			$row = $this->db->fetchAll($query, array($user_id, $this->id)); 
+			
+			if (count($row)) {
+				return true;
 			} else {
-				$query = "SELECT rating FROM rating_loco WHERE user_id = ? AND loco_id = ? LIMIT 1"; 
-				
-				$row = $this->db->fetchAll($query, array($user_id, $this->id)); 
-				
-				if (count($row)) {
-					return true;
-				} else {
-					return false;
-				}
+				return false;
 			}
 		}
 		
@@ -1371,50 +1034,25 @@
 			
 			$rating = floatval($rating); 
 			
-			if ($this->db instanceof \sql_db) {
-				$dataArray = array();
-				$dataArray['loco_id']	= $this->db->real_escape_string($this->id);
-				$dataArray['user_id']	= $this->db->real_escape_string($user_id);
-				$dataArray['rating']	= $this->db->real_escape_string($rating);
-				$dataArray['date']		= "NOW()";
-				
-				$query = $this->db->buildQuery($dataArray, "rating_loco");
-				
-				if ($this->userRating($user_id)) {
-					$where = array();
-					$where['user_id'] = $this->db->real_escape_string($user_id);
-					$where['loco_id'] = $this->db->real_escape_string($this->id);
-					
-					$query = $this->db->buildQuery($dataArray, "rating_loco", $where);
-				}
-				
-				if ($this->db->query($query)) {
-					return true;
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				$data = array(
-					"loco_id" => $this->id,
-					"user_id" => $user_id,
-					"rating" => $rating,
-					"date" => new \Zend_Db_Expr('NOW()')
+			$data = array(
+				"loco_id" => $this->id,
+				"user_id" => $user_id,
+				"rating" => $rating,
+				"date" => new \Zend_Db_Expr('NOW()')
+			);
+			
+			if ($this->userRating($user_id)) {
+				$where = array(
+					"user_id = ?" => $user_id,
+					"loco_id = ?" => $this->id
 				);
 				
-				if ($this->userRating($user_id)) {
-					$where = array(
-						"user_id = ?" => $user_id,
-						"loco_id = ?" => $this->id
-					);
-					
-					$this->db->update("rating_loco", $data, $where);
-				} else {
-					$this->db->insert("rating_loco", $data);
-				}
-				
-				return true;
+				$this->db->update("rating_loco", $data, $where);
+			} else {
+				$this->db->insert("rating_loco", $data);
 			}
+			
+			return true;
 		}
 		
 		/**
@@ -1499,38 +1137,19 @@
 				$limit_sql = NULL;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$org_sql = $org_type !== false ? " AND ot.id = '".$this->db->real_escape_string($org_type)."'" : NULL;
-				
-				$query = "SELECT o.*, op.operator_id AS organisation_id, op.operator_name AS organisation_name FROM loco_org_link AS o LEFT JOIN loco_org_link_type AS ot ON ot.id = o.link_type LEFT JOIN operators AS op ON op.operator_id = o.operator_id WHERE o.loco_id = '".$this->db->real_escape_string($this->id)."' " . $org_sql . " ORDER BY ot.id, o.link_weight DESC ".$limit_sql.""; 
-				
-				if ($rs = $this->db->query($query)) {
-					$return = array(); 
-					
-					while ($row = $rs->fetch_assoc()) {
-						$return[] = $row; 
-					}
-					
-					return $return;
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
+			$params = array($this->id); 
+			
+			if ($org_type !== false) {
+				$org_sql = " AND ot.id = ?";
+				$params[] = $org_type;
 			} else {
-				$params = array($this->id); 
-				
-				if ($org_type !== false) {
-					$org_sql = " AND ot.id = ?";
-					$params[] = $org_type;
-				} else {
-					$org_sql = "";
-				}
-				
-				$query = "SELECT o.*, op.operator_id AS organisation_id, op.operator_name AS organisation_name FROM loco_org_link AS o LEFT JOIN loco_org_link_type AS ot ON ot.id = o.link_type LEFT JOIN operators AS op ON op.operator_id = o.operator_id WHERE o.loco_id = ? " . $org_sql . " ORDER BY ot.id, o.link_weight DESC ".$limit_sql.""; 
-				
-				$return = $this->db->fetchAll($query, $params);
-				return $return;
+				$org_sql = "";
 			}
+			
+			$query = "SELECT o.*, op.operator_id AS organisation_id, op.operator_name AS organisation_name FROM loco_org_link AS o LEFT JOIN loco_org_link_type AS ot ON ot.id = o.link_type LEFT JOIN operators AS op ON op.operator_id = o.operator_id WHERE o.loco_id = ? " . $org_sql . " ORDER BY ot.id, o.link_weight DESC ".$limit_sql.""; 
+			
+			$return = $this->db->fetchAll($query, $params);
+			return $return;
 		}
 		
 		/**
@@ -1553,43 +1172,20 @@
 				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$dataArray = array(); 
-				$dataArray['loco_id'] = $this->id; 
-				$dataArray['operator_id'] = $this->db->real_escape_string($org_id); 
-				$dataArray['link_type'] = $this->db->real_escape_string($org_type); 
-				$dataArray['link_weight'] = $this->db->real_escape_string($weight); 
+			$data = array(
+				"loco_id" => $this->id,
+				"operator_id" => $org_id,
+				"link_type" => $org_type,
+				"link_weight" => $weight
+			);
+			
+			if ($date && !empty($date)) {
+				$timestamp = strtotime($date); 
 				
-				if ($date && !empty($date)) {
-					$timestamp = strtotime($date); 
-					
-					$dataArray['link_date'] = date("Y-m-d H:i:s", $timestamp);
-				}
-				
-				$query = $this->db->buildQuery($dataArray, "loco_org_link"); 
-				
-				if ($this->db->query($query)) {
-					return true; 
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				$data = array(
-					"loco_id" => $this->id,
-					"operator_id" => $org_id,
-					"link_type" => $org_type,
-					"link_weight" => $weight
-				);
-				
-				if ($date && !empty($date)) {
-					$timestamp = strtotime($date); 
-					
-					$data['link_date'] = date("Y-m-d H:i:s", $timestamp);
-				}
-				
-				return $this->db->insert("loco_org_link", $data);
+				$data['link_date'] = date("Y-m-d H:i:s", $timestamp);
 			}
+			
+			return $this->db->insert("loco_org_link", $data);
 		}
 		
 		/**
@@ -1605,22 +1201,11 @@
 				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "DELETE FROM loco_org_link WHERE id = '".$this->db->real_escape_string($org_link_id)."'"; 
-				
-				if ($this->db->query($query)) {
-					return true; 
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				$where = array("id = ?" => $org_link_id); 
-				
-				$this->db->delete("loco_org_link", $where);
-				
-				return true;
-			}
+			$where = array("id = ?" => $org_link_id); 
+			
+			$this->db->delete("loco_org_link", $where);
+			
+			return true;
 		}
 		
 		/**
@@ -1707,8 +1292,6 @@
 							#printArray($query);die;
 						}
 						
-						#printArray($query);die;
-						
 						if ($this->db->query($query)) {
 							return true;
 						} else {
@@ -1771,36 +1354,17 @@
 		 */
 		
 		public function getEvents() {
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT ll.*, u.username FROM log_locos AS ll LEFT JOIN nuke_users AS u ON ll.user_id = u.user_id WHERE ll.loco_id = '".$this->db->real_escape_string($this->id)."' ORDER BY timestamp DESC"; 
-				
-				if ($rs = $this->db->query($query)) {
-					$return = array(); 
-					
-					while ($row = $rs->fetch_assoc()) {
-						$row['timestamp'] = \DateTime::createFromFormat("Y-m-d H:i:s", $row['timestamp']); 
-						$row['args'] = json_decode($row['args'], true);
-						$return[] = $row; 
-					}
-					
-					return $return;
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				$query = "SELECT ll.*, u.username FROM log_locos AS ll LEFT JOIN nuke_users AS u ON ll.user_id = u.user_id WHERE ll.loco_id = ? ORDER BY timestamp DESC"; 
-				
-				$return = array(); 
-				
-				foreach ($this->db->fetchAll($query, $this->id) as $row) {
-					$row['timestamp'] = \DateTime::createFromFormat("Y-m-d H:i:s", $row['timestamp']); 
-					$row['args'] = json_decode($row['args'], true);
-					$return[] = $row; 
-				}
-				
-				return $return;
+			$query = "SELECT ll.*, u.username FROM log_locos AS ll LEFT JOIN nuke_users AS u ON ll.user_id = u.user_id WHERE ll.loco_id = ? ORDER BY timestamp DESC"; 
+			
+			$return = array(); 
+			
+			foreach ($this->db->fetchAll($query, $this->id) as $row) {
+				$row['timestamp'] = \DateTime::createFromFormat("Y-m-d H:i:s", $row['timestamp']); 
+				$row['args'] = json_decode($row['args'], true);
+				$return[] = $row; 
 			}
+			
+			return $return;
 		}
 		
 		/**
@@ -1816,20 +1380,9 @@
 				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT o.*, ot.name AS link_type_name, op.operator_name FROM loco_org_link AS o LEFT JOIN loco_org_link_type AS ot ON o.link_type = ot.id LEFT JOIN operators AS op ON op.operator_id = o.operator_id WHERE o.id = '".$this->db->real_escape_string($id)."'"; 
-				
-				if ($rs = $this->db->query($query)) {
-					return $rs->fetch_assoc(); 
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				$query = "SELECT o.*, ot.name AS link_type_name, op.operator_name FROM loco_org_link AS o LEFT JOIN loco_org_link_type AS ot ON o.link_type = ot.id LEFT JOIN operators AS op ON op.operator_id = o.operator_id WHERE o.id = ?"; 
-				
-				return $this->db->fetchRow($query, $id);
-			}
+			$query = "SELECT o.*, ot.name AS link_type_name, op.operator_name FROM loco_org_link AS o LEFT JOIN loco_org_link_type AS ot ON o.link_type = ot.id LEFT JOIN operators AS op ON op.operator_id = o.operator_id WHERE o.id = ?"; 
+			
+			return $this->db->fetchRow($query, $id);
 		}
 		
 		/**
