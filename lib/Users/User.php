@@ -1532,15 +1532,15 @@
 				if (is_object($this->Redis)) {
 					$this->Redis->delete(sprintf("railpage:users.user=%d", $this->id));
 					
-					$rs = $this->Redis->fetch($this->mckey); 
-					$rs['user_lastvisit'] = $time;
+					$result = $this->Redis->fetch($this->mckey); 
+					$result['user_lastvisit'] = $time;
 					
-					$this->Redis->save($this->mckey, $rs);
+					$this->Redis->save($this->mckey, $result);
 				}
 				
-				if ($rs = $this->Memcached->fetch($this->mckey)) {
-					$rs['user_lastvisit'] = $time;
-					$this->Memcached->save($this->mckey, $rs);
+				if ($result = $this->Memcached->fetch($this->mckey)) {
+					$result['user_lastvisit'] = $time;
+					$this->Memcached->save($this->mckey, $result);
 				}
 			}
 		}
@@ -1548,62 +1548,53 @@
 		/**
 		 * Set last session activity
 		 * @since Version 3.0
-		 * @version 3.0
+		 * @version 3.9.1
+		 * @return boolean
 		 * @param int $user_id
 		 */
 		 
 		public function updateSessionTime($user_id = false) {
-			if (!$user_id) {
+			if (!$user_id = filter_var($user_id, FILTER_VALIDATE_INT)) {
 				$user_id = $this->id;
 			}
 			
-			if ($user_id) {
-				#if (!isset($_SESSION['sessiontime_lastupdate']) || $_SESSION['sessiontime_lastupdate'] <= time() - 300) {
-				$lastupdate = filter_input(INPUT_SESSION, "sessiontime_lastupdate", FILTER_SANITIZE_STRING);
-				
-				if (is_null($lastupdate) || $lastupdate <= time() - 300) {
-					if (RP_DEBUG) {
-						global $site_debug;
-						$debug_timer_start = microtime(true);
-					}
-				
-					$data = array(
-						"user_session_time" => time()
-					);
-					
-					if (!is_null(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING))) {
-						$data['last_session_ip'] = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING); 
-					}
-					
-					$rs = $this->db->update("nuke_users", $data, array("user_id = ?" => $user_id));
-					
-					/** 
-					 * Update values stored in Memcached
-					 */
-				
-					if (!isset($this->mckey)) {
-						$this->mckey = sprintf("railpage:user_id=%d", $user_id);
-					}
-					
-					if ($rs = $this->Memcached->fetch($this->mckey)) {
-						$rs['user_session_time'] = $data['user_session_time'];
-						$rs['last_session_ip'] = $data['last_session_ip'];
-						$this->Memcached->save($this->mckey, $rs);
-						$this->Redis->delete($this->mckey);
-					}
-					
-					if (RP_DEBUG) {
-						if ($rs === false) {
-							$site_debug[] = "Zend_DB: FAILED update user_session_time for user ID " . $user_id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-						} else {
-							$site_debug[] = "Zend_DB: SUCCESS update user_session_time for user ID " . $user_id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-							$_SESSION['sessiontime_lastupdate'] = time(); 
-						}
-					}
-					
-					return $rs;
-				}
+			if (!filter_var($user_id, FILTER_VALIDATE_INT)) {
+				return false;
 			}
+			
+			$lastupdate = filter_input(INPUT_SESSION, "sessiontime_lastupdate", FILTER_SANITIZE_STRING);
+			
+			if (is_null($lastupdate) || $lastupdate <= time() - 300) {
+				
+				$timer = Debug::getTimer(); 
+			
+				$data = [ "user_session_time" => time() ];
+				
+				if (!is_null(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING))) {
+					$data['last_session_ip'] = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING); 
+				}
+				
+				$this->db->update("nuke_users", $data, array("user_id = ?" => $user_id));
+				
+				/** 
+				 * Update values stored in Memcached
+				 */
+			
+				if (!isset($this->mckey)) {
+					$this->mckey = sprintf("railpage:user_id=%d", $user_id);
+				}
+				
+				if ($result = $this->Memcached->fetch($this->mckey)) {
+					$result['user_session_time'] = $data['user_session_time'];
+					$result['last_session_ip'] = $data['last_session_ip'];
+					$this->Memcached->save($this->mckey, $result);
+					$this->Redis->delete($this->mckey);
+				}
+				
+				Debug::logEvent("Zend_DB: Update user session time for user ID " . $user_id, $timer); 
+			}
+				
+			return true;
 		}
 		
 		/**
@@ -1950,9 +1941,9 @@
 			$len = 32; 
 			
 			if (@is_readable('/dev/urandom')) { 
-				$f = fopen('/dev/urandom', 'r'); 
-				$urandom = fread($f, $len); 
-				fclose($f); 
+				$file = fopen('/dev/urandom', 'r'); 
+				$urandom = fread($file, $len); 
+				fclose($file); 
 			} 
 		
 			$return=''; 
@@ -2296,14 +2287,14 @@
 				$row = $this->db->fetchRow($query, $username);
 				
 				$stored_user_id = $row['user_id'];
-				$stored_password = $row['user_password'];
-				$stored_password_bcrypt = $row['user_password_bcrypt'];
+				$stored_pass = $row['user_password'];
+				$stored_pass_bcrypt = $row['user_password_bcrypt'];
 				
 			} elseif (!empty($this->password)) {
 				
 				$stored_user_id = $this->id;
-				$stored_password = $this->password;
-				$stored_password_bcrypt = $this->password_bcrypt;
+				$stored_pass = $this->password;
+				$stored_pass_bcrypt = $this->password_bcrypt;
 				
 			}
 			
@@ -2327,14 +2318,14 @@
 			 * Verify the password
 			 */
 			
-			if (md5($password) == $stored_password || password_verify($password, $stored_password) || password_verify($password, $stored_password_bcrypt)) {
+			if (md5($password) === $stored_pass || password_verify($password, $stored_pass) || password_verify($password, $stored_pass_bcrypt)) {
 				$this->load($stored_user_id);
 				
 				/**
 				 * Check if the password needs rehashing
 				 */
 				
-				if (password_needs_rehash($stored_password, PASSWORD_DEFAULT) || password_needs_rehash($stored_password_bcrypt, PASSWORD_DEFAULT)) {
+				if (password_needs_rehash($stored_pass, PASSWORD_DEFAULT) || password_needs_rehash($stored_pass_bcrypt, PASSWORD_DEFAULT)) {
 					$this->setPassword($password);
 				}
 				
@@ -2353,16 +2344,13 @@
 			 * Unsuccessful login attempt - bump up the invalid auth counter
 			 */
 			
-			if (!isset($TmpUser->meta['InvalidAuthCounter'])) {
-				$TmpUser->meta['InvalidAuthCounter'] = 0;
-			}
+			$TmpUser->meta['InvalidAuthCounter'] = isset($TmpUser->meta['InvalidAuthCounter']) ? 1 : $TmpUser->meta['InvalidAuthCounter']++;
 			
-			$TmpUser->meta['InvalidAuthCounter']++;
 			$TmpUser->addNote(sprintf("Invalid login attempt %d", $TmpUser->meta['InvalidAuthCounter']));
 			$TmpUser->commit();
 			$this->refresh();
 			
-			if ($TmpUser->meta['InvalidAuthCounter'] == 3) {
+			if ($TmpUser->meta['InvalidAuthCounter'] === 3) {
 				$TmpUser->meta['InvalidAuthTimeout'] = strtotime("+10 minutes");
 				$TmpUser->addNote("Too many invalid login attempts - account disabled for ten minutes");
 				$TmpUser->commit();
@@ -2473,23 +2461,15 @@
 		 */
 		
 		public function safePassword($password = false) {
-			if (!$password) {
+			if (is_null(filter_var($password, FILTER_SANITIZE_STRING))) {
 				throw new Exception("You gotta supply a password...");
 			}
-			
-			if (empty($password)) {
-				throw new Exception("Passwords cannot be empty");
-			}
-			
-			/**
-			 * Start validating passwords
-			 */
 			
 			if (strlen($password) < 7) {
 				return false;
 			}
 			
-			if (strtolower($password) == strtolower($this->username)) {
+			if (strtolower($password) === strtolower($this->username)) {
 				return false;
 			}
 			
@@ -2497,31 +2477,10 @@
 			 * Bad passwords
 			 */
 			
-			$bad = array(
-				"password",
-				"pass",
-				"012345",
-				"0123456",
-				"01234567",
-				"012345678",
-				"0123456789",
-				"123456",
-				"1234567",
-				"12345678",
-				"123456789",
-				"1234567890",
-				"letmein",
-				"changeme",
-				"qwerty",
-				"111111",
-				"iloveyou",
-				"railpage",
-				"password1",
-				"azerty",
-				"000000",
-				"trains",
-				"railway"
-			);
+			$bad = [ "password", "pass", "012345", "0123456", "01234567", "012345678", "0123456789",
+				     "123456", "1234567", "12345678", "123456789", "1234567890", "letmein", "changeme",
+					 "qwerty", "111111", "iloveyou", "railpage", "password1", "azerty", "000000",
+					 "trains", "railway" ];
 			
 			if (in_array($password, $bad)) {
 				return false;
@@ -2657,8 +2616,8 @@
 				throw new Exception("Cannot log user activity because no pagetitle was provided");
 			}
 			
-			if (!$ip && !is_null(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL))) { #isset($_SERVER['REMOTE_ADDR'])) {
-				$ip = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
+			if (!$ipaddr && !is_null(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL))) { #isset($_SERVER['REMOTE_ADDR'])) {
+				$ipaddr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
 			}
 			
 			if (!$ip) {
@@ -2667,7 +2626,7 @@
 			
 			$data = array(
 				"user_id" => $this->id,
-				"ip" => $ip,
+				"ip" => $ipaddr,
 				"module_id" => $module_id,
 				"url" => $url,
 				"pagetitle" => $pagetitle
