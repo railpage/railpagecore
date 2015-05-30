@@ -1025,16 +1025,8 @@
 			
 			if (!is_array($data) || empty($data) || count($data) === 1) {
 					
-				$query = "SELECT u.*, COALESCE(SUM((SELECT COUNT(*) FROM nuke_bbprivmsgs WHERE privmsgs_to_userid= ? AND (privmsgs_type='5' OR privmsgs_type='1'))), 0) AS unread_pms FROM nuke_users u WHERE u.user_id = ?";
+				$data = Utility\UserUtility::fetchFromDatabase($this); 
 				
-				if ($data = $this->db->fetchRow($query, array($this->id, $this->id))) {
-					$data['session_logged_in'] = true;
-					$data['session_start'] = $data['user_session_time'];
-					
-					$data = Utility\UserUtility::getOrganisations($data); 
-					$data = Utility\UserUtility::getOAuth($data); 
-				}
-			
 				Debug::logEvent(__METHOD__ . "(" . $this->id . ") loaded via ZendDB", $timer);
 			}
 				
@@ -1068,6 +1060,14 @@
 			$this->timezone		= isset($data['timezone']) && !empty($data['timezone']) ? $data['timezone'] : "Australia/Melbourne";
 			$this->website		= $data['user_website'];
 			$this->hide			= $data['user_allow_viewonline']; 
+			$this->meta = isset($data['meta']) ? json_decode($data['meta'], true) : array();
+			
+			if (isset($data['password_new'])) {
+				$this->password_new = $data['password_new']; 
+			}
+			
+			$this->session_last_nice	= date($this->date_format, $this->lastvisit); 
+			$this->contact_email_public = (bool) $this->contact_email_public ? $this->contact_email : $data['femail'];
 						
 			if (intval($this->wheat) === 0) {
 				$this->reputation = '100% (+' . $this->wheat . '/' . $this->chaff . '-)';
@@ -1084,15 +1084,6 @@
 			foreach ($fields as $key => $var) {
 				$this->$var = $data[$key];
 			}
-			
-			$this->meta = isset($data['meta']) ? json_decode($data['meta'], true) : array();
-			
-			if (isset($data['password_new'])) {
-				$this->password_new = $data['password_new']; 
-			}
-			
-			$this->session_last_nice	= date($this->date_format, $this->lastvisit); 
-			$this->contact_email_public = (bool) $this->contact_email_public ? $this->contact_email : $data['femail'];
 			
 			/**
 			 * Update the user registration date if required
@@ -1137,17 +1128,7 @@
 				$this->level = 1;
 			}
 			
-			// Generate a new API key and secret
-			if (empty($this->api_key) || empty($this->api_secret)) {
-				$this->api_secret 	= password_hash($this->username.$this->regdate.$this->id, PASSWORD_BCRYPT, array("cost" => 4));
-				$this->api_key		= crypt($this->username.$this->id, "rl");
-				
-				try {
-					$this->commit(true); 
-				} catch (Exception $e) {
-					// Throw it away
-				}
-			}
+			$this->verifyAPI(); 
 			
 			/**
 			 * Set some default values for $this->preferences
@@ -1160,6 +1141,26 @@
 			}
 			
 			return true;
+		}
+		
+		/**
+		 * Verify the API settings
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function verifyAPI() {
+			// Generate a new API key and secret
+			if (empty($this->api_key) || empty($this->api_secret)) {
+				$this->api_secret 	= password_hash($this->username.$this->regdate.$this->id, PASSWORD_BCRYPT, array("cost" => 4));
+				$this->api_key		= crypt($this->username.$this->id, "rl");
+				
+				try {
+					$this->commit(true); 
+				} catch (Exception $e) {
+					// Throw it away
+				}
+			}
 		}
 		
 		/**
@@ -2333,8 +2334,14 @@
 				 * Reset the InvalidAuthCounter
 				 */
 				
-				unset($this->meta['InvalidAuthCounter']);
-				unset($this->meta['InvalidAuthTimeout']);
+				if (isset($this->meta['InvalidAuthCounter'])) {
+					unset($this->meta['InvalidAuthCounter']);
+				}
+				
+				if (isset($this->meta['InvalidAuthTimeout'])) {
+					unset($this->meta['InvalidAuthTimeout']);
+				}
+				
 				$this->commit();
 				
 				return true;

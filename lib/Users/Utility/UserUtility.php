@@ -236,4 +236,31 @@
 			return $data;
 			
 		}
+		
+		/**
+		 * Fetch the user data from the database
+		 * @since Version 3.9.1
+		 * @param \Railpage\Users\User $User
+		 * @return array
+		 */
+		
+		public static function fetchFromDatabase(User $User) {
+			
+			$Database = (new AppCore)->getDatabaseConnection();
+			
+			$data = array();
+			
+			$query = "SELECT u.*, COALESCE(SUM((SELECT COUNT(*) FROM nuke_bbprivmsgs WHERE privmsgs_to_userid= ? AND (privmsgs_type='5' OR privmsgs_type='1'))), 0) AS unread_pms FROM nuke_users u WHERE u.user_id = ?";
+			
+			if ($data = $Database->fetchRow($query, array($User->id, $User->id))) {
+				$data['session_logged_in'] = true;
+				$data['session_start'] = $data['user_session_time'];
+				
+				$data = self::getOrganisations($data); 
+				$data = self::getOAuth($data); 
+			}
+
+			return $data;
+			
+		}
 	}
