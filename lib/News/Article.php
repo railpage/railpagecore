@@ -313,53 +313,17 @@
 			$return = false;
 			
 			$this->mckey = __METHOD__ . "-" . $this->id; 
-			$mcexp = strtotime("+1 hour"); 
+			$mcexp = strtotime("+1 hour");
 			
 			if (!$return = $this->Memcached->fetch($this->mckey)) {
 			
-				if ($this->db instanceof \sql_db) {
-					/*
-					if ($this->pending == true) {
-						// Get story from pending table
-						$query = "SELECT u.username, 0 AS sent_to_fb, p.geo_lat, p.geo_lon, p.qid as sid, p.uname as informant, p.subject as title, p.story as hometext, p.storyext as bodytext, p.topic, p.source, t.topicname, t.topicimage, t.topictext, p.timestamp as time FROM nuke_users u, nuke_queue p, nuke_topics t WHERE p.topic = t.topicid AND p.uid = u.user_id AND p.qid = '".$this->db->real_escape_string($this->id)."'";
-						$table = "pending";
-					} else {
-					*/
-						$query = "SELECT s.*, t.topicname, t.topicimage, t.topictext, t.topicid FROM nuke_stories s, nuke_topics t WHERE s.topic = t.topicid AND s.sid = '".$this->db->real_escape_string($this->id)."'";
-						$table = "published";
-					#}
-					
-					if ($rs = $this->db->query($query)) {
-						if ($rs->num_rows == 0) {
-							throw new Exception("Cannot fetch ".$table." article ID ".$this->id." - no story found"); 
-							return false;
-						}
-						
-						$return = $rs->fetch_assoc(); 
-						
-						if ($this->pending === false && $this->memcache) {
-							$this->Memcached->save($this->mckey, $return, $mcexp);
-						}
-					}
-				} else {
-					/*
-					if ($this->pending == true) {
-						$query = "SELECT q.qid AS sid, q.uid AS user_id, u.username, q.subject AS title, q.story AS hometext, q.storyext AS bodytext, q.timestamp AS time, q.source, t.topicname, t.topictext, q.topic, 'oldqueue' AS queue
-									FROM nuke_queue AS q
-									LEFT JOIN nuke_topics AS t ON q.topic = t.topicid
-									LEFT JOIN nuke_users AS u ON q.uid = u.user_id
-									WHERE q.qid = ?";
-					} else {
-					*/
-						$query = "SELECT s.*, t.topicname, t.topicimage, t.topictext, t.topicid 
-									FROM nuke_stories AS s 
-									LEFT JOIN nuke_topics AS t ON s.topic = t.topicid
-									WHERE s.sid = ?";
-					#}
-					
-					$return = $this->db_readonly->fetchRow($query, $this->id); 
-					$this->Memcached->save($this->mckey, $return);
-				}
+				$query = "SELECT s.*, t.topicname, t.topicimage, t.topictext, t.topicid 
+							FROM nuke_stories AS s 
+							LEFT JOIN nuke_topics AS t ON s.topic = t.topicid
+							WHERE s.sid = ?";
+				
+				$return = $this->db_readonly->fetchRow($query, $this->id); 
+				$this->Memcached->save($this->mckey, $return);
 			}
 			
 			if (isset($return) && is_array($return) && !empty($return)) {
@@ -489,26 +453,16 @@
 		 */
 		 
 		public function viewed() {
-			if ($this->db instanceof \sql_db) {
-				if ($rs = $this->db->query("UPDATE nuke_stories SET weeklycounter = weeklycounter+1 WHERE sid = ".$this->db->real_escape_string($this->id))) {
-					return true;
-				} else {
-					trigger_error("News: Unable to update view count for story ID ".$this->id); 
-					trigger_error($this->db->error); 
-					return false;
-				}
-			} else {
-				$data = array(
-					"weeklycounter" => new \Zend_Db_Expr('weeklycounter + 1')
-				);
-				
-				$where = array(
-					"sid = ?" => $this->id
-				);
-				
-				$this->db->update("nuke_stories", $data, $where); 
-				return true;
-			}
+			$data = array(
+				"weeklycounter" => new \Zend_Db_Expr('weeklycounter + 1')
+			);
+			
+			$where = array(
+				"sid = ?" => $this->id
+			);
+			
+			$this->db->update("nuke_stories", $data, $where); 
+			return true;
 		}
 		
 		/**
@@ -521,48 +475,33 @@
 		 */
 		 
 		public function reject() {
-			if ($this->db instanceof \sql_db) {
-				if ($this->pending) {
-					$query = "DELETE FROM nuke_queue WHERE qid = '".$this->db->real_escape_string($this->id)."'";
-				} else {
-					$query = "DELETE FROM nuke_stories WHERE sid = '".$this->db->real_escape_string($this->id)."'";
-				}
 				
-				if ($this->db->query($query)) {
-					return true; 
-				} else {
-					throw new Exception($this->db->error."\n\n".$query); 
-					return false;
-				}
+			/**
+			 * Insert into Sphinx's rejected articles table
+			 */
+			
+			$data = array(
+				"id" => (int) str_replace(".", "", microtime(true)),
+				"title" => $this->title
+			);
+			
+			$Sphinx = $this->getSphinx(); 
+			
+			$Insert = $Sphinx->insert()->into("idx_news_articles_rejected");
+			$Insert->set($data);
+			$Insert->execute();
+			
+			if ($this->pending) {
+				$where = array("qid = ?" => $this->id); 
+				
+				$this->db->delete("nuke_queue", $where); 
 			} else {
+				$where = array("sid = ?" => $this->id); 
 				
-				/**
-				 * Insert into Sphinx's rejected articles table
-				 */
-				
-				$data = array(
-					"id" => (int) str_replace(".", "", microtime(true)),
-					"title" => $this->title
-				);
-				
-				$Sphinx = $this->getSphinx(); 
-				
-				$Insert = $Sphinx->insert()->into("idx_news_articles_rejected");
-				$Insert->set($data);
-				$Insert->execute();
-				
-				if ($this->pending) {
-					$where = array("qid = ?" => $this->id); 
-					
-					$this->db->delete("nuke_queue", $where); 
-				} else {
-					$where = array("sid = ?" => $this->id); 
-					
-					$this->db->delete("nuke_stories", $where); 
-				}
-				
-				return true;
+				$this->db->delete("nuke_stories", $where); 
 			}
+			
+			return true;
 		}
 		
 		/**
@@ -582,72 +521,40 @@
 				$user_id = $user_id->id;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$query	= "SELECT u.username as informant, p.geo_lat, p.geo_lon, p.subject as title, p.story as hometext, p.storyext as bodytext, p.topic, p.source FROM nuke_queue p, nuke_users u WHERE u.user_id = p.uid AND p.qid = ".$this->db->real_escape_string($this->id);
+			if ($this->pending) {
+				$query	= "SELECT u.username as informant, p.geo_lat, p.geo_lon, p.subject as title, p.story as hometext, p.storyext as bodytext, p.topic, p.source FROM nuke_queue p, nuke_users u WHERE u.user_id = p.uid AND p.qid = ?";
 				
-				if ($rs = $this->db->query($query)) {
-					$dataArray = $rs->fetch_assoc(); 
-					$dataArray['time'] 		 = "NOW()";
-					$dataArray['comments']	 = "1";
+				if ($data = $this->db->fetchRow($query, $this->id)) {
+					$data['approved'] = 1;
+					$data['aid'] = $user_id;
+					$data['time'] = new \Zend_Db_Expr('NOW()');
 					
-					foreach($dataArray as $key => $val) {
-						$dataArray[$key] = $this->db->real_escape_string($val); 
-					}
+					$this->db->insert("nuke_stories", $data);
 					
-					$query = $this->db->buildQuery($dataArray, "nuke_stories"); 
+					$id = $this->db->lastInsertId(); 
 					
-					if ($approve = $this->db->query($query)) {
-						$return = $this->db->insert_id; 
-						// Delete the pending post
-						$this->db->query("DELETE FROM nuke_queue WHERE qid = ".$this->db->real_escape_string($this->id)); 
-						
-						$this->id = $return;
-						
-						return true;
-					} else {
-						throw new Exception($this->db->error."\n\n".$query);
-						return false;
-					}
-				} else {
-					throw new Exception($this->db->error."\n\n".$query);
-					return false;
+					$this->db->delete("nuke_queue", array("qid = ?" => $this->id));
+					
+					$this->id = $id;
 				}
 			} else {
-				if ($this->pending) {
-					$query	= "SELECT u.username as informant, p.geo_lat, p.geo_lon, p.subject as title, p.story as hometext, p.storyext as bodytext, p.topic, p.source FROM nuke_queue p, nuke_users u WHERE u.user_id = p.uid AND p.qid = ?";
-					
-					if ($data = $this->db->fetchRow($query, $this->id)) {
-						$data['approved'] = 1;
-						$data['aid'] = $user_id;
-						$data['time'] = new \Zend_Db_Expr('NOW()');
-						
-						$this->db->insert("nuke_stories", $data);
-						
-						$id = $this->db->lastInsertId(); 
-						
-						$this->db->delete("nuke_queue", array("qid = ?" => $this->id));
-						
-						$this->id = $id;
-					}
-				} else {
-					$this->approved = 1; 
-					$this->staff_user_id = $user_id;
-					$this->setStaff(new User($this->staff_user_id));
-					$this->date = new DateTime;
-					
-					$this->commit();
-				}
+				$this->approved = 1; 
+				$this->staff_user_id = $user_id;
+				$this->setStaff(new User($this->staff_user_id));
+				$this->date = new DateTime;
 				
-				/**
-				 * Flush the Memcache store for the news topic
-				 */
-				
-				if ($this->Topic instanceof Topic) {
-					deleteMemcacheObject($this->Topic->mckey);
-				}
-				
-				return true;
+				$this->commit();
 			}
+			
+			/**
+			 * Flush the Memcache store for the news topic
+			 */
+			
+			if ($this->Topic instanceof Topic) {
+				deleteMemcacheObject($this->Topic->mckey);
+			}
+			
+			return true;
 		}
 		
 		/**

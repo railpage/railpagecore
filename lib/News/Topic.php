@@ -85,6 +85,7 @@
 			if (filter_var($topic_id, FILTER_VALIDATE_INT)) {
 				$this->id = $topic_id;
 				$this->load(); 
+				
 			}
 			
 			if (is_string($topic_id)) {
@@ -93,12 +94,13 @@
 					
 					$this->Memcached->save(sprintf("railpage:news.topic.name=%s", $topic_id), $id);
 				}
+			}
 				
+			if (isset($id) && filter_var($id, FILTER_VALIDATE_INT)) {
 				$this->id = $id;
 				
 				$this->load(); 
 			}
-			
 		}
 		
 		/**
@@ -130,6 +132,7 @@
 			$this->desc		= isset($row['desc']) ? $row['desc'] : "";
 			
 			$this->url = new Url(sprintf("%s/t/%s", $this->Module->url, $this->alias));
+			
 		}
 		
 		/**

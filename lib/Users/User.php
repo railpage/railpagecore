@@ -2610,7 +2610,7 @@
 		 * @return \Railpage\Users\User
 		 */
 		
-		public function logUserActivity($module_id = false, $url = false, $pagetitle = false, $ip = false) {
+		public function logUserActivity($module_id = false, $url = false, $pagetitle = false, $ipaddr = false) {
 			if (!filter_var($module_id, FILTER_VALIDATE_INT)) {
 				throw new Exception("Cannot log user activity because no module ID was provided");
 			}
