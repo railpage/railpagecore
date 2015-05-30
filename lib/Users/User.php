@@ -1031,24 +1031,8 @@
 					$data['session_logged_in'] = true;
 					$data['session_start'] = $data['user_session_time'];
 					
-					if (!defined("RP_PLATFORM") || RP_PLATFORM != "API") {
-						$data['organisations'] = array(); 
-						
-						$query = "SELECT o.* FROM organisation o, organisation_member om WHERE o.organisation_id = om.organisation_id AND om.user_id = ?"; 
-						
-						if ($orgs = $this->db->fetchAll($query, $this->id)) {
-							foreach ($orgs as $row) {
-								$data['organisations'][$row['organisation_id']] = $row;
-							}
-						}
-						
-						$query = "SELECT oc.* FROM oauth_consumer AS oc LEFT JOIN nuke_users AS u ON u.oauth_consumer_id = oc.id WHERE u.user_id = ?";
-						
-						if ($row = $this->db->fetchRow($query, $this->id)) {
-							$data['oauth_key']		= $row['consumer_key'];
-							$data['oauth_secret']	= $row['consumer_secret'];
-						}
-					}
+					$data = Utility\UserUtility::getOrganisations($data); 
+					$data = Utility\UserUtility::getOAuth($data); 
 				}
 			
 				Debug::logEvent(__METHOD__ . "(" . $this->id . ") loaded via ZendDB", $timer);
@@ -1139,13 +1123,7 @@
 				}
 			}
 			
-			if ($this->warning_level == 0) {
-				$this->warning_level_colour = "green";
-			} elseif ($this->warning_level < 66) {
-				$this->warning_level_colour = "orange";
-			} else {
-				$this->warning_level_colour = "red";
-			}
+			$this->warning_level_colour = Utility\UserUtility::getWarningBarColour($this->warning_level);
 			
 			if (isset($data['oauth_key']) && isset($data['oauth_secret'])) {
 				$this->oauth_key 	= $data['oauth_key'];
@@ -1250,27 +1228,24 @@
 		
 		public function commit($force = false) {
 			
-			if (!$this->validate($force)) {
-				// Get out early
-				return false;
+			$this->validate($force); 
+			
+			Utility\UserUtility::clearCache($this); 
+			
+			$data = array(); 
+			
+			foreach (Utility\UserUtility::getColumnMapping() as $key => $var) {
+				$data[$key] = $this->$var;
 			}
 			
-			if (!empty($this->mckey) && $this->Memcached->contains($this->mckey)) {
-				$this->Memcached->delete($this->mckey);
-				
-				try {
-					$this->Redis->delete(sprintf("railpage:users.user=%d", $this->id));
-				} catch (Exception $e) {
-					// throw it away
-				}
-				
-				try {
-					$this->Redis->delete($this->mckey);
-				} catch (Exception $e) {
-					// throw it away
-				}
+			$json = [ "meta", "user_opts" ];
+			foreach ($json as $key) {
+				$data[$key] = json_encode($data[$key]);
 			}
 			
+			#printArray($data);die;
+			
+			/*
 			$dataArray = array();
 			
 			$dataArray['provider'] = $this->provider;
@@ -1376,14 +1351,25 @@
 			$dataArray['facebook_user_id'] = $this->facebook_user_id;
 			$dataArray['reported_to_sfs'] = $this->reported_to_sfs;
 			
+			printArray(count($data)); 
+			printArray(count($dataArray));
+			
+			foreach ($data as $key => $val)  {
+				if (!in_array($key, array_keys($dataArray))) {
+					printArray($key); 
+				}
+			}
+			die;
+			*/
+			
 			if ($this->RegistrationDate instanceof DateTime) {
-				$dataArray['user_regdate_nice'] = $this->RegistrationDate->format("Y-m-d H:i:s");
+				$data['user_regdate_nice'] = $this->RegistrationDate->format("Y-m-d H:i:s");
 			}
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
-				$this->db->update("nuke_users", $dataArray, array("user_id = ?" => $this->id));
+				$this->db->update("nuke_users", $data, array("user_id = ?" => $this->id));
 			} else {
-				$this->db->insert("nuke_users", $dataArray);
+				$this->db->insert("nuke_users", $data);
 				$this->id = $this->db->lastInsertId();
 				$this->guest = false;
 				
@@ -2871,6 +2857,10 @@
 		public function getPreferences($section = false) {
 			
 			$prefs = is_object($this->preferences) ? json_decode(json_encode($this->preferences), true) : $this->preferences; 
+			
+			if (is_string($prefs)) {
+				$prefs = json_decode($prefs, true);
+			}
 			
 			/**
 			 * Default preferences
