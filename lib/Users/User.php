@@ -820,12 +820,12 @@
 		/** 
 		 * Flickr oauth secret
 		 * Column: flickr_oauth_token_secret
-		 * @var string $flickr_oath_secret
+		 * @var string $flickr_oauth_token_secret
 		 * @since Version 3.0.1
 		 * @version 3.0.1
 		 */
 		 
-		public $flickr_oauth_secret = "";
+		public $flickr_oauth_token_secret = "";
 		
 		/** 
 		 * Flickr NSID
@@ -1145,8 +1145,7 @@
 				try {
 					$this->commit(true); 
 				} catch (Exception $e) {
-					global $Error;
-					$Error->save($e);
+					// Throw it away
 				}
 			}
 			
@@ -2882,7 +2881,11 @@
 			 * Merge default preferences and sort alphabetically
 			 */
 			
-			$prefs = array_merge($defaults, $prefs); 
+			if (is_array($prefs)) {
+				$prefs = array_merge($defaults, $prefs); 
+			} else {
+				$prefs = $defaults;
+			}
 			
 			uksort($prefs, "strnatcasecmp");
 			
