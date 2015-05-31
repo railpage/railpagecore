@@ -159,6 +159,22 @@
 		public $json;
 		
 		/**
+		 * Image provider options
+		 * @since Version 3.9.1
+		 * @var array $providerOptions
+		 */
+		
+		private $providerOptions = array(); 
+		
+		/**
+		 * Image provider
+		 * @since Version 3.9.1
+		 * @var object $ImageProvider
+		 */
+		
+		private $ImageProvider;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.8.7
 		 * @param int $id
@@ -400,6 +416,10 @@
 		
 		public function getProvider() {
 			
+			if (!is_null($this->ImageProvider)) {
+				return $this->ImageProvider; 
+			}
+			
 			$imageprovider = __NAMESPACE__ . "\\Provider\\" . ucfirst($this->provider);
 			$params = array();
 			
@@ -413,10 +433,10 @@
 					break;
 				
 				case "flickr" : 
-					$params = array(
+					$params = array_merge(array(
 						"oauth_token" => "",
 						"oauth_secret" => ""
-					);
+					), $this->providerOptions);
 					
 					if (isset($this->Config->Flickr->APIKey)) {
 						$params['api_key'] = $this->Config->Flickr->APIKey;
@@ -426,6 +446,25 @@
 			}
 			
 			return new $imageprovider($params); 
+			
+		}
+		
+		/**
+		 * Set the image provider's options
+		 * @since Version 3.9.1
+		 * @param array $options
+		 * @return \Railpage\Images\Image
+		 */
+		 
+		public function setProviderOptions($options) {
+			
+			$this->providerOptions = $options; 
+			
+			if (!is_null($this->ImageProvider)) {
+				$this->ImageProvider->setOptions($this->providerOptions);
+			}
+			
+			return $this;
 			
 		}
 		

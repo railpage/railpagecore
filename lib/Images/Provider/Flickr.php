@@ -11,9 +11,11 @@
 	use Railpage\Images\Images;
 	use Railpage\Images\Image;
 	use Railpage\Images\ProviderInterface;
+	use Railpage\Users\User;
 	use Railpage\AppCore;
 	use Railpage\Url;
 	use Exception;
+	use InvalidArgumentException;
 	use DateTime;
 	use DateTimeZone;
 	use GuzzleHttp\Client;
@@ -42,6 +44,14 @@
 		 */
 		
 		const API_ENDPOINT = "https://api.flickr.com/services/rest/";
+		
+		/**
+		 * Permission: group moderator
+		 * @since Version 3.9.1
+		 * @const string ACL_GROUP_ADMIN
+		 */
+		
+		const ACL_GROUP_ADMIN = 200;
 		
 		/**
 		 * Flickr OAuth token
@@ -171,6 +181,23 @@
 			
 			$this->Client = new Client;
 			
+		}
+		
+		/**
+		 * Set some options for this provider
+		 * @since Version 3.9.1
+		 * @param array $options
+		 * @return \Railpage\Images\Provider\Flickr
+		 */
+		
+		public function setOptions($options) {
+			
+			foreach ($options as $key => $val) {
+				
+				$this->$key = $val;
+			}
+			
+			return $this;
 		}
 		
 		/**
@@ -494,6 +521,62 @@
 			}
 			
 			return $result;
+		}
+		
+		/**
+		 * Check if a user has permission to do...
+		 * @since Version 3.9.1
+		 * @param int $perm
+		 * @return boolean
+		 */
+		
+		public function can($perm) {
+			if (!filter_var($perm, FILTER_VALIDATE_INT)) {
+				return false;
+			}
+			
+			if (!$this->User instanceof User) {
+				throw new InvalidArgumentException("Cannot lookup permissions for " . __CLASS__ . ": no valid user has been set"); 
+			}
+			
+			switch ($perm) {
+				case self::ACL_GROUP_ADMIN :
+					return $this->isGroupAdmin(); 
+					break;
+					
+			}
+			
+		}
+		
+		/**
+		 * Is this user an administrator of the Flickr group
+		 * @since Version 3.9.1
+		 * @return boolean
+		 */
+		
+		private function isGroupAdmin() {
+			$Config = AppCore::getConfig(); 
+			
+			$params = [ 
+				"group_id" => $Config->Flickr->GroupID, 
+				"membertypes" => "3,4", 
+				"per_page" => 100, 
+				"page" => 1 
+			];
+			
+			$members = $this->execute("flickr.groups.members.getList", $params);
+			
+			if (!$members) {
+				throw new Exception(sprintf("Could not fetch members of Flickr group %s: %s (%d)", $params[0], $this->getErrorMessage(), $this->getErrorCode())); 
+			}
+				
+			foreach ($members['members']['member'] as $id => $row) {
+				if ($row['nsid'] == $this->User->flickr_nsid) {
+					return true;
+				}
+			}
+			
+			return false;
 		}
 	}
 	

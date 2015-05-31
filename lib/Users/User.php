@@ -1466,7 +1466,7 @@
 		
 		public function generateUserData() {
 			$return = array(); 
-			$return['session_id'] 	= filter_input(INPUT_SESSION, "session_id", FILTER_SANITIZE_STRING); 
+			$return['session_id'] 	= defined("INPUT_SESSION") ? filter_input(INPUT_SESSION, "session_id", FILTER_SANITIZE_STRING) : filter_var($_SESSION['session_id'], FILTER_SANITIZE_STRING); 
 			$return['user_id'] 		= $this->id;
 			$return['username'] 	= $this->username;
 			$return['theme']		= $this->theme;
@@ -1563,7 +1563,7 @@
 				return false;
 			}
 			
-			$lastupdate = filter_input(INPUT_SESSION, "sessiontime_lastupdate", FILTER_SANITIZE_STRING);
+			$lastupdate = defined("INPUT_SESSION") ? filter_input(INPUT_SESSION, "sessiontime_lastupdate", FILTER_SANITIZE_STRING) : filter_var($_SESSION['sessiontime_lastupdate'], FILTER_SANITIZE_STRING);
 			
 			if (is_null($lastupdate) || $lastupdate <= time() - 300) {
 				
@@ -2627,7 +2627,7 @@
 				$ipaddr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
 			}
 			
-			if (!$ip) {
+			if (!$ipaddr) {
 				throw new Exception("Cannot log user activity because no remote IP was provided");
 			}
 			
