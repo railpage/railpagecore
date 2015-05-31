@@ -232,12 +232,12 @@
 			
 			self::normaliseSizes_addMissingSizes("thumb", 280, 150);
 			self::normaliseSizes_addMissingSizes("small", 500, 281);	
-			self::normaliseSizes_addMissingSizes("medium", 800, 480);
 			
-			self::normaliseSizes_addShorthands("fullscreen", 1919);
+			self::normaliseSizes_addShorthands("fullscreen", 1920);
+			self::normaliseSizes_addShorthands("largest");
 			self::normaliseSizes_addShorthands("larger", 1024, 1920);
-			self::normaliseSizes_addShorthands("large", 1023, 1025);
-			self::normaliseSizes_addShorthands("medium", 799, 801);
+			self::normaliseSizes_addShorthands("large", 1024, 1024);
+			self::normaliseSizes_addShorthands("medium", 800, 800);
 			
 			if (!isset(self::$sizes['larger'])) {
 				self::$sizes['larger'] = self::$sizes['largest'];
@@ -296,15 +296,22 @@
 			}
 			
 			foreach (self::$sizes as $size) {
-				if ($size['width'] > $missing_size && $size['width'] <= 1920) {
+				if ($missing_size != "largest" && $size['width'] >= $min_width && $size['width'] <= $max_width) {
 					self::$sizes[$missing_size] = $size;
-					
-					if ($min_width === 0) {
-						break;
-					} else {
-						$min_width = $size['width'];
+					return;
+				}
+			}
+			
+			if ($missing_size == "largest") {
+				$largest = self::$sizes[0];
+				
+				foreach (self::$sizes as $size) {
+					if ($size['width'] > $largest['width']) {
+						$largest = $size;
 					}
 				}
+				
+				self::$sizes[$missing_size] = $largest;
 			}
 			
 			return;
