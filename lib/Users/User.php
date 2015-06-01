@@ -2698,14 +2698,8 @@
 						if ($size[0] >= $Config->AvatarMaxWidth || $size[1] >= $Config->AvatarMaxHeight) {
 							$this->avatar = sprintf("https://static.railpage.com.au/image_resize.php?w=%d&h=%d&image=%s", $Config->AvatarMaxWidth, $Config->AvatarMaxHeight, urlencode($this->avatar));
 							$this->avatar_filename = $this->avatar;
-							
-							if ($size = getimagesize($this->avatar)) {
-								$this->avatar_width = $size[0];
-								$this->avatar_height = $size[1];
-							} else {
-								$this->avatar_width = $Config->AvatarMaxWidth;
-								$this->avatar_height = $Config->AvatarMaxHeight; 
-							}
+							$this->avatar_width = $size[0];
+							$this->avatar_height = $size[1];
 						} else {
 							$this->avatar_width = $size[0];
 							$this->avatar_height = $size[1];

@@ -10,6 +10,9 @@
 	use Railpage\Forums\Thread;
 	use Railpage\Forums\Forum;
 	use Railpage\Forums\Category;
+	use Railpage\AppCore;
+	use Railpage\Registry;
+	
 	
 	class UserTest extends PHPUnit_Framework_TestCase {
 		
@@ -565,6 +568,42 @@
 			
 			$NewUser = new User; 
 			$NewUser->updateVisit();
+			
+		}
+		
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_validateAvatar($User) {
+			
+			$User->avatar = "http://doge2048.com/meta/doge-600.png";
+			$User->validateAvatar(); 
+			
+			$Config = AppCore::getConfig(); 
+			$Config->AvatarMaxWidth = 100;  
+			$Config->AvatarMaxHeight = 100; 
+			
+			#$Registry = Registry::getInstance();
+			#$Registry->set("config", $Config);
+			
+			$User->avatar = "http://doge2048.com/meta/doge-600.png";
+			$User->validateAvatar(); 
+			$User->validateAvatar(true);
+			
+			$Config->AvatarMaxWidth = 1000;  
+			$Config->AvatarMaxHeight = 1000; 
+			
+			#$Registry = Registry::getInstance();
+			#$Registry->set("config", $Config);
+			
+			$User->avatar = "http://doge2048.com/meta/doge-600.png";
+			$User->validateAvatar(); 
+			$User->validateAvatar(true);
+			
+			$User->avatar = "http://not-an-image.com/noimage.jpgzor";
+			$User->validateAvatar(); 
+			$User->validateAvatar(true);
 			
 		}
 		
