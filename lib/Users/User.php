@@ -1443,10 +1443,11 @@
 			
 			if (is_array($this->groups) && in_array($group_id, $this->groups)) {
 				return true;
-			} else {
-				return false;
 			}
 			
+			return false;
+			
+			/*
 			$query = "SELECT group_id FROM nuke_bbuser_group USE INDEX (user_id) WHERE group_id = ? AND user_id = ? AND user_pending = 0";
 			
 			if ($result = $this->db->fetchOne($query, array($group_id, $this->id))) {
@@ -1456,6 +1457,7 @@
 			}
 			
 			return false;
+			*/
 		}
 		
 		/**
@@ -1466,7 +1468,7 @@
 		
 		public function generateUserData() {
 			$return = array(); 
-			$return['session_id'] 	= defined("INPUT_SESSION") ? filter_input(INPUT_SESSION, "session_id", FILTER_SANITIZE_STRING) : filter_var($_SESSION['session_id'], FILTER_SANITIZE_STRING); 
+			$return['session_id'] 	= isset($_SESSION['session_id']) ? filter_var($_SESSION['session_id'], FILTER_SANITIZE_STRING) : NULL; 
 			$return['user_id'] 		= $this->id;
 			$return['username'] 	= $this->username;
 			$return['theme']		= $this->theme;
@@ -1511,38 +1513,40 @@
 				$user_id = $this->id;
 			}
 			
-			if ($this->db && $user_id) {
-				if (!$time) {
-					$time = $this->db->fetchOne("SELECT user_session_time FROM nuke_users WHERE user_id = ?", $user_id); 
-				}
+			if (!filter_var($user_id, FILTER_VALIDATE_INT)) {
+				return;
+			}
+			
+			if (!$time) {
+				$time = $this->db->fetchOne("SELECT user_session_time FROM nuke_users WHERE user_id = ?", $user_id); 
+			}
+			
+			$data = array(
+				"user_lastvisit" => $time
+			);
+			
+			$this->db->update("nuke_users", $data, array("user_id = ?" => $user_id));
+			
+			/** 
+			 * Update values stored in Memcached
+			 */
+			
+			if (!isset($this->mckey)) {
+				$this->mckey = sprintf("railpage:user_id=%d", $user_id);
+			}
+			
+			if (is_object($this->Redis)) {
+				$this->Redis->delete(sprintf("railpage:users.user=%d", $this->id));
 				
-				$data = array(
-					"user_lastvisit" => $time
-				);
+				$result = $this->Redis->fetch($this->mckey); 
+				$result['user_lastvisit'] = $time;
 				
-				$this->db->update("nuke_users", $data, array("user_id = ?" => $user_id));
-				
-				/** 
-				 * Update values stored in Memcached
-				 */
-				
-				if (!isset($this->mckey)) {
-					$this->mckey = sprintf("railpage:user_id=%d", $user_id);
-				}
-				
-				if (is_object($this->Redis)) {
-					$this->Redis->delete(sprintf("railpage:users.user=%d", $this->id));
-					
-					$result = $this->Redis->fetch($this->mckey); 
-					$result['user_lastvisit'] = $time;
-					
-					$this->Redis->save($this->mckey, $result);
-				}
-				
-				if ($result = $this->Memcached->fetch($this->mckey)) {
-					$result['user_lastvisit'] = $time;
-					$this->Memcached->save($this->mckey, $result);
-				}
+				$this->Redis->save($this->mckey, $result);
+			}
+			
+			if ($result = $this->Memcached->fetch($this->mckey)) {
+				$result['user_lastvisit'] = $time;
+				$this->Memcached->save($this->mckey, $result);
 			}
 		}
 		
@@ -1563,7 +1567,7 @@
 				return false;
 			}
 			
-			$lastupdate = defined("INPUT_SESSION") ? filter_input(INPUT_SESSION, "sessiontime_lastupdate", FILTER_SANITIZE_STRING) : filter_var($_SESSION['sessiontime_lastupdate'], FILTER_SANITIZE_STRING);
+			$lastupdate = filter_var($_SESSION['sessiontime_lastupdate'], FILTER_SANITIZE_STRING);
 			
 			if (is_null($lastupdate) || $lastupdate <= time() - 300) {
 				
@@ -2119,11 +2123,11 @@
 		 */
 		
 		public function aclRole($group_id = NULL, $role = "maintainer") {
-			if ($this->inGroup(RP_GROUP_ADMINS)) {
+			if (defined("RP_GROUP_ADMINS") && $this->inGroup(RP_GROUP_ADMINS)) {
 				return "administrator";
 			}
 			
-			if ($this->inGroup(RP_GROUP_MODERATORS)) {
+			if (defined("RP_GROUP_MODERATORS") && $this->inGroup(RP_GROUP_MODERATORS)) {
 				return "moderator";
 			}
 			
@@ -2633,11 +2637,11 @@
 				throw new Exception("Cannot log user activity because no pagetitle was provided");
 			}
 			
-			if (!$ipaddr && !is_null(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL))) { #isset($_SERVER['REMOTE_ADDR'])) {
-				$ipaddr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
+			if (!$ipaddr) {
+				$ipaddr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL);
 			}
 			
-			if (!$ipaddr) {
+			if (!$ipaddr || is_null($ipaddr)) {
 				throw new Exception("Cannot log user activity because no remote IP was provided");
 			}
 			
@@ -2965,4 +2969,5 @@
 			
 			return $this;
 		}
+		
 	}

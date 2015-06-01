@@ -5,6 +5,11 @@
 	use Railpage\Users\Base;
 	use Railpage\Users\User;
 	use Railpage\Warnings\Warning;
+	use Railpage\Forums\Forums;
+	use Railpage\Forums\Post;
+	use Railpage\Forums\Thread;
+	use Railpage\Forums\Forum;
+	use Railpage\Forums\Category;
 	
 	class UserTest extends PHPUnit_Framework_TestCase {
 		
@@ -16,52 +21,16 @@
 			
 			$User->username = "phpunit2";
 			$User->contact_email = "michael+phpunit2@railpage.com.au";
+			
 			$User->setPassword("letmein1234");
 			$User->commit(); 
 			
 			$this->assertFalse(!filter_var($User->id, FILTER_VALIDATE_INT));
 			
+			$NewUser = new User;
+			$this->assertFalse($NewUser->load());
+			
 			return $User;
-			
-		}
-		
-		public function test_isUsernameAvailable() {
-			
-			$User = new User;
-			$User->username = "phpunit3";
-			$User->contact_email = "michael+phpunit3@railpage.com.au";
-			$User->setPassword("letmein1234");
-			
-			$this->assertTrue($User->isUsernameAvailable("phpunit3"));
-			
-			$User->commit(); 
-			
-			$this->assertFalse($User->isUsernameAvailable("phpunit3"));
-			$this->assertFalse($User->isUsernameAvailable());
-			
-			$User = new User;
-			$this->setExpectedException("Exception", "Cannot check if username is available because no username was provided");
-			$this->assertFalse($User->isUsernameAvailable());
-			
-		}
-		
-		public function test_isEmailAvailable() {
-			
-			$User = new User;
-			$User->username = "phpunit4";
-			$User->contact_email = "michael+phpunit4@railpage.com.au";
-			$User->setPassword("letmein1234");
-			
-			$this->assertTrue($User->isEmailAvailable("michael+phpunit4@railpage.com.au"));
-			
-			$User->commit(); 
-			
-			$this->assertFalse($User->isEmailAvailable("michael+phpunit4@railpage.com.au"));
-			$this->assertFalse($User->isEmailAvailable());
-			
-			$User = new User;
-			$this->setExpectedException("Exception", "Cannot check if email address is available because no email address was provided");
-			$this->assertFalse($User->isEmailAvailable());
 			
 		}
 		
@@ -77,6 +46,11 @@
 			$this->assertFalse($User->safePassword("letmein"));
 			$this->assertFalse($User->safePassword("railpage"));
 			$this->assertFalse($User->safePassword($User->username));
+			
+			$User->setPassword("letmein");
+			
+			$this->setExpectedException("Exception", "Cannot set password - no password was provided"); 
+			$User->setPassword();
 			
 		}
 		
@@ -158,12 +132,14 @@
 		 */
 		
 		public function test_getArray($User) {
+			
 			$array = $User->getArray(); 
 			
 			$this->assertTrue(is_array($array)); 
 			$this->assertEquals($array['id'], $User->id) ;
 			$this->assertEquals($array['username'], $User->username); 
 			$this->assertEquals($array['contact_email'], $User->contact_email);
+			
 		}
 		
 		/**
@@ -171,6 +147,7 @@
 		 */
 		
 		public function test_preferences($User) {
+			
 			$prefs = $User->getPreferences(); 
 			
 			$this->assertTrue(is_array($prefs)); 
@@ -215,6 +192,42 @@
 			
 			$User->logUserActivity(1, "/blah", "Test page title", "8.8.8.8"); 
 			
+			$this->setExpectedException("Exception", "Cannot log user activity because no module ID was provided"); 
+			$User->logUserActivity("asdfaf"); 
+			
+		}
+		
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_logUserActivity_NoUrl($User) {
+			
+			$this->setExpectedException("Exception", "Cannot log user activity because no URL was provided"); 
+			$User->logUserActivity(1); 
+			
+		}
+		
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_logUserActivity_NoPagetitle($User) {
+			
+			$this->setExpectedException("Exception", "Cannot log user activity because no pagetitle was provided"); 
+			$User->logUserActivity(1, "/blah"); 
+			
+		}
+		
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_logUserActivity_NoIP($User) {
+			
+			$this->setExpectedException("Exception", "Cannot log user activity because no remote IP was provided"); 
+			$User->logUserActivity(1, "/blah", "asdfaf"); 
+			
 		}
 		
 		/**
@@ -222,9 +235,36 @@
 		 */
 		
 		public function test_getIPs($User) {
+			
 			$ips = $User->getIPs(); 
 			
 			$this->assertEquals(0, count($ips)); 
+			
+			$User->recordLogin("8.8.8.8");
+			$ips = $User->getIPs(); 
+			$this->assertEquals(1, count($ips)); 
+			
+			$Forums = new Forums;
+			$Category = new Category;
+			$Forum = new Forum;
+			$Thread = new Thread;
+			$Post = new Post;
+			
+			$Category->title = "Test category";
+			$Category->commit(); 
+			
+			$Forum->name = "Test forum";
+			$Forum->setCategory($Category)->commit(); 
+			
+			$Thread->title = "Test thread";
+			$Thread->setForum($Forum)->setAuthor($User)->commit(); 
+			
+			$Post->ip = "8.8.8.8";
+			$Post->text = "Test post text"; 
+			$Post->setThread($Thread)->setAuthor($User)->commit();
+			
+			$ips = $User->getIPs(); 
+			$this->assertEquals(2, count($ips)); 
 		}
 		
 		/**
@@ -302,6 +342,8 @@
 		public function test_accountStatus($User) {
 			
 			$this->assertEquals(User::STATUS_UNACTIVATED, $User->getUserAccountStatus()); 
+			
+			$User->setUserAccountStatus();
 			
 			$User->setUserAccountStatus(User::STATUS_ACTIVE);
 			$this->assertEquals(User::STATUS_ACTIVE, $User->getUserAccountStatus()); 
@@ -383,12 +425,14 @@
 			
 			$logins = $User->getLogins(); 
 			
-			$this->assertEquals(1, count($logins)); 
+			$this->assertEquals(2, count($logins)); 
 			$this->assertEquals("8.8.8.8", $logins[key($logins)]['login_ip']); 
 			
 			$User = new User;
 			$this->assertFalse($User->recordLogin("8.8.8.8"));
 			$this->assertFalse($User->getLogins());
+			
+			return true;
 			
 		}
 		
@@ -420,76 +464,107 @@
 			
 		}
 		
-		public function test_validateNewUser_EmptyUsername() {
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_reset($User) {
 			
-			$this->setExpectedException("Exception", "Username cannot be empty"); 
+			$NewUser = clone $User;
 			
-			$User = new User; 
+			$NewUser->refresh(); 
 			
-			$User->validate(); 
-			
-		}
-			
-		public function test_validateNewUser_EmtpyEmail() {
-			
-			$this->setExpectedException("Exception", "User must have an email address"); 
-			
-			$User = new User; 
-			
-			$User->username = "testblah";
-			$User->validate(); 
+			$NewUser->reset(); 
 			
 		}
 		
-		public function test_validateNewUser_InvalidEmail() {
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_load($User) {
 			
-			$email = "adfsdafaf";
+			$User->password_new = "asdfaf";
+			$User->wheat = 10;
+			$User->commit(); 
 			
-			$this->setExpectedException("Exception", sprintf("%s is not a valid email address", $email)); 
-			
-			$User = new User; 
-				
-			$User->username = "testblah";
-			$User->contact_email = $email;
-			$User->validate(); 
+			$User->load(); 
 			
 		}
 		
-		public function test_validateNewUser_EmptyPassword() {
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_groups($User) {
 			
-			$this->setExpectedException("Exception", "Password is empty"); 
+			if (!defined("RP_GROUP_ADMINS")) {
+				define("RP_GROUP_ADMINS", 770);
+			}
 			
-			$User = new User; 
-				
-			$User->username = "testblah";
-			$User->contact_email = "blah@railpage.com.au";
-			$User->provider = "railpage";
-			$User->validate(); 
+			$this->assertFalse($User->inGroup()); 
+			$this->assertFalse($User->inGroup(RP_GROUP_ADMINS));
+			
+			$User->level = 2;
+			$this->assertTrue($User->inGroup(RP_GROUP_ADMINS)); 
+			
+			$User->level = 1;
 			
 		}
 		
-		public function test_validateNewUser_EmptyPasswordSuccess() {
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_generateUserData($User) {
 			
-			$User = new User; 
-			
-			$User->username = "testblah";
-			$User->contact_email = "blah@railpage.com.au";
-			$User->provider = "google";
-			$User->validate(); 
-			$this->assertEquals("", $User->password); 
+			$this->assertFalse(count($User->generateUserData()) === 0);
 			
 		}
 		
-		public function test_validateNewUser_DefaultTheme() {
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_unlinkFlickr($User) {
 			
-			$User = new User; 
+			$User->unlinkFlickr(); 
 			
-			$User->username = "testblah";
-			$User->contact_email = "blah@railpage.com.au";
-			$User->provider = "google";
-			$User->default_theme = NULL;
+			$this->assertEquals(NULL, $User->flickr_nsid); 
+			$this->assertEquals(NULL, $User->flickr_username); 
+			$this->assertEquals(NULL, $User->flickr_oauth_token); 
+			$this->assertEquals(NULL, $User->flickr_oauth_secret); 
 			
-			$User->validate(); 
+		}
+		
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_aclRole($User) {
+			
+			$this->assertEquals("user", $User->aclRole());
+			$this->assertEquals("guest", (new User)->aclRole()); 
+			
+			
+		}
+		
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_updateVisit($User) {
+			
+			$User->updateVisit(false, time()); 
+			
+			$User->updateVisit(); 
+			
+			unset($User->mckey); 
+			
+			$User->updateVisit();
+			
+			$NewUser = new User; 
+			$NewUser->updateVisit();
 			
 		}
 		
