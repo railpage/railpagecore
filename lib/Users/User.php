@@ -1625,7 +1625,7 @@
 		 */
 		
 		public function loadNotes() {
-			if (!$this->id) {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				return false;
 			}
 			
@@ -1654,7 +1654,7 @@
 		 */
 		
 		public function addNote($text = false, $admin_user_id = 0) {
-			if (!$text) {
+			if ($text == false || is_null(filter_var($text, FILTER_SANITIZE_STRING))) {
 				return false;
 			}
 			
@@ -1801,7 +1801,7 @@
 		 */
 		
 		public function deleteAutoLogin($token_id = false) {
-			if (!$this->id) {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				return false;
 			} 
 			
@@ -1821,16 +1821,17 @@
 		 * @since Version 3.2
 		 * @version 3.2
 		 * @return boolean
+		 * @param string $client_addr
 		 */
 		
-		public function recordLogin() {
-			if (!$this->id) {
+		public function recordLogin($client_addr = false) {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				return false;
 			}
 			
-			if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+			if ($client_addr === false && !is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
 				$client_addr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR']; 
-			} else {
+			} elseif ($client_addr === false) {
 				$client_addr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
 			}
 			
@@ -1841,6 +1842,12 @@
 				"login_hostname" => filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING),
 				"server" => filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING)
 			);
+			
+			foreach ($data as $key => $val) {
+				if (is_null($val)) {
+					$data[$key] = "";
+				}
+			}
 			
 			if ($data['login_ip'] == $data['login_hostname']) {
 				$data['login_hostname'] = gethostbyaddr($data['login_ip']);
@@ -1859,7 +1866,7 @@
 		 */
 		
 		public function getLogins($items_per_page = 25, $page = 1) {
-			if (!$this->id) {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				return false;
 			}
 				
@@ -1987,16 +1994,7 @@
 		 */
 		
 		public function addChaff($amount = 1) {
-			if (!$this->id) {
-				throw new Exception("Cannot increment chaff rating - user ID unavailable"); 
-				return false;
-			}
-			
-			$data = array(
-				"uChaff" => $this->chaff + $amount
-			);
-			
-			return $this->db->update("nuke_users", $data, array("user_id" => $this->id));
+			return $this->chaff($amount); 
 		}
 		
 		/**
@@ -2148,6 +2146,7 @@
 		 */
 		
 		public function wheat($amt = 1) {
+			
 			if (!filter_var($amt, FILTER_VALIDATE_INT)) {
 				$amt = 1;
 			}
@@ -2156,6 +2155,7 @@
 			$this->commit();
 			
 			return $this;
+			
 		}
 		
 		/**
@@ -2166,6 +2166,7 @@
 		 */
 		
 		public function chaff($amt = 1) {
+			
 			if (!filter_var($amt, FILTER_VALIDATE_INT)) {
 				$amt = 1;
 			}
@@ -2174,6 +2175,7 @@
 			$this->commit();
 			
 			return $this;
+			
 		}
 		
 		/**
@@ -2183,9 +2185,6 @@
 		 */
 		
 		private function createUrls() {
-			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
-				return $this;
-			}
 			
 			$PMs = new Module("pm");
 			
@@ -2197,6 +2196,7 @@
 			$this->url->ideas = sprintf("%s?mode=contributions-ideas", $this->url->url);
 			
 			return $this;
+			
 		}
 		
 		/**
@@ -2378,7 +2378,13 @@
 		 */
 		
 		public function isActive() {
-			return (boolean) $this->active;
+			if ($this->getUserAccountStatus() == self::STATUS_ACTIVE) {
+				return true; 
+			} 
+			
+			return false;
+			
+			#return (boolean) $this->active;
 		}
 		
 		/**
@@ -2421,6 +2427,10 @@
 			switch ($status) {
 				case self::STATUS_ACTIVE : 
 					$this->active = true; 
+					break;
+					
+				case self::STATUS_UNACTIVATED : 
+					$this->active = false; 
 					break;
 					
 			}
@@ -2468,7 +2478,7 @@
 		 */
 		
 		public function safePassword($password = false) {
-			if (is_null(filter_var($password, FILTER_SANITIZE_STRING))) {
+			if (empty($password) || is_null(filter_var($password, FILTER_SANITIZE_STRING))) {
 				throw new Exception("You gotta supply a password...");
 			}
 			
@@ -2594,7 +2604,7 @@
 			}
 			
 			if (!$email) {
-				throw new Exception("Cannot check if username is available because no email address was provided");
+				throw new Exception("Cannot check if email address is available because no email address was provided");
 			}
 			
 			return (new Base)->email_available($email);

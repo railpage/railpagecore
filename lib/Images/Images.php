@@ -291,6 +291,10 @@
 		
 		private static function normaliseSizes_addShorthands($missing_size, $min_width = 0, $max_width = 99999) {
 			
+			if (!count(self::$sizes)) {
+				return;
+			}
+			
 			if (isset(self::$sizes[$missing_size])) {
 				return;
 			}
@@ -303,7 +307,7 @@
 			}
 			
 			if ($missing_size == "largest") {
-				$largest = self::$sizes[0];
+				$largest = current(self::$sizes); 
 				
 				foreach (self::$sizes as $size) {
 					if ($size['width'] > $largest['width']) {
