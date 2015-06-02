@@ -436,6 +436,10 @@
 			 */
 			
 			foreach (debug_backtrace() as $step) {
+				if (!isset($step['file'])) {
+					continue;
+				}
+				
 				$dir = dirname($step['file']);
 				
 				if (!empty($this->subtheme)) {
