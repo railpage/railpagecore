@@ -159,6 +159,22 @@
 		public $json;
 		
 		/**
+		 * Image provider options
+		 * @since Version 3.9.1
+		 * @var array $providerOptions
+		 */
+		
+		private $providerOptions = array(); 
+		
+		/**
+		 * Image provider
+		 * @since Version 3.9.1
+		 * @var object $ImageProvider
+		 */
+		
+		private $ImageProvider;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.8.7
 		 * @param int $id
@@ -400,6 +416,10 @@
 		
 		public function getProvider() {
 			
+			if (!is_null($this->ImageProvider)) {
+				return $this->ImageProvider; 
+			}
+			
 			$imageprovider = __NAMESPACE__ . "\\Provider\\" . ucfirst($this->provider);
 			$params = array();
 			
@@ -413,10 +433,10 @@
 					break;
 				
 				case "flickr" : 
-					$params = array(
+					$params = array_merge(array(
 						"oauth_token" => "",
 						"oauth_secret" => ""
-					);
+					), $this->providerOptions);
 					
 					if (isset($this->Config->Flickr->APIKey)) {
 						$params['api_key'] = $this->Config->Flickr->APIKey;
@@ -426,6 +446,25 @@
 			}
 			
 			return new $imageprovider($params); 
+			
+		}
+		
+		/**
+		 * Set the image provider's options
+		 * @since Version 3.9.1
+		 * @param array $options
+		 * @return \Railpage\Images\Image
+		 */
+		 
+		public function setProviderOptions($options) {
+			
+			$this->providerOptions = $options; 
+			
+			if (!is_null($this->ImageProvider)) {
+				$this->ImageProvider->setOptions($this->providerOptions);
+			}
+			
+			return $this;
 			
 		}
 		
@@ -1028,9 +1067,10 @@
 		 * Suggest locos to tag
 		 * @since Version 3.9.1
 		 * @return array
+		 * @param boolean $skiptagged Remove locos already tagged in this photo from the list of suggested locos
 		 */
 		
-		public function suggestLocos() {
+		public function suggestLocos($skiptagged = true) {
 			
 			$locolookup = array(); 
 			$locos = array(); 
@@ -1054,7 +1094,9 @@
 				"[0-9]{4}s",                           // 1990s
 				"[0-9]{2}s",                           // 90s
 				"[0-9]{4}-[0-9]{2}",                   // 2015-05
-				"[0-9]{2}:[0-9]{2}"                    // 16:30
+				"[0-9]{2}:[0-9]{2}",                   // 16:30
+				"(January|February|March|April|May|June|July|August|September|October|November|December)\s[0-9]{2,4}",
+				"(Jan|Feb|Mar|Apr|May|Jun|Jul|Augt|Sep|Sept|Oct|Nov|Dec)\s[0-9]{2,4}"
 			);
 			
 			$stripdates = "/(" . implode("|", $stripdates) . ")/";
@@ -1130,10 +1172,8 @@
 			$locolookup = array_unique($locolookup);
 			
 			/**
-			 * Get existing tags for this image
+			 * Prepare the SQL query 
 			 */
-			
-			$tags = $this->getObjects("railpage.locos.loco"); 
 			
 			$query = "SELECT l.loco_id, l.loco_num, l.class_id, c.name AS class_name, s.name AS status_name, s.id AS status_id, t.id AS type_id, t.title AS type_name, g.gauge_id, CONCAT(g.gauge_name, ' ', g.gauge_imperial) AS gauge_formatted, o.operator_id, o.operator_name
 				FROM loco_unit AS l 
@@ -1149,17 +1189,21 @@
 			 * Remove existing tags from our DB query
 			 */
 			
-			if (count($tags)) {
-				$ids = array(); 
+			if ($skiptagged === true) {
+				$tags = $this->getObjects("railpage.locos.loco"); 
 				
-				foreach ($tags as $tag) {
-					$ids[] = $tag['namespace_key'];
+				if (count($tags)) {
+					$ids = array(); 
+					
+					foreach ($tags as $tag) {
+						$ids[] = $tag['namespace_key'];
+					}
+					
+					$query .= " AND l.loco_id NOT IN (" . implode(",", $ids) . ")";
 				}
 				
-				$query .= " AND l.loco_id NOT IN (" . implode(",", $ids) . ")";
+				$query .= " ORDER BY CHAR_LENGTH(l.loco_num) DESC";
 			}
-			
-			$query .= " ORDER BY CHAR_LENGTH(l.loco_num) DESC";
 			
 			/**
 			 * Loop through the DB results
@@ -1179,6 +1223,59 @@
 			}
 			
 			return $locos;
+		}
+		
+		/**
+		 * Suggest liveries to tag based on other locos in this class
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function suggestLiveries() {
+			$query = '
+				SELECT livery.livery_id AS id, livery.livery AS name, livery.photo_id
+				FROM loco_livery AS livery
+					LEFT JOIN image_link AS link ON link.namespace_key = livery.livery_id
+				WHERE link.namespace = "railpage.locos.liveries.livery"
+					AND image_id IN (
+						SELECT image_id 
+						FROM image_link 
+						WHERE namespace = ? 
+							AND namespace_key IN (
+								SELECT namespace_key AS class_id 
+								FROM image_link 
+								WHERE namespace = ? 
+									AND image_id = ?
+									AND ignored = 0
+							)
+					)
+					AND livery_id NOT IN (
+						SELECT namespace_key FROM image_link WHERE namespace = "railpage.locos.liveries.livery" AND image_id = ?
+					)
+				GROUP BY livery.livery_id
+				ORDER BY link.id DESC';
+			
+			$params = [
+				"railpage.locos.loco",
+				"railpage.locos.loco",
+				$this->id,
+				$this->id
+			];
+					
+			$liveries = $this->db->fetchAll($query, $params);
+			
+			if (count($liveries) === 0) {
+				$params = [
+					"railpage.locos.class",
+					"railpage.locos.class",
+					$this->id,
+					$this->id
+				];
+			
+				$liveries = $this->db->fetchAll($query, $params); 
+			}
+			
+			return $liveries;
 		}
 	}
 	

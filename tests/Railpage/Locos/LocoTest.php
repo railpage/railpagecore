@@ -191,5 +191,44 @@
 			$this->assertEquals(self::CLASS_NAME, $NextLoco->Class->name);
 			
 		}
+		
+		/**
+		 * @depends testAddLocoClass 
+		 */
+		
+		public function testGetClassByWheelArrangement($class_id) {
+			$Class = new LocoClass($class_id); 
+			$Arrangement = new WheelArrangement($Class->wheel_arrangement_id); 
+			
+			foreach ($Arrangement->getClasses() as $row) {
+				$this->assertEquals($row['wheel_arrangement']['id'], $Arrangement->id);
+			}
+		}
+		
+		/**
+		 * @depends testAddLocoClass 
+		 */
+		
+		public function testGetClassByType($class_id) {
+			$Class = new LocoClass($class_id); 
+			$Type = new Type($Class->type_id); 
+			
+			foreach ($Type->getClasses() as $row) {
+				$this->assertEquals($row['type']['id'], $Type->id);
+			}
+		}
+		
+		/**
+		 * @depends testAddLocoClass 
+		 */
+		
+		public function testGetClassByManufacturer($class_id) {
+			$Class = new LocoClass($class_id); 
+			$Manufacturer = new Manufacturer($Class->type_id); 
+			
+			foreach ($Manufacturer->getClasses() as $row) {
+				$this->assertEquals($row['manufacturer']['id'], $Manufacturer->id);
+			}
+		}
 	}
 	

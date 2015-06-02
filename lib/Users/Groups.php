@@ -12,11 +12,15 @@
 	
 	namespace Railpage\Users; 
 	
+	use Railpage\Organisations\Organisation;
+	use Railpage\AppCore;
+	use Exception;
+	
 	/**
 	 * Groups class
 	 */
 	
-	class Groups {
+	class Groups extends AppCore {
 		
 		/**
 		 * Const: open group
@@ -76,7 +80,7 @@
 					$row['group_attrs'] = !empty($row['group_attrs']) ? json_decode($row['group_attrs'], true) : array();
 					
 					if (filter_var($row['organisation_id'], FILTER_VALIDATE_INT)) {
-						$Organisation = new \Railpage\Organisations\Organisation($this->db, $row['organisation_id']); 
+						$Organisation = new Organisation($row['organisation_id']); 
 						$row['organisation_name'] = $Organisation->name;
 					}
 					
@@ -101,7 +105,7 @@
 		
 		public function findWithAttribute($attribute = false, $value = false) {
 			if (!$attribute) {
-				throw new \Exception("Cannot filter groups by attribute - no attribute given!"); 
+				throw new Exception("Cannot filter groups by attribute - no attribute given!"); 
 				return false;
 			}
 			

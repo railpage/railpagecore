@@ -391,6 +391,14 @@
 				$this->url_slug = "";
 			}
 			
+			if (!filter_var($this->timestamp)) {
+				$this->timestamp = time(); 
+			}
+			
+			if (empty($this->text)) {
+				throw new Exception("No post text was submitted"); 
+			}
+			
 			
 			return true;
 		}
@@ -410,7 +418,7 @@
 			}
 			
 			// Set the editor version
-			$this->editor_version = EDITOR_VERSION; 
+			$this->editor_version = defined("EDITOR_VERSION") ? EDITOR_VERSION : 2; 
 			
 			/** 
 			 * Validate the post

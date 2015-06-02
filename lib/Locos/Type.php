@@ -8,7 +8,10 @@
 	
 	namespace Railpage\Locos;
 	
+	use Railpage\Url;
+	use Railpage\ContentUtility;
 	use Exception;
+	use InvalidArgumentException;
 	
 	/**
 	 * Locomotive type - steam, diesel-electric, etc
@@ -50,36 +53,50 @@
 		public function __construct($id = NULL) {
 			parent::__construct();
 			
+			if (filter_var($id, FILTER_VALIDATE_INT)) {
+				$row = $this->db->fetchRow("SELECT * FROM loco_type WHERE id = ?", $id);
+				$this->load($row); 
+			}
+			
+			$id = filter_var($id, FILTER_SANITIZE_STRING); 
+			
 			if (!is_null($id)) {
-				if (filter_var($id, FILTER_VALIDATE_INT)) {
-					$row = $this->db->fetchRow("SELECT * FROM loco_type WHERE id = ?", $id);
-				} elseif (is_string($id)) {
-					$row = $this->db->fetchRow("SELECT * FROM loco_type WHERE slug = ?", $id);
+				$row = $this->db->fetchRow("SELECT * FROM loco_type WHERE slug = ?", $id);
+				$this->load($row);
+			}
+		}
+		
+		/**
+		 * Populate this object
+		 * @since Version 3.9.1
+		 * @param array $row
+		 * @return void
+		 */
+		
+		private function load($row) {
+			if (!is_array($row) || count($row) === 0) {
+				return false;
+			}
+			
+			$this->id = $row['id']; 
+			$this->name = $row['title'];
+			$this->slug = $row['slug'];
+			
+			if (empty($this->slug)) {
+				$proposal = ContentUtility::generateUrlSlug($this->name, 30);
+				
+				$query = "SELECT id FROM loco_type WHERE slug = ?";
+				$result = $this->db->fetchAll($query, $proposal);
+				
+				if (count($result)) {
+					$proposal = $proposal . count($result);
 				}
 				
-				if (isset($row) && count($row)) {
-					$this->id = $row['id']; 
-					$this->name = $row['title'];
-					$this->slug = $row['slug'];
-					
-					if (empty($this->slug)) {
-						$proposal = create_slug($this->name);
-						$proposal = substr($proposal, 0, 30);
-						
-						$query = "SELECT id FROM loco_type WHERE slug = ?";
-						$result = $this->db->fetchAll($query, $proposal);
-						
-						if (count($result)) {
-							$proposal = $proposal . count($result);
-						}
-						
-						$this->slug = $proposal;
-						$this->commit();
-					}
-					
-					$this->url = sprintf("%s/type/%s", $this->Module->url, $this->slug);
-				}
+				$this->slug = $proposal;
+				$this->commit();
 			}
+			
+			$this->url = new Url(sprintf("%s/type/%s", $this->Module->url, $this->slug));
 		}
 		
 		/**
@@ -96,8 +113,7 @@
 			}
 					
 			if (empty($this->slug)) {
-				$proposal = create_slug($this->name);
-				$proposal = substr($proposal, 0, 30);
+				$proposal = ContentUtility::generateUrlSlug($this->name, 30);
 				
 				$query = "SELECT id FROM loco_type WHERE slug = ?";
 				$result = $this->db->fetchAll($query, $proposal);
@@ -107,7 +123,7 @@
 				}
 				
 				$this->slug = $proposal;
-				$this->url = sprintf("%s/type/%s", $this->Module->url, $this->slug);
+				$this->url = new Url(sprintf("%s/type/%s", $this->Module->url, $this->slug));
 			}
 			
 			return true;
@@ -139,6 +155,39 @@
 			}
 			
 			return $this;
+		}
+		
+		/**
+		 * Get an associative array of this data
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			return array(
+				"id" => $this->id,
+				"name" => $this->name,
+				"url" => $this->url->getURLs()
+			);
+		}
+		
+		/**
+		 * Get locomotive classes by this type
+		 * @return array
+		 */
+		
+		public function getClasses() {
+			$query = "SELECT id FROM loco_class WHERE loco_type_id = ? ORDER BY name";
+			
+			$return = array();
+			
+			foreach ($this->db->fetchAll($query, $this->id) as $row) {
+				$LocoClass = new LocoClass($row['id']);
+				
+				$return[] = $LocoClass->getArray();
+			}
+			
+			return $return;
 		}
 	}
 	

@@ -20,6 +20,7 @@
 	use DateInterval;
 	use DatePeriod;
 	use stdClass;
+	use Railpage\ContentUtility;
 	
 	use Railpage\Notifications\Notifications;
 	use Railpage\Notifications\Notification;
@@ -150,7 +151,7 @@
 				}
 			}
 			
-			if (filter_var($id, FILTER_VALIDATE_INT)) {
+			if ($id = filter_var($id, FILTER_VALIDATE_INT)) {
 				$this->cachekey = sprintf("railpage:photo.comp=%d", $id);
 				
 				$this->id = $id;
@@ -164,44 +165,59 @@
 		 * @return \Railpage\Images\Competition
 		 */
 		
-		public function load() {
+		private function load() {
 			
 			$query = "SELECT * FROM image_competition WHERE id = ?";
 			
 			$row = $this->db->fetchRow($query, $this->id);
 			
-			$this->title = $row['title'];
-			$this->description = $row['description'];
-			$this->status = $row['status'];
-			$this->slug = $row['slug'];
-			$this->theme = $row['theme'];
+			$lookup = [ "title", "description", "status", "slug", "theme" ];
+			
+			foreach ($lookup as $var) {
+				$this->$var = $row[$var];
+			}
+			
 			$this->meta = json_decode($row['meta'], true);
 			
-			if ($row['voting_date_open'] != "0000-00-00 00:00:00") {
-				$this->VotingDateOpen = new DateTime($row['voting_date_open']);
+			$lookup = array(
+				"voting_date_open" => "VotingDateOpen",
+				"voting_date_close" => "VotingDateClose",
+				"submissions_date_open" => "SubmissionsDateOpen",
+				"submissions_date_close" => "SubmissionsDateClose"
+			);
+			
+			foreach ($lookup as $db => $var) {
+				if ($row[$db] != "0000-00-00 00:00:00") {
+					$this->$var = new DateTime($row[$db]);
+				}
 			}
 			
-			if ($row['voting_date_close'] != "0000-00-00 00:00:00") {
-				$this->VotingDateClose = new DateTime($row['voting_date_close']);
-			}
-			
-			if ($row['submissions_date_open'] != "0000-00-00 00:00:00") {
-				$this->SubmissionsDateOpen = new DateTime($row['submissions_date_open']);
-			}
-			
-			if ($row['submissions_date_close'] != "0000-00-00 00:00:00") {
-				$this->SubmissionsDateClose = new DateTime($row['submissions_date_close']);
-			}
-			
-			if ($this->VotingDateClose->format("H:i:s") == "00:00:00") {
+			if ($this->VotingDateClose->format("H:i:s") === "00:00:00") {
 				$this->VotingDateClose = new DateTime($this->VotingDateClose->format("Y-m-d 23:59:59"));
 			}
 			
-			if ($this->SubmissionsDateClose->format("H:i:s") == "00:00:00") {
+			if ($this->SubmissionsDateClose->format("H:i:s") === "00:00:00") {
 				$this->SubmissionsDateClose = new DateTime($this->SubmissionsDateClose->format("Y-m-d 23:59:59"));
 			}
 			
-			$this->Author = new User($row['author']);
+			$this->setAuthor(new User($row['author']));
+			
+			$this->makeURLs(); 
+			
+			$this->notifySubmissionsOpen();
+			$this->notifyVotingOpen(); 
+			$this->notifyWinner(); 
+			
+			return $this;
+		}
+		
+		/**
+		 * Load the URL object for this competition
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function makeURLs() {
 			
 			$this->url = new Url(sprintf("/gallery/comp/%s", $this->slug));
 			$this->url->submitphoto = sprintf("%s/submit", $this->url->url);
@@ -209,11 +225,21 @@
 			$this->url->pending = sprintf("/gallery?mode=competition.pendingphotos&id=%d", $this->id);
 			$this->url->suggestsubject = sprintf("/gallery?mode=competition.nextsubject&id=%d", $this->id);
 			
-			$this->notifySubmissionsOpen();
-			$this->notifyVotingOpen(); 
-			$this->notifyWinner(); 
+			/**
+			 * Get the UTM email campaign link
+			 */
 			
-			return $this;
+			$joiner = strpos($this->url->canonical, "?") !== false ? "&" : "?";
+			
+			$parts = array(
+				"utm_medium" => "email",
+				"utm_source" => "Newsletter",
+				"utm_campaign" => str_replace(" ", "+", $this->title)
+			);
+			
+			$url = $this->url->canonical . $joiner . http_build_query($parts);
+			
+			$this->url->email = $url;
 		}
 		
 		/**
@@ -240,7 +266,7 @@
 			}
 			
 			if (empty($this->slug)) {
-				$proposal = create_slug($this->title); 
+				$proposal = ContentUtility::generateUrlSlug($this->title); 
 				
 				$query = "SELECT id FROM image_competition WHERE slug = ?";
 				$num = count($this->db->fetchAll($query, $proposal));
@@ -252,28 +278,16 @@
 				$this->slug = $proposal;
 			}
 			
-			if (!$this->Author instanceof User) {
+			if (!$this->Author instanceof User || !filter_var($this->Author->id, FILTER_VALIDATE_INT)) {
 				throw new Exception("Author is not set (hint: setAuthor(User))");
 			}
 			
-			if (!filter_var($this->Author->id, FILTER_VALIDATE_INT)) {
-				throw new Exception("Invalid user ID for Competition::\$Author");
-			}
+			$dates = [ "VotingDateOpen", "VotingDateClose", "SubmissionsDateOpen", "SubmissionsDateClose" ];
 			
-			if (!$this->VotingDateOpen instanceof DateTime) {
-				throw new Exception("VotingDateOpen must be an instance of DateTime");
-			}
-			
-			if (!$this->VotingDateClose instanceof DateTime) {
-				throw new Exception("VotingDateClose must be an instance of DateTime");
-			}
-			
-			if (!$this->SubmissionsDateOpen instanceof DateTime) {
-				throw new Exception("SubmissionsDateOpen must be an instance of DateTime");
-			}
-			
-			if (!$this->SubmissionsDateClose instanceof DateTime) {
-				throw new Exception("SubmissionsDateClose must be an instance of DateTime");
+			foreach ($dates as $date) {
+				if (!$this->$date instanceof DateTime) {
+					throw new Exception(sprintf("%s::%s must be an instance of DateTime", __CLASS__, $date)); 
+				}
 			}
 			
 			if ($this->VotingDateOpen > $this->VotingDateClose) {
@@ -296,11 +310,11 @@
 				$this->status = Competitions::STATUS_CLOSED;
 			}
 			
-			if ($this->VotingDateClose->format("H:i:s") == "00:00:00") {
+			if ($this->VotingDateClose->format("H:i:s") === "00:00:00") {
 				$this->VotingDateClose = new DateTime($this->VotingDateClose->format("Y-m-d 23:59:59"));
 			}
 			
-			if ($this->SubmissionsDateClose->format("H:i:s") == "00:00:00") {
+			if ($this->SubmissionsDateClose->format("H:i:s") === "00:00:00") {
 				$this->SubmissionsDateClose = new DateTime($this->SubmissionsDateClose->format("Y-m-d 23:59:59"));
 			}
 			
@@ -352,7 +366,7 @@
 					$theme['theme'] = format_topictitle($theme['theme']);
 				}
 				
-				if ((!isset($theme['used']) || $theme['used'] == false) && $theme['theme'] == $this->theme) {
+				if ((!isset($theme['used']) || $theme['used'] === false) && $theme['theme'] === $this->theme) {
 					$themes[$key]['used'] = true;
 				}
 			}
@@ -436,9 +450,9 @@
 				$Image->id
 			);
 			
-			$rs = $this->db->fetchAll($query, $params); 
+			$result = $this->db->fetchAll($query, $params); 
 			
-			if (count($rs)) {
+			if (count($result)) {
 				return true;
 			}
 			
@@ -467,13 +481,13 @@
 				$User->id
 			);
 			
-			$rs = $this->db->fetchAll($query, $params); 
+			$result = $this->db->fetchAll($query, $params); 
 			
 			$max_votes = isset($this->meta['maxvotes']) && filter_var($this->meta['maxvotes'], FILTER_VALIDATE_INT) ? $this->meta['maxvotes'] : Competitions::MAX_VOTES_PER_USER;
 			
 			$return = array(
-				"cast" => count($rs),
-				"free" => $max_votes - count($rs)
+				"cast" => count($result),
+				"free" => $max_votes - count($result)
 			);
 			
 			return $return;
@@ -524,9 +538,8 @@
 			
 			$now = new DateTime;
 			
-			if (!($this->VotingDateOpen instanceof DateTime && $this->VotingDateOpen <= $now) || 
-				!($this->VotingDateClose instanceof DateTime && $this->VotingDateClose >= $now)) {
-					return false;
+			if (!Utility\CompetitionUtility::isVotingWindowOpen($this)) {
+				return false;
 			}
 			
 			$query = "SELECT id FROM image_competition_votes WHERE competition_id = ? AND user_id = ?";
@@ -544,22 +557,20 @@
 				$params[] = $Image->id;
 			}
 			
-			$rs = $this->db->fetchAll($query, $params);
+			$result = $this->db->fetchAll($query, $params);
 			
-			if ($Image instanceof Image) {
-				if ($rs != false || count($rs)) {
-					return false;
-				}
-			} else {
-				if (isset($rs[0]) && isset($rs[0]['user_id']) && $rs[0]['user_id'] == $User->id) {
-					return false;
-				}
-				
-				$max_votes = isset($this->meta['maxvotes']) && filter_var($this->meta['maxvotes'], FILTER_VALIDATE_INT) ? $this->meta['maxvotes'] : Competitions::MAX_VOTES_PER_USER;
-				
-				if (count($rs) >= $max_votes) {
-					return false;
-				}
+			if ($Image instanceof Image && count($result) > 0) {
+				return false;
+			}
+			
+			if (isset($result[0]) && isset($result[0]['user_id']) && (int) $result[0]['user_id'] === (int) $User->id) {
+				return false;
+			}
+			
+			$max_votes = isset($this->meta['maxvotes']) && filter_var($this->meta['maxvotes'], FILTER_VALIDATE_INT) ? $this->meta['maxvotes'] : Competitions::MAX_VOTES_PER_USER;
+			
+			if (count($result) >= $max_votes) {
+				return false;
 			}
 			
 			return true;
@@ -843,19 +854,8 @@
 		public function getArray() {
 			$now = new DateTime;
 			
-			$voting_open = true;
-			
-			if (!($this->VotingDateOpen instanceof DateTime && $this->VotingDateOpen <= $now) || 
-				!($this->VotingDateClose instanceof DateTime && $this->VotingDateClose >= $now)) {
-					$voting_open = false;
-			}
-			
-			$submissions_open = true;
-			
-			if (!($this->SubmissionsDateOpen instanceof DateTime && $this->SubmissionsDateOpen <= $now) || 
-				!($this->SubmissionsDateClose instanceof DateTime && $this->SubmissionsDateClose >= $now)) {
-					$submissions_open = false;
-			}
+			$voting_open = Utility\CompetitionUtility::isVotingWindowOpen($this);
+			$submissions_open = Utility\CompetitionUtility::isSubmissionWindowOpen($this);
 			
 			$return = array(
 				"id" => $this->id,
@@ -864,7 +864,7 @@
 				"description" => $this->description,
 				"status" => array(
 					"id" => $this->status,
-					"name" => $this->status == Competitions::STATUS_OPEN ? "Open" : "Closed"
+					"name" => $this->status === Competitions::STATUS_OPEN ? "Open" : "Closed"
 				),
 				"url" => isset($this->url) && $this->url instanceof Url ? $this->url->getURLs() : array(),
 				"voting" => array(
@@ -927,6 +927,7 @@
 		 */
 		
 		public function getPhotoContext(Image $Image) {
+			
 			$query = "SELECT s.*, 0 AS current FROM image_competition_submissions AS s LEFT JOIN image AS i ON s.image_id = i.id WHERE s.competition_id = ? AND s.status = ? AND i.photo_id != 0 ORDER BY s.date_added ASC";
 
 			$where = array(
@@ -936,65 +937,19 @@
 			
 			$photos = $this->db->fetchAll($query, $where);
 			
-			/**
-			 * Loop through the array once until we find the provided image. Add photos to a temporary array, and then we slice it to return the last 4 entries to the array
-			 */
-			
-			$return = array(); 
-			$split = 0;
-			$tmp = array(); 
-			
-			foreach ($photos as $key => $data) {
-				
-				if ($data['image_id'] == $Image->id) {
-					$split = $key;
-					break;
-				}
-				
-				$tmp[] = $data; 
-			}
-			
-			$return = array_slice($tmp, -2);
-			
-			/**
-			 * Add the current photo to the array
-			 */
-			
-			$return[] = array_merge($photos[$split], array("current" => true));
-			
-			/**
-			 * Loop through the array starting at $split
-			 */
-			
-			$tmp = array(); 
-			
-			foreach ($photos as $key => $data) {
-				if ($key >= $split + 1) {
-					$tmp[] = $data;
-				}
-			}
-			
-			$return = array_merge($return, array_slice($tmp, 0, 2));
-			
-			$return = array_reverse($return);
+			$return = Utility\CompetitionUtility::getPhotoContext($photos, $Image); 
 			
 			/**
 			 * Loop through the context and return a stdClass photo
 			 */
 			
 			foreach ($return as $data) {
-				$Photo = new stdClass;
-				$Photo->id = $data['id']; 
-				$Photo->Author = new User($data['user_id']);
-				$Photo->Image = new Image($data['image_id']);
-				$Photo->DateAdded = new DateTime($data['date_added']);
-				$Photo->Meta = json_decode($data['meta'], true);
-				$Photo->url = new Url(sprintf("%s/%d", $this->url->url, $Photo->Image->id));
-				$Photo->url->vote = sprintf("%s/vote", $Photo->url);
+				$Photo = $this->getPhoto($data); 
 				$Photo->current = (bool) $data['current'];
 				
 				yield $Photo;
 			}
+			
 		}
 		
 		/**
@@ -1046,7 +1001,7 @@
 		 * @return \Railpage\Images\Competition
 		 */
 		
-		public function releaseVotesForImage(Image $Image) {
+		private function releaseVotesForImage(Image $Image) {
 			$where = array(
 				"competition_id = ?" => $this->id,
 				"image_id = ?" => $Image->id
@@ -1105,10 +1060,10 @@
 		 * @todo Check recipient preferences for email notifications
 		 */
 		
-		public function notifyWinner() {
+		private function notifyWinner() {
 			if ($Photo = $this->getWinningPhoto()) {
 				
-				if (isset($this->meta['winnernotified']) && $this->meta['winnernotified'] == true) {
+				if (isset($this->meta['winnernotified']) && $this->meta['winnernotified'] === true) {
 					return $this;
 				}
 				
@@ -1116,14 +1071,7 @@
 				 * Create a site message
 				 */
 				
-				if (!$SiteMessage = (new SiteMessages)->getMessageForObject($this)) {
-					$SiteMessage = new SiteMessage; 
-					
-					$SiteMessage->title = sprintf("Photo competition: %s", $this->title); 
-					$SiteMessage->text = sprintf("You won the %s photo competition! <a href='%s'>Set the subject of next month's competition</a>.", $this->title, $this->url->suggestsubject); 
-					$SiteMessage->Object = $this;
-					$SiteMessage->targetUser($Photo->Author)->commit(); 
-				}
+				Utility\CompetitionUtility::createSiteNotificationForWinner($this);
 				
 				/**
 				 * Create an email
@@ -1190,103 +1138,33 @@
 		 * @todo Check recipient preferences for email notifications
 		 */
 		
-		public function notifySubmissionsOpen() {
+		private function notifySubmissionsOpen() {
 			
 			/**
 			 * Return if we're not within the submissions bounds
 			 */
 			
-			$now = new DateTime;
-			
-			if (!($this->SubmissionsDateOpen instanceof DateTime && $this->SubmissionsDateOpen <= $now) || 
-				!($this->SubmissionsDateClose instanceof DateTime && $this->SubmissionsDateClose >= $now)) {
-					return $this;
+			if (!Utility\CompetitionUtility::isSubmissionWindowOpen($this)) {
+				return $this;
 			}
 			
 			/**
-			 * Check if the notification sent flag has been set
+			 * Assemble our options to send to the mailer
 			 */
 			
-			if (!isset($this->meta['notifySubmissionsOpen']) || !filter_var($this->meta['notifySubmissionsOpen']) || $this->meta['notifySubmissionsOpen'] == false) {
-				
-				/**
-				 * Create the notification
-				 */
-				
-				$Notification = new Notification;
-				$Notification->subject = sprintf("Submissions open: %s", $this->title); 
-				
-				$query = "SELECT DISTINCT user_id FROM image_competition_submissions";
-				$replacements = array(); 
-				
-				foreach ($this->db->fetchAll($query) as $row) {
-					$Recipient = new User($row['user_id']); 
-					$Notification->AddRecipient($Recipient->id, $Recipient->username, $Recipient->contact_email);
-					
-					// Add to the decorator
-					$replacements[$Recipient->contact_email] = array(
-						"[username]" => $Recipient->username
-					);
-				}
-				
-				$Notification->meta['decoration'] = $replacements;
-				
-				/**
-				 * Set our email body
-				 */
-				
-				$parts = array(
-					"utm_medium" => "email",
-					"utm_source" => "Newsletter",
-					"utm_campaign" => str_replace(" ", "+", $this->title)
-				);
-					
-				if (function_exists("http_build_str")) {
-					$url = http_build_str($parts, $this->url->canonical);
-				} else {
-					if (strpos($this->url->canonical, "?") !== false) {
-						$joiner = "&";
-					} else {
-						$joiner = "?";
-					}
-					
-					$url = $this->url->canonical . $joiner . http_build_query($parts);
-				}
-				
-				$body = sprintf("Hi [username],\n\nWe wanted to let you know that a new photo competition, <a href='%s'>%s</a>, is open for submissions until %s.\n\nYou've received this email because you've participated in a previous photo competition.\n\nThanks\nThe Railpage team.",
-								$url, $this->title, $this->SubmissionsDateClose->format("F jS"));
-				
-				if (function_exists("wpautop") && function_exists("format_post")) {
-					$body = wpautop(format_post($body));
-				}
-				
-				/**
-				 * Assemble some template vars for our email
-				 */
-				
-				$Smarty = AppCore::getSmarty(); 
-				
-				$Smarty->Assign("email", array(
-					"subject" => $Notification->subject,
-					"body" => $body
-				));
-				
-				/**
-				 * Set the body, submit the notification to the dispatch queue
-				 */
-				
-				$Notification->body = $Smarty->Fetch($Smarty->ResolveTemplate("template.generic"));
-				$Notification->commit(); 
-				
-				/**
-				 * Set the notification flag
-				 */
-				
-				$this->meta['notifySubmissionsOpen'] = true;
-				$this->commit(); 
-			}
+			$body = sprintf("Hi [username],\n\nWe wanted to let you know that a new photo competition, <a href='%s'>%s</a>, is open for submissions until %s.\n\nYou've received this email because you've participated in a previous photo competition.\n\nThanks\nThe Railpage team.",
+								$this->url->email, $this->title, $this->SubmissionsDateClose->format("F jS"));
+			
+			$notificationOptions = array(
+				"flag" => __FUNCTION__, 
+				"subject" => sprintf("Submissions open: %s", $this->title),
+				"body" => $body
+			);
+			
+			Utility\CompetitionUtility::sendNotification($this, $notificationOptions); 
 			
 			return $this;
+			
 		}
 		
 		/**
@@ -1296,103 +1174,29 @@
 		 * @todo Check recipient preferences for email notifications
 		 */
 		
-		public function notifyVotingOpen() {
+		private function notifyVotingOpen() {
 			
 			/**
 			 * Return if we're not within the voting bounds
 			 */
 			
-			$now = new DateTime;
-			
-			if (!($this->VotingDateOpen instanceof DateTime && $this->VotingDateOpen <= $now) || 
-				!($this->VotingDateClose instanceof DateTime && $this->VotingDateClose >= $now)) {
-					return $this;
+			if (!Utility\CompetitionUtility::isVotingWindowOpen($this)) {
+				return $this;
 			}
+				
+			$body = sprintf("Hi [username],\n\nWe wanted to let you know that the <a href='%s'>%s</a> photo competition is open for voting until %s.\n\nYou've received this email because you've participated in a previous photo competition.\n\nThanks\nThe Railpage team.",
+							$this->url->email, $this->title, $this->VotingDateClose->format("F jS"));
 			
-			/**
-			 * Check if the notification sent flag has been set
-			 */
+			$notificationOptions = array(
+				"flag" => __FUNCTION__, 
+				"subject" => sprintf("Voting open: %s", $this->title),
+				"body" => $body
+			);
 			
-			if (!isset($this->meta['notifyVotingOpen']) || !filter_var($this->meta['notifyVotingOpen']) || $this->meta['notifyVotingOpen'] == false) {
-				
-				/**
-				 * Create the notification
-				 */
-				
-				$Notification = new Notification;
-				$Notification->subject = sprintf("Voting open: %s", $this->title); 
-				
-				$query = "SELECT DISTINCT user_id FROM image_competition_submissions";
-				$replacements = array(); 
-				
-				foreach ($this->db->fetchAll($query) as $row) {
-					$Recipient = new User($row['user_id']); 
-					$Notification->AddRecipient($Recipient->id, $Recipient->username, $Recipient->contact_email);
-					
-					// Add to the decorator
-					$replacements[$Recipient->contact_email] = array(
-						"[username]" => $Recipient->username
-					);
-				}
-				
-				$Notification->meta['decoration'] = $replacements;
-				
-				/**
-				 * Set our email body
-				 */
-				
-				$parts = array(
-					"utm_medium" => "email",
-					"utm_source" => "Newsletter",
-					"utm_campaign" => str_replace(" ", "+", $this->title)
-				);
-					
-				if (function_exists("http_build_str")) {
-					$url = http_build_str($parts, $this->url->canonical);
-				} else {
-					if (strpos($this->url->canonical, "?") !== false) {
-						$joiner = "&";
-					} else {
-						$joiner = "?";
-					}
-					
-					$url = $this->url->canonical . $joiner . http_build_query($parts);
-				}
-				
-				$body = sprintf("Hi [username],\n\nWe wanted to let you know that the <a href='%s'>%s</a> photo competition is open for voting until %s.\n\nYou've received this email because you've participated in a previous photo competition.\n\nThanks\nThe Railpage team.",
-								$url, $this->title, $this->SubmissionsDateClose->format("F jS"));
-				
-				if (function_exists("wpautop") && function_exists("format_post")) {
-					$body = wpautop(format_post($body));
-				}
-				
-				/**
-				 * Assemble some template vars for our email
-				 */
-				
-				$Smarty = AppCore::getSmarty(); 
-				
-				$Smarty->Assign("email", array(
-					"subject" => $Notification->subject,
-					"body" => $body
-				));
-				
-				/**
-				 * Set the body, submit the notification to the dispatch queue
-				 */
-				
-				$Notification->body = $Smarty->Fetch($Smarty->ResolveTemplate("template.generic"));
-				$Notification->commit(); 
-				
-				/**
-				 * Set the notification flag
-				 */
-				
-				$this->meta['notifyVotingOpen'] = true;
-				$this->commit(); 
-			}
+			Utility\CompetitionUtility::sendNotification($this, $notificationOptions); 
 			
 			return $this;
+			
 		}
 	}
 	

@@ -22,6 +22,14 @@
 	class Folder extends PrivateMessages {
 		
 		/**
+		 * Do we want to cache the contents of this folder?
+		 * @since Version 3.9.1
+		 * @var boolean $cachepms
+		 */
+		
+		public $cachepms = false;
+		
+		/**
 		 * Inbox type
 		 * @since Version 3.3
 		 * @var string $folder
@@ -49,7 +57,7 @@
 			
 			$this->folder = $folder;
 			$this->name = ucwords($folder);
-			$this->url = sprintf("/messages/%s", $folder);
+			$this->url = new Url(sprintf("/messages/%s", $folder));
 		}
 		
 		/**
@@ -79,92 +87,48 @@
 				$debug_timer_start_z = microtime(true);
 			}
 			
-			// Store the user object
-			#$this->user = $User;
+			/**
+			 * Which page of the folder are we viewing?
+			 */
 			
-			// Fetch message IDs that have been "deleted" by this user
-			$deleted = $this->getDeleted($this->User->id); 
+			$start = $page === 1 ? 0 : $page * $items_per_page; 
 			
-			if (count($deleted)) {
-				$exclude_sql = " AND privmsgs_id NOT IN ('".implode("', '", $deleted)."') ";
-			} else {
-				$exclude_sql = "";
+			/**
+			 * Set our intial response
+			 */
+			
+			$return = array(); 
+			$return['stat'] = "ok";
+			$return['page'] = $page; 
+			$return['perpage'] = $items_per_page; 
+			$return['messages'] = array(); 
+			
+			/**
+			 * Get the contents of this folder from the database
+			 */
+			
+			$folderContents = $this->fetchMessages(); 
+			
+			/**
+			 * If we don't have any PMs return now and save some bother
+			 */
+			
+			if (count($folderContents) === 0) {
+				return $return;
 			}
 			
-			if ($this->folder == PM_INBOX) {
-				$pm_folder_sql = "pm.privmsgs_to_userid = ".$this->User->id." AND (pm.privmsgs_type = ".PRIVMSGS_READ_MAIL." OR pm.privmsgs_type = ".PRIVMSGS_NEW_MAIL." OR pm.privmsgs_type = ".PRIVMSGS_UNREAD_MAIL." )";
-			} elseif ($this->folder == PM_OUTBOX) {
-				$pm_folder_sql = "pm.privmsgs_from_userid = ".$this->User->id." AND (pm.privmsgs_type = ".PRIVMSGS_NEW_MAIL." OR pm.privmsgs_type = ".PRIVMSGS_UNREAD_MAIL.")"; 
-			} elseif ($this->folder == PM_SENTBOX) {
-				$pm_folder_sql = "pm.privmsgs_from_userid = ".$this->User->id." AND (pm.privmsgs_type = ".PRIVMSGS_READ_MAIL." OR pm.privmsgs_type = ".PRIVMSGS_SENT_MAIL.")"; 
-			} elseif ($this->folder == PM_SAVEBOX) {
-				$pm_folder_sql = "((pm.privmsgs_to_userid = ".$this->User->id." AND pm.privmsgs_type = ".PRIVMSGS_SAVED_IN_MAIL.") OR (pm.privmsgs_from_userid = ".$this->User->id." AND pm.privmsgs_type = ".PRIVMSGS_SAVED_OUT_MAIL."))";
-			}
+			/**
+			 * Group the PMs we do have into conversations
+			 */
 			
-			// Which "page" is this?
-			if ($page == 1) {
-				$start = 0; 
-			} else {
-				$start = $page * $items_per_page; 
-			}
-			
-			// Done checking - get the PMs - sort by date ASC because the uasort() function will fix them up properly
-			$query = "SELECT pm.*, pmt.*, ufrom.username AS username_from, ufrom.user_id AS user_id_from, ufrom.user_avatar AS user_avatar_from, 
-							uto.username AS username_to, uto.user_id AS user_id_from, uto.user_avatar AS user_avatar_to
-						FROM nuke_bbprivmsgs AS pm
-							INNER JOIN nuke_bbprivmsgs_text AS pmt ON pm.privmsgs_id = pmt.privmsgs_text_id
-							INNER JOIN nuke_users AS ufrom ON ufrom.user_id = privmsgs_from_userid
-							INNER JOIN nuke_users AS uto ON uto.user_id = privmsgs_to_userid
-						WHERE ".$pm_folder_sql."
-							".$exclude_sql."";
-						#LIMIT ".$start.", ".$this->db->real_escape_string($items_per_page);
-			
-			#echo "\n\n" . $query . "\n\n";
-			
-			$mckey = sprintf("railpage:privatemessages;user_id=%d;folder=%s", $this->User->id, $this->folder);
-			$cachepms = false; // For the future
-			
-			if ($cachepms && $result = $this->Redis->fetch($mckey)) {
-				// Do nothing
-			} elseif ($this->db instanceof \sql_db) {
-				if ($rs = $this->db->query($query)) {
-					while ($row = $rs->fetch_assoc()) {
-						$result[] = $row;
-					}
-				} else {
-					throw new Exception($this->db->error); 
-					$return['stat'] = "error";
-					$return['error'] = $this->db->error; 
-				}
-			} else {
-				$result = $this->db->fetchAll($query);
+			foreach ($folderContents as $row) {
+				$row['privmsgs_subject'] = str_replace("Re: ", "", $row['privmsgs_subject']);
 				
-				if ($cachepms) {
-					$this->Redis->save($mckey, $result, strtotime("+12 hours"));
-				}
-			}
-			
-			if (isset($result) && count($result)) {
-				$return = array(); 
-				$return['stat'] = "ok";
-				$return['page'] = $page; 
-				$return['perpage'] = $items_per_page; 
-				$return['messages'] = array(); 
+				$pm_from = $row['privmsgs_from_userid'] == $this->User->id ? $row['privmsgs_to_userid'] : $row['privmsgs_from_userid'];
 				
-				foreach ($result as $row) {
-					$row['privmsgs_text'] = function_exists("convert_to_utf8") ? convert_to_utf8($row['privmsgs_text']) : $row['privmsgs_text'];
-					$row['privmsgs_subject'] = str_replace("Re: ", "", $row['privmsgs_subject']);
-					
-					if ($row['privmsgs_from_userid'] == $this->User->id) {
-						$pm_from = $row['privmsgs_to_userid'];
-					} else {
-						$pm_from = $row['privmsgs_from_userid'];
-					}
-					
-					$id = md5($row['privmsgs_subject'].$pm_from);
-					
-					$return['messages'][$id] = $row;				
-				}
+				$privmsg_id = md5($row['privmsgs_subject'] . $pm_from);
+				
+				$return['messages'][$privmsg_id] = $row;				
 			}
 					
 			/**
@@ -179,15 +143,10 @@
 			$return['messages'] = array_slice($return['messages'], $start, $items_per_page);
 				
 			/**
-			 * Process these after the slice otherwise we're fetching avatars for every single message sent to/from this user
+			 * Process these after the slice otherwise we're fetching avatars and processing text for every single message sent to/from this user
 			 */
 			
-			foreach ($return['messages'] as $id => $row) {
-				$row['user_avatar_from'] = function_exists("format_avatar") ? format_avatar($row['user_avatar_from'], 40, 40) : $row['user_avatar_from']; 
-				$row['user_avatar_to'] = function_exists("format_avatar") ? format_avatar($row['user_avatar_to'], 40, 40) : $row['user_avatar_to']; 
-				
-				$return['messages'][$id] = $row;
-			}
+			$return['messages'] = $this->processConversations($return['messages']);
 			
 			if (RP_DEBUG) {
 				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->folder . ") instantiated in " . round(microtime(true) - $debug_timer_start_z, 5) . "s";
@@ -209,6 +168,98 @@
 			}
 			
 			
+		}
+		
+		/**
+		 * Generate the SQL query for fetching the contents of this folder
+		 * @since Version 3.9.1
+		 * @return string
+		 */
+		
+		private function generateSQLQuery() {
+			
+			/**
+			 * Fetch message IDs that have been "deleted" by this user
+			 */
+			
+			$deleted = $this->getDeleted($this->User->id); 
+			$exclude_sql = count($deleted) === 0 ? "" : " AND privmsgs_id NOT IN ('".implode("', '", $deleted)."') ";
+			
+			/**
+			 * Different SQL base queries for different folders
+			 */
+			
+			if ($this->folder == PM_INBOX) {
+				$pm_folder_sql = "pm.privmsgs_to_userid = ".$this->User->id." AND (pm.privmsgs_type = ".PRIVMSGS_READ_MAIL." OR pm.privmsgs_type = ".PRIVMSGS_NEW_MAIL." OR pm.privmsgs_type = ".PRIVMSGS_UNREAD_MAIL." )";
+			} elseif ($this->folder == PM_OUTBOX) {
+				$pm_folder_sql = "pm.privmsgs_from_userid = ".$this->User->id." AND (pm.privmsgs_type = ".PRIVMSGS_NEW_MAIL." OR pm.privmsgs_type = ".PRIVMSGS_UNREAD_MAIL.")"; 
+			} elseif ($this->folder == PM_SENTBOX) {
+				$pm_folder_sql = "pm.privmsgs_from_userid = ".$this->User->id." AND (pm.privmsgs_type = ".PRIVMSGS_READ_MAIL." OR pm.privmsgs_type = ".PRIVMSGS_SENT_MAIL.")"; 
+			} elseif ($this->folder == PM_SAVEBOX) {
+				$pm_folder_sql = "((pm.privmsgs_to_userid = ".$this->User->id." AND pm.privmsgs_type = ".PRIVMSGS_SAVED_IN_MAIL.") OR (pm.privmsgs_from_userid = ".$this->User->id." AND pm.privmsgs_type = ".PRIVMSGS_SAVED_OUT_MAIL."))";
+			}
+			
+			// Done checking - get the PMs - sort by date ASC because the uasort() function will fix them up properly
+			$query = "SELECT pm.*, pmt.*, ufrom.username AS username_from, ufrom.user_id AS user_id_from, ufrom.user_avatar AS user_avatar_from, 
+							uto.username AS username_to, uto.user_id AS user_id_from, uto.user_avatar AS user_avatar_to
+						FROM nuke_bbprivmsgs AS pm
+							INNER JOIN nuke_bbprivmsgs_text AS pmt ON pm.privmsgs_id = pmt.privmsgs_text_id
+							INNER JOIN nuke_users AS ufrom ON ufrom.user_id = privmsgs_from_userid
+							INNER JOIN nuke_users AS uto ON uto.user_id = privmsgs_to_userid
+						WHERE ".$pm_folder_sql."
+							".$exclude_sql."";
+			
+			return $query;
+			
+		}
+		
+		/**
+		 * Process and format each conversation in this folder, in this page
+		 * @since Version 3.9.1
+		 * @param array $row
+		 * @return array
+		 */
+		
+		private function processConversations($conversations) {
+			foreach ($conversations as $id => $row) {
+				$row['privmsgs_text'] = function_exists("convert_to_utf8") ? convert_to_utf8($row['privmsgs_text']) : $row['privmsgs_text'];
+				$row['user_avatar_from'] = function_exists("format_avatar") ? format_avatar($row['user_avatar_from'], 40, 40) : $row['user_avatar_from']; 
+				$row['user_avatar_to'] = function_exists("format_avatar") ? format_avatar($row['user_avatar_to'], 40, 40) : $row['user_avatar_to']; 
+				
+				$conversations[$id] = $row;
+			}
+			
+			return $conversations;
+		}
+		
+		/**
+		 * Fetch the folder contents from the database
+		 * @since Version 3.9.1
+		 * return array
+		 */
+		
+		private function fetchMessages() {
+
+			/**
+			 * Caching
+			 */
+						
+			$mckey = sprintf("railpage:privatemessages;user_id=%d;folder=%s", $this->User->id, $this->folder);
+			
+			/**
+			 * Fetch the folder contents
+			 */
+			
+			if (!$this->cachepms || !$folderContents = $this->Redis->fetch($mckey)) {
+				$query = $this->generateSQLQuery(); 
+				$folderContents = $this->db->fetchAll($query);
+				
+				if ($this->cachepms) {
+					$this->Redis->save($mckey, $folderContents, strtotime("+12 hours"));
+				}
+			}
+			
+			return $folderContents;
 		}
 	}
 	

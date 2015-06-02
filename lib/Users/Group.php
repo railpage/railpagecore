@@ -93,11 +93,8 @@
 		 */
 		
 		public function __construct($group_id = false) {
-			try {
-				parent::__construct(); 
-			} catch (Exception $e) {
-				throw new Exception($e->getMessage()); 
-			}
+			
+			parent::__construct(); 
 			
 			if ($group_id) {
 				$this->id = $group_id; 

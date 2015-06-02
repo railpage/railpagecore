@@ -145,18 +145,30 @@
 				$id = $this->db->fetchOne($query, array("%" . $id . "%", $provider)); 
 			}
 			
-			if (filter_var($id, FILTER_VALIDATE_INT)) {
-				$this->mckey = sprintf("railpage:timetable.train=%d", $id);
-				if (!$row = getMemcacheObject($this->mckey)) {
+			$this->id = $id;
+			
+			$this->load();
+		}
+		
+		/**
+		 * Populate this object
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function load() {
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$this->mckey = sprintf("railpage:timetable.train=%d", $this->id);
+				
+				if (!$row = $this->Memcached->fetch($this->mckey)) {
 					$query = "SELECT * FROM timetable_trains WHERE id = ?";
-					$row = $this->db->fetchRow($query, $id);
+					$row = $this->db->fetchRow($query, $ithis->d);
 					
-					setMemcacheObject($this->mckey, $row);
+					$this->Memcached->save($this->mckey, $row);
 				}
 			}
 			
 			if (isset($row)) {
-				$this->id = $row['id'];
 				$this->number = $row['train_number'];
 				$this->meta = json_decode($row['meta'], true);
 				$this->provider = $row['provider'];
@@ -201,7 +213,7 @@
 			$this->validate(); 
 			
 			if (isset($this->mckey)) {
-				deleteMemcacheObject($this->mckey);
+				$this->Memcached->delete($this->mckey);
 			}
 			
 			$data = array(
@@ -258,12 +270,8 @@
 			
 			$going = strtolower($going);
 			
-			if ($going == "arriving") {
-				$going = "arr";
-			}
-			
-			if ($going == "departing") {
-				$going = "dep";
+			if (strlen($going) > 3) {
+				$going = substr($going, 0, 3);
 			}
 			
 			if (!is_int($day)) {

@@ -117,16 +117,14 @@
 				$this->id = $id;
 				$this->mckey = sprintf("%s.entry=%d", $this->Module->namespace, $this->id);
 				
-				deleteMemcacheObject($this->mckey);
+				#$this->Memcached->delete($this->mckey);
 				
-				if ($row = getMemcacheObject($this->mckey)) {
-					
-				} else {
+				if (!$row = $this->Memcached->fetch($this->mckey)) {
 					$query = "SELECT type, short, full, example, date, author, status FROM glossary WHERE id = ?";
 					
 					$row = $this->db->fetchRow($query, $this->id);
 					
-					setMemcacheObject($this->mckey, $row);
+					$this->Memcached->save($this->mckey, $row);
 				}
 				
 				if (isset($row) && is_array($row)) {

@@ -9,6 +9,8 @@
 	namespace Railpage\Locos;
 	
 	use Exception;
+	use Railpage\Url;
+	use Railpage\ContentUtility;
 	
 	/**
 	 * Locomotive wheel arrangement object
@@ -65,30 +67,42 @@
 					$row = $this->db->fetchRow("SELECT * FROM wheel_arrangements WHERE slug = ?", $id);
 				}
 				
-				if (isset($row) && count($row)) {
-					$this->id = $row['id']; 
-					$this->name = $row['title'];
-					$this->arrangement = $row['arrangement'];
-					$this->slug = $row['slug'];
-					
-					if (empty($this->slug)) {
-						$proposal = create_slug($this->arrangement);
-						$proposal = substr($proposal, 0, 30);
-						
-						$query = "SELECT id FROM wheel_arrangements WHERE slug = ?";
-						$result = $this->db->fetchAll($query, $proposal);
-						
-						if (count($result)) {
-							$proposal = $proposal . count($result);
-						}
-						
-						$this->slug = $proposal;
-						$this->commit();
-					}
-					
-					$this->url = sprintf("/locos/wheelset/%s", $this->slug);
-				}
+				$this->load($row); 
 			}
+		}
+		
+		/**
+		 * Populate this object with results from the database
+		 * @since Version 3.9.1
+		 * @param array $row
+		 * @return void
+		 */
+		
+		private function load($row) {
+			if (!is_array($row) || count($row) === 0) {
+				return false;
+			}
+			
+			$this->id = $row['id']; 
+			$this->name = $row['title'];
+			$this->arrangement = $row['arrangement'];
+			$this->slug = $row['slug'];
+			
+			if (empty($this->slug)) {
+				$proposal = ContentUtility::generateUrlSlug($this->arrangement, 30);
+				
+				$query = "SELECT id FROM wheel_arrangements WHERE slug = ?";
+				$result = $this->db->fetchAll($query, $proposal);
+				
+				if (count($result)) {
+					$proposal = $proposal . count($result);
+				}
+				
+				$this->slug = $proposal;
+				$this->commit();
+			}
+			
+			$this->url = new Url(sprintf("/locos/wheelset/%s", $this->slug));
 		}
 		
 		/**
@@ -105,8 +119,7 @@
 			}
 					
 			if (empty($this->slug)) {
-				$proposal = create_slug($this->arrangement);
-				$proposal = substr($proposal, 0, 30);
+				$proposal = ContentUtility::generateUrlSlug($this->arrangement, 30);
 				
 				$query = "SELECT id FROM wheel_arrangements WHERE slug = ?";
 				$result = $this->db->fetchAll($query, $proposal);
@@ -116,7 +129,7 @@
 				}
 				
 				$this->slug = $proposal;
-				$this->url = sprintf("/locos/wheelset/%s", $this->slug);
+				$this->url = new Url(sprintf("/locos/wheelset/%s", $this->slug));
 			}
 			
 			return true;
@@ -163,20 +176,25 @@
 			
 			foreach ($this->db->fetchAll($query, $this->id) as $row) {
 				$LocoClass = new LocoClass($row['id']);
-				$Manufacturer = new Manufacturer($row['manufacturer_id']);
-				$LocoType = new Type($row['loco_type_id']);
 				
-				$row['url'] = $LocoClass->url;
-				$row['manufacturer'] = $Manufacturer->name;
-				$row['manufacturer_url'] = $Manufacturer->url;
-				$row['loco_type'] = $LocoType->name;
-				$row['loco_type_url'] = $LocoType->url;
-				$row['year_introduced_url'] = $this->makeYearURL($row['year_introduced']);
-				
-				$return[] = $row;
+				$return[] = $LocoClass->getArray();
 			}
 			
 			return $return;
+		}
+		
+		/**
+		 * Get an associative array of this data
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			return array(
+				"id" => $this->id,
+				"arrangement" => $this->arrangement,
+				"url" => $this->url->getURLs()
+			);
 		}
 	}
 	

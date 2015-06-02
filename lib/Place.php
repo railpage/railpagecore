@@ -108,16 +108,7 @@
 				debug_recordInstance(__CLASS__);
 			}
 			
-			/**
-			 * Fetch the WOE (Where On Earth) data from Yahoo
-			 */
-			
-			$woe = $this->getWOEData($this->lat . "," . $this->lon);
-			
-			if (!isset($woe['places']['place'][0])) {
-				#printArray($woe);die;
-				throw new Exception("Could not find a place matching coordinates " . $this->lat . "," . $this->lon);
-			}
+			$this->load(); 
 			
 			/**
 			 * End the debug timer
@@ -125,6 +116,25 @@
 				
 			if (RP_DEBUG) {
 				$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : fetched WOE data from Yahoo in " . round(microtime(true) - $debug_timer_start, 5) . "s";
+			}
+		}
+		
+		/**
+		 * Populate this object
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function load() {
+			
+			/**
+			 * Fetch the WOE (Where On Earth) data from Yahoo
+			 */
+			
+			$woe = $this->getWOEData($this->lat . "," . $this->lon);
+			
+			if (!isset($woe['places']['place'][0])) {
+				throw new Exception("Could not find a place matching coordinates " . $this->lat . "," . $this->lon);
 			}
 			
 			/**
@@ -486,20 +496,6 @@
 				}
 				
 				$return['url'] = $url;
-				
-				/*
-				// Zend\Http\Client code messes with the URL and tries to encode the brackets. This breaks Yahoo's API, because they're too shit to urldecode() anything
-				$client = new Zend\Http\Client;
-				$client->setAdapter("Zend\Http\Client\Adapter\Curl");
-				$client->setUri($url);
-				$client->setEncType(Zend\Http\Client::ENC_URLENCODED);
-				$result = $client->send();
-				
-				#if ($result->isSuccess()) {
-					$return = json_decode($result->getBody(), true);
-					$return['url'] = $url;
-				#}
-				*/
 			}
 			
 			if ($return !== false) {

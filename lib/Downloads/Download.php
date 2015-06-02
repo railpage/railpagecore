@@ -179,11 +179,7 @@
 				$this->mckey = sprintf("railpage:downloads.download=%d", $this->id);
 				
 				// Populate the object vars
-				try {
-					$this->fetch(); 
-				} catch (Exception $e) {
-					throw new Exception($e->getMessage()); 
-				}
+				$this->fetch(); 
 			}
 		}
 		
@@ -196,7 +192,6 @@
 		public function fetch() {
 			if (empty($this->id)) {
 				throw new Exception("Cannot fetch download object - no download ID given"); 
-				return false;
 			}
 			
 			$this->url = new Url(sprintf("%s?mode=download.view&id=%d", $this->Module->url, $this->id));
@@ -206,64 +201,62 @@
 			
 			$row = $this->db->fetchRow($query, $this->id);
 				
-			if (isset($row)) {
-				// Populate the vars
-				$this->name 	= $row['title']; 
-				$this->desc		= $row['description']; 
-				$this->url_file	= $row['url']; 
-				$this->filename	= empty($row['filename']) ? basename($row['url']) : $row['filename']; 
-				$this->Date		= new DateTime($row['date'], new DateTimeZone("Australia/Melbourne"));
-				$this->hits		= $row['hits'];
-				$this->filesize	= isset($row['filesize']) && $row['filesize'] > 0 ? formatBytes($row['filesize']) : "Unknown";
-				$this->user_id	= $row['user_id'];
-				$this->filepath	= $row['filepath'];
-				
-				$this->object_id	= $row['object_id'];
-				$this->approved		= $row['approved'];
-				$this->active		= $row['active'];
-				$this->extra_data	= $row['extra_data'];
-				$this->mime = $row['mime'];
-				
-				if (empty($this->filepath) && !empty($this->url_file)) {
-					$pathinfo = parse_url($this->url_file); 
-					$this->filepath = str_replace("/uploads/", "", $pathinfo['path']);
-					
-					try {
-						$this->commit(); 
-					} catch (Exception $e) {
-						// Do nothing
-					}
-				}
-				
-				if (!preg_match("@^(http|https)://@", $this->url_file)) {
-					$this->url_file = parent::DOWNLOAD_HOST . parent::DOWNLOAD_DIR . $this->url_file; 
-				}
-				
-				if ($row['date'] == "0000-00-00 00:00:00") {
-					$this->Date = new DateTime("now", new DateTimeZone("Australia/Melbourne")); 
-					$this->commit();
-				}
-				
-				if (empty($this->user_id) && !empty($row['submitter'])) {
-					$this->submitter = $row['submitter'];
-				}
-				
-				/**
-				 * Load the category this download belongs to
-				 */
+			if (!is_array($row) || count($row) === 0) {
+				throw new Exception("Requested download not found");
+			}
+			
+			// Populate the vars
+			$this->name 	= $row['title']; 
+			$this->desc		= $row['description']; 
+			$this->url_file	= $row['url']; 
+			$this->filename	= empty($row['filename']) ? basename($row['url']) : $row['filename']; 
+			$this->Date		= new DateTime($row['date'], new DateTimeZone("Australia/Melbourne"));
+			$this->hits		= $row['hits'];
+			$this->filesize	= isset($row['filesize']) && $row['filesize'] > 0 ? formatBytes($row['filesize']) : "Unknown";
+			$this->user_id	= $row['user_id'];
+			$this->filepath	= $row['filepath'];
+			
+			$this->object_id	= $row['object_id'];
+			$this->approved		= $row['approved'];
+			$this->active		= $row['active'];
+			$this->extra_data	= $row['extra_data'];
+			$this->mime = $row['mime'];
+			
+			if (empty($this->filepath) && !empty($this->url_file)) {
+				$pathinfo = parse_url($this->url_file); 
+				$this->filepath = str_replace("/uploads/", "", $pathinfo['path']);
 				
 				try {
-					$this->Category = new Category($row['category_id']); 
+					$this->commit(); 
 				} catch (Exception $e) {
-					throw new Exception($e->getMessage()); 
+					// Do nothing
 				}
-				
-				/**
-				 * Load the author
-				 */
-				
-				$this->Author = new User($this->user_id);
 			}
+			
+			if (!preg_match("@^(http|https)://@", $this->url_file)) {
+				$this->url_file = parent::DOWNLOAD_HOST . parent::DOWNLOAD_DIR . $this->url_file; 
+			}
+			
+			if ($row['date'] == "0000-00-00 00:00:00") {
+				$this->Date = new DateTime("now", new DateTimeZone("Australia/Melbourne")); 
+				$this->commit();
+			}
+			
+			if (empty($this->user_id) && !empty($row['submitter'])) {
+				$this->submitter = $row['submitter'];
+			}
+			
+			/**
+			 * Load the category this download belongs to
+			 */
+			
+			$this->Category = new Category($row['category_id']); 
+			
+			/**
+			 * Load the author
+			 */
+			
+			$this->Author = new User($this->user_id);
 		}
 		
 		/**
@@ -288,7 +281,7 @@
 				throw new Exception("Verification failed - download must have a filename");
 			}
 			
-			if (empty($this->mime)) {
+			if (is_null($this->mime)) {
 				$this->mime = "";
 			}
 			
@@ -298,6 +291,10 @@
 			
 			if (!filter_var($this->approved, FILTER_VALIDATE_INT)) {
 				$this->approved = 0;
+			}
+			
+			if (!filter_var($this->hits, FILTER_VALIDATE_INT)) {
+				$this->hits = 0;
 			}
 			
 			if (empty($this->extra_data)) {
@@ -329,27 +326,23 @@
 				$this->extra_data = json_encode($this->extra_data); 
 			}
 			
-			$dataArray = array(); 
-			$dataArray['category_id'] 	= $this->Category instanceof Category ? $this->Category->id : 10; 
-			$dataArray['title']			= $this->name; 
-			$dataArray['url']			= $this->url_file; 
-			$dataArray['filename']		= $this->filename;
-			$dataArray['mime']			= $this->mime;
-			$dataArray['description'] 	= $this->desc; 
-			$dataArray['date']			= $this->Date->format("Y-m-d h:i:s");
-			$dataArray['hits']			= empty($this->hits) ? 0 : $this->hits; 
-			$dataArray['user_id']		= $this->user_id;
-			$dataArray['filepath']		= $this->filepath;
-			$dataArray['object_id']		= empty($this->object_id) ? 0 : $this->object_id; 
-			$dataArray['approved']		= $this->approved;
-			$dataArray['active']		= $this->active;
-			$dataArray['extra_data']	= $this->extra_data;
-			
-			if ($this->approved) {
-				$dataArray['url'] = str_replace(dirname(dirname(__FILE__)), RP_PROTOCOL."://" . RP_HOST, $this->filepath); 
-			} else {
-				$dataArray['url'] = "";
-			}
+			$data = array(
+				"category_id" => $this->Category instanceof Category ? $this->Category->id : 10,
+				"title" => $this->name,
+				"url" => $this->url_file,
+				"filename" => $this->filename,
+				"mime" => $this->mime,
+				"description" => $this->desc,
+				"date" => $this->Date->format("Y-m-d h:i:s"),
+				"hits" => $this->hits,
+				"user_id" => $this->user_id,
+				"filepath" => $this->filepath,
+				"object_id" => filter_var($this->object_id, FILTER_VALIDATE_INT) ? $this->object_id : 0,
+				"approved" => $this->approved,
+				"active" => $this->active,
+				"extra_data" => $this->extra_data,
+				"url" => $this->approved ? str_replace(dirname(dirname(__FILE__)), RP_PROTOCOL."://" . RP_HOST, $this->filepath) : ""
+			);
 			
 			/**
 			 * Commit the changes

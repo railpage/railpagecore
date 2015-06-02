@@ -253,22 +253,24 @@
 			
 			$minify = array(); 
 			
-			if (count($this->stylesheets)) {
-				foreach ($this->stylesheets as $data) {
-					if (substr($data['href'], 0, 4) == "http") {
-						$tags[] = sprintf("<link href='%s' rel='%s' media='%s'>", $data['href'], $data['rel'], $data['media']);
-					} else {
-						
-						if (file_exists(RP_SITE_ROOT . str_replace(".css", ".min.css", $data['href']))) {
-							$data['href'] = str_replace(".css", ".min.css", $data['href']);
-						}
-						
-						$str = substr($data['href'], 0, 1) == "/" ? substr($data['href'], 1, strlen($data['href'])) : $data['href'];
-						$str = explode("?v=", $str);
-						
-						if (!in_array($str[0], $minify)) {
-							$minify[] = $str[0];
-						}
+			if (count($this->stylesheets) === 0) {
+				return "";
+			}
+			
+			foreach ($this->stylesheets as $data) {
+				if (substr($data['href'], 0, 4) == "http") {
+					$tags[] = sprintf("<link href='%s' rel='%s' media='%s'>", $data['href'], $data['rel'], $data['media']);
+				} else {
+					
+					if (file_exists(RP_SITE_ROOT . str_replace(".css", ".min.css", $data['href']))) {
+						$data['href'] = str_replace(".css", ".min.css", $data['href']);
+					}
+					
+					$str = substr($data['href'], 0, 1) == "/" ? substr($data['href'], 1) : $data['href'];
+					$str = explode("?v=", $str);
+					
+					if (!in_array($str[0], $minify)) {
+						$minify[] = $str[0];
 					}
 				}
 			}

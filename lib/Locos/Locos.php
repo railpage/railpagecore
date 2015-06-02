@@ -23,6 +23,7 @@
 	use stdClass;
 	use Railpage\AppCore;
 	use Railpage\Module;
+	use Railpage\Debug;
 	use Zend_Db_Expr;
 	
 	require_once(__DIR__ . DIRECTORY_SEPARATOR . "functions.php");
@@ -183,7 +184,7 @@
 			 * Find loco classes without a cover photo
 			 */
 			
-			if ($search_type == LOCOS_FIND_CLASS_NOPHOTO || $search_type == self::FIND_CLASS_NOPHOTO) {
+			if ($search_type === LOCOS_FIND_CLASS_NOPHOTO || $search_type === self::FIND_CLASS_NOPHOTO) {
 				
 				$return = array(); 
 				
@@ -204,43 +205,13 @@
 				}
 				
 				return $return;
-				
-				/*
-				
-				// Find classes without a photo
-				
-				$query = "SELECT id, name, flickr_tag FROM loco_class WHERE flickr_image_id = '' ORDER BY name ASC";
-				
-				if ($this->db instanceof \sql_db) {
-					if ($rs = $this->db->query($query)) {
-						$return = array(); 
-						
-						while ($row = $rs->fetch_assoc()) {
-							$return[$row['id']] = $row;
-						}
-						
-						return $return;
-					} else {
-						throw new Exception($this->db->error."\n".$query);
-						return false;
-					}
-				} else {
-					$return = array(); 
-					
-					foreach ($this->db->fetchAll($query) as $row) {
-						$return[$row['id']] = $row;
-					}
-					
-					return $return;
-				}
-				*/
 			}
 			
 			/**
 			 * Find locomotives without a cover photo
 			 */
 			
-			if ($search_type == LOCOS_FIND_LOCO_NOPHOTO || $search_type == self::FIND_LOCO_NOPHOTO) {
+			if ($search_type === LOCOS_FIND_LOCO_NOPHOTO || $search_type === self::FIND_LOCO_NOPHOTO) {
 				// Locos without a photo
 				
 				$query = "SELECT l.loco_id, l.loco_num, l.loco_status_id, s.name AS loco_status, c.id AS class_id, c.name AS class_name 
@@ -278,7 +249,7 @@
 			 * Find locomotives from a comma-separated list of numbers
 			 */
 			
-			if ($search_type == LOCOS_FIND_FROM_NUMBERS && $args) {
+			if ($search_type === LOCOS_FIND_FROM_NUMBERS && $args) {
 				// Find locomotives from a comma-separated list of numbers
 				
 				$numbers = explode(",", $args); 
@@ -317,19 +288,12 @@
 			$params = array(); 
 			$return = array(); 
 			
-			if ($types === false) {
-				$mckey = "railpage:loco.class.bytype=all";
-			} else {
-				if (is_array($types)) {
-					$suff = implode(",", $types); 
-				} else {
-					$suff = $types;
-				}
-				
-				$mckey = "railpage:loco.class.bytype=" . $suff;
-			}
+			$suffix = $types === false ? "all" : (is_array($types) ? implode(",", $types) : $types); 
+			$mckey = sprintf("railpage:loco.class.bytype=%s", $suffix);
 			
-			#deleteMemcacheObject($mckey);
+			/**
+			 * Memcached lookup
+			 */
 			
 			if ($return = $this->Memcached->fetch($mckey)) {
 				
@@ -343,107 +307,46 @@
 				}
 				
 				if ($update) {
-					$this->setCache($mckey, $return, strtotime("+1 week"));
+					$this->Memcached->save($mckey, $return, strtotime("+1 week"));
 				}
-				
-				return $return;
-			} else {
-				if ($types === false) {
-					$motive_power_types = ""; 
-				} elseif (is_array($types)) {
-					$motive_power_types = " WHERE c.loco_type_id IN (".implode(",", $types).")";
-				} elseif (is_int($types)) {
-					if ($this->db instanceof \sql_db) {
-						$motive_power_types = " WHERE c.loco_type_id IN (".$this->db->real_escape_string($types).")";
-					} else {
-						$motive_power_types = " WHERE c.loco_type_id IN (?)";
-						$params[] = $types;
-					}
-				}
-				
-				$query = "SELECT c.parent AS parent_class_id, c.source_id AS source, c.id AS class_id, c.flickr_tag, c.slug, c.flickr_image_id, c.introduced AS class_introduced, c.name AS class_name, c.desc AS class_desc, c.manufacturer_id AS class_manufacturer_id, m.manufacturer_name AS class_manufacturer, w.arrangement AS wheel_arrangement, w.id AS wheel_arrangement_id, t.title AS loco_type, c.loco_type_id AS loco_type_id, t.slug AS loco_type_slug
-							FROM loco_class AS c
-							LEFT JOIN loco_type AS t ON c.loco_type_id = t.id
-							LEFT JOIN wheel_arrangements AS w ON c.wheel_arrangement_id = w.id
-							LEFT JOIN loco_manufacturer AS m ON m.manufacturer_id = c.manufacturer_id
-							".$motive_power_types."
-							ORDER BY c.name";
-				
-				$return['stat'] = "ok";
-				$return['count'] = 0;
-				
-				foreach ($this->db->fetchAll($query, $params) as $row) {
-					$return['count']++; 
-					$row['class_url'] = $this->makeClassUrl($row['slug']);
-					$return['class'][$row['class_id']] = $row;
-				}
-				
-				$this->setCache($mckey, $return, strtotime("+1 week"));
 				
 				return $return;
 			}
-		}
-		
-		/**
-		 * List wheel arrangements
-		 * @since Version 3.2
-		 * @version 3.2
-		 * @return array
-		 * @param boolean $force Ignore Memcached and force refresh this list
-		 */
-		
-		public function listWheelArrangements($force = false) {
-			$query = "SELECT * FROM wheel_arrangements ORDER BY arrangement";
-			$return = array();
 			
-			$mckey = "railpage:loco.wheelarrangements"; 
+			/**
+			 * Database lookup
+			 */
 			
-			if (!$force && $return = $this->Memcached->fetch($mckey)) {
-				return $return;
-			} else {
-				$return['stat'] = "ok"; 
-				$return['count'] = 0;
-				
-				foreach ($this->db->fetchAll($query) as $row) {
-					$return['count']++;
-					$return['wheels'][$row['id']] = $row;
-				}
-				
-				$this->Memcached->save($mckey, $return, strtotime("+1 month")); 
-				
-				return $return;
+			$motive_power_types = ""; 
+			
+			if (is_array($types)) {
+				$motive_power_types = " WHERE c.loco_type_id IN (".implode(",", $types).")";
+			} elseif (is_int($types)) {
+				$motive_power_types = " WHERE c.loco_type_id IN (?)";
+				$params[] = $types;
 			}
-		}
-		
-		/**
-		 * List manufacturers
-		 * @since Version 3.2
-		 * @version 3.2
-		 * @return array
-		 * @param boolean $force Ignore Memcached and force refresh this list
-		 */
-		
-		public function listManufacturers($force = false) {
-			$query = "SELECT * FROM loco_manufacturer ORDER BY manufacturer_name";
-			$return = array();
 			
-			$mckey = Manufacturer::MEMCACHED_KEY_ALL;
+			$query = "SELECT c.parent AS parent_class_id, c.source_id AS source, c.id AS class_id, c.flickr_tag, c.slug, c.flickr_image_id, c.introduced AS class_introduced, c.name AS class_name, c.desc AS class_desc, c.manufacturer_id AS class_manufacturer_id, m.manufacturer_name AS class_manufacturer, w.arrangement AS wheel_arrangement, w.id AS wheel_arrangement_id, t.title AS loco_type, c.loco_type_id AS loco_type_id, t.slug AS loco_type_slug
+						FROM loco_class AS c
+						LEFT JOIN loco_type AS t ON c.loco_type_id = t.id
+						LEFT JOIN wheel_arrangements AS w ON c.wheel_arrangement_id = w.id
+						LEFT JOIN loco_manufacturer AS m ON m.manufacturer_id = c.manufacturer_id
+						" . $motive_power_types . "
+						ORDER BY c.name";
 			
-			if (!$force && $return = $this->Memcached->fetch($mckey)) {
-				return $return;
-			} else {
-				$return['stat'] = "ok"; 
-				$return['count'] = 0;
-				
-				foreach ($this->db->fetchAll($query) as $row) {
-					$return['count']++;
-					$return['manufacturers'][$row['manufacturer_id']] = $row;
-				}
-				
-				$this->Memcached->save($mckey, $return, strtotime("+1 month")); 
-				
-				return $return;
+			$return['stat'] = "ok";
+			$return['count'] = 0;
+			
+			foreach ($this->db->fetchAll($query, $params) as $row) {
+				$row['class_url'] = $this->makeClassUrl($row['slug']);
+				$return['class'][$row['class_id']] = $row;
 			}
+			
+			$return['count'] = count($return['class']);
+			
+			$this->Memcached->save($mckey, $return, strtotime("+1 week"));
+			
+			return $return;
 		}
 		
 		/**
@@ -458,7 +361,7 @@
 			
 			$return = array();
 			
-			if ($classes['stat'] == "ok") {
+			if ($classes['stat'] === "ok") {
 				$return['stat'] = "ok";
 				
 				foreach ($classes['class'] as $id => $data) {
@@ -484,7 +387,7 @@
 			$classes = $this->listClasses();
 			$return = array();
 			
-			if ($classes['stat'] == "ok") {
+			if ($classes['stat'] === "ok") {
 				$return['stat'] = "ok";
 				
 				foreach ($classes['class'] as $id => $data) {
@@ -510,7 +413,7 @@
 			$classes = $this->listClasses();
 			$return = array();
 			
-			if ($classes['stat'] == "ok") {
+			if ($classes['stat'] === "ok") {
 				$return['stat'] = "ok";
 				
 				foreach ($classes['class'] as $id => $data) {
@@ -609,6 +512,68 @@
 		}
 		
 		/**
+		 * List wheel arrangements
+		 * @since Version 3.2
+		 * @version 3.2
+		 * @return array
+		 * @param boolean $force Ignore Memcached and force refresh this list
+		 */
+		
+		public function listWheelArrangements($force = false) {
+			$query = "SELECT * FROM wheel_arrangements ORDER BY arrangement";
+			$return = array();
+			
+			$mckey = "railpage:loco.wheelarrangements"; 
+			
+			if (!$force && $return = $this->Memcached->fetch($mckey)) {
+				return $return;
+			} else {
+				$return['stat'] = "ok"; 
+				$return['count'] = 0;
+				
+				foreach ($this->db->fetchAll($query) as $row) {
+					$return['count']++;
+					$return['wheels'][$row['id']] = $row;
+				}
+				
+				$this->Memcached->save($mckey, $return, strtotime("+1 month")); 
+				
+				return $return;
+			}
+		}
+		
+		/**
+		 * List manufacturers
+		 * @since Version 3.2
+		 * @version 3.2
+		 * @return array
+		 * @param boolean $force Ignore Memcached and force refresh this list
+		 */
+		
+		public function listManufacturers($force = false) {
+			$query = "SELECT * FROM loco_manufacturer ORDER BY manufacturer_name";
+			$return = array();
+			
+			$mckey = Manufacturer::MEMCACHED_KEY_ALL;
+			
+			if (!$force && $return = $this->Memcached->fetch($mckey)) {
+				return $return;
+			} else {
+				$return['stat'] = "ok"; 
+				$return['count'] = 0;
+				
+				foreach ($this->db->fetchAll($query) as $row) {
+					$return['count']++;
+					$return['manufacturers'][$row['manufacturer_id']] = $row;
+				}
+				
+				$this->Memcached->save($mckey, $return, strtotime("+1 month")); 
+				
+				return $return;
+			}
+		}
+		
+		/**
 		 * List loco types
 		 * @since Version 3.2
 		 * @version 3.2
@@ -663,7 +628,7 @@
 			$classes = $this->listClasses();
 			$return = array(); 
 			
-			if ($classes['stat'] == "ok") {
+			if ($classes['stat'] === "ok") {
 				$return['stat'] = "ok";
 				
 				foreach ($classes['class'] as $id => $data) {
@@ -701,6 +666,120 @@
 			
 			return $return;
 		}
+				
+		/** 
+		 * List all locos
+		 * @since Version 3.2
+		 * @version 3.2
+		 * @return array
+		 */
+		
+		public function listAllLocos() {
+			$query = "SELECT * FROM loco_unit ORDER BY loco_id DESC";
+			
+			$return = array(); 
+			
+			$return['stat'] = "ok";
+			
+			foreach ($this->db->fetchAll($query) as $row) {
+				$return['locos'][$row['loco_id']] = $row; 
+			}
+			
+			return $return;
+		}
+		
+		/**
+		 * List all liveries
+		 * @since Version 3.2
+		 * @author Michael Greenhill
+		 * @return array
+		 */
+		
+		public function listLiveries() {
+			$query = "SELECT * FROM loco_livery ORDER BY livery";
+			
+			$return = array(); 
+			
+			foreach ($this->db->fetchAll($query) as $row) {
+				$return[$row['livery_id']] = $row['livery']; 
+			}
+			
+			return $return;
+		}
+		
+		/**
+		 * Get loco gauges
+		 * @since Version 3.4
+		 * @return array
+		 */
+		
+		public function listGauges() {
+			$query = "SELECT * FROM loco_gauge ORDER BY gauge_name, gauge_imperial";
+			
+			$return = array(); 
+			
+			foreach ($this->db->fetchAll($query) as $row) {
+				$return[$row['gauge_id']] = $row; 
+			}
+			
+			return $return;
+		}
+		
+		/**
+		 * List all organisation  types
+		 * @since Version 3.4
+		 * @return array
+		 */
+		
+		public function listOrgLinkTypes() {
+			$query = "SELECT * FROM loco_org_link_type ORDER BY name";
+			
+			$return = array(); 
+			
+			foreach ($this->db->fetchAll($query) as $row) {
+				$return[$row['id']] = $row; 
+			}
+			
+			return $return;
+		}
+		
+		/**
+		 * List production models
+		 * @since Version 3.4
+		 * @return array
+		 */
+		
+		public function listModels() {
+			$query = "SELECT DISTINCT Model from loco_class ORDER BY Model";
+			
+			$return = array(); 
+			
+			foreach ($this->db->fetchAll($query) as $row) {
+				if (trim($row['Model']) != "") {
+					$return[] = $row['Model'];
+				}
+			}
+			
+			return $return;
+		}
+		
+		/**
+		 * List locomotive groupings
+		 * @since Version 3.5
+		 * @return array
+		 */
+		
+		public function listGroupings() {
+			$query = "SELECT * FROM loco_groups ORDER BY group_name"; 
+			
+			$return = array("stat" => "ok"); 
+			
+			foreach ($this->db->fetchAll($query) as $row) {
+				$return['groups'][$row['group_id']] = $row; 
+			}
+			
+			return $return;
+		}
 		
 		/**
 		 * Add a builder
@@ -717,7 +796,7 @@
 				return false;
 			}
 			
-			deleteMemcacheObject("railpage:loco.manufacturers"); 
+			$this->Memcached->delete("railpage:loco.manufacturers"); 
 			
 			$data = array(
 				"manufacturer_name" => $builder_name
@@ -803,200 +882,6 @@
 			
 			$this->db->delete("loco_notes", $where); 
 			return true;
-		}
-		
-		/**
-		 * Latest changes
-		 * @since Version 3.2
-		 * @version 3.2
-		 * @return array
-		 * @param int $cutoff
-		 */
-		
-		public function latestChanges($cutoff = 25) {
-			throw new Exception(__CLASS__ . "::" . __METHOD__ . " is deprecated");
-			
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT ll.*, u.username FROM log_locos AS ll LEFT JOIN nuke_users AS u ON u.user_id = ll.user_id ORDER BY ll.timestamp DESC LIMIT 0, ".$this->db->real_escape_string($cutoff);
-				
-				if ($rs = $this->db->query($query)) {
-					$changes 	= array(); 
-					$locos 		= array(); 
-					$classes 	= array();
-					
-					while ($row = $rs->fetch_assoc()) {
-						$row['timestamp'] = \DateTime::createFromFormat("Y-m-d H:i:s", $row['timestamp']); 
-						$row['args'] = json_decode($row['args'], true);
-						
-						if (!empty($row['loco_id'])) {
-							$locos[$row['loco_id']] = array(); 
-						}
-						
-						if (!empty($row['class_id'])) {
-							$classes[$row['class_id']] = array(); 
-						}
-						
-						$changes[] = $row;
-					}
-					
-					if (count($locos)) {
-						$query = "SELECT l.loco_id, l.loco_num, l.class_id, c.name FROM loco_unit AS l LEFT JOIN loco_class AS c ON l.class_id = c.id WHERE l.loco_id IN (".implode(",", array_keys($locos)).")"; 
-						
-						if ($rs = $this->db->query($query)) {
-							while ($row = $rs->fetch_assoc()) {
-								foreach ($changes as $id => $data) {
-									if ($data['loco_id'] == $row['loco_id']) {
-										$changes[$id]['loco_data'] = $row; 
-									}
-								}
-							}
-						} else {
-							throw new Exception($this->db->error); 
-						}
-					}
-					
-					if (count($classes)) {
-						$query = "SELECT id AS class_id, name FROM loco_class WHERE id IN (".implode(",", array_keys($classes)).")"; 
-						
-						if ($rs = $this->db->query($query)) {
-							while ($row = $rs->fetch_assoc()) {
-								foreach ($changes as $id => $data) {
-									if ($data['class_id'] == $row['class_id']) {
-										$changes[$id]['class_data'] = $row; 
-									}
-								}
-							}
-						} else {
-							throw new Exception($this->db->error); 
-						}
-					}
-					
-					return $changes;
-				}
-				
-				
-				$changes = array(); 
-				
-				// Loco notes
-				$query = "SELECT n.*, l.loco_num, lc.name, l.class_id, n.user_id, u.username 
-							FROM loco_notes AS n
-							LEFT JOIN loco_unit AS l ON n.loco_id = l.loco_id
-							LEFT JOIN loco_class AS lc ON l.class_id = lc.id
-							LEFT JOIN nuke_users AS u ON n.user_id = u.user_id
-							ORDER BY n.note_date DESC";
-							
-				if ($rs = $this->db->query($query)) {
-					while ($row = $rs->fetch_assoc()) {
-						$i = count($changes[$row['note_date']]);
-						$changes[$row['note_date']][$i]['date_nice'] = date("F j, Y, g:i a", $row['note_date']); 
-						$changes[$row['note_date']][$i]['plain'] = "A note was added to ".$row['loco_num']." of class ".$row['name']." by ".$row['username']; 
-						$changes[$row['note_date']][$i]['html']	 = "A note was added to <a href='/locos/class/".$row['class_id']."/".$row['loco_num']."/'>".$row['loco_num']."</a> of class <a href='/locos/class/".$row['class_id']."/'>".$row['name']."</a> by <a href='/user/".$row['user_id']."/'>".$row['username']."</a>"; 
-					}
-				} else {
-					throw new Exception($this->db->error); 
-				}
-				
-				// Loco unit additions
-				$query = "SELECT l.date_added, l.loco_num, lc.name, l.class_id 
-							FROM loco_unit AS l 
-							LEFT JOIN loco_class AS lc ON l.class_id = lc.id
-							WHERE l.date_added != 0
-							ORDER BY l.date_added DESC";
-							
-				if ($rs = $this->db->query($query)) {
-					while ($row = $rs->fetch_assoc()) {
-						$i = count($changes[$row['date_added']]);
-						$changes[$row['date_added']][$i]['date_nice'] = date("F j, Y, g:i a", $row['date_added']); 
-						$changes[$row['date_added']][$i]['plain'] = $row['loco_num']." was added to class ".$row['name']; 
-						$changes[$row['date_added']][$i]['html'] = "<a href='/locos/class/".$row['class_id']."/".$row['loco_num']."/'>".$row['loco_num']."</a> was added to class <a href='/locos/class/".$row['class_id']."/'>".$row['name']."</a>"; 
-					}
-				} else {
-					throw new Exception($this->db->error); 
-				}
-				
-				// Loco unit changes
-				$query = "SELECT l.date_modified, l.loco_num, lc.name, l.class_id 
-							FROM loco_unit AS l 
-							LEFT JOIN loco_class AS lc ON l.class_id = lc.id
-							WHERE l.date_modified != 0
-							ORDER BY l.date_modified DESC";
-							
-				if ($rs = $this->db->query($query)) {
-					while ($row = $rs->fetch_assoc()) {
-						$i = count($changes[$row['date_modified']]);
-						$changes[$row['date_modified']][$i]['date_nice'] = date("F j, Y, g:i a", $row['date_modified']); 
-						$changes[$row['date_modified']][$i]['plain'] = "The data for ".$row['loco_num']." in class ".$row['name']." was modified"; 
-						$changes[$row['date_modified']][$i]['html'] = "The data for <a href='/locos/class/".$row['class_id']."/".$row['loco_num']."/'>".$row['loco_num']."</a> in class <a href='/locos/class/".$row['class_id']."/'>".$row['name']."</a> was modified"; 
-					}
-				} else {
-					throw new Exception($this->db->error); 
-				}
-				
-				// Class additions
-				$query = "SELECT name, date_added, id AS class_id
-							FROM loco_class
-							WHERE date_added != 0 
-							ORDER BY date_added DESC";
-							
-				if ($rs = $this->db->query($query)) {
-					while ($row = $rs->fetch_assoc()) {
-						$i = count($changes[$row['date_added']]);
-						$changes[$row['date_added']][$i]['date_nice'] = date("F j, Y, g:i a", $row['date_added']); 
-						$changes[$row['date_added']][$i]['plain'] = "Class ".$row['name']." has been created"; 
-						$changes[$row['date_added']][$i]['html'] = "Class <a href='/locos/class/".$row['class_id']."/'>".$row['name']."</a> has been created";
-					}
-				} else {
-					throw new Exception($this->db->error); 
-				}
-				
-				// Class changes
-				$query = "SELECT name, date_modified, id AS class_id
-							FROM loco_class
-							WHERE date_modified != 0 
-							ORDER BY date_modified DESC";
-							
-				if ($rs = $this->db->query($query)) {
-					while ($row = $rs->fetch_assoc()) {
-						$i = count($changes[$row['date_modified']]);
-						$changes[$row['date_modified']][$i]['date_nice'] = date("F j, Y, g:i a", $row['date_modified']); 
-						$changes[$row['date_modified']][$i]['plain'] = "Class ".$row['name']." has been modified"; 
-						$changes[$row['date_modified']][$i]['html'] = "Class <a href='/locos/class/".$row['class_id']."/'>".$row['name']."</a> has been modified";
-					}
-				} else {
-					throw new Exception($this->db->error); 
-				}
-				
-				krsort($changes);
-				
-				if ($cutoff) {
-					$changes = array_slice($changes, 0, $cutoff); 
-				}
-				
-				return $changes;
-			} else {
-				// Is this still required...?
-			}
-		}
-		
-		/** 
-		 * List all locos
-		 * @since Version 3.2
-		 * @version 3.2
-		 * @return array
-		 */
-		
-		public function listAllLocos() {
-			$query = "SELECT * FROM loco_unit ORDER BY loco_id DESC";
-			
-			$return = array(); 
-			
-			$return['stat'] = "ok";
-			
-			foreach ($this->db->fetchAll($query) as $row) {
-				$return['locos'][$row['loco_id']] = $row; 
-			}
-			
-			return $return;
 		}
 		
 		/**
@@ -1165,25 +1050,6 @@
 					
 					$return[$row['id']] = $row; 
 				}
-			}
-			
-			return $return;
-		}
-		
-		/**
-		 * List all liveries
-		 * @since Version 3.2
-		 * @author Michael Greenhill
-		 * @return array
-		 */
-		
-		public function listLiveries() {
-			$query = "SELECT * FROM loco_livery ORDER BY livery";
-			
-			$return = array(); 
-			
-			foreach ($this->db->fetchAll($query) as $row) {
-				$return[$row['livery_id']] = $row['livery']; 
 			}
 			
 			return $return;
@@ -1389,24 +1255,6 @@
 		}
 		
 		/**
-		 * Get loco gauges
-		 * @since Version 3.4
-		 * @return array
-		 */
-		
-		public function listGauges() {
-			$query = "SELECT * FROM loco_gauge ORDER BY gauge_name, gauge_imperial";
-			
-			$return = array(); 
-			
-			foreach ($this->db->fetchAll($query) as $row) {
-				$return[$row['gauge_id']] = $row; 
-			}
-			
-			return $return;
-		}
-		
-		/**
 		 * Add wheel arrangement
 		 * @since Version 3.4
 		 * @return boolean
@@ -1415,7 +1263,7 @@
 		 */
 		
 		public function addWheelArrangement($title = "", $arrangement = false) {
-			deleteMemcacheObject("railpage:loco.wheelarrangements");
+			$this->Memcached->delete("railpage:loco.wheelarrangements");
 
 			$data = array(
 				"title" => $title, 
@@ -1424,24 +1272,6 @@
 			
 			$this->db->insert("wheel_arrangements", $data);
 			return true;
-		}
-		
-		/**
-		 * List all organisation  types
-		 * @since Version 3.4
-		 * @return array
-		 */
-		
-		public function listOrgLinkTypes() {
-			$query = "SELECT * FROM loco_org_link_type ORDER BY name";
-			
-			$return = array(); 
-			
-			foreach ($this->db->fetchAll($query) as $row) {
-				$return[$row['id']] = $row; 
-			}
-			
-			return $return;
 		}
 		
 		/**
@@ -1481,26 +1311,6 @@
 		}
 		
 		/**
-		 * List production models
-		 * @since Version 3.4
-		 * @return array
-		 */
-		
-		public function listModels() {
-			$query = "SELECT DISTINCT Model from loco_class ORDER BY Model";
-			
-			$return = array(); 
-			
-			foreach ($this->db->fetchAll($query) as $row) {
-				if (trim($row['Model']) != "") {
-					$return[] = $row['Model'];
-				}
-			}
-			
-			return $return;
-		}
-		
-		/**
 		 * Get classes by production model
 		 * @since Version 3.4
 		 * @param string $model
@@ -1520,24 +1330,6 @@
 			foreach ($this->db->fetchAll($query, $model) as $row) {
 				$row['class_url'] = $this->makeClassUrl($row['slug']);
 				$return[$row['id']] = $row; 
-			}
-			
-			return $return;
-		}
-		
-		/**
-		 * List locomotive groupings
-		 * @since Version 3.5
-		 * @return array
-		 */
-		
-		public function listGroupings() {
-			$query = "SELECT * FROM loco_groups ORDER BY group_name"; 
-			
-			$return = array("stat" => "ok"); 
-			
-			foreach ($this->db->fetchAll($query) as $row) {
-				$return['groups'][$row['group_id']] = $row; 
 			}
 			
 			return $return;
@@ -1581,7 +1373,7 @@
 
 			$query = "SELECT lg.* FROM loco_groups AS lg LEFT JOIN loco_groups_members AS lgm ON lgm.group_id = lg.group_id WHERE lgm.loco_unit_id = ?"; 
 			
-			if ($includeInactive == false) {
+			if ($includeInactive === false) {
 				$query .= " AND lg.active = 1"; 
 			}
 			

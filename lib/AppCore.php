@@ -762,5 +762,14 @@
 			
 			return $Smarty;
 		}
+		
+		/**
+		 * Return the database connection
+		 * @since Version 3.9.1
+		 */
+		
+		public function getDatabaseConnection() {
+			return $this->db;
+		}
 	}
 	

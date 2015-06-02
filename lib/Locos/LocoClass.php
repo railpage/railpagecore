@@ -18,6 +18,8 @@
 	use Railpage\Assets\Asset;
 	use Railpage\Locos\Liveries\Livery;
 	use Railpage\Users\User;
+	use Railpage\ContentUtility;
+	use Railpage\Debug;
 		
 	/**
 	 * Locomotive class (eg X class or 92 class) class
@@ -246,10 +248,7 @@
 			
 			parent::__construct(); 
 			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
+			$timer = Debug::getTimer();
 			
 			/**
 			 * Record this in the debug log
@@ -276,9 +275,7 @@
 				$this->fetch($recurse);
 			}
 			
-			if (RP_DEBUG) {
-				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") instantiated in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-			}
+			Debug::logEvent(__METHOD__, $timer);
 		}
 		
 		/**
@@ -296,12 +293,12 @@
 			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				$slugkey = sprintf("railpage:locos.class.id;fromslug=%s", $this->id);
 				
-				if ($id = getMemcacheObject($slugkey)) {
+				if ($id = $this->Memcached->fetch($slugkey)) {
 					$this->id = $id;
 				} else {
 					$this->id = $this->db->fetchOne("SELECT id FROM loco_class WHERE slug = ?", $this->id);
 					
-					setMemcacheObject($slugkey, $this->id, strtotime("+1 week"));
+					$this->Memcached->save($slugkey, $this->id, strtotime("+1 week"));
 				}
 			}
 			
@@ -309,57 +306,35 @@
 			$key = "id";
 			
 			if (!$row = $this->Memcached->fetch($this->mckey)) {
-				if ($this->db instanceof \sql_db) {
-					$query = "SELECT c.id, c.asset_id, c.slug, c.download_id, c.date_added, c.date_modified, c.model, c.axle_load, c.tractive_effort, c.weight, c.length, c.parent AS parent_class_id, c.source_id AS source, c.id AS class_id, c.flickr_tag, c.flickr_image_id, c.introduced AS class_introduced, c.name AS class_name, c.loco_type_id AS loco_type_id, c.desc AS class_desc, c.manufacturer_id AS class_manufacturer_id, m.manufacturer_name AS class_manufacturer, w.arrangement AS wheel_arrangement, w.id AS wheel_arrangement_id, t.title AS loco_type
-								FROM loco_class AS c
-								LEFT JOIN loco_type AS t ON c.loco_type_id = t.id
-								LEFT JOIN wheel_arrangements AS w ON c.wheel_arrangement_id = w.id
-								LEFT JOIN loco_manufacturer AS m ON m.manufacturer_id = c.manufacturer_id
-								WHERE c.".$key." = ".$this->db->real_escape_string($this->id);
-					
-					if ($rs = $this->db->query($query)) {
-						$row = $rs->fetch_assoc();
-						
-						$this->Memcached->save($this->mckey, $row, strtotime("+1 year")); 
+				$timer = Debug::getTimer();
+				
+				$query = "SELECT c.id, c.meta, c.asset_id, c.slug, c.download_id, c.date_added, c.date_modified, c.model, c.axle_load, c.tractive_effort, c.weight, c.length, c.parent AS parent_class_id, c.source_id AS source, c.id AS class_id, c.flickr_tag, c.flickr_image_id, c.introduced AS class_introduced, c.name AS class_name, c.loco_type_id AS loco_type_id, c.desc AS class_desc, c.manufacturer_id AS class_manufacturer_id, m.manufacturer_name AS class_manufacturer, w.arrangement AS wheel_arrangement, w.id AS wheel_arrangement_id, t.title AS loco_type
+							FROM loco_class AS c
+							LEFT JOIN loco_type AS t ON c.loco_type_id = t.id
+							LEFT JOIN wheel_arrangements AS w ON c.wheel_arrangement_id = w.id
+							LEFT JOIN loco_manufacturer AS m ON m.manufacturer_id = c.manufacturer_id
+							WHERE c.".$key." = ?";
+				
+				$row = $this->db->fetchRow($query, $this->id);
+				
+				Debug::logEvent(__METHOD__, $timer);
+				
+				/** 
+				 * Normalise some items
+				 */
+				
+				if (function_exists("convert_to_utf8")) {
+					foreach ($row as $key => $val) {
+						$row[$key] = convert_to_utf8($val);
 					}
-				} else {
-					if (RP_DEBUG) {
-						global $site_debug;
-						$debug_timer_start = microtime(true);
-					}
-					
-					$query = "SELECT c.id, c.meta, c.asset_id, c.slug, c.download_id, c.date_added, c.date_modified, c.model, c.axle_load, c.tractive_effort, c.weight, c.length, c.parent AS parent_class_id, c.source_id AS source, c.id AS class_id, c.flickr_tag, c.flickr_image_id, c.introduced AS class_introduced, c.name AS class_name, c.loco_type_id AS loco_type_id, c.desc AS class_desc, c.manufacturer_id AS class_manufacturer_id, m.manufacturer_name AS class_manufacturer, w.arrangement AS wheel_arrangement, w.id AS wheel_arrangement_id, t.title AS loco_type
-								FROM loco_class AS c
-								LEFT JOIN loco_type AS t ON c.loco_type_id = t.id
-								LEFT JOIN wheel_arrangements AS w ON c.wheel_arrangement_id = w.id
-								LEFT JOIN loco_manufacturer AS m ON m.manufacturer_id = c.manufacturer_id
-								WHERE c.".$key." = ?";
-					
-					$row = $this->db->fetchRow($query, $this->id);
-					
-					if (RP_DEBUG) {
-						if ($row === false) {
-							$site_debug[] = "Zend_DB: FAILED select loco class ID/slug " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-						} else {
-							$site_debug[] = "Zend_DB: SUCCESS select loco class ID/slug " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-						}
-					}
-					
-					/** 
-					 * Normalise some items
-					 */
-					
-					if (function_exists("convert_to_utf8")) {
-						foreach ($row as $key => $val) {
-							$row[$key] = convert_to_utf8($val);
-						}
-					}
-					
-					$this->Memcached->save($this->mckey, $row, strtotime("+1 year")); 
 				}
+				
+				$this->Memcached->save($this->mckey, $row, strtotime("+1 year")); 
 			}
 			
 			if (isset($row) && is_array($row)) {
+				
+				$timer = Debug::getTimer(); 
 				
 				if (!isset($row['id'])) {
 					deleteMemcacheObject($this->mckey);
@@ -486,71 +461,7 @@
 				$this->StatsD->target->view = sprintf("%s.%d.view", $this->namespace, $this->id);
 				$this->StatsD->target->edit = sprintf("%s.%d.view", $this->namespace, $this->id);
 				
-				#printArray(round(microtime(true) - RP_START_TIME, 4) . "s");
-				
-				/*
-				// Child classes
-				if ($this->db instanceof \sql_db) {	
-					$query = "SELECT c.id AS child_class_id, c.name AS child_class_name FROM loco_class AS c WHERE c.parent = ".$this->db->real_escape_string($this->id);
-					
-					if ($rs = $this->db->query($query)) {
-						while ($row = $rs->fetch_assoc()) {
-							$this->children[$row['child_class_id']] = $row['child_class_name'];
-						}
-					} else {
-						throw new Exception($this->db->error);
-					}
-				} else {
-					$query = "SELECT c.id AS child_class_id, c.name AS child_class_name FROM loco_class AS c WHERE c.parent = ?";
-					
-					foreach ($this->db->fetchAll($query, $this->id) as $row) {
-						$this->children[$row['child_class_id']] = $row['child_class_name'];
-					}
-				}
-				*/
-				
-				/*
-				if (RP_PLATFORM != "API" && !filter_var($this->download_id, FILTER_VALIDATE_INT)) {
-					// Create a new download for this class' datasheet
-					if (RP_DEBUG) {
-						global $site_debug; 
-						$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : No download ID for class ID " . $this->id;
-					}
-					
-					try {
-						$Download = new \Railpage\Downloads\Download(); 
-						
-						if (!empty($this->name) && strlen($this->name) > 1) {
-							$Download->name			= $this->name." data sheet"; 
-							$Download->url			= "http://www.railpage.com.au/modules.php?name=Locos&mode=exportclass&id=".$this->id."&format=xlsx";
-							$Download->desc			= "Data sheet for the ".$this->name." class, formatted as a Microsoft Excel spreadsheet";
-							$Download->date			= time(); 
-							$Download->mime			= "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-							$Download->active		= 1;
-							$Download->approved		= 1;
-							$Download->Category	 	= new \Railpage\Downloads\Category("23");
-							$Download->cat_id		= "23";
-							$Download->extra_data	= array("Class name" => $this->name, "Class ID" => $this->id);
-							$Download->filename		= 'Railpage-Locodata-'.$this->name.'.xlsx';
-							$Download->user_id		= 45;
-							$Download->filepath		= "/";
-							
-							$Download->commit(); 
-							
-							$this->download_id = $Download->id; 
-							
-							if (RP_DEBUG) {
-								global $site_debug; 
-								$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : committing changes to download ID for loco ID " . $this->id;
-							}
-							
-							$this->commit(); 
-						}
-					} catch (Exception $e) {
-						// Discard the error
-					}
-				}
-				*/
+				Debug::logEvent(__METHOD__, $timer);
 			}
 		}
 		
@@ -601,6 +512,7 @@
 				$row['loco_gauge']['gauge_name']	= $row['gauge_name']."<span style='display:block;margin-top:-8px;margin-bottom:-4px;' class='gensmall'>".$row['gauge_metric']."</span>";
 				$row['loco_gauge_formatted'] 		= $row['gauge_name']." ".$row['gauge_imperial']." (".$row['gauge_metric'].")";
 				
+				/*
 				try {
 					if ($owner = $this->getLastOwner($row['loco_id'])) {
 						$row['owner_id'] = $owner['operator_id']; 
@@ -620,6 +532,7 @@
 					global $Error; 
 					$Error->save($e); 
 				}
+				*/
 					
 				$row['url'] = strtolower($this->url . "/" . $row['loco_num']);
 				$row['url_edit'] = sprintf("%s?mode=loco.edit&id=%d", $this->Module->url, $row['loco_id']);
@@ -943,7 +856,7 @@
 		
 		private function createSlug() {
 			// Assume ZendDB
-			$proposal = create_slug($this->name);
+			$proposal = ContentUtility::generateUrlSlug($this->name);
 			
 			$result = $this->db->fetchAll("SELECT id FROM loco_class WHERE slug = ?", $proposal); 
 			
@@ -1306,7 +1219,7 @@
 			
 			$mckey = sprintf("railpage:locos.class.coverimage;id=%d", $this->id);
 			
-			if ($result = getMemcacheObject($mckey)) {
+			if ($result = $this->Memcached->fetch($mckey)) {
 				return $result;
 			}
 			
@@ -1334,7 +1247,7 @@
 					"url" => $Image->url->getURLs()
 				);
 				
-				setMemcacheObject($mckey, $return, strtotime("+1 month"));
+				$this->Memcached->save($mckey, $return, strtotime("+1 month"));
 				
 				return $return;
 			}
@@ -1367,7 +1280,7 @@
 					)
 				);
 				
-				setMemcacheObject($mckey, $return, strtotime("+1 month"));
+				$this->Memcached->save($mckey, $return, strtotime("+1 month"));
 				
 				return $return;
 			}
@@ -1397,7 +1310,7 @@
 					"url" => $Image->url->getURLs()
 				);
 				
-				setMemcacheObject($mckey, $return, strtotime("+1 month"));
+				$this->Memcached->save($mckey, $return, strtotime("+1 month"));
 				
 				return $return;
 			}
@@ -1420,7 +1333,7 @@
 			
 			$mckey = sprintf("railpage:locos.class.coverimage;id=%d", $this->id);
 			
-			deleteMemcacheObject($mckey);
+			$this->Memcached->delete($mckey);
 			
 			/**
 			 * Zero out any existing images
@@ -1478,22 +1391,21 @@
 		 */
 		
 		public function getArray() {
+			$Manufacturer = new Manufacturer($this->manufacturer_id); 
+			$Arrangement = new WheelArrangement($this->wheel_arrangement_id); 
+			$Type = new Type($this->type_id);
+			
 			return array(
 				"id" => $this->id,
 				"name" => $this->name,
 				"desc" => $this->desc,
-				"type" => array(
-					"id" => $this->type_id,
-					"text" => $this->type,
-				),
+				"type" => $Type->getArray(),
 				"introduced" => $this->introduced,
 				"weight" => $this->weight,
 				"axle_load" => $this->axle_load,
 				"tractive_effort" => $this->tractive_effort,
-				"wheel_arrangement" => array(
-					"id" => $this->wheel_arrangement_id,
-					"text" => $this->wheel_arrangement
-				)
+				"wheel_arrangement" => $Arrangement->getArray(),
+				"manufacturer" => $Manufacturer->getArray()
 			);
 		}
 		

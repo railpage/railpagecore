@@ -9,6 +9,8 @@
 	namespace Railpage\Locos;
 	
 	use Railpage\Organisations\Organisation;
+	use Railpage\Url;
+	use Railpage\ContentUtility;
 	use Exception;
 	use DateTime;
 	
@@ -83,8 +85,7 @@
 					$this->slug = $row['slug'];
 					
 					if (empty($this->slug)) {
-						$proposal = create_slug($this->name);
-						$proposal = substr($proposal, 0, 30);
+						$proposal = ContentUtility::generateUrlSlug($this->name, 30);
 						
 						$query = "SELECT manufacturer_id FROM loco_manufacturer WHERE slug = ?";
 						$result = $this->db->fetchAll($query, $proposal);
@@ -97,7 +98,7 @@
 						$this->commit();
 					}
 					
-					$this->url = sprintf("/locos/builder/%s", $this->slug);
+					$this->url = new Url(sprintf("/locos/builder/%s", $this->slug));
 				}
 			}
 		}
@@ -115,8 +116,7 @@
 			}
 			
 			if (empty($this->slug)) {
-				$proposal = create_slug($this->name);
-				$proposal = substr($proposal, 0, 30);
+				$proposal = ContentUtility::generateUrlSlug($this->name, 30);
 				
 				$query = "SELECT manufacturer_id FROM loco_manufacturer WHERE slug = ?";
 				$result = $this->db->fetchAll($query, $proposal);
@@ -126,7 +126,7 @@
 				}
 				
 				$this->slug = $proposal;
-				$this->url = sprintf("/locos/builder/%s", $this->slug);
+				$this->url = new Url(sprintf("/locos/builder/%s", $this->slug));
 			}
 			
 			return true;
@@ -175,17 +175,8 @@
 			
 			foreach ($this->db->fetchAll($query, array($this->id, $this->id)) as $row) {
 				$LocoClass = new LocoClass($row['id']);
-				$WheelArrangement = new WheelArrangement($row['wheel_arrangement_id']);
-				$LocoType = new Type($row['loco_type_id']);
 				
-				$row['url'] = $LocoClass->url;
-				$row['wheel_arrangement'] = $WheelArrangement->arrangement;
-				$row['wheel_arrangement_url'] = $WheelArrangement->url;
-				$row['loco_type'] = $LocoType->name;
-				$row['loco_type_url'] = $LocoType->url;
-				$row['year_introduced_url'] = $this->makeYearURL($row['year_introduced']);
-				
-				$return[] = $row;
+				$return[] = $LocoClass->getArray();
 			}
 			
 			return $return;
@@ -199,6 +190,21 @@
 		
 		public function __toString() {
 			return $this->name;
+		}
+		
+		/**
+		 * Get an associative array of this data
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			return array(
+				"id" => $this->id,
+				"name" => $this->name,
+				"description" => $this->desc,
+				"url" => $this->url->getURLs()
+			);
 		}
 	}
 	

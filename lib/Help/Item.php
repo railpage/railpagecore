@@ -11,6 +11,7 @@
 	use Exception;
 	use DateTime;
 	use Railpage\Url;
+	use Railpage\ContentUtility;
 	
 	/**
 	 * Item
@@ -105,41 +106,14 @@
 				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT id_cat AS category_id, id AS item_id, question AS item_title, answer AS item_text, url_slug AS item_url_slug, timestamp AS item_timestamp FROM nuke_faqAnswer WHERE id = '".$this->db->real_escape_string($this->id)."'"; 
-				
-				if ($rs = $this->db->query($query)) {
-					if ($rs->num_rows == 1) {
-						$row = $rs->fetch_assoc(); 
-						
-						$this->title 	= $row['item_title']; 
-						$this->text 	= $row['item_text'];
-						$this->url_slug	= $row['item_url_slug']; 
-						$this->timestamp	= new DateTime($row['item_timestamp']); 
-						
-						#try {
-							$this->category = new Category($row['category_id']); 
-						#} catch (Exception $e) {
-						#	throw new \Error($e->getMessage()); 
-						#}
-					} else {
-						throw new Exception($rs->num_rows." found when fetching item ID ".$this->id." - this should not happen"); 
-						return false;
-					}
-				} else {
-					throw new Exception($this->db->error."\n\n".$query); 
-					return false;
-				}
-			} else {
-				$query = "SELECT id_cat AS category_id, id AS item_id, question AS item_title, answer AS item_text, url_slug AS item_url_slug, timestamp AS item_timestamp FROM nuke_faqAnswer WHERE id = ?";
-				
-				if ($row = $this->db->fetchRow($query, $this->id)) {
-					$this->title 		= $row['item_title']; 
-					$this->text 		= $row['item_text'];
-					$this->url_slug		= $row['item_url_slug']; 
-					$this->timestamp	= new DateTime($row['item_timestamp']); 
-					$this->category 	= new Category($row['category_id']); 
-				}
+			$query = "SELECT id_cat AS category_id, id AS item_id, question AS item_title, answer AS item_text, url_slug AS item_url_slug, timestamp AS item_timestamp FROM nuke_faqAnswer WHERE id = ?";
+			
+			if ($row = $this->db->fetchRow($query, $this->id)) {
+				$this->title 		= $row['item_title']; 
+				$this->text 		= $row['item_text'];
+				$this->url_slug		= $row['item_url_slug']; 
+				$this->timestamp	= new DateTime($row['item_timestamp']); 
+				$this->category 	= new Category($row['category_id']); 
 			}
 			
 			if (filter_var($this->url_slug, FILTER_VALIDATE_INT) || empty($this->url_slug) || !is_string($this->url_slug)) {
@@ -182,45 +156,20 @@
 		public function commit() {
 			$this->validate();
 			
-			if ($this->db instanceof \sql_db) {
-				$dataArray = array(); 
-				$dataArray['id_cat'] = $this->category->id;
-				$dataArray['question'] = $this->db->real_escape_string($this->title); 
-				$dataArray['answer'] = $this->db->real_escape_string($this->text); 
-				$dataArray['url_slug'] = $this->db->real_escape_string($this->url_slug);
+			$data = array(
+				"id_cat" => $this->category->id,
+				"question" => $this->title,
+				"answer" => $this->text,
+				"url_slug" => $this->url_slug
+			);
+			
+			if ($this->id) {
+				$where = array("id = ?" => $this->id); 
 				
-				if ($this->id) {
-					$query = $this->db->buildQuery($dataArray, "nuke_faqAnswer", array("id" => $this->db->real_escape_string($this->id))); 
-				} else {
-					$query = $this->db->buildQuery($dataArray, "nuke_faqAnswer"); 
-				}
-				
-				if ($rs = $this->db->query($query)) {
-					if (!$this->id) {
-						$this->id = $this->db->insert_id; 
-					}
-					
-					return true;
-				} else {
-					throw new Exception($this->db->error."\n\n".$query);
-					return false;
-				}
+				$this->db->update("nuke_faqAnswer", $data, $where); 
 			} else {
-				$data = array(
-					"id_cat" => $this->category->id,
-					"question" => $this->title,
-					"answer" => $this->text,
-					"url_slug" => $this->url_slug
-				);
-				
-				if ($this->id) {
-					$where = array("id = ?" => $this->id); 
-					
-					$this->db->update("nuke_faqAnswer", $data, $where); 
-				} else {
-					$this->db->insert("nuke_faqAnswer", $data); 
-					$this->id = $this->db->lastInsertId(); 
-				}
+				$this->db->insert("nuke_faqAnswer", $data); 
+				$this->id = $this->db->lastInsertId(); 
 			}
 			
 			$this->makeUrls();
@@ -235,41 +184,8 @@
 		 */
 		
 		public function createSlug() {
-			// Assume ZendDB
-			$find = array(
-				"(",
-				")",
-				"-",
-				"?",
-				"!",
-				"#",
-				"$",
-				"%",
-				"^",
-				"&",
-				"*",
-				"+",
-				"=",
-				"'",
-				"\""
-			);
 			
-			$replace = array(); 
-			
-			foreach ($find as $item) {
-				$replace[] = "";
-			}
-			
-			$name = str_replace($find, $replace, strtolower(trim($this->title)));
-			$proposal = create_slug($name);
-			
-			/**
-			 * Trim it if the slug is too long
-			 */
-			
-			if (strlen($proposal) >= 256) {
-				$proposal = substr($poposal, 0, 200); 
-			}
+			$proposal = ContentUtility::generateUrlSlug($this->title);
 			
 			/**
 			 * Check that we haven't used this slug already
@@ -280,10 +196,6 @@
 			if (count($result)) {
 				$proposal .= count($result);
 			}
-			
-			#if (isset($this->url_slug)) {
-			#	$this->url_slug = $proposal;
-			#}
 			
 			/**
 			 * Add this slug to the database
@@ -299,7 +211,7 @@
 					"id = ?" => $this->id
 				);
 				
-				$rs = $this->db->update("nuke_faqAnswer", $data, $where); 
+				$this->db->update("nuke_faqAnswer", $data, $where); 
 			}
 			
 			/**

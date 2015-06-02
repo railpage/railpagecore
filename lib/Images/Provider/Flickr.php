@@ -11,13 +11,17 @@
 	use Railpage\Images\Images;
 	use Railpage\Images\Image;
 	use Railpage\Images\ProviderInterface;
+	use Railpage\Users\User;
 	use Railpage\AppCore;
 	use Railpage\Url;
 	use Exception;
+	use InvalidArgumentException;
 	use DateTime;
 	use DateTimeZone;
-	use flickr_railpage;
 	use GuzzleHttp\Client;
+	use GuzzleHttp\Subscriber\Oauth\Oauth1;
+	
+	#use flickr_railpage;
 	
 	/**
 	 * Flickr image provider
@@ -42,6 +46,14 @@
 		const API_ENDPOINT = "https://api.flickr.com/services/rest/";
 		
 		/**
+		 * Permission: group moderator
+		 * @since Version 3.9.1
+		 * @const string ACL_GROUP_ADMIN
+		 */
+		
+		const ACL_GROUP_ADMIN = 200;
+		
+		/**
 		 * Flickr OAuth token
 		 * @since Version 3.9
 		 * @var string $oauth_token
@@ -55,23 +67,23 @@
 		 * @var string $oauth_secret
 		 */
 		
-		public $oauth_secret;
+		private $oauth_secret;
 		
 		/**
-		 * Flickr API key
-		 * @since Version 3.9
-		 * @var string $flickr_api_key
+		 * OAuth consumer key
+		 * @since VErsion 3.9.1
+		 * @var string $oauth_consumer_key
 		 */
 		
-		private $flickr_api_key;
+		private $oauth_consumer_key;
 		
 		/**
-		 * Flickr API secret
-		 * @since Version 3.9
-		 * @var string $flickr_api_secret
+		 * OAuth consumer secret
+		 * @since Version 3.9.1
+		 * @var string $oauth_consumer_secret
 		 */
 		
-		private $flickr_api_secret;
+		private $oauth_consumer_secret;
 		
 		/**
 		 * Object representing the connection to Flickr
@@ -141,10 +153,10 @@
 			}
 			
 			$opts = array(
-				"flickr_api_key" => "api_key",
-				"flickr_api_secret" => "api_secret",
 				"oauth_token" => "oauth_token",
-				"oauth_secret" => "oauth_secret"
+				"oauth_secret" => "oauth_secret",
+				"oauth_consumer_key" => "api_key",
+				"oauth_consumer_secret" => "api_secret"
 			);
 			
 			foreach ($opts as $var => $val) {
@@ -155,8 +167,9 @@
 				}
 			}
 			
-			if (!is_null($this->flickr_api_key)) {
-				$this->cn = new flickr_railpage($this->flickr_api_key);
+			/*
+			if (!is_null($this->oauth_consumer_key)) {
+				$this->cn = new flickr_railpage($this->oauth_consumer_key);
 				$this->cn->cache = false;
 				
 				if (!is_null($this->oauth_token) && !is_null($this->oauth_secret)) {
@@ -164,9 +177,27 @@
 					$this->cn->oauth_secret = $this->oauth_secret;
 				}
 			}
+			*/
 			
 			$this->Client = new Client;
 			
+		}
+		
+		/**
+		 * Set some options for this provider
+		 * @since Version 3.9.1
+		 * @param array $options
+		 * @return \Railpage\Images\Provider\Flickr
+		 */
+		
+		public function setOptions($options) {
+			
+			foreach ($options as $key => $val) {
+				
+				$this->$key = $val;
+			}
+			
+			return $this;
 		}
 		
 		/**
@@ -185,8 +216,8 @@
 			} else {
 				$return = array(); 
 				
-				if ($return = $this->get("flickr.photos.getInfo", array("photo_id" => $id))) {
-					$return['photo']['sizes'] = $this->get("flickr.photos.getSizes", array("photo_id" => $id));
+				if ($return = $this->execute("flickr.photos.getInfo", array("photo_id" => $id))) {
+					$return['photo']['sizes'] = $this->execute("flickr.photos.getSizes", array("photo_id" => $id));
 				}
 				
 				if (empty($return)) {
@@ -306,7 +337,8 @@
 		 */
 		
 		public function getImageContext(Image $Image) {
-			$rs = $this->cn->photos_getContext($Image->id);
+			#$rs = $this->cn->photos_getContext($Image->id);
+			$rs = $this->execute("flickr.photos.getContext", array("photo_id" => $Image->id));
 			
 			$return = array(
 				"previous" => false,
@@ -338,7 +370,19 @@
 		 */
 		
 		public function deleteImage(Image $Image) {
-			return $this->cn->photos_delete($Image->id);
+			#return $this->cn->photos_delete($Image->id);
+			
+			if (is_null(filter_var($Image->photo_id, FILTER_SANITIZE_STRING))) {
+				throw new InvalidArgumentException("The supplied instance of Railpage\\Images\\Image does not provide a valid photo ID");
+			}
+			
+			$result = $this->execute("flickr.photos.delete", array("photo_id" => $Image->photo_id));
+			
+			if ($result['stat'] == "ok") {
+				return true;
+			}
+			
+			return false;
 		}
 		
 		/**
@@ -349,14 +393,18 @@
 		 * @return array
 		 */
 		
-		public function get($method = false, $params = array()) {
+		public function execute($method = false, $params = array()) {
 			
 			if (is_null(filter_var($method, FILTER_SANITIZE_STRING))) {
 				throw new InvalidArgumentException("Flickr API call failed: no API method requested"); 
 			}
 			
+			/**
+			 * Build our query string
+			 */
+			
 			$params['method'] = $method;
-			$params['api_key'] = $this->flickr_api_key;
+			$params['api_key'] = $this->oauth_consumer_key;
 			$params['format'] = $this->format;
 			
 			if ($params['format'] === "json") {
@@ -365,6 +413,16 @@
 			
 			$params = http_build_query($params);
 			$url = sprintf("%s?%s", self::API_ENDPOINT, $params);
+			
+			/**
+			 * Oauth handling
+			 */
+			
+			$this->configureOAuth();
+			
+			/**
+			 * Fetch the API request
+			 */
 			
 			$response = $this->Client->get($url); 
 			
@@ -386,6 +444,29 @@
 			
 			return $result;
 			
+		}
+		
+		/**
+		 * Make an OAuth URL if we have the required information
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function configureOAuth() {
+			if (!is_null($this->oauth_token) && !is_null($this->oauth_secret) && !is_null($this->oauth_consumer_key) && !is_null($this->oauth_consumer_secret)) {
+				$oauth = new Oauth1(array(
+					"consumer_key" => $this->oauth_consumer_key,
+					"consumer_secret" => $this->oauth_consumer_secret,
+					"token" => $this->oauth_token,
+					"token_secret" => $this->oauth_secret
+				));
+			
+				$this->Client = new Client(array(
+					'defaults' => array('auth' => 'oauth')
+				));
+				
+				$this->Client->getEmitter()->attach($oauth);
+			}
 		}
 		
 		/**
@@ -440,6 +521,62 @@
 			}
 			
 			return $result;
+		}
+		
+		/**
+		 * Check if a user has permission to do...
+		 * @since Version 3.9.1
+		 * @param int $perm
+		 * @return boolean
+		 */
+		
+		public function can($perm) {
+			if (!filter_var($perm, FILTER_VALIDATE_INT)) {
+				return false;
+			}
+			
+			if (!$this->User instanceof User) {
+				throw new InvalidArgumentException("Cannot lookup permissions for " . __CLASS__ . ": no valid user has been set"); 
+			}
+			
+			switch ($perm) {
+				case self::ACL_GROUP_ADMIN :
+					return $this->isGroupAdmin(); 
+					break;
+					
+			}
+			
+		}
+		
+		/**
+		 * Is this user an administrator of the Flickr group
+		 * @since Version 3.9.1
+		 * @return boolean
+		 */
+		
+		private function isGroupAdmin() {
+			$Config = AppCore::getConfig(); 
+			
+			$params = [ 
+				"group_id" => $Config->Flickr->GroupID, 
+				"membertypes" => "3,4", 
+				"per_page" => 100, 
+				"page" => 1 
+			];
+			
+			$members = $this->execute("flickr.groups.members.getList", $params);
+			
+			if (!$members) {
+				throw new Exception(sprintf("Could not fetch members of Flickr group %s: %s (%d)", $params[0], $this->getErrorMessage(), $this->getErrorCode())); 
+			}
+				
+			foreach ($members['members']['member'] as $id => $row) {
+				if ($row['nsid'] == $this->User->flickr_nsid) {
+					return true;
+				}
+			}
+			
+			return false;
 		}
 	}
 	

@@ -290,4 +290,21 @@
 			
 			return $Competition;
 		}
+		
+		/**
+		 * Get contestants in previous competitions
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getPreviousContestants() {
+			
+			$query = "SELECT s.user_id, u.username, u.user_email AS contact_email, concat('/user/', s.user_id) AS url 
+				FROM image_competition_submissions AS s 
+					LEFT JOIN nuke_users AS u ON s.user_id = u.user_id 
+				GROUP BY user_id";
+			
+			return $this->db->fetchAll($query);
+
+		}
 	}

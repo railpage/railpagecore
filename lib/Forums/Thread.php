@@ -704,6 +704,19 @@
 		}
 		
 		/**
+		 * Set the thread author
+		 * @since Version 3.9.1
+		 * @param \Railpage\Users\User $User
+		 * @return \Railpage\Forums\Thread
+		 */
+		
+		public function setAuthor(User $User) {
+			$this->starteruid = $User->id; 
+			
+			return $this;
+		}
+		
+		/**
 		 * Create a URL slug
 		 * @since Version 3.8.7
 		 */

@@ -62,12 +62,14 @@
 			"Railpage\\Help\\" : "lib/Help/",
 			"Railpage\\Ideas\\" : "lib/Ideas/",
 			"Railpage\\Images\\" : "lib/Images/",
+			"Railpage\\Images\\Utility\\" : "lib/Images/Utility/",
 			"Railpage\\Images\\Provider\\" : "lib/Images/Provider/",
 			"Railpage\\Jobs\\" : "lib/Jobs/",
 			"Railpage\\Links\\" : "lib/Links/",
 			"Railpage\\Locations\\" : "lib/Locations/",
 			"Railpage\\Locos\\" : "lib/Locos/",
 			"Railpage\\Locos\\Liveries\\" : "lib/Locos/Liveries/",
+			"Railpage\\Locos\\Utility\\" : "lib/Locos/Utility/",
 			"Railpage\\Modules\\" : "lib/Modules/",
 			"Railpage\\News\\" : "lib/News/",
 			"Railpage\\Organisations\\" : "lib/Organisations/",
@@ -83,6 +85,9 @@
 			"Railpage\\Statistics\\" : "lib/Statistics/",
 			"Railpage\\Timetables\\" : "lib/Timetables/",
 			"Railpage\\Users\\" : "lib/Users/",
+			"Railpage\\Users\\Utility\\" : "lib/Users/Utility/",
+			"Railpage\\Users\\Timeline\\" : "lib/Users/Timeline/",
+			"Railpage\\Users\\Timeline\\Utility\\" : "lib/Users/Timeline/Utility/",
 			"Railpage\\Warnings\\" : "lib/Warnings/"
 		}
 	},
@@ -108,10 +113,12 @@
 		"rezzza/flickr" : "~1.1",
 		"guzzle/http": "~3.9",
 		"guzzlehttp/guzzle": "~5.2",
+		"guzzlehttp/oauth-subscriber": "0.2.*",
 		"monolog/monolog": "~1.12",
 		"doctrine/cache": "~1.4",
 		"mibe/feedwriter": "~1.0",
-		"jakeasmith/http_build_url": "^1"
+		"jakeasmith/http_build_url": "^1",
+		"smarty/smarty": "~3.1"
 	},
 	"require-dev" : {
 		"codeclimate/php-test-reporter": "dev-master"

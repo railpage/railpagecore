@@ -53,6 +53,7 @@
 		 */
 		
 		public function testAddEntry() {
+			
 			$Entry = new Entry; 
 			
 			$this->assertInstanceOf("Railpage\\Chronicle\\Entry", $Entry);
@@ -75,18 +76,23 @@
 			$Entry->EntryType = new EntryType(1);
 			$Entry->commit(); 
 			
+			return $Entry->id;
+			
 		}
 		
 		public function testGetEntry() {
+			
 			$Entry = new Entry(1);
 			
 			$this->assertEquals(1, $Entry->id);
 			$this->assertEquals("A test chronicle entry", $Entry->blurb);
 			$this->assertEquals("A test chronicle entry descriptive text", $Entry->text);
 			$this->assertEquals("18th February 1988", $Entry->Date->format("jS F Y"));
+			
 		}
 		
 		public function testUpdateEntry() {
+			
 			$Entry = new Entry(1);
 			
 			$Entry->blurb = "blurb";
@@ -104,9 +110,13 @@
 			$this->assertEquals($updated_blurb, $Entry->blurb);
 			$this->assertEquals($updated_text, $Entry->text);
 			$this->assertEquals("28th April 1989", $Entry->Date->format("jS F Y"));
+			
+			return $Entry->id;
+			
 		}
 		
 		public function test_getEntriesForDate() {
+			
 			$Chronicle = new Chronicle;
 			
 			$Entry = new Entry;
@@ -125,13 +135,31 @@
 				$this->assertEquals(1, $Entry->id);
 				$this->assertEquals($Date->format("Y-m-d"), $Entry->Date->format("Y-m-d"));
 			}
+			
+			$now = new DateTime;
+			$Entry = new Entry;
+			$Entry->setAuthor($User);
+			$Entry->Date = $now; 
+			$Entry->blurb = "A test entry for today";
+			$Entry->text = "Blah don't care";
+			$Entry->EntryType = new EntryType(1); 
+			$Entry->commit(); 
+			$entry_id = $Entry->id;
+			
+			foreach ($Chronicle->getEntriesForDate() as $Entry) {
+				$this->assertEquals($entry_id, $Entry->id); 
+				$this->assertFalse(!filter_var($Entry->id, FILTER_VALIDATE_INT)); 
+				$this->assertEquals($now->format("Y-m-d"), $Entry->Date->Format("Y-m-d"));
+			}
+			
 		}
 		
 		/**
-		 * Decade
+		 * @depends testAddEntry
 		 */
 		
 		public function test_newDecade() {
+			
 			$Decade = new Decade(1988);
 			
 			$this->assertInstanceOf("Railpage\\Chronicle\\Decade", $Decade);
@@ -142,26 +170,50 @@
 				$this->assertEquals(true, filter_var($Entry->id, FILTER_VALIDATE_INT)); 
 				$this->assertEquals($Decade->decade, floor($Entry->Date->format("Y") / 10) * 10);
 			}
+			
 		}
 		
 		/**
-		 * Year
+		 * @depends testUpdateEntry
 		 */
 		
-		public function test_newYear() {
-			$Year = new Year(1997);
+		public function test_newYear($entry_id) {
+			
+			$Entry = new Entry($entry_id);
+			
+			$Year = new Year($Entry->Date->format("Y"));
 			$Decade = $Year->getDecade();
 			
 			$this->assertInstanceOf("Railpage\\Chronicle\\Year", $Year);
 			
-			$this->assertEquals(1997, $Year->year);
-			$this->assertEquals(1990, $Decade->decade);
+			$this->assertEquals($Entry->Date->format("Y"), $Year->year);
+			$this->assertEquals(1980, $Decade->decade);
 			
 			foreach ($Decade->yieldEntries() as $Entry) {
 				$this->assertEquals(true, filter_var($Entry->id, FILTER_VALIDATE_INT)); 
-				$this->assertEquals($Year->decade, $Entry->Date->format("Y"));
 				$this->assertEquals($Decade->decade, floor($Entry->Date->format("Y") / 10) * 10);
 			}
+			
+			foreach ($Year->yieldEntries() as $Entry) {
+				$this->assertEquals($entry_id, $Entry->id);
+				$this->assertFalse(is_null(filter_var($Entry->blurb, FILTER_SANITIZE_STRING))); 
+			}
+			
+		}
+		
+		/**
+		 * @depends testAddEntry 
+		 */
+		
+		public function test_getLatestAdditions() {
+			
+			$Chronicle = new Chronicle;
+			
+			foreach ($Chronicle->getLatestAdditions() as $Entry) {
+				$this->assertFalse(is_null(filter_var($Entry->blurb, FILTER_SANITIZE_STRING))); 
+				$this->assertFalse(!filter_var($Entry->id, FILTER_VALIDATE_INT)); 
+			}
+			
 		}
 	}
 	

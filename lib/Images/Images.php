@@ -38,6 +38,14 @@
 		const OPT_REFRESH = 1432;
 		
 		/**
+		 * Photo sizes
+		 * @since Version 3.9.1
+		 * @var array $sizes
+		 */
+		
+		private static $sizes = array(); 
+		
+		/**
 		 * Constructor
 		 */
 		
@@ -149,25 +157,14 @@
 			 * Flickr
 			 */
 			
-			if (preg_match("#flickr.com/photos/([a-zA-Z0-9\-\_\@]+)/([0-9]+)#", $url, $matches)) {
-				if ($Image = $this->findImage("flickr", $matches[2], $option)) {
-					return $Image;
-				}
+			if (preg_match("#flickr.com/photos/([a-zA-Z0-9\-\_\@]+)/([0-9]+)#", $url, $matches) && $Image = $this->findImage("flickr", $matches[2], $option)) {
+				return $Image;
 			}
 			
 			if (preg_match("#flic.kr/p/([a-zA-Z0-9]+)#", $url, $matches)) {
-				$alphabet = "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ";
-				$decoded = 0;
-				$multi = 1;
-				
-				while (strlen($matches[1]) > 0) {
-					$digit = $matches[1][strlen($matches[1])-1];
-					$decoded += $multi * strpos($alphabet, $digit);
-					$multi = $multi * strlen($alphabet);
-					$matches[1] = substr($matches[1], 0, -1);
-				}
-				
-				if ($Image = $this->findImage("flickr", $decoded, $option)) {
+				$photo_id = self::getBase58PhotoId($matches[1]);
+								
+				if ($Image = $this->findImage("flickr", $photo_id, $option)) {
 					return $Image;
 				}
 			}
@@ -199,91 +196,130 @@
 		}
 		
 		/**
+		 * Get a photo ID from a base58-encoded Flickr photo ID
+		 * @since Version 3.9.1
+		 * @param string $base58
+		 * @return string
+		 */
+		
+		private static function getBase58PhotoId($base58) {
+			
+			$alphabet = "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ";
+			$decoded = 0;
+			$multi = 1;
+			
+			while (strlen($base58) > 0) {
+				$digit = $base58[strlen($base58)-1];
+				$decoded += $multi * strpos($alphabet, $digit);
+				$multi = $multi * strlen($alphabet);
+				$base58 = substr($base58, 0, -1);
+			}
+			
+			return $base58;
+			
+		}
+		
+		/**
 		 * Normalise image sizes
 		 * @since Version 3.9.1
 		 * @param array $sizes
 		 * @return array
 		 */
 		
-		static public function normaliseSizes($sizes) {
-			if (!isset($sizes['thumb'])) {
-				foreach ($sizes as $size) {
-					if ($size['width'] >= 280 && $size['height'] >= 150) {
-						$sizes['thumb'] = $size;
-						break;
-					}
-				}
-			}
+		public static function normaliseSizes($sizes) {
 			
-			if (!isset($sizes['small'])) {
-				foreach ($sizes as $size) {
-					if ($size['width'] >= 500 && $size['height'] >= 281) {
-						$sizes['small'] = $size;
-						break;
-					}
-				}
-			}
+			self::$sizes = $sizes;
 			
-			if (!isset($sizes['medium'])) {
-				foreach ($sizes as $size) {
-					if ($size['width'] >= 800 && $size['height'] >= 480) {
-						$sizes['medium'] = $size;
-						break;
-					}
-				}
-			}
+			self::normaliseSizes_addMissingSizes("thumb", 280, 150);
+			self::normaliseSizes_addMissingSizes("small", 500, 281);	
 			
-			$width = 0;
+			self::normaliseSizes_addShorthands("fullscreen", 1920);
+			self::normaliseSizes_addShorthands("largest");
+			self::normaliseSizes_addShorthands("larger", 1024, 1920);
+			self::normaliseSizes_addShorthands("large", 1024, 1024);
+			self::normaliseSizes_addShorthands("medium", 800, 800);
 			
-			foreach ($sizes as $size) {
-				if ($size['width'] > $width) {
-					$sizes['largest'] = $size;
-				
-					$width = $size['width'];
-				}
-			}
-		
-			foreach ($sizes as $size) {
-				if ($size['width'] >= 1920) {
-					$sizes['fullscreen'] = $size;
-					break;
-				}
-			}
-		
-			foreach ($sizes as $size) {
-				if ($size['width'] > 1024 && $size['width'] <= 1920) {
-					$sizes['larger'] = $size;
-					break;
-				}
-			}
-		
-			foreach ($sizes as $size) {
-				if ($size['width'] == 1024) {
-					$sizes['large'] = $size;
-					break;
-				}
-			}
-		
-			foreach ($sizes as $size) {
-				if ($size['width'] == 800) {
-					$sizes['medium'] = $size;
-					break;
-				}
-			}
-			
-			if (!isset($sizes['larger'])) {
-				$sizes['larger'] = $sizes['largest'];
+			if (!isset(self::$sizes['larger'])) {
+				self::$sizes['larger'] = self::$sizes['largest'];
 			}
 			
 			if (!isset($sizes['large'])) {
-				$sizes['large'] = $sizes['larger'];
+				self::$sizes['large'] = self::$sizes['larger'];
 			}
 			
 			if (!isset($sizes['medium'])) {
-				$sizes['medium'] = $sizes['large'];
+				self::$sizes['medium'] = self::$sizes['large'];
 			}
 			
-			return $sizes;
+			return self::$sizes;
+		}
+		
+		/**
+		 * Normalise sizes: add missing sizes
+		 * @since Version 3.9.1
+		 * @param string $missing_size
+		 * @param int $min_width
+		 * @param int $min_height
+		 * @return void
+		 */
+		
+		private static function normaliseSizes_addMissingSizes($missing_size, $min_width, $min_height) {
+			
+			if (isset(self::$sizes[$missing_size])) {
+				return;
+			}
+			
+			foreach (self::$sizes as $size) {
+				if ($size['width'] >= $min_width && $size['height'] >= $min_height) {
+					self::$sizes[$missing_size] = $size;
+					break;
+				}
+			}
+			
+			return;
+			
+		}
+		
+		/**
+		 * Normalise sizes: add shorthand names to sizes
+		 * @since Version 3.9.1
+		 * @param string $missing_size
+		 * @param int $min_width
+		 * @param int $min_height
+		 * @return void
+		 */
+		
+		private static function normaliseSizes_addShorthands($missing_size, $min_width = 0, $max_width = 99999) {
+			
+			if (!count(self::$sizes)) {
+				return;
+			}
+			
+			if (isset(self::$sizes[$missing_size])) {
+				return;
+			}
+			
+			foreach (self::$sizes as $size) {
+				if ($missing_size != "largest" && $size['width'] >= $min_width && $size['width'] <= $max_width) {
+					self::$sizes[$missing_size] = $size;
+					return;
+				}
+			}
+			
+			if ($missing_size == "largest") {
+				$largest = current(self::$sizes); 
+				
+				foreach (self::$sizes as $size) {
+					if ($size['width'] > $largest['width']) {
+						$largest = $size;
+					}
+				}
+				
+				self::$sizes[$missing_size] = $largest;
+			}
+			
+			return;
+			
 		}
 	}
 	

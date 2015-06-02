@@ -22,6 +22,7 @@
 	use Railpage\Forums\Forum;
 	use Railpage\Forums\Forums;
 	use Railpage\Forums\Index;
+	use Railpage\Debug;
 	
 	/**
 	 * User class
@@ -819,12 +820,12 @@
 		/** 
 		 * Flickr oauth secret
 		 * Column: flickr_oauth_token_secret
-		 * @var string $flickr_oath_secret
+		 * @var string $flickr_oauth_token_secret
 		 * @since Version 3.0.1
 		 * @version 3.0.1
 		 */
 		 
-		public $flickr_oauth_secret = "";
+		public $flickr_oauth_token_secret = "";
 		
 		/** 
 		 * Flickr NSID
@@ -988,33 +989,25 @@
 		 */
 		
 		public function load($user_id = false) {
-			if ($user_id) {
+			if (filter_var($user_id, FILTER_VALIDATE_INT)) {
 				$this->id = $user_id; 
 			}
 			
 			// Get out early
-			if (!$this->id) {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				return false;
 			}
 			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
+			$timer = Debug::getTimer(); 
 			
 			$this->createUrls();
 			
-			if (RP_DEBUG) {
-				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") createUrls() completed in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-			}
+			Debug::logEvent(__METHOD__ . " - createUrls() completed", $timer); 
 			
-			$this->mckey = "railpage:user_id=" . $this->id; 
+			$this->mckey = sprintf("railpage:user_id=%d", $this->id); 
 			$cached = false;
 			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
+			$timer = Debug::getTimer(); 
 			
 			/**
 			 * Load the User data from Redis first
@@ -1022,167 +1015,31 @@
 			
 			if ($data = $this->Redis->fetch($this->mckey)) {
 				$cached = true;
-			
-				if (RP_DEBUG) {
-					$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via Redis in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-				}
+				
+				Debug::logEvent(__METHOD__ . "(" . $this->id . ") loaded via Redis", $timer);
 			}
 			
 			/**
 			 * I fucked up before, so validate the redis data before we continue...
 			 */
 			
-			if (!is_array($data) || empty($data) || count($data) == 1) {
-				if ($this->db instanceof \sql_db) {
-					$query  = "SELECT u.*, COALESCE(SUM((SELECT COUNT(*) FROM nuke_bbprivmsgs WHERE privmsgs_to_userid='".$this->db->real_escape_string($this->id)."' AND (privmsgs_type='5' OR privmsgs_type='1'))), 0) AS unread_pms FROM nuke_users u WHERE u.user_id = '".$this->db->real_escape_string($this->id)."';";
+			if (!is_array($data) || empty($data) || count($data) === 1) {
 					
-					if (!defined("RP_PLATFORM") || RP_PLATFORM != "API") {
-						$query .= "SELECT o.* FROM organisation o, organisation_member om WHERE o.organisation_id = om.organisation_id AND om.user_id = ".$this->db->real_escape_string($this->id).";";
-						$query .= "SELECT oc.* FROM oauth_consumer AS oc LEFT JOIN nuke_users AS u ON u.oauth_consumer_id = oc.id WHERE u.user_id = ".$this->db->real_escape_string($this->id).";";
-					}
-					
-					if ($this->db->multi_query($query)) {
-						// Get the user data
-						
-						if ($rs = $this->db->store_result()) {
-							if ($rs->num_rows == 1 && $data = $rs->fetch_assoc()) {
-								//unset($data['user_password']); 
-								$data['session_logged_in'] = true;
-								$data['session_start'] = $data['user_session_time'];
-								
-								$rs->free(); 
-							} else {
-								trigger_error("User: Could not retrieve user from database");
-								trigger_error($this->db->error); 
-								trigger_error($query);
-								
-								return false;
-							}
-						} else {
-							trigger_error("User: Could not retrieve user from database");
-							trigger_error($this->db->error); 
-							trigger_error($query); 
-							
-							return false;
-						}
-						
-						// Get the organisation membership
-						if ($this->db->more_results()) {
-							$this->db->next_result();
-							
-							if ($rs = $this->db->store_result()) {
-								$data['organisations'] = array(); 
-								
-								while ($row = $rs->fetch_assoc()) {
-									$data['organisations'][$row['organisation_id']] = $row;
-								}
-							}
-						}
-						
-						// OAuth consumer key
-						if ($this->db->more_results()) {
-							$this->db->next_result();
-							
-							if ($rs = $this->db->store_result()) {
-								$row = $rs->fetch_assoc(); 
-								$data['oauth_key']		= $row['consumer_key'];
-								$data['oauth_secret']	= $row['consumer_secret'];
-							}
-						}
+				$data = Utility\UserUtility::fetchFromDatabase($this); 
 				
-						if (RP_DEBUG) {
-							$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via sql_db in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-						}
-					} else {
-						throw new Exception($this->db->error); 
-						return false;
-					}
-				} else {
-					// Zend_Db
-					
-					$query = "SELECT u.*, COALESCE(SUM((SELECT COUNT(*) FROM nuke_bbprivmsgs WHERE privmsgs_to_userid= ? AND (privmsgs_type='5' OR privmsgs_type='1'))), 0) AS unread_pms FROM nuke_users u WHERE u.user_id = ?";
-					
-					if ($data = $this->db->fetchRow($query, array($this->id, $this->id))) {
-						#unset($data['user_password']); 
-						#unset($data['user_password_bcrypt']);
-						
-						$data['session_logged_in'] = true;
-						$data['session_start'] = $data['user_session_time'];
-						
-						if (!defined("RP_PLATFORM") || RP_PLATFORM != "API") {
-							$data['organisations'] = array(); 
-							
-							$query = "SELECT o.* FROM organisation o, organisation_member om WHERE o.organisation_id = om.organisation_id AND om.user_id = ?"; 
-							
-							if ($orgs = $this->db->fetchAll($query, $this->id)) {
-								foreach ($orgs as $row) {
-									$data['organisations'][$row['organisation_id']] = $row;
-								}
-							}
-							
-							$query = "SELECT oc.* FROM oauth_consumer AS oc LEFT JOIN nuke_users AS u ON u.oauth_consumer_id = oc.id WHERE u.user_id = ?";
-							
-							if ($row = $this->db->fetchRow($query, $this->id)) {
-								$data['oauth_key']		= $row['consumer_key'];
-								$data['oauth_secret']	= $row['consumer_secret'];
-							}
-						}
-					}
-				
-					if (RP_DEBUG) {
-						$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") loaded via zend_db in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-					}
-				}
+				Debug::logEvent(__METHOD__ . "(" . $this->id . ") loaded via ZendDB", $timer);
 			}
 				
 			/**
 			 * Process some of the returned values
 			 */
 			
-			// Set the full avatar path
-			if (!empty($data['user_avatar'])) {
-				
-				if (RP_DEBUG) {
-					global $site_debug;
-					$debug_timer_start = microtime(true);
-				}
-			
-				$data['user_avatar_filename'] = $data['user_avatar']; 
-				
-				if (!stristr($data['user_avatar'], "http://") && !stristr($data['user_avatar'], "https://")) {
-					// Assume local avatar
-					$data['user_avatar'] = sprintf("http://%s/modules/Forums/images/avatars/%s", filter_input(INPUT_SERVER, "SERVER_NAME", FILTER_SANITIZE_STRING), $data['user_avatar']);
-				}
-			
-				if (RP_DEBUG) {
-					$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") user avatar processed in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-				}
-				
-			}
-			
-			/**
-			 * Set the default avatar
-			 */
-			
-			if (empty($data['user_avatar']) || substr($data['user_avatar'], -9, 5) == "blank") {
-				$data['user_avatar'] = function_exists("format_avatar") ? format_avatar("http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png", 120, 120) : "http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png";
-				$data['user_avatar_filename'] = function_exists("format_avatar") ? format_avatar("http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png", 120, 120) : "http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png";
-				$data['user_avatar_width'] = 120;
-				$data['user_avatar_height'] = 120;
-			}
+			$data = Utility\UserUtility::normaliseAvatarPath($data);
 			
 			// Backwards compatibility
 			if ($data['timezone']) {
 				$timezone = new DateTime(null, new DateTimeZone($data['timezone'])); 
 				$data['user_timezone'] = str_pad(($timezone->getOffset() / 60 / 60), 5, ".00"); 
-			}
-			
-			// Check for theme existance
-			if (class_exists("\\smarty_railpage")) {
-				$smarty = new \smarty_railpage();
-				if (!$smarty->theme_exists($data['theme']) || $data['theme'] == "MGHTheme" || $data['theme'] == "") {
-					$data['theme'] = isset($this->default_theme) && !empty($this->default_theme) ? $this->default_theme : self::DEFAULT_THEME;
-				}
 			}
 			
 			// Nice time
@@ -1197,121 +1054,36 @@
 			$this->provider 	= isset($data['provider']) ? $data['provider'] : "railpage";
 			$this->preferences	= json_decode($data['user_opts']); 
 			$this->guest 		= false;
-			$this->ssl			= $data['user_enablessl'];
-			$this->username 	= $data['username']; 
-			$this->active 		= $data['user_active']; 
-			$this->regdate 		= $data['user_regdate'];
-			$this->level		= $data['user_level'];
-			$this->posts		= $data['user_posts'];
-			$this->style		= $data['user_style'];
 			$this->theme		= (!is_null($data['theme'])) ? $data['theme'] : (isset($this->default_theme) && !empty($this->default_theme) ? $this->default_theme : self::DEFAULT_THEME);
-			$this->lang			= $data['user_lang'];
-			$this->date_format	= $data['user_dateformat'];
 			$this->rank_id		= $data['user_rank'];
 			$this->rank_text	= isset($data['rank_title']) && !empty($data['rank_title']) ? $data['rank_title'] : NULL;
-			$this->location		= $data['user_from'];
-			$this->occupation	= $data['user_occ'];
-			$this->interests	= $data['user_interests'];
-			$this->real_name	= $data['name'];
 			$this->timezone		= isset($data['timezone']) && !empty($data['timezone']) ? $data['timezone'] : "Australia/Melbourne";
 			$this->website		= $data['user_website'];
 			$this->hide			= $data['user_allow_viewonline']; 
-			
-			$this->wheat		= $data['uWheat'];
-			$this->chaff		= $data['uChaff'];
-			
-			$this->facebook_user_id	= $data['facebook_user_id'];
-			
-			if ($this->wheat == 0) {
-				$this->reputation = '100% (+'.$this->wheat.'/'.$this->chaff.'-)';
-			} else {
-				$this->reputation = number_format(((($this->chaff/$this->wheat)/2)*100),1).'% (+'.$this->wheat.'/'.$this->chaff.'-)';
-			}
-			
-			$this->api_key		= $data['api_key'];
-			$this->api_secret	= $data['api_secret'];
-			
-			$this->report_optout	= $data['user_report_optout'];
-			
-			$this->warning_level	= $data['user_warnlevel'];
-			$this->warning_exempt	= $data['disallow_mod_warn'];
-			
-			$this->group_cp			= $data['user_group_cp'];
-			$this->group_list_cp	= $data['user_group_list_cp'];
-			$this->active_cp		= $data['user_active_cp'];
-			
-			$this->items_per_page	= $data['user_forum_postsperpage'];
-			
-			$this->avatar 			= $data['user_avatar'];
-			$this->avatar_filename	= $data['user_avatar_filename'];
-			$this->avatar_type		= $data['user_avatar_type'];
-			$this->avatar_width		= $data['user_avatar_width']; 
-			$this->avatar_height	= $data['user_avatar_height']; 
-			$this->avatar_gravatar	= $data['user_avatar_gravatar'];
-			
-			$this->privmsg_new		= $data['user_new_privmsg'];
-			$this->privmsg_unread	= $data['user_unread_privmsg'];
-			$this->privmsg_last_id	= $data['user_last_privmsg'];
-			
-			$this->email_show		= $data['user_viewemail']; 
-			$this->news_submissions	= $data['storynum']; 
-			
-			$this->notify 			= $data['user_notify']; 
-			$this->notify_privmsg	= $data['user_notify_pm']; 
-			
-			$this->contact_email 		= $data['user_email']; 
-			$this->contact_icq 			= $data['user_icq']; 
-			$this->contact_aim 			= $data['user_aim']; 
-			$this->contact_yim 			= $data['user_yim']; 
-			$this->contact_msn 			= $data['user_msnm'];
-			
-			if ($this->email_show) {
-				$this->contact_email_public	= $this->contact_email; 
-			} else {
-				$this->contact_email_public = $data['femail'];
-			}
-			
-			$this->signature			= $data['user_sig']; 
-			$this->signature_attach		= $data['user_attachsig'];
-			$this->signature_showall	= $data['user_showsigs'];
-			$this->signature_bbcode_uid	= $data['user_sig_bbcode_uid'];
-			$this->act_key 				= $data['user_actkey']; 
+			$this->meta = isset($data['meta']) ? json_decode($data['meta'], true) : array();
 			
 			if (isset($data['password_new'])) {
 				$this->password_new = $data['password_new']; 
 			}
 			
-			$this->password 			= $data['user_password']; 
-			$this->password_bcrypt		= $data['user_password_bcrypt'];
+			$this->session_last_nice	= date($this->date_format, $this->lastvisit); 
+			$this->contact_email_public = (bool) $this->contact_email_public ? $this->contact_email : $data['femail'];
+						
+			if (intval($this->wheat) === 0) {
+				$this->reputation = '100% (+' . $this->wheat . '/' . $this->chaff . '-)';
+			} else {
+				$this->reputation = number_format(((($this->chaff/$this->wheat)/2)*100),1).'% (+'.$this->wheat.'/'.$this->chaff.'-)';
+			}
 			
-			$this->lastvisit 			= $data['user_lastvisit'];
-			$this->session_time 		= $data['user_session_time']; 
-			$this->session_page 		= $data['user_session_page']; 
-			$this->session_current 		= $data['user_current_visit']; 
-			$this->session_last 		= $data['user_last_visit']; 
-			$this->session_last_nice	= date($data['user_dateformat'], $data['user_lastvisit']); 
-			$this->session_ip	 		= $data['last_session_ip']; 
-			$this->session_cslh 		= $data['last_session_cslh']; 
-			$this->session_mu_ignore 	= $data['last_session_ignore']; 
+			/**
+			 * Map database fields to class vars
+			 */
 			
-			$this->enable_rte 			= $data['user_enablerte']; 
-			$this->enable_glossary		= $data['user_enableglossary'];
-			$this->enable_html 			= $data['user_allowhtml']; 
-			$this->enable_bbcode		= $data['user_allowbbcode']; 
-			$this->enable_emoticons 	= $data['user_allowsmile']; 
-			$this->enable_avatar 		= $data['user_allowavatar']; 
-			$this->enable_privmsg 		= $data['user_allow_pm']; 
-			$this->enable_privmsg_popup	= $data['user_popup_pm']; 
-			$this->enable_autologin		= $data['user_enableautologin']; 
+			$fields = Utility\UserUtility::getColumnMapping(); 
 			
-			$this->flickr_oauth_token	= $data['flickr_oauth_token']; 
-			$this->flickr_oauth_secret	= $data['flickr_oauth_token_secret']; 
-			$this->flickr_nsid			= $data['flickr_nsid']; 
-			$this->flickr_username		= $data['flickr_username']; 
-			
-			$this->sidebar_type			= $data['sidebar_type'];
-			$this->reported_to_sfs		= $data['reported_to_sfs'];
-			$this->meta = isset($data['meta']) ? json_decode($data['meta'], true) : array();
+			foreach ($fields as $key => $var) {
+				$this->$var = $data[$key];
+			}
 			
 			/**
 			 * Update the user registration date if required
@@ -1342,13 +1114,7 @@
 				}
 			}
 			
-			if ($this->warning_level == 0) {
-				$this->warning_level_colour = "green";
-			} elseif ($this->warning_level < 66) {
-				$this->warning_level_colour = "orange";
-			} else {
-				$this->warning_level_colour = "red";
-			}
+			$this->warning_level_colour = Utility\UserUtility::getWarningBarColour($this->warning_level);
 			
 			if (isset($data['oauth_key']) && isset($data['oauth_secret'])) {
 				$this->oauth_key 	= $data['oauth_key'];
@@ -1358,10 +1124,32 @@
 			$this->oauth_id = $data['oauth_consumer_id'];
 			
 			// Bugfix for REALLY old accounts with a NULL user_level
-			if ($this->level == NULL && $this->active = 1) {
+			if (!filter_var($this->level, FILTER_VALIDATE_INT) && $this->active = 1) {
 				$this->level = 1;
 			}
 			
+			$this->verifyAPI(); 
+			
+			/**
+			 * Set some default values for $this->preferences
+			 */
+			
+			$this->preferences = json_decode(json_encode($this->getPreferences()));
+			
+			if (!$cached) {
+				$this->Redis->save($this->mckey, $data, strtotime("+6 hours"));
+			}
+			
+			return true;
+		}
+		
+		/**
+		 * Verify the API settings
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function verifyAPI() {
 			// Generate a new API key and secret
 			if (empty($this->api_key) || empty($this->api_secret)) {
 				$this->api_secret 	= password_hash($this->username.$this->regdate.$this->id, PASSWORD_BCRYPT, array("cost" => 4));
@@ -1370,30 +1158,9 @@
 				try {
 					$this->commit(true); 
 				} catch (Exception $e) {
-					global $Error;
-					$Error->save($e);
+					// Throw it away
 				}
 			}
-			
-			/**
-			 * Set some default values for $this->preferences
-			 */
-			
-			if (empty($this->preferences)) {
-				$this->preferences = new stdClass; 
-				
-				$this->preferences->home = "Home"; 
-				$this->preferences->showads = true;
-				$this->preferences->forums = new stdClass;
-				$this->preferences->forums->hideinternational = false;
-				$this->commit(true);
-			}
-			
-			if (!$cached) {
-				$this->Redis->save($this->mckey, $data, strtotime("+6 hours"));
-			}
-			
-			return true;
 		}
 		
 		/**
@@ -1418,6 +1185,10 @@
 				$this->regdate = date("M j, Y");
 			}
 			
+			if (!filter_var($this->id, FILTER_VALIDATE_INT) && !$this->RegistrationDate instanceof DateTime) {
+				$this->RegistrationDate = new DateTime;
+			}
+			
 			if (!$ignore) {
 				if ($this->provider == "railpage" && (empty($this->password))) {
 					throw new Exception("Password is empty");
@@ -1432,7 +1203,7 @@
 				}
 			}
 			
-			if (empty($this->level)) {
+			if (!filter_var($this->level, FILTER_VALIDATE_INT)) {
 				$this->level = 1;
 			}
 			
@@ -1461,27 +1232,24 @@
 		
 		public function commit($force = false) {
 			
-			if (!$this->validate($force)) {
-				// Get out early
-				return false;
+			$this->validate($force); 
+			
+			Utility\UserUtility::clearCache($this); 
+			
+			$data = array(); 
+			
+			foreach (Utility\UserUtility::getColumnMapping() as $key => $var) {
+				$data[$key] = $this->$var;
 			}
 			
-			if (!empty($this->mckey) && $this->Memcached->contains($this->mckey)) {
-				$this->Memcached->delete($this->mckey);
-				
-				try {
-					$this->Redis->delete(sprintf("railpage:users.user=%d", $this->id));
-				} catch (Exception $e) {
-					// throw it away
-				}
-				
-				try {
-					$this->Redis->delete($this->mckey);
-				} catch (Exception $e) {
-					// throw it away
-				}
+			$json = [ "meta", "user_opts" ];
+			foreach ($json as $key) {
+				$data[$key] = json_encode($data[$key]);
 			}
 			
+			#printArray($data);die;
+			
+			/*
 			$dataArray = array();
 			
 			$dataArray['provider'] = $this->provider;
@@ -1587,62 +1355,32 @@
 			$dataArray['facebook_user_id'] = $this->facebook_user_id;
 			$dataArray['reported_to_sfs'] = $this->reported_to_sfs;
 			
+			printArray(count($data)); 
+			printArray(count($dataArray));
+			
+			foreach ($data as $key => $val)  {
+				if (!in_array($key, array_keys($dataArray))) {
+					printArray($key); 
+				}
+			}
+			die;
+			*/
+			
 			if ($this->RegistrationDate instanceof DateTime) {
-				$dataArray['user_regdate_nice'] = $this->RegistrationDate->format("Y-m-d H:i:s");
+				$data['user_regdate_nice'] = $this->RegistrationDate->format("Y-m-d H:i:s");
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				// Escape values for SQL
-				foreach ($dataArray as $key => $val) {
-					$dataArray[$key] = $this->db->real_escape_string($val); 
-				}
-				
-				
-				if ($this->id) {
-					// Update existing user
-					$where = array(); 
-					$where['user_id'] = $this->db->real_escape_string($this->id); 
-					
-					$query = $this->db->buildQuery($dataArray, "nuke_users", $where);
-				} else {
-					// Create a new user
-					$query = $this->db->buildQuery($dataArray, "nuke_users");
-				}
-				
-				try {
-					if ($this->db->query($query)) {
-						if (!$this->id) {
-							$this->id = $this->db->insert_id;
-							$this->guest = false;
-						} 
-					
-						$return = true;
-					} else {
-						throw new Exception($this->db->error);
-					}
-				} catch (Exception $e) {
-					global $Error;
-					$Error->save($e);
-					
-					$return = false;
-					
-					throw new Exception($e->getMessage());
-				}
-				
-				return $return;
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$this->db->update("nuke_users", $data, array("user_id = ?" => $this->id));
 			} else {
-				if (filter_var($this->id, FILTER_VALIDATE_INT)) {
-					$this->db->update("nuke_users", $dataArray, array("user_id = ?" => $this->id));
-				} else {
-					$this->db->insert("nuke_users", $dataArray);
-					$this->id = $this->db->lastInsertId();
-					$this->guest = false;
-					
-					$this->createUrls();
-				}
+				$this->db->insert("nuke_users", $data);
+				$this->id = $this->db->lastInsertId();
+				$this->guest = false;
 				
-				return true;
+				$this->createUrls();
 			}
+			
+			return true;
 		}
 		
 		/**
@@ -1709,33 +1447,21 @@
 			
 			if (is_array($this->groups) && in_array($group_id, $this->groups)) {
 				return true;
-			} else {
-				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT group_id FROM nuke_bbuser_group USE INDEX (user_id) WHERE group_id = ".$this->db->real_escape_string($group_id)." AND user_id = ".$this->db->real_escape_string($this->id)." AND user_pending = 0";
-				
-				if ($rs = $this->db->query($query)) {
-					if ($rs->num_rows == 1) {
-						return true;
-					} else {
-						return false;
-					}
-				} else {
-					return false;
+			return false;
+			
+			/*
+			$query = "SELECT group_id FROM nuke_bbuser_group USE INDEX (user_id) WHERE group_id = ? AND user_id = ? AND user_pending = 0";
+			
+			if ($result = $this->db->fetchOne($query, array($group_id, $this->id))) {
+				if ($result == $group_id) {
+					return true;
 				}
-			} else {
-				$query = "SELECT group_id FROM nuke_bbuser_group USE INDEX (user_id) WHERE group_id = ? AND user_id = ? AND user_pending = 0";
-				
-				if ($result = $this->db->fetchOne($query, array($group_id, $this->id))) {
-					if ($result == $group_id) {
-						return true;
-					}
-				}
-				
-				return false;
 			}
+			
+			return false;
+			*/
 		}
 		
 		/**
@@ -1746,7 +1472,7 @@
 		
 		public function generateUserData() {
 			$return = array(); 
-			$return['session_id'] 	= $_SESSION['session_id']; 
+			$return['session_id'] 	= isset($_SESSION['session_id']) ? filter_var($_SESSION['session_id'], FILTER_SANITIZE_STRING) : NULL; 
 			$return['user_id'] 		= $this->id;
 			$return['username'] 	= $this->username;
 			$return['theme']		= $this->theme;
@@ -1779,26 +1505,6 @@
 		}
 		
 		/**
-		 * Get user data, return as associative array
-		 * @since Version 3.0
-		 * @version 3.0
-		 * @param int $user_id
-		 * @return mixed
-		 * @deprecated Deprecated since Version 3.0.1
-		 */
-		 
-		public function getUser($user_id = false) {
-			if (!$this->db) {
-				return false;
-			}
-			
-			$trace = debug_backtrace(); 
-			
-			throw new Exception("Deprecated function " . $trace[0]['class'] . "->" . $trace[0]['function'] . " called from " . $trace[0]['file'] . " on line " . $trace[0]['line']);
-			return false;
-		}
-		
-		/**
 		 * Set last visit time (user login)
 		 * @since Version 3.0
 		 * @version 3.0
@@ -1811,128 +1517,95 @@
 				$user_id = $this->id;
 			}
 			
-			if ($this->db && $user_id) {
-				if ($this->db instanceof \sql_db) {
-					if (!$time) {
-						// Time not provided, select last page visit from database
-						$query = "SELECT user_session_time FROM nuke_users WHERE user_id = '".$this->db->real_escape_string($user_id)."'"; 
-						if ($rs = $this->db->query($query)) {
-							$time = $rs->fetch_assoc(); 
-							$time = $time['user_session_time'];
-						} else {
-							trigger_error("User: Could not update last visit timestamp"); 
-							trigger_error($this->db->error); 
-							trigger_error($query); 
-						}
-					}
-					
-					$this->db->query("UPDATE nuke_users SET user_lastvisit = ".$this->db->real_escape_string($time)." WHERE user_id = '".$this->db->real_escape_string($user_id)."'"); 
-				} else {
-					if (!$time) {
-						$time = $this->db->fetchOne("SELECT user_session_time FROM nuke_users WHERE user_id = ?", $user_id); 
-					}
-					
-					$data = array(
-						"user_lastvisit" => $time
-					);
-					
-					$this->db->update("nuke_users", $data, array("user_id = ?" => $user_id));
-					
-					/** 
-					 * Update values stored in Memcached
-					 */
-					
-					if (!isset($this->mckey)) {
-						$this->mckey = sprintf("railpage:user_id=%d", $user_id);
-					}
-					
-					if (is_object($this->Redis)) {
-						$this->Redis->delete(sprintf("railpage:users.user=%d", $this->id));
-						
-						$rs = $this->Redis->fetch($this->mckey); 
-						$rs['user_lastvisit'] = $time;
-						
-						$this->Redis->save($this->mckey, $rs);
-					}
-					
-					if ($rs = $this->Memcached->fetch($this->mckey)) {
-						$rs['user_lastvisit'] = $time;
-						$this->Memcached->save($this->mckey, $rs);
-					}
-				}
+			if (!filter_var($user_id, FILTER_VALIDATE_INT)) {
+				return;
+			}
+			
+			if (!$time) {
+				$time = $this->db->fetchOne("SELECT user_session_time FROM nuke_users WHERE user_id = ?", $user_id); 
+			}
+			
+			$data = array(
+				"user_lastvisit" => $time
+			);
+			
+			$this->db->update("nuke_users", $data, array("user_id = ?" => $user_id));
+			
+			/** 
+			 * Update values stored in Memcached
+			 */
+			
+			if (!isset($this->mckey)) {
+				$this->mckey = sprintf("railpage:user_id=%d", $user_id);
+			}
+			
+			if (is_object($this->Redis)) {
+				$this->Redis->delete(sprintf("railpage:users.user=%d", $this->id));
+				
+				$result = $this->Redis->fetch($this->mckey); 
+				$result['user_lastvisit'] = $time;
+				
+				$this->Redis->save($this->mckey, $result);
+			}
+			
+			if ($result = $this->Memcached->fetch($this->mckey)) {
+				$result['user_lastvisit'] = $time;
+				$this->Memcached->save($this->mckey, $result);
 			}
 		}
 		
 		/**
 		 * Set last session activity
 		 * @since Version 3.0
-		 * @version 3.0
+		 * @version 3.9.1
+		 * @return boolean
 		 * @param int $user_id
+		 * @param strint $remote_addr
 		 */
 		 
-		public function updateSessionTime($user_id = false) {
-			if (!$user_id) {
+		public function updateSessionTime($user_id = false, $remote_addr = false) {
+			if (!$user_id = filter_var($user_id, FILTER_VALIDATE_INT)) {
 				$user_id = $this->id;
 			}
 			
-			if ($user_id) {
-				if (!isset($_SESSION['sessiontime_lastupdate']) || $_SESSION['sessiontime_lastupdate'] <= time() - 300) {
-					if (RP_DEBUG) {
-						global $site_debug;
-						$debug_timer_start = microtime(true);
-					}
-				
-					if ($this->db instanceof \sql_db) {
-						if (!is_null(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING))) {
-							$ip_sql = "last_session_ip = '".$this->db->real_escape_string(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING))."', "; 
-						} else {
-							$ip_sql = "";
-						}
-						
-						$query = "UPDATE nuke_users SET user_session_time = '".time()."' ".$ip_sql." WHERE user_id = '".$this->db->real_escape_string($user_id)."'"; 
-						
-						if (!$this->db->query($query)) {
-							throw new Exception($this->db->error); 
-						}
-					} else {
-						$data = array(
-							"user_session_time" => time()
-						);
-						
-						if (!is_null(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING))) {
-							$data['last_session_ip'] = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING); 
-						}
-						
-						$rs = $this->db->update("nuke_users", $data, array("user_id = ?" => $user_id));
-						
-						/** 
-						 * Update values stored in Memcached
-						 */
-					
-						if (!isset($this->mckey)) {
-							$this->mckey = sprintf("railpage:user_id=%d", $user_id);
-						}
-						
-						if ($rs = $this->Memcached->fetch($this->mckey)) {
-							$rs['user_session_time'] = $data['user_session_time'];
-							$rs['last_session_ip'] = $data['last_session_ip'];
-							$this->Memcached->save($this->mckey, $rs);
-							$this->Redis->delete($this->mckey);
-						}
-						
-						if (RP_DEBUG) {
-							if ($rs === false) {
-								$site_debug[] = "Zend_DB: FAILED update user_session_time for user ID " . $user_id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-							} else {
-								$site_debug[] = "Zend_DB: SUCCESS update user_session_time for user ID " . $user_id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-								$_SESSION['sessiontime_lastupdate'] = time(); 
-							}
-						}
-					}
-					
-					return $rs;
-				}
+			if (!filter_var($user_id, FILTER_VALIDATE_INT)) {
+				return false;
 			}
+			
+			$lastupdate = isset($_SESSION['sessiontime_lastupdate']) ? filter_var($_SESSION['sessiontime_lastupdate'], FILTER_SANITIZE_STRING) : NULL;
+			
+			if (is_null($lastupdate) || $lastupdate <= time() - 300) {
+				
+				$timer = Debug::getTimer(); 
+			
+				$data = [ "user_session_time" => time() ];
+				
+				$data['last_session_ip'] = $remote_addr !== false ? $remote_addr : filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING);
+				
+				$this->db->update("nuke_users", $data, array("user_id = ?" => $user_id));
+				
+				$this->session_time = $data['user_session_time'];
+				
+				/** 
+				 * Update values stored in Memcached
+				 */
+			
+				if (!isset($this->mckey)) {
+					$this->mckey = sprintf("railpage:user_id=%d", $user_id);
+				}
+				
+				if ($result = $this->Memcached->fetch($this->mckey)) {
+					$result['user_session_time'] = $data['user_session_time'];
+					$result['last_session_ip'] = $data['last_session_ip'];
+					$this->Memcached->save($this->mckey, $result);
+					$this->Redis->delete($this->mckey);
+				}
+				
+				Debug::logEvent("Zend_DB: Update user session time for user ID " . $user_id, $timer); 
+			}
+				
+			return true;
+			
 		}
 		
 		/**
@@ -1943,32 +1616,15 @@
 		 */
 		 
 		public function loadWarnings() {
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT w.warn_id AS warning_id, w.user_id, u.username, w.warned_by AS staff_user_id, s.username AS staff_username, w.warn_reason, w.mod_comments AS staff_comments, w.actiontaken AS warn_action, w.warn_date FROM phpbb_warnings AS w LEFT JOIN nuke_users AS u ON u.user_id = w.user_ID LEFT JOIN nuke_users AS s ON s.user_id = w.warned_by WHERE w.user_id = ".$this->db->real_escape_string($this->id)." ORDER BY w.warn_date";
-				
-				if ($rs = $this->db->query($query)) {
-					while ($row = $rs->fetch_assoc()) {
-						$this->warnings[] = $row;
-					}
-					
-					return true;
-				} else {
-					trigger_error("User : Could not load warnings for user id ".$this->id);
-					trigger_error($this->db->error);
-					
-					return false;
+			$query = "SELECT w.warn_id AS warning_id, w.user_id, u.username, w.warned_by AS staff_user_id, s.username AS staff_username, w.warn_reason, w.mod_comments AS staff_comments, w.actiontaken AS warn_action, w.warn_date FROM phpbb_warnings AS w LEFT JOIN nuke_users AS u ON u.user_id = w.user_ID LEFT JOIN nuke_users AS s ON s.user_id = w.warned_by WHERE w.user_id = ? ORDER BY w.warn_date";
+			
+			if ($result = $this->db->fetchAll($query, $this->id)) {
+				foreach ($result as $row) {
+					$this->warnings[] = $row;
 				}
-			} else {
-				$query = "SELECT w.warn_id AS warning_id, w.user_id, u.username, w.warned_by AS staff_user_id, s.username AS staff_username, w.warn_reason, w.mod_comments AS staff_comments, w.actiontaken AS warn_action, w.warn_date FROM phpbb_warnings AS w LEFT JOIN nuke_users AS u ON u.user_id = w.user_ID LEFT JOIN nuke_users AS s ON s.user_id = w.warned_by WHERE w.user_id = ? ORDER BY w.warn_date";
-				
-				if ($result = $this->db->fetchAll($query, $this->id)) {
-					foreach ($result as $row) {
-						$this->warnings[] = $row;
-					}
-				}
-				
-				return true;
 			}
+			
+			return true;
 		}
 		
 		/**
@@ -1979,43 +1635,23 @@
 		 */
 		
 		public function loadNotes() {
-			if (!$this->id) {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT un.nid AS note_id, un.datetime AS note_timestamp, un.data AS note_text, un.aid AS admin_user_id, u.username AS admin_username FROM nuke_users_notes AS un LEFT JOIN nuke_users AS u ON un.aid = u.user_id WHERE un.uid = ".$this->db->real_escape_string($this->id)."";
-				
-				if ($rs = $this->db->query($query)) {
-					while ($row = $rs->fetch_assoc()) {
-						if ($row['admin_user_id'] == "0") {
-							$row['admin_username'] = "System";
-						}
-						
-						$this->notes[] = $row;
+			$query = "SELECT un.nid AS note_id, un.datetime AS note_timestamp, un.data AS note_text, un.aid AS admin_user_id, u.username AS admin_username FROM nuke_users_notes AS un LEFT JOIN nuke_users AS u ON un.aid = u.user_id WHERE un.uid = ?";
+			
+			if ($result = $this->db->fetchAll($query, $this->id)) {
+				foreach ($result as $row) {
+					if ($row['admin_user_id'] == "0") {
+						$row['admin_username'] = "System";
 					}
 					
-					return true;
-				} else {
-					throw new Exception($this->db->error."\n\n".$this->db->query); 
-					
-					return false;
+					$this->notes[] = $row;
 				}
-			} else {
-				$query = "SELECT un.nid AS note_id, un.datetime AS note_timestamp, un.data AS note_text, un.aid AS admin_user_id, u.username AS admin_username FROM nuke_users_notes AS un LEFT JOIN nuke_users AS u ON un.aid = u.user_id WHERE un.uid = ?";
-				
-				if ($result = $this->db->fetchAll($query, $this->id)) {
-					foreach ($result as $row) {
-						if ($row['admin_user_id'] == "0") {
-							$row['admin_username'] = "System";
-						}
-						
-						$this->notes[] = $row;
-					}
-				}
-				
-				return true;
 			}
+			
+			return true;
 		}
 		
 		/** 
@@ -2028,34 +1664,18 @@
 		 */
 		
 		public function addNote($text = false, $admin_user_id = 0) {
-			if (!$text) {
+			if ($text == false || is_null(filter_var($text, FILTER_SANITIZE_STRING))) {
 				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$dataArray['uid'] = $this->id;
-				$dataArray['aid'] = $this->db->real_escape_string($admin_user_id);
-				$dataArray['datetime'] = time(); 
-				$dataArray['data'] = $this->db->real_escape_string($text);
-				
-				$query = $this->db->buildQuery($dataArray, "nuke_users_notes"); 
-				
-				if ($rs = $this->db->query($query)) {
-					return true;
-				} else {
-					throw new Exception($this->db->error);
-					return false;
-				}
-			} else {
-				$data = array(
-					"uid" => !filter_var($this->id, FILTER_VALIDATE_INT) ? "0" : $this->id,
-					"aid" => $admin_user_id,
-					"datetime" => time(),
-					"data" => $text
-				);
-				
-				return $this->db->insert("nuke_users_notes", $data);
-			}
+			$data = array(
+				"uid" => !filter_var($this->id, FILTER_VALIDATE_INT) ? "0" : $this->id,
+				"aid" => $admin_user_id,
+				"datetime" => time(),
+				"data" => $text
+			);
+			
+			return $this->db->insert("nuke_users_notes", $data);
 		}
 		
 		/**
@@ -2077,51 +1697,30 @@
 				$client_addr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
 			}	
 			
-			if ($this->db instanceof \sql_db) {
-				$dataArray = array(); 
-				$dataArray['user_id'] 				= $this->id; 
-				$dataArray['autologin_token']		= $this->db->real_escape_string(get_random_string("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=<>[]{}|~", 16)); #"#".substr(hash('haval128,5', $this->username.$this->regdate.rand()), 0, 14)."+!";
-				$dataArray['autologin_expire']		= $cookie_expire;
-				$dataArray['autologin_ip']			= $this->db->real_escape_string($client_addr); 
-				$dataArray['autologin_hostname']	= $this->db->real_escape_string(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING)); 
-				$dataArray['autologin_last']		= time(); 
-				$dataArray['autologin_time']		= time();
+			$data = array(
+				"user_id" => $this->id,
+				"autologin_token" => get_random_string("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=<>[]{}|~", 16),
+				"autologin_expire" => $cookie_expire,
+				"autologin_ip" => $client_addr,
+				"autologin_hostname" => filter_input(INPUT_SERVER, "REMOTE_HOST", FILTER_SANITIZE_STRING),
+				"autologin_last" => time(),
+				"autologin_time" => time()
+			);
+			
+			if (is_null($data['autologin_hostname'])) {
+				$data['autologin_hostname'] = $client_addr;
+			}
+			
+			$autologin = array(
+				"user_id" => $this->id,
+				"token" => $data['autologin_token']
+			);
+			
+			if ($this->db->insert("nuke_users_autologin", $data)) {
+				setcookie("rp_autologin", base64_encode(implode(":",$autologin)), $cookie_expire, RP_AUTOLOGIN_PATH, RP_AUTOLOGIN_DOMAIN, RP_SSL_ENABLED, true); 
 				
-				$query = $this->db->buildQuery($dataArray, "nuke_users_autologin"); 
-				
-				$autologin['user_id']	= $this->id;
-				$autologin['token']		= $dataArray['autologin_token'];
-				
-				if ($this->db->query($query)) {
-					// DB insert true, set the cookie
-					setcookie("rp_autologin", base64_encode(implode(":",$autologin)), $cookie_expire, RP_AUTOLOGIN_PATH, RP_AUTOLOGIN_DOMAIN, RP_SSL_ENABLED, true); 
-					return true;
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				$data = array(
-					"user_id" => $this->id,
-					"autologin_token" => get_random_string("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=<>[]{}|~", 16),
-					"autologin_expire" => $cookie_expire,
-					"autologin_ip" => $client_addr,
-					"autologin_hostname" => filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING),
-					"autologin_last" => time(),
-					"autologin_time" => time()
-				);
-				
-				$autologin = array(
-					"user_id" => $this->id,
-					"token" => $data['autologin_token']
-				);
-				
-				if ($this->db->insert("nuke_users_autologin", $data)) {
-					setcookie("rp_autologin", base64_encode(implode(":",$autologin)), $cookie_expire, RP_AUTOLOGIN_PATH, RP_AUTOLOGIN_DOMAIN, RP_SSL_ENABLED, true); 
-					
-					$this->addNote("Autologin token set");
-					return true;
-				}
+				$this->addNote("Autologin token set");
+				return true;
 			}
 				
 			return false;
@@ -2145,66 +1744,35 @@
 					return false;
 				}
 				
-				if ($this->db instanceof \sql_db) {
-					$query = "SELECT autologin_id FROM nuke_users_autologin WHERE user_id = '".$this->db->real_escape_string($cookie[0])."' AND autologin_token = '".$this->db->real_escape_string($cookie[1])."'"; 
+				$query = "SELECT autologin_id FROM nuke_users_autologin WHERE user_id = ? AND autologin_token = ?"; 
+				
+				if ($autologin_id = $this->db->fetchOne($query, array($cookie[0], $cookie[1]))) {
 					
-					if ($rs = $this->db->query($query)) {
-						if ($row = $rs->fetch_assoc()) {
-							$autologin_id = $row['autologin_id'];
-							
-							if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-								$client_addr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR']; 
-							} else {
-								$client_addr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
-							}			
-							
-							$query = "UPDATE nuke_users_autologin SET autologin_last = ".time().", autologin_ip = '".$this->db->real_escape_string($client_addr)."', autologin_hostname = '".$this->db->real_escape_string(filter_input(INPUT_SERVER, "REMOTE_HOST", FILTER_SANITIZE_STRING))."' WHERE autologin_id = ".$autologin_id; 
-							
-							$this->db->query($query); 
-							
-							// Record the login event
-							try {
-								$this->id = $cookie[0]; 
-								$this->recordLogin();
-							} catch (Exception $e) {
-								global $Error; 
-								$Error->save($e); 
-							}
-							
-							return $cookie[0];
-						}
+					if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+						$client_addr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR']; 
+					} else {
+						$client_addr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
+					}	
+					
+					$data = array(
+						"autologin_last" => time(),
+						"autologin_ip" => $client_addr,
+						"autologin_hostname" => filter_input(INPUT_SERVER, "REMOTE_HOST", FILTER_SANITIZE_STRING),
+					);
+					
+					$this->db->update("nuke_users_autologin", $data, array("autologin_id = ?" => $autologin_id));
+					
+					// Record the login event
+					try {
+						$this->id = $cookie[0]; 
+						$this->recordLogin();
+					} catch (Exception $e) {
+						global $Error; 
+						$Error->save($e); 
 					}
-				} else {
-					$query = "SELECT autologin_id FROM nuke_users_autologin WHERE user_id = ? AND autologin_token = ?"; 
 					
-					if ($autologin_id = $this->db->fetchOne($query, array($cookie[0], $cookie[1]))) {
-						
-						if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-							$client_addr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR']; 
-						} else {
-							$client_addr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
-						}	
-						
-						$data = array(
-							"autologin_last" => time(),
-							"autologin_ip" => $client_addr,
-							"autologin_hostname" => filter_input(INPUT_SERVER, "REMOTE_HOST", FILTER_SANITIZE_STRING),
-						);
-						
-						$this->db->update("nuke_users_autologin", $data, array("autologin_id = ?" => $autologin_id));
-						
-						// Record the login event
-						try {
-							$this->id = $cookie[0]; 
-							$this->recordLogin();
-						} catch (Exception $e) {
-							global $Error; 
-							$Error->save($e); 
-						}
-						
-						return $cookie[0];
+					return $cookie[0];
 
-					}
 				}
 				
 				$this->addNote("Autologin attempted but an invalid autologin cookie was found");
@@ -2221,34 +1789,17 @@
 		 */
 		
 		public function getAutoLogin() {
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT autologin_id AS id, autologin_token AS token, autologin_time AS date_set, autologin_expire AS date_expire, autologin_last AS date_last, autologin_ip AS ip, autologin_hostname AS hostname FROM nuke_users_autologin WHERE user_id = ".$this->id." ORDER BY autologin_last DESC"; 
-				
-				if ($rs = $this->db->query($query)) {
-					while ($row = $rs->fetch_assoc()) {
-						$autologins[$row['id']] = $row; 
-					}
-					
-					return $autologins;
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
+			$query = "SELECT autologin_id AS id, autologin_token AS token, autologin_time AS date_set, autologin_expire AS date_expire, autologin_last AS date_last, autologin_ip AS ip, autologin_hostname AS hostname FROM nuke_users_autologin WHERE user_id = ? ORDER BY autologin_last DESC"; 
+			
+			$autologins = array();
+			
+			if ($result = $this->db->fetchAll($query, $this->id)) {
+				foreach ($result as $row) {
+					$autologins[$row['id']] = $row; 
 				}
-			} else {
-				$query = "SELECT autologin_id AS id, autologin_token AS token, autologin_time AS date_set, autologin_expire AS date_expire, autologin_last AS date_last, autologin_ip AS ip, autologin_hostname AS hostname FROM nuke_users_autologin WHERE user_id = ? ORDER BY autologin_last DESC"; 
-				
-				$autologins = array();
-				
-				if ($result = $this->db->fetchAll($query, $this->id)) {
-					foreach ($result as $row) {
-						$autologins[$row['id']] = $row; 
-					}
-				}
-				
-				return $autologins;
 			}
 			
-			return false;
+			return $autologins;
 		}
 		
 		/**
@@ -2260,34 +1811,19 @@
 		 */
 		
 		public function deleteAutoLogin($token_id = false) {
-			if (!$this->id) {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				return false;
 			} 
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "DELETE FROM nuke_users_autologin WHERE user_id = ".$this->id; 
-				
-				if ($token_id) {
-					$query .= " AND autologin_id = ".$this->db->real_escape_string($token_id); 
-				}
-				
-				if ($this->db->query($query)) {
-					return true;
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				$clause = array(
-					"user_id" => $this->id
-				);
-				
-				if ($token_id) {
-					$clause['autologin_id'] = $token_id;
-				}
-				
-				return $this->db->delete("nuke_users_autologin", $clause);
+			$clause = array(
+				"user_id" => $this->id
+			);
+			
+			if ($token_id) {
+				$clause['autologin_id'] = $token_id;
 			}
+			
+			return $this->db->delete("nuke_users_autologin", $clause);
 		}
 		
 		/**
@@ -2295,50 +1831,39 @@
 		 * @since Version 3.2
 		 * @version 3.2
 		 * @return boolean
+		 * @param string $client_addr
 		 */
 		
-		public function recordLogin() {
-			if (!$this->id) {
+		public function recordLogin($client_addr = false) {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				return false;
 			}
 			
-			if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+			if ($client_addr === false && !is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
 				$client_addr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR']; 
-			} else {
+			} elseif ($client_addr === false) {
 				$client_addr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$dataArray = array(); 
-				$dataArray['user_id'] = $this->id;
-				$dataArray['login_time'] = time(); 
-				$dataArray['login_ip'] = $this->db->real_escape_string($client_addr); 
-				$dataArray['login_hostname'] = $this->db->real_escape_string(filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING));
-				$dataArray['server'] = $this->db->real_escape_string(filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING));
-				
-				$query = $this->db->buildQuery($dataArray, "log_logins"); 
-				
-				if ($this->db->query($query)) {
-					return true; 
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
+			$data = array(
+				"user_id" => $this->id,
+				"login_time" => time(),
+				"login_ip" => $client_addr,
+				"login_hostname" => filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING),
+				"server" => filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING)
+			);
+			
+			foreach ($data as $key => $val) {
+				if (is_null($val)) {
+					$data[$key] = "";
 				}
-			} else {
-				$data = array(
-					"user_id" => $this->id,
-					"login_time" => time(),
-					"login_ip" => $client_addr,
-					"login_hostname" => filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING),
-					"server" => filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING)
-				);
-				
-				if ($data['login_ip'] == $data['login_hostname']) {
-					$data['login_hostname'] = gethostbyaddr($data['login_ip']);
-				}
-				
-				return $this->db->insert("log_logins", $data);
 			}
+			
+			if ($data['login_ip'] == $data['login_hostname']) {
+				$data['login_hostname'] = gethostbyaddr($data['login_ip']);
+			}
+			
+			return $this->db->insert("log_logins", $data);
 		}
 		
 		/**
@@ -2351,7 +1876,7 @@
 		 */
 		
 		public function getLogins($items_per_page = 25, $page = 1) {
-			if (!$this->id) {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				return false;
 			}
 				
@@ -2359,33 +1884,17 @@
 			
 			$key = sprintf("railpage:user=%d;logins;perpage=%d;page=%d", $this->id, $items_per_page, $page);
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT * FROM log_logins USE INDEX (login_time) WHERE user_id = ".$this->id." ORDER BY login_time DESC LIMIT 0,25"; 
-				
-				if ($rs = $this->db->query($query)) {
-					$logins = array(); 
-					
-					while ($row = $rs->fetch_assoc()) {
-						$logins[$row['login_id']] = $row; 
-					}
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				#$query = "SELECT * FROM log_logins USE INDEX (login_time) WHERE user_id = ? ORDER BY login_time DESC LIMIT ?,?"; 
-				$query = "SELECT * FROM log_logins WHERE user_id = ? ORDER BY login_time DESC LIMIT ?,?"; # Dropped USE_INDEX - negatively impacted query performance when zero results were found
-				
-				$args = array(
-					$this->id,
-					($page - 1) * $items_per_page,
-					$items_per_page
-				);
-				
-				if ($result = $this->db->fetchAll($query, $args)) {
-					foreach ($result as $row) {
-						$logins[$row['login_id']] = $row; 
-					}
+			$query = "SELECT * FROM log_logins WHERE user_id = ? ORDER BY login_time DESC LIMIT ?,?"; # Dropped USE_INDEX - negatively impacted query performance when zero results were found
+			
+			$args = array(
+				$this->id,
+				($page - 1) * $items_per_page,
+				$items_per_page
+			);
+			
+			if ($result = $this->db->fetchAll($query, $args)) {
+				foreach ($result as $row) {
+					$logins[$row['login_id']] = $row; 
 				}
 			}
 			
@@ -2409,80 +1918,33 @@
 				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$query 	= "SELECT hash FROM nuke_users_hash WHERE user_id = ".$this->id; 
-				
-				// Pull hash records from the database
-				if ($rs = $this->db->query($query)) {
-					if ($rs->num_rows) {
-						while ($row = $rs->fetch_assoc()) {
-							$hash[] = $row['hash']; 
-						}
-						
-						if (in_array($cookie, $hash)) {
-							$update = true; 
-						}
-					}
-					
-					$dataArray = array(); 
-					$dataArray['user_id'] 	= $this->id; 
-					$dataArray['hash']		= $cookie; 
-					$dataArray['date']		= time(); 
-					
-					
-					if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {
-						$dataArray['ip'] = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING);
-					} else {
-						$dataArray['ip'] = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL);
-					}
-					
-					if ($update) {
-						$where = array(); 
-						$where['hash'] = $this->db->real_escape_string($cookie); 
-						$where['user_id'] = $this->id;
-					} 
-					
-					$query = $this->db->buildQuery($dataArray, "nuke_users_hash", $where); 
-					
-					if ($this->db->query($query)) {
-						return true;
-					} else {
-						throw new Exception($this->db->error); 
-						return false;
-					}
-				} else {
-					// Couldn't execute query...
-					throw new Exception($this->db->error); 
+			$query = "SELECT hash FROM nuke_users_hash WHERE user_id = ?";
+			
+			if ($result = $this->db->fetchAll($query, $this->id)) {
+				foreach ($result as $row) {
+					$hash[] = $row['hash'];
 				}
-			} else {
-				$query = "SELECT hash FROM nuke_users_hash WHERE user_id = ?";
 				
-				if ($result = $this->db->fetchAll($query, $this->id)) {
-					foreach ($result as $row) {
-						$hash[] = $row['hash'];
-					}
-					
-					if (in_array($cookie, $hash)) {
-						$update = true; 
-					}
-					
-					$data = array(
-						"user_id" => $this->id,
-						"hash" => $cookie,
-						"date" => time()
-					);
-					
-					if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {
-						$data['ip'] = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING);
-					} else {
-						$data['ip'] = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); 
-					}
-					
-					if ($update) {
-						$this->db->update("nuke_users_hash", $data, array("user_id = ?" => $this->id));
-					} else {
-						$this->db->insert("nuke_users_hash", $data);
-					}
+				if (in_array($cookie, $hash)) {
+					$update = true; 
+				}
+				
+				$data = array(
+					"user_id" => $this->id,
+					"hash" => $cookie,
+					"date" => time()
+				);
+				
+				if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {
+					$data['ip'] = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING);
+				} else {
+					$data['ip'] = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); 
+				}
+				
+				if ($update) {
+					$this->db->update("nuke_users_hash", $data, array("user_id = ?" => $this->id));
+				} else {
+					$this->db->insert("nuke_users_hash", $data);
 				}
 			}
 		}
@@ -2497,9 +1959,9 @@
 			$len = 32; 
 			
 			if (@is_readable('/dev/urandom')) { 
-				$f = fopen('/dev/urandom', 'r'); 
-				$urandom = fread($f, $len); 
-				fclose($f); 
+				$file = fopen('/dev/urandom', 'r'); 
+				$urandom = fread($file, $len); 
+				fclose($file); 
 			} 
 		
 			$return=''; 
@@ -2542,27 +2004,7 @@
 		 */
 		
 		public function addChaff($amount = 1) {
-			if (!$this->id) {
-				throw new Exception("Cannot increment chaff rating - user ID unavailable"); 
-				return false;
-			}
-			
-			if ($this->db instanceof \sql_db) {
-				$query = "UPDATE nuke_users SET uChaff = '".$this->db->real_escape_string($this->chaff + $amount)."' WHERE user_id ='".$this->id."'";
-				
-				if ($this->db->query($query)) {
-					return true; 
-				} else {
-					throw new Exception($this->db->error."\n\n".$query); 
-					return false;
-				}
-			} else {
-				$data = array(
-					"uChaff" => $this->chaff + $amount
-				);
-				
-				return $this->db->update("nuke_users", $data, array("user_id" => $this->id));
-			}
+			return $this->chaff($amount); 
 		}
 		
 		/**
@@ -2574,531 +2016,11 @@
 		 */
 		
 		public function timeline($date_start, $date_end) {
-			if (filter_var($date_start, FILTER_VALIDATE_INT)) {
-				$page = $date_start;
-			} elseif (!is_a($date_start, "DateTime")) {
-				throw new Exception("\$date_start needs to be an instance of DateTime"); 
-				return false;
-			}
 			
-			if (filter_var($date_end, FILTER_VALIDATE_INT)) {
-				$items_per_page = $date_end;
-			} elseif (!is_a($date_end, "DateTime")) {
-				throw new Exception("\$date_end needs to be an instance of DateTime"); 
-				return false;
-			}
+			return (new Timeline)->setUser($this)->generateTimeline($date_start, $date_end);
 			
-			/**
-			 * Filter out forums this user doesn't have access to
-			 */
+			#return Timeline::GenerateTimeline($this, $date_start, $date_end); 
 			
-			if (isset($this->Guest) && $this->Guest instanceof User) {
-				$forum_post_filter_mckey = sprintf("forum.post.filter.user:%d", $this->Guest->id);
-				
-				if (!$forum_post_filter = $this->Memcached->fetch($forum_post_filter_mckey)) {
-					$Forums = new Forums;
-					$Index = new Index;
-					
-					$acl = $Forums->setUser($this->Guest)->getACL();
-					
-					$allowed_forums = array(); 
-					
-					foreach ($Index->forums() as $row) {
-						$Forum = new Forum($row['forum_id']);
-						
-						if ($Forum->setUser($this->Guest)->isAllowed(Forums::AUTH_READ)) {
-							$allowed_forums[] = $Forum->id;
-						}
-					}
-					
-					$forum_filter = "AND p.forum_id IN (" . implode(",", $allowed_forums) . ")";
-					
-					$forum_post_filter = "AND id NOT IN (SELECT l.id AS log_id
-						FROM log_general AS l 
-						LEFT JOIN nuke_bbposts AS p ON p.post_id = l.value
-						WHERE l.key = 'post_id' 
-						" . $forum_filter . ")";
-					
-					$this->Memcached->save($forum_post_filter_mckey, $forum_post_filter, strtotime("+1 week"));
-				}
-			} else {
-				$forum_post_filter = "";
-			}
-			
-			if (strpos($forum_post_filter, "p.forum_id IN ())")) {
-				$forum_post_filter = "";
-			}
-			
-			
-			if ($page && $items_per_page) {
-				$query = "SELECT SQL_CALC_FOUND_ROWS * FROM log_general WHERE user_id = ? " . $forum_post_filter . " ORDER BY timestamp DESC LIMIT ?, ?";
-				$offset = ($page - 1) * $items_per_page; 
-				
-				$params = array(
-					$this->id, 
-					$offset, 
-					$items_per_page
-				);
-			} else {
-				$query = "SELECT SQL_CALC_FOUND_ROWS * FROM log_general WHERE user_id = ? " . $forum_post_filter . " AND timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC";
-				
-				$params = array(
-					$this->id, 
-					$date_start->format("Y-m-d H:i:s"), 
-					$date_end->format("Y-m-d H:i:s")
-				);
-			}
-			
-			$timeline = array(
-				"total" => 0
-			); 
-			
-			if ($result = $this->db->fetchAll($query, $params)) {
-				if ($page && $items_per_page) {
-					$timeline['page'] = $page;
-					$timeline['perpage'] = $items_per_page;
-				} else {
-					$timeline['start'] = $date_start->format("Y-m-d H:i:s");
-					$timeline['end'] = $date_end->format("Y-m-d H:i:s");
-				}
-				
-				$timeline['total'] = $this->db->fetchOne("SELECT FOUND_ROWS() AS total"); 
-				
-				foreach ($result as $row) {
-					$row['args'] = json_decode($row['args'], true);
-					$row['timestamp'] = new DateTime($row['timestamp']); 
-					
-					$timeline['timeline'][$row['id']] = $row;
-				}
-			}
-			
-			/**
-			 * Process the timeline data
-			 */
-			
-			if (isset($timeline['timeline'])) {
-				foreach ($timeline['timeline'] as $key => $row) {
-					// Set their timezone
-					$row['timestamp']->setTimezone(new DateTimeZone($this->timezone));
-					
-					$relative_cutoff = new DateTime("12 hours ago", new DateTimeZone($this->timezone));
-					
-					$moments_ago = new DateTime("60 seconds ago", new DateTimeZone($this->timezone)); 
-					$minutes_ago = new DateTime("60 minutes ago", new DateTimeZone($this->timezone));
-					
-					if (stristr($row['title'], "loco") && empty($row['module'])) {
-						$row['module'] = "locos";
-					}
-					
-					/**
-					 * Check if the meta data array exists
-					 */
-					
-					if (!isset($row['meta'])) {
-						if (!isset($row['meta'])) {
-							$row['meta'] = array(
-								"id" => NULL,
-								"namespace" => NULL
-							); 
-						}
-					}
-					
-					/**
-					 * Determine the action taken and on what kind of object
-					 */
-					
-					$row['event']['action'] = ""; $row['event']['article'] = ""; $row['event']['object'] = ""; $row['event']['preposition'] = ""; 
-					
-					$row['title'] = str_ireplace(array("loco link created"), array("linked a locomotive"), $row['title']);
-					
-					if (preg_match("@(favourited|suggested|ignored|accepted|closed|commented|removed|re-ordered|edited|edit|added|add|sorted|sort|deleted|delete|rejected|reject|tagged|tag|changed|modified|linked|created|create)@Di", $row['title'], $matches)) {
-						$row['event']['action'] = strtolower($matches[1]);
-					}
-					
-					if (preg_match("@(idea|suggestion|correction|sighting|date|post|thread|digital asset|loco photo|loco class|loco|class|location|grouping|owners|owner|operators|operator|article|story|topic|railcam photo|photo|railcam|download|event|calendar|image)@Di", $row['title'], $matches)) {
-						$row['event']['object'] = strtolower($matches[1]);
-					}
-					
-					if ($row['title'] == "Loco link removed") {
-						$row['event']['action'] = "removed";
-						$row['event']['object'] = "linked locomotive";
-						$row['event']['article'] = "a";
-						$row['event']['preposition'] = "from";
-					}
-					
-					/** 
-					 * Preposition of this action
-					 */
-					
-					if (preg_match("@(added|add|linked)@Di", $row['event']['action']) && preg_match("@(locos)@Di", $row['module'])) {
-						$row['event']['preposition'] = "to";
-					}
-					
-					if (preg_match("@(removed)@Di", $row['title'])) {
-						$row['event']['preposition'] = "from";
-					}
-					
-					if (preg_match("@(correction|re-ordered|sorted|sort|tagged|tag|changed|modified)@Di", $row['title'])) {
-						$row['event']['preposition'] = "of";
-					}
-					
-					if (preg_match("@(added|add|edited|edit|deleted|delete|rejected|reject|created|create)@Di", $row['title']) && preg_match("@(forums|news)@Di", $row['module'])) {
-						$row['event']['preposition'] = "in";
-					}
-					
-					if (preg_match("@(unlinked)@Di", $row['title']) && preg_match("@(locos)@Di", $row['module'])) {
-						$row['event']['preposition'] = "from";
-					}
-
-					
-					/**
-					 * Article of this action
-					 */
-					
-					if ($row['event']['preposition'] == "of") {
-						$row['event']['article'] = "the";
-					}
-					
-					if ($row['event']['preposition'] == "in") {
-						$row['event']['article'] = "a";
-					}
-					
-					if (preg_match("@(date)@Di", $row['event']['object'], $matches)) {
-						if (preg_match("@(edited)@Di", $row['event']['action'], $matches)) {
-							$row['event']['preposition'] = "for";
-						}
-					}
-					
-					if (preg_match("@(correction|date|post|thread|digital asset|loco|class|location|story|topic|railcam photo|photo|railcam|download)@Di", $row['event']['object'], $matches)) {
-						if (!($matches[1] == "loco" && $row['event']['action'] == "edited")) {
-							$row['event']['article'] = "a";
-						}
-					}
-					
-					if (preg_match("@(cover photo)@Di", $row['event']['object'], $matches)) {
-						$row['event']['article'] = "the";
-					}
-					
-					if (preg_match("@(operator)@Di", $row['event']['object'], $matches)) {
-						$row['event']['article'] = "an";
-					}
-					
-					if ($row['event']['action'] == "re-ordered" && preg_match("@(owners|owner|operators|operator)@Di", $row['title'], $matches)) {
-						$row['event']['object'] = "owners/operators";
-						$row['event']['article'] = "the";
-					}
-					
-					/**
-					 * Alter the object if needed
-					 */
-					
-					if ($row['module'] == "locos" && $row['event']['object'] == "class") {
-						$row['event']['object'] = "locomotive class";
-						
-						if ($row['event']['action'] == "modified") {
-							unset($row['event']['preposition']);
-							unset($row['event']['article']);
-							unset($row['event']['object']);
-						}
-					}
-					
-					if (isset($row['event']['object']) && $row['module'] == "locos" && $row['event']['object'] == "loco photo") {
-						$row['event']['object'] = "cover photo";
-					}
-					
-					/**
-					 * Set the module namespace
-					 */
-					
-					$Module = new \Railpage\Module($row['module']);
-					$row['meta']['namespace'] = $Module->namespace;
-					
-					/**
-					 * Attempt to create a link to this object or action if none exists
-					 */
-					
-					if (!isset($row['meta']['url'])) {
-						
-						switch ($row['key']) {
-							
-							/**
-							 * Forum post
-							 */
-							
-							case "post_id" : 
-								
-								$row['meta']['url'] = "/f-p" . $row['value'] . ".htm#" . $row['value'];
-								
-							break;
-							
-							/**
-							 * Locomotive
-							 */
-							
-							case "loco_id" : 
-								
-								$Loco = new \Railpage\Locos\Locomotive($row['value']); 
-								$row['meta']['url'] = $Loco->url;
-							
-							break;
-							
-							/**
-							 * Locomotive class
-							 */
-							
-							case "class_id" : 
-								
-								$LocoClass = new \Railpage\Locos\LocoClass($row['value']); 
-								$row['meta']['url'] = $LocoClass->url;
-				
-				#die(round(microtime(true) - RP_START_TIME, 4) . "s");
-							
-							break;
-						}
-						
-					}
-					
-					/**
-					 * Attempt to create a meta object title for this object or action if none exists
-					 */
-					
-					if (!isset($row['meta']['object']['title'])) {
-						
-						switch ($row['key']) {
-							
-							/**
-							 * Forum post
-							 */
-							
-							case "post_id" : 
-								
-								$Post = new \Railpage\Forums\Post($row['value']);
-								$row['meta']['object']['title'] = $Post->thread->title;
-								
-							break;
-							
-							/**
-							 * Locomotive
-							 */
-							
-							case "loco_id" : 
-								
-								$Loco = new \Railpage\Locos\Locomotive($row['value']); 
-								
-								$row['meta']['namespace'] = $Loco->namespace;
-								$row['meta']['id'] = $Loco->id;
-								
-								if ($row['event']['action'] == "added" && $row['event']['object'] == "loco") {
-									$row['meta']['object']['title'] = $Loco->class->name;
-								} else {
-									$row['meta']['object']['title'] = $Loco->number;
-									$row['meta']['object']['subtitle'] = $Loco->class->name;
-								}
-							
-							break;
-							
-							/**
-							 * Locomotive class
-							 */
-							
-							case "class_id" : 
-								
-								$LocoClass = new \Railpage\Locos\LocoClass($row['value']); 
-								$row['meta']['object']['title'] = $LocoClass->name;
-								
-								$row['meta']['namespace'] = $LocoClass->namespace;
-								$row['meta']['id'] = $LocoClass->id;
-							
-							break;
-							
-							/**
-							 * Location
-							 */
-							
-							case "id" :
-								
-								if ($row['module'] == "locations") {
-									$Location = new \Railpage\Locations\Location($row['value']);
-									$row['meta']['object']['title'] = $Location->name;
-									$row['meta']['url'] = $Location->url;
-									unset($row['event']['article']);
-									unset($row['event']['object']);
-									unset($row['event']['preposition']);
-								}
-								
-							break;
-							
-							/**
-							 * Photo
-							 */
-							
-							case "photo_id" : 
-								
-								$row['meta']['object']['title'] = "photo";
-								$row['meta']['url'] = "/flickr/" . $row['value'];
-								
-								if ($row['event']['action'] == "commented") {
-									$row['event']['object'] = "";
-									$row['event']['article'] = "on";
-									$row['event']['preposition'] = "a";
-								}
-							
-							break;
-							
-							/**
-							 * Sighting
-							 */
-							
-							case "sighting_id" : 
-								
-								if (empty($row['module']) || !isset($row['module'])) {
-									$row['module'] = "sightings";
-								}
-								
-								$row['event']['preposition'] = "of";
-								$row['event']['article'] = "a";
-								
-								if (count($row['args']['locos']) === 1) {
-									$row['meta']['object']['title'] = $row['args']['locos'][key($row['args']['locos'])]['Locomotive'];
-								} elseif (count($row['args']['locos']) === 2) {
-									$row['meta']['object']['title'] = $row['args']['locos'][key($row['args']['locos'])]['Locomotive'];
-									next($row['args']['locos']);
-									
-									$row['meta']['object']['title'] .= " and " . $row['args']['locos'][key($row['args']['locos'])]['Locomotive'];
-								} else {
-									$locos = array();
-									foreach ($row['args']['locos'] as $loco) {
-										$locos[] = $loco['Locomotive'];
-									}
-									
-									$last = array_pop($locos);
-									
-									$row['meta']['object']['title'] = implode(", ", $locos) . " and " . $last;
-								}
-							
-							break;
-							
-							/**
-							 * Idea
-							 */
-							
-							case "idea_id" : 
-							
-								$Idea = new \Railpage\Ideas\Idea($row['value']);
-								$row['meta']['object']['title'] = $Idea->title;
-								$row['meta']['url'] = $Idea->url;
-								$row['glyphicon'] = "thumbs-up";
-								$row['event']['object'] = "idea:";
-								$row['event']['article'] = "an";
-							
-							break;
-						}
-						
-					}
-					
-					/**
-					 * Compact it all together and create a succinct message
-					 */
-					
-					foreach ($row['event'] as $k => $v) {
-						if (empty($v)) {
-							unset($row['event'][$k]);
-						}
-					}
-					
-					$row['action'] = implode(" ", $row['event']);
-					
-					
-					if ($row['timestamp'] > $moments_ago) {
-						$row['timestamp_nice'] = "moments ago"; 
-					} elseif ($row['timestamp'] > $minutes_ago) {
-						$diff = $row['timestamp']->diff($minutes_ago);
-						$row['timestamp_nice'] = $diff->format("%s minutes ago");
-					} elseif ($row['timestamp'] > $relative_cutoff) {
-						$diff = $row['timestamp']->diff($relative_cutoff);
-						$row['timestamp_nice'] = $diff->format("About %s hours ago");
-					} else {
-						$row['timestamp_nice'] = $row['timestamp']->format("d/m/Y H:i"); 
-					}
-					
-					$row['timestamp_nice'] = relative_date($row['timestamp']->getTimestamp());
-					
-					/**
-					 * Determine the icon
-					 */
-					
-					if (!isset($row['glyphicon'])) {
-						$row['glyphicon'] = "";
-					}
-					
-					if (isset($row['event']['object'])) {
-						switch (strtolower($row['event']['object'])) {
-							case "photo" :
-								$row['glyphicon'] = "picture";
-								break;
-								
-							case "cover photo" :
-								$row['glyphicon'] = "picture";
-								break;
-						}
-					}
-					
-					if (!isset($row['event']['action'])) {
-						printArray($row);
-					}
-					
-					switch (strtolower($row['event']['action'])) {
-						case "edited" : 
-							$row['glyphicon'] = "pencil";
-							break;
-						
-						case "modified" : 
-							$row['glyphicon'] = "pencil";
-							break;
-						
-						case "added" : 
-							$row['glyphicon'] = "plus";
-							break;
-						
-						case "created" : 
-							$row['glyphicon'] = "plus";
-							break;
-							
-						case "tagged" : 
-							$row['glyphicon'] = "tag";
-							break;
-							
-						case "linked" : 
-							$row['glyphicon'] = "link";
-							break;
-							
-						case "re-ordered" : 
-							$row['glyphicon'] = "random";
-							break;
-							
-						case "removed" : 
-							$row['glyphicon'] = "minus";
-							break;
-							
-						case "commented" : 
-							$row['glyphicon'] = "comment";
-							break;
-						
-					}
-					
-					if (isset($row['event']['object'])) {
-						switch (strtolower($row['event']['object'])) {
-							case "sighting" :
-								$row['glyphicon'] = "eye-open";
-								break;
-						}
-					}
-					
-					$timeline['timeline'][$key] = $row;
-				}
-			}
-			
-			return $timeline;
 		}
 		
 		/**
@@ -3119,34 +2041,10 @@
 			} else {
 				$query = "SELECT group_id FROM nuke_bbuser_group WHERE user_id = ? AND user_pending = 0";
 				
-				if ($this->db instanceof \sql_db) {
-					if ($stmt = $this->db->prepare($query)) {
-						$stmt->bind_param("i", $this->id);
-						
-						if ($stmt->execute()) {
-							$stmt->bind_result($group_id); 
-							
-							$return = array(); 
-						
-							while ($stmt->fetch()) {
-								if (!in_array($group_id, $this->groups)) {
-									$this->groups[] = $group_id;
-								}
-							}
-						} else {
-							throw new Exception($this->db->error."\n\n".$query);
-							return false;
-						}
-					} else {
-						throw new Exception($this->db->error."\n\n".$query);
-						return false;
-					}
-				} else {
-					if ($result = $this->db->fetchAll($query, $this->id)) {
-						foreach ($result as $row) {
-							if (!is_array($this->groups) || (is_array($this->groups) && !in_array($row['group_id'], $this->groups))) {
-								$this->groups[] = $row['group_id'];
-							}
+				if ($result = $this->db->fetchAll($query, $this->id)) {
+					foreach ($result as $row) {
+						if (!is_array($this->groups) || (is_array($this->groups) && !in_array($row['group_id'], $this->groups))) {
+							$this->groups[] = $row['group_id'];
 						}
 					}
 				}
@@ -3231,11 +2129,11 @@
 		 */
 		
 		public function aclRole($group_id = NULL, $role = "maintainer") {
-			if ($this->inGroup(RP_GROUP_ADMINS)) {
+			if (defined("RP_GROUP_ADMINS") && $this->inGroup(RP_GROUP_ADMINS)) {
 				return "administrator";
 			}
 			
-			if ($this->inGroup(RP_GROUP_MODERATORS)) {
+			if (defined("RP_GROUP_MODERATORS") && $this->inGroup(RP_GROUP_MODERATORS)) {
 				return "moderator";
 			}
 			
@@ -3258,6 +2156,7 @@
 		 */
 		
 		public function wheat($amt = 1) {
+			
 			if (!filter_var($amt, FILTER_VALIDATE_INT)) {
 				$amt = 1;
 			}
@@ -3266,6 +2165,7 @@
 			$this->commit();
 			
 			return $this;
+			
 		}
 		
 		/**
@@ -3276,6 +2176,7 @@
 		 */
 		
 		public function chaff($amt = 1) {
+			
 			if (!filter_var($amt, FILTER_VALIDATE_INT)) {
 				$amt = 1;
 			}
@@ -3284,6 +2185,7 @@
 			$this->commit();
 			
 			return $this;
+			
 		}
 		
 		/**
@@ -3292,10 +2194,7 @@
 		 * @return \Railpage\Users\User
 		 */
 		
-		public function createUrls() {
-			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
-				return $this;
-			}
+		private function createUrls() {
 			
 			$PMs = new Module("pm");
 			
@@ -3307,6 +2206,7 @@
 			$this->url->ideas = sprintf("%s?mode=contributions-ideas", $this->url->url);
 			
 			return $this;
+			
 		}
 		
 		/**
@@ -3398,14 +2298,14 @@
 				$row = $this->db->fetchRow($query, $username);
 				
 				$stored_user_id = $row['user_id'];
-				$stored_password = $row['user_password'];
-				$stored_password_bcrypt = $row['user_password_bcrypt'];
+				$stored_pass = $row['user_password'];
+				$stored_pass_bcrypt = $row['user_password_bcrypt'];
 				
 			} elseif (!empty($this->password)) {
 				
 				$stored_user_id = $this->id;
-				$stored_password = $this->password;
-				$stored_password_bcrypt = $this->password_bcrypt;
+				$stored_pass = $this->password;
+				$stored_pass_bcrypt = $this->password_bcrypt;
 				
 			}
 			
@@ -3429,14 +2329,14 @@
 			 * Verify the password
 			 */
 			
-			if (md5($password) == $stored_password || password_verify($password, $stored_password) || password_verify($password, $stored_password_bcrypt)) {
+			if (md5($password) === $stored_pass || password_verify($password, $stored_pass) || password_verify($password, $stored_pass_bcrypt)) {
 				$this->load($stored_user_id);
 				
 				/**
 				 * Check if the password needs rehashing
 				 */
 				
-				if (password_needs_rehash($stored_password, PASSWORD_DEFAULT) || password_needs_rehash($stored_password_bcrypt, PASSWORD_DEFAULT)) {
+				if (password_needs_rehash($stored_pass, PASSWORD_DEFAULT) || password_needs_rehash($stored_pass_bcrypt, PASSWORD_DEFAULT)) {
 					$this->setPassword($password);
 				}
 				
@@ -3444,8 +2344,14 @@
 				 * Reset the InvalidAuthCounter
 				 */
 				
-				unset($this->meta['InvalidAuthCounter']);
-				unset($this->meta['InvalidAuthTimeout']);
+				if (isset($this->meta['InvalidAuthCounter'])) {
+					unset($this->meta['InvalidAuthCounter']);
+				}
+				
+				if (isset($this->meta['InvalidAuthTimeout'])) {
+					unset($this->meta['InvalidAuthTimeout']);
+				}
+				
 				$this->commit();
 				
 				return true;
@@ -3455,16 +2361,13 @@
 			 * Unsuccessful login attempt - bump up the invalid auth counter
 			 */
 			
-			if (!isset($TmpUser->meta['InvalidAuthCounter'])) {
-				$TmpUser->meta['InvalidAuthCounter'] = 0;
-			}
+			$TmpUser->meta['InvalidAuthCounter'] = isset($TmpUser->meta['InvalidAuthCounter']) ? 1 : $TmpUser->meta['InvalidAuthCounter']++;
 			
-			$TmpUser->meta['InvalidAuthCounter']++;
 			$TmpUser->addNote(sprintf("Invalid login attempt %d", $TmpUser->meta['InvalidAuthCounter']));
 			$TmpUser->commit();
 			$this->refresh();
 			
-			if ($TmpUser->meta['InvalidAuthCounter'] == 3) {
+			if ($TmpUser->meta['InvalidAuthCounter'] === 3) {
 				$TmpUser->meta['InvalidAuthTimeout'] = strtotime("+10 minutes");
 				$TmpUser->addNote("Too many invalid login attempts - account disabled for ten minutes");
 				$TmpUser->commit();
@@ -3485,7 +2388,13 @@
 		 */
 		
 		public function isActive() {
-			return (boolean) $this->active;
+			if ($this->getUserAccountStatus() == self::STATUS_ACTIVE) {
+				return true; 
+			} 
+			
+			return false;
+			
+			#return (boolean) $this->active;
 		}
 		
 		/**
@@ -3528,6 +2437,10 @@
 			switch ($status) {
 				case self::STATUS_ACTIVE : 
 					$this->active = true; 
+					break;
+					
+				case self::STATUS_UNACTIVATED : 
+					$this->active = false; 
 					break;
 					
 			}
@@ -3575,23 +2488,15 @@
 		 */
 		
 		public function safePassword($password = false) {
-			if (!$password) {
+			if (empty($password) || is_null(filter_var($password, FILTER_SANITIZE_STRING))) {
 				throw new Exception("You gotta supply a password...");
 			}
-			
-			if (empty($password)) {
-				throw new Exception("Passwords cannot be empty");
-			}
-			
-			/**
-			 * Start validating passwords
-			 */
 			
 			if (strlen($password) < 7) {
 				return false;
 			}
 			
-			if (strtolower($password) == strtolower($this->username)) {
+			if (strtolower($password) === strtolower($this->username)) {
 				return false;
 			}
 			
@@ -3599,31 +2504,10 @@
 			 * Bad passwords
 			 */
 			
-			$bad = array(
-				"password",
-				"pass",
-				"012345",
-				"0123456",
-				"01234567",
-				"012345678",
-				"0123456789",
-				"123456",
-				"1234567",
-				"12345678",
-				"123456789",
-				"1234567890",
-				"letmein",
-				"changeme",
-				"qwerty",
-				"111111",
-				"iloveyou",
-				"railpage",
-				"password1",
-				"azerty",
-				"000000",
-				"trains",
-				"railway"
-			);
+			$bad = [ "password", "pass", "012345", "0123456", "01234567", "012345678", "0123456789",
+				     "123456", "1234567", "12345678", "123456789", "1234567890", "letmein", "changeme",
+					 "qwerty", "111111", "iloveyou", "railpage", "password1", "azerty", "000000",
+					 "trains", "railway" ];
 			
 			if (in_array($password, $bad)) {
 				return false;
@@ -3730,7 +2614,7 @@
 			}
 			
 			if (!$email) {
-				throw new Exception("Cannot check if username is available because no email address was provided");
+				throw new Exception("Cannot check if email address is available because no email address was provided");
 			}
 			
 			return (new Base)->email_available($email);
@@ -3746,7 +2630,7 @@
 		 * @return \Railpage\Users\User
 		 */
 		
-		public function logUserActivity($module_id = false, $url = false, $pagetitle = false, $ip = false) {
+		public function logUserActivity($module_id = false, $url = false, $pagetitle = false, $ipaddr = false) {
 			if (!filter_var($module_id, FILTER_VALIDATE_INT)) {
 				throw new Exception("Cannot log user activity because no module ID was provided");
 			}
@@ -3759,17 +2643,17 @@
 				throw new Exception("Cannot log user activity because no pagetitle was provided");
 			}
 			
-			if (!$ip && !is_null(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL))) { #isset($_SERVER['REMOTE_ADDR'])) {
-				$ip = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
+			if (!$ipaddr) {
+				$ipaddr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL);
 			}
 			
-			if (!$ip) {
+			if (!$ipaddr || is_null($ipaddr)) {
 				throw new Exception("Cannot log user activity because no remote IP was provided");
 			}
 			
 			$data = array(
 				"user_id" => $this->id,
-				"ip" => $ip,
+				"ip" => $ipaddr,
 				"module_id" => $module_id,
 				"url" => $url,
 				"pagetitle" => $pagetitle
@@ -3820,14 +2704,8 @@
 						if ($size[0] >= $Config->AvatarMaxWidth || $size[1] >= $Config->AvatarMaxHeight) {
 							$this->avatar = sprintf("https://static.railpage.com.au/image_resize.php?w=%d&h=%d&image=%s", $Config->AvatarMaxWidth, $Config->AvatarMaxHeight, urlencode($this->avatar));
 							$this->avatar_filename = $this->avatar;
-							
-							if ($size = getimagesize($this->avatar)) {
-								$this->avatar_width = $size[0];
-								$this->avatar_height = $size[1];
-							} else {
-								$this->avatar_width = $Config->AvatarMaxWidth;
-								$this->avatar_height = $Config->AvatarMaxHeight; 
-							}
+							$this->avatar_width = $size[0];
+							$this->avatar_height = $size[1];
 						} else {
 							$this->avatar_width = $size[0];
 							$this->avatar_height = $size[1];
@@ -3911,21 +2789,6 @@
 			$query = implode(" UNION ", $query); 
 			$query .= " ORDER BY module";
 			
-			/*
-			$query = "SELECT 'Downloads' AS module, COUNT(*) AS num, '/downloads/manage' AS url FROM download_items WHERE active = 1 AND approved = 0
-						UNION SELECT 'Feedback' AS module, COUNT(*) AS num, '/feedback/manage' AS url FROM feedback WHERE status = 1
-						UNION SELECT 'Events' AS module, COUNT(*) AS num, '/events?mode=pending' AS url FROM event WHERE status = 0
-						UNION SELECT 'Event Dates' AS module, COUNT(*) AS num, '/events?mode=pending' AS url FROM event_dates WHERE status = 0
-						UNION SELECT 'Locations' AS module, COUNT(*) AS num, '/locations/pending' AS url FROM location WHERE active = 0
-						UNION SELECT 'Locos' AS module, COUNT(*) AS num, '/locos/manage/corrections' AS url FROM loco_unit_corrections WHERE status = 0
-						UNION SELECT 'Private Messages' AS module, COUNT(*) AS num, '/messages' AS url FROM nuke_bbprivmsgs WHERE privmsgs_to_userid = ? AND privmsgs_type = 5
-						UNION SELECT 'Forum replies' AS module, COUNT(*) AS num, '/forums/replies' AS url FROM nuke_bbtopics WHERE topic_id IN (SELECT topic_id FROM nuke_bbtopics_watch WHERE user_id = ?)
-						UNION SELECT 'Reported posts' AS module, COUNT(*) AS num, '/f-report-cp.htm' AS url FROM phpbb_reports_posts WHERE report_status = 1
-						UNION SELECT 'News' AS module, COUNT(*) AS num, '/news/pending' AS url FROM nuke_stories WHERE approved = 0
-						UNION SELECT 'Glossary' AS module, COUNT(*) AS num, '/glossary?mode=manage.pending' AS url FROM glossary WHERE status = 0
-						ORDER BY module";
-			*/
-			
 			/**
 			 * Get the result from the database
 			 */
@@ -3974,6 +2837,10 @@
 			
 			$prefs = is_object($this->preferences) ? json_decode(json_encode($this->preferences), true) : $this->preferences; 
 			
+			if (is_string($prefs)) {
+				$prefs = json_decode($prefs, true);
+			}
+			
 			/**
 			 * Default preferences
 			 */
@@ -3994,7 +2861,11 @@
 			 * Merge default preferences and sort alphabetically
 			 */
 			
-			$prefs = array_merge($defaults, $prefs); 
+			if (is_array($prefs)) {
+				$prefs = array_merge($defaults, $prefs); 
+			} else {
+				$prefs = $defaults;
+			}
 			
 			uksort($prefs, "strnatcasecmp");
 			
@@ -4098,4 +2969,5 @@
 			
 			return $this;
 		}
+		
 	}

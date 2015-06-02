@@ -9,6 +9,7 @@
 	namespace Railpage\PrivateMessages;
 	
 	use Exception;
+	use InvalidArgumentException;
 	use DateTime;
 	use Railpage\Users\User;
 	use Railpage\Users\Url;
@@ -56,8 +57,6 @@
 				
 				if ($arg instanceof User) {
 					$this->setUser($User);
-					
-					//var_dump($this->getUser());
 				}
 			}
 		} 
@@ -69,45 +68,25 @@
 		 * @param int $id
 		 */
 		
-		public function load($id) {
+		public function load($id = NULL) {
+			if (!filter_var($id, FILTER_VALIDATE_INT)) {
+				throw new InvalidArgumentException("No private message ID was given - cannot load PM conversation"); 
+			}
+			
 			$this->url = sprintf("/messages/conversation/%d", $id);
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT pm.privmsgs_subject, pm.privmsgs_from_userid, pm.privmsgs_to_userid, ufrom.username AS username_from, uto.username AS username_to
-							FROM nuke_bbprivmsgs AS pm 
-							LEFT JOIN nuke_users AS ufrom ON pm.privmsgs_from_userid = ufrom.user_id
-							LEFT JOIN nuke_users AS uto ON pm.privmsgs_to_userid = uto.user_id
-							WHERE pm.privmsgs_id = ".$this->db->real_escape_string($id); 
-				
-				if ($rs = $this->db->query($query)) {
-					if ($rs->num_rows == 0) {
-						throw new Exception("No messages found"); 
-					}
-					
-					$row = $rs->fetch_assoc(); 
-					
-					$this->subject = str_replace("Re: ", "", $row['privmsgs_subject']); 
-					$this->users[$row['privmsgs_to_userid']] = $row['username_to']; 
-					$this->users[$row['privmsgs_from_userid']] = $row['username_from']; 
-					return true;
-				} else {
-					throw new Exception($this->db->error); 
-					return true;
-				}
-			} else {
-				$query = "SELECT pm.privmsgs_subject, pm.privmsgs_from_userid, pm.privmsgs_to_userid, ufrom.username AS username_from, uto.username AS username_to
-							FROM nuke_bbprivmsgs AS pm 
-							LEFT JOIN nuke_users AS ufrom ON pm.privmsgs_from_userid = ufrom.user_id
-							LEFT JOIN nuke_users AS uto ON pm.privmsgs_to_userid = uto.user_id
-							WHERE pm.privmsgs_id = ?";
-				
-				$row = $this->db->fetchRow($query, $id); 
-				$this->subject = str_replace("Re: ", "", $row['privmsgs_subject']); 
-				$this->users[$row['privmsgs_to_userid']] = $row['username_to']; 
-				$this->users[$row['privmsgs_from_userid']] = $row['username_from']; 
-				
-				return true;
-			}
+			$query = "SELECT pm.privmsgs_subject, pm.privmsgs_from_userid, pm.privmsgs_to_userid, ufrom.username AS username_from, uto.username AS username_to
+						FROM nuke_bbprivmsgs AS pm 
+						LEFT JOIN nuke_users AS ufrom ON pm.privmsgs_from_userid = ufrom.user_id
+						LEFT JOIN nuke_users AS uto ON pm.privmsgs_to_userid = uto.user_id
+						WHERE pm.privmsgs_id = ?";
+			
+			$row = $this->db->fetchRow($query, $id); 
+			$this->subject = str_replace("Re: ", "", $row['privmsgs_subject']); 
+			$this->users[$row['privmsgs_to_userid']] = $row['username_to']; 
+			$this->users[$row['privmsgs_from_userid']] = $row['username_from']; 
+			
+			return true;
 		}
 		
 		/**
@@ -120,7 +99,7 @@
 			$user_ids = array_keys($this->users);
 			
 			// If only one user account found, we must've sent ourselves a PM...
-			if (count($user_ids) == 1) {
+			if (count($user_ids) === 1) {
 				$user_ids[1] = $user_ids[0]; 
 			}
 			
@@ -131,69 +110,35 @@
 			
 			// Get deleted message IDs to exclude them from the search
 			$deleted = $this->getDeleted($this->User->id); 
+			$exclude_sql = count($deleted) > 0 ? " AND privmsgs_id NOT IN ('".implode("', '", $deleted)."') " : "";
 			
-			if (count($deleted)) {
-				$exclude_sql = " AND privmsgs_id NOT IN ('".implode("', '", $deleted)."') ";
-			} else {
-				$exclude_sql = "";
+			$query = "SELECT privmsgs_id 
+						FROM nuke_bbprivmsgs 
+						WHERE privmsgs_subject LIKE ?
+						AND ((privmsgs_from_userid = ? AND privmsgs_to_userid = ?)
+						OR (privmsgs_to_userid = ? AND privmsgs_from_userid = ?))
+						AND (privmsgs_type = ? OR privmsgs_type = ? OR privmsgs_type = ?)
+						".$exclude_sql."
+						ORDER BY privmsgs_date DESC";
+			
+			$params = array(
+				"%" . $this->subject . "%",
+				$user_ids[0],
+				$user_ids[1],
+				$user_ids[0],
+				$user_ids[1],
+				PRIVMSGS_READ_MAIL,
+				PRIVMSGS_UNREAD_MAIL,
+				PRIVMSGS_NEW_MAIL
+			);
+			
+			$return = array(); 
+			
+			foreach ($this->db->fetchAll($query, $params) as $row) {
+				$return[] = $row['privmsgs_id']; 
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT privmsgs_id 
-							FROM nuke_bbprivmsgs 
-							WHERE privmsgs_subject LIKE '%".$this->db->real_escape_string($this->subject)."%'
-							AND ((privmsgs_from_userid = ".$this->db->real_escape_string($user_ids[0])." AND privmsgs_to_userid = ".$this->db->real_escape_string($user_ids[1]).")
-							OR (privmsgs_to_userid = ".$this->db->real_escape_string($user_ids[0])." AND privmsgs_from_userid = ".$this->db->real_escape_string($user_ids[1])."))
-							AND (privmsgs_type = ".PRIVMSGS_READ_MAIL." OR privmsgs_type = ".PRIVMSGS_UNREAD_MAIL." OR privmsgs_type = ".PRIVMSGS_NEW_MAIL.")
-							".$exclude_sql."
-							ORDER BY privmsgs_date DESC";
-				
-				if ($rs = $this->db->query($query)) {
-
-					if ($rs->num_rows == 0) {
-						return false;
-					}
-					
-					$return = array(); 
-					
-					while ($row = $rs->fetch_assoc()) {
-						$return[] = $row['privmsgs_id']; 
-					}
-					
-					return $return;
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				$query = "SELECT privmsgs_id 
-							FROM nuke_bbprivmsgs 
-							WHERE privmsgs_subject LIKE ?
-							AND ((privmsgs_from_userid = ? AND privmsgs_to_userid = ?)
-							OR (privmsgs_to_userid = ? AND privmsgs_from_userid = ?))
-							AND (privmsgs_type = ? OR privmsgs_type = ? OR privmsgs_type = ?)
-							".$exclude_sql."
-							ORDER BY privmsgs_date DESC";
-				
-				$params = array(
-					"%" . $this->subject . "%",
-					$user_ids[0],
-					$user_ids[1],
-					$user_ids[0],
-					$user_ids[1],
-					PRIVMSGS_READ_MAIL,
-					PRIVMSGS_UNREAD_MAIL,
-					PRIVMSGS_NEW_MAIL
-				);
-				
-				$return = array(); 
-				
-				foreach ($this->db->fetchAll($query, $params) as $row) {
-					$return[] = $row['privmsgs_id']; 
-				}
-				
-				return $return;
-			}
+			return $return;
 		}
 	}
 	
