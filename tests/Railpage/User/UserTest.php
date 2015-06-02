@@ -33,9 +33,71 @@
 			$NewUser = new User;
 			$this->assertFalse($NewUser->load());
 			
+			$Base = new Base; 
+			$regs = $Base->getUserRegistrationStats(); 
+			$this->assertEquals(1, count($regs)); 
+			
 			return $User;
 			
 		}
+		
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_find($User) {
+			
+			$Admin = new Admin;
+			
+			foreach ($Admin->find($User->username) as $ThisUser) {
+				$this->assertInstanceOf("\\Railpage\\Users\\User", $ThisUser);
+			}
+			
+			foreach ($Admin->find($User->username, true) as $ThisUser) {
+				$this->assertInstanceOf("\\Railpage\\Users\\User", $ThisUser);
+			}
+			
+			foreach ($Admin->find("adfasfasdfa") as $row) {
+				$this->assertEquals(NULL, $row); 
+			}
+			
+			$this->setExpectedException("Exception", "Cannot perform user lookup because no partial username was provided"); 
+			
+			foreach ($Admin->find() as $row) {
+				
+			}
+			
+		}
+		
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_multiUsers($User) {
+			
+			$Admin = new Admin; 
+			
+			$multi = $Admin->multiUsers(); 
+			$this->assertTrue(is_array($multi)); 
+			
+			
+		}
+		
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_getUserFromEmail($User) {
+			
+			$Base = new Base;
+			
+			$this->assertInstanceOf("Railpage\\Users\\User", $Base->getUserFromEmail($User->contact_email)); 
+			
+			$this->setExpectedException("Exception", sprintf("No user found with an email address of %s and logging in via %s", "blah@test.com", "railpage"));
+			$Base->getUserFromEmail("blah@test.com", "railpage"); 
+			
+		}
+			
 		
 		/**
 		 * @depends test_newUser
@@ -185,6 +247,12 @@
 			
 			$this->assertEquals(1, count($dups));
 			$this->assertEquals($User->id, $dups[0]['user_id']);
+			
+			$Base = new Base; 
+			
+			$dups = $Base->findDuplicateUsernames();
+			$this->assertEquals(0, count($dups)); 
+			
 		}
 		
 		/**
@@ -357,6 +425,8 @@
 			$this->assertFalse($User->isActive()); 
 			$User->setUserAccountStatus(User::STATUS_ACTIVE);
 			
+			return $User;
+			
 		}
 		
 		/**
@@ -435,7 +505,7 @@
 			$this->assertFalse($User->recordLogin("8.8.8.8"));
 			$this->assertFalse($User->getLogins());
 			
-			return true;
+			return $User;
 			
 		}
 		
@@ -604,6 +674,75 @@
 			$User->avatar = "http://not-an-image.com/noimage.jpgzor";
 			$User->validateAvatar(); 
 			$User->validateAvatar(true);
+			
+		}
+		
+		/**
+		 * @depends test_accountStatus
+		 */
+		
+		public function test_updateSessionTime($User) {
+			
+			$NewUser = new User; 
+			$this->assertFalse($NewUser->updateSessionTime()); 
+			
+			$User->updateSessionTime(); 
+			
+			unset($User->mckey); 
+			$User->updateSessionTime(); 
+			
+			$_SERVER['REMOTE_ADDR'] = "8.8.8.8";
+			$User->updateSessionTime(); 
+			
+			$this->assertTrue($User->session_time != 0); 
+			
+			return $User;
+			
+		}
+		
+		/**
+		 * @depends test_updateSessionTime
+		 */
+		
+		public function test_memberList($User) {
+			
+			$User->setUserAccountStatus(User::STATUS_ACTIVE);
+			
+			$Admin = new Admin;
+			
+			$members = $Admin->memberList();
+			
+			$this->assertTrue(is_array($members)); 
+			$this->assertTrue(count($members) > 0); 
+			$this->assertTrue(count($members['members']) == 1); 
+			$this->assertEquals($User->id, $members['members'][key($members['members'])]['id']);
+			
+		}
+		
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_getTimeline($User) {
+			
+			$timeline = $User->timeline(25, 1); 
+			
+		}
+		
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_getNumRegistrationsByMonth($User) {
+			
+			$Base = new Base; 
+			
+			$From = new DateTime("1 month ago"); 
+			$To = new DateTime; 
+			
+			$User->setUserAccountStatus(User::STATUS_ACTIVE);
+			
+			$this->assertEquals(1, count($Base->getNumRegistrationsByMonth($From, $To))); 
 			
 		}
 		

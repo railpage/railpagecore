@@ -151,7 +151,7 @@
 	 		
 	 		$query = "SELECT count(user_id) AS num, user_regdate_nice FROM nuke_users WHERE user_regdate_nice >= ? AND user_regdate_nice <= ? GROUP BY user_regdate_nice ORDER BY user_regdate_nice";
 	 		
-	 		$result = $this->db_readonly->fetchAll($query, array($from->format("Y-m-d"), $to->format("Y-m-d")));
+	 		$result = $this->db->fetchAll($query, array($from->format("Y-m-d"), $to->format("Y-m-d")));
 	 		
 	 		$return = array();
 	 		
@@ -190,9 +190,9 @@
 			
 			if (filter_var($user_id, FILTER_VALIDATE_INT)) {
 				return new User($user_id);
-			} else {
-				throw new Exception(sprintf("No user found with an email address of %s and logging in via %s", $email, $provider));
 			}
+			
+			throw new Exception(sprintf("No user found with an email address of %s and logging in via %s", $email, $provider));
 		}
 		
 		/**
@@ -208,11 +208,17 @@
 			$BanControl = new BanControl;
 			$BanControl->loadUsers();
 			
+			$bancontrol_sql = "";
+			
+			if (!is_null($BanControl->users) && count($BanControl->users) > 0) {
+				$bancontrol_sql = "AND user_id NOT IN (" . implode(",", array_keys($BanControl->users)) . ")";
+			}
+			
 			$query = "SELECT YEAR(user_regdate_nice) AS year, MONTH(user_regdate_nice) AS month, count(*) AS count
 						FROM nuke_users 
 						WHERE user_regdate_nice BETWEEN ? AND ?
 						AND user_active = 1
-						AND user_id NOT IN (" . implode(",", array_keys($BanControl->users)) . ")
+						" . $bancontrol_sql . "
 						GROUP BY YEAR(user_regdate_nice), MONTH(user_regdate_nice)";
 			
 			return $this->db->fetchAll($query, array($From->format("Y-m-d"), $To->format("Y-m-d")));
@@ -306,26 +312,14 @@
 		public function username_available($username = false) {
 			$username = str_replace("_", "\_", $username); 
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT * FROM nuke_users WHERE username = '".$this->db->real_escape_string($username)."'"; 
-				
-				if ($rs = $this->db->query($query)) {
-					if ($rs->num_rows == 0) {
-						return true;
-					}
-				} else {
-					throw new \Exception("UserAdmin->username_available() : Could not determine if username ".$username." is available.\n\n".$query."\n\n".$this->db->error); 
-				}
+			$query = "SELECT * FROM nuke_users WHERE username = ?"; 
+			
+			$count = $this->db->fetchAll($query, $username);
+			
+			if (is_array($count) && count($count) > 0) {
+				return false;
 			} else {
-				$query = "SELECT * FROM nuke_users WHERE username = ?"; 
-				
-				$count = $this->db->fetchAll($query, $username);
-				
-				if (is_array($count) && count($count) > 0) {
-					return false;
-				} else {
-					return true;
-				}
+				return true;
 			}
 			
 			return false;
@@ -347,32 +341,14 @@
 			
 			$email = str_replace("_", "\_", $email); 
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT * FROM nuke_users WHERE user_email = '".$this->db->real_escape_string($email)."'"; 
-				
-				if ($rs = $this->db->query($query)) {
-					if ($rs->num_rows == 0) {
-						return true;
-					} else {
-						return false;
-					}
-				} elseif ($rs->num_rows == 0) {
-					return true;
-				} else {
-					throw new \Exception("UserAdmin->username_available() : Could not determine if email address ".$email." is available.\n\n".$query."\n\n".$this->db->error); 
-					
-					return false;
-				}
+			$query = "SELECT * FROM nuke_users WHERE user_email = ?"; 
+			
+			$count = $this->db->fetchAll($query, $email);
+			
+			if (is_array($count) && count($count) > 0) {
+				return false;
 			} else {
-				$query = "SELECT * FROM nuke_users WHERE user_email = ?"; 
-				
-				$count = $this->db->fetchAll($query, $email);
-				
-				if (is_array($count) && count($count) > 0) {
-					return false;
-				} else {
-					return true;
-				}
+				return true;
 			}
 		}
 	}

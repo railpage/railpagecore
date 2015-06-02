@@ -38,7 +38,7 @@
 		 * @var array $users
 		 */
 		 
-		public $users;
+		public $users = array();
 		 
 		/**
 		 * Banned IP addresses
@@ -46,7 +46,7 @@
 		 * @var array $ip_addresses
 		 */
 		 
-		public $ip_addresses;
+		public $ip_addresses = array();
 		
 		/**
 		 * Banned domain names
@@ -55,7 +55,7 @@
 		 * @var array $domains
 		 */
 		
-		public $domains;
+		public $domains = array();
 		
 		/**
 		 * Load all 
@@ -139,6 +139,10 @@
 				$this->Memcached->save($mckey, gzcompress(json_encode($this->users), self::CACHE_GZIP_LEVEL));
 			}
 			
+			if (is_null($this->users)) {
+				$this->users = array(); 
+			}
+			
 			return true;
 		}
 		
@@ -165,6 +169,10 @@
 				}
 				
 				$this->Memcached->save($mckey, gzcompress(json_encode($this->ip_addresses), self::CACHE_GZIP_LEVEL));
+			}
+			
+			if (is_null($this->ip_addresses)) {
+				$this->ip_addresses = array(); 
 			}
 			
 			return true;

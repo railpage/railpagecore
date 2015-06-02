@@ -22,6 +22,13 @@
 			$this->assertFalse($User->isUsernameAvailable("phpunit3"));
 			$this->assertFalse($User->isUsernameAvailable());
 			
+			$Base = new Base;
+			$this->assertFalse($Base->username_available("phpunit3")); 
+			$this->assertTrue($Base->username_available("blahsdfsfa")); 
+			
+			$Admin = new Admin;
+			$this->assertFalse($Admin->username_available("phpunit3")); 
+			
 			$User = new User;
 			$this->setExpectedException("Exception", "Cannot check if username is available because no username was provided");
 			$this->assertFalse($User->isUsernameAvailable());
@@ -41,6 +48,14 @@
 			
 			$this->assertFalse($User->isEmailAvailable("michael+phpunit4@railpage.com.au"));
 			$this->assertFalse($User->isEmailAvailable());
+			
+			$Base = new Base;
+			$this->assertFalse($Base->email_available("michael+phpunit4@railpage.com.au")); 
+			$this->assertTrue($Base->email_available("michael+phpunit87654@railpage.com.au")); 
+			$this->assertfalse($Base->email_available());
+			
+			$Admin = new Admin;
+			$this->assertFalse($Admin->email_available("michael+phpunit4@railpage.com.au")); 
 			
 			$User = new User;
 			$this->setExpectedException("Exception", "Cannot check if email address is available because no email address was provided");

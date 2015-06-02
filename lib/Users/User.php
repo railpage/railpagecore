@@ -1185,6 +1185,10 @@
 				$this->regdate = date("M j, Y");
 			}
 			
+			if (!filter_var($this->id, FILTER_VALIDATE_INT) && !$this->RegistrationDate instanceof DateTime) {
+				$this->RegistrationDate = new DateTime;
+			}
+			
 			if (!$ignore) {
 				if ($this->provider == "railpage" && (empty($this->password))) {
 					throw new Exception("Password is empty");
@@ -1556,9 +1560,10 @@
 		 * @version 3.9.1
 		 * @return boolean
 		 * @param int $user_id
+		 * @param strint $remote_addr
 		 */
 		 
-		public function updateSessionTime($user_id = false) {
+		public function updateSessionTime($user_id = false, $remote_addr = false) {
 			if (!$user_id = filter_var($user_id, FILTER_VALIDATE_INT)) {
 				$user_id = $this->id;
 			}
@@ -1567,7 +1572,7 @@
 				return false;
 			}
 			
-			$lastupdate = filter_var($_SESSION['sessiontime_lastupdate'], FILTER_SANITIZE_STRING);
+			$lastupdate = isset($_SESSION['sessiontime_lastupdate']) ? filter_var($_SESSION['sessiontime_lastupdate'], FILTER_SANITIZE_STRING) : NULL;
 			
 			if (is_null($lastupdate) || $lastupdate <= time() - 300) {
 				
@@ -1575,11 +1580,11 @@
 			
 				$data = [ "user_session_time" => time() ];
 				
-				if (!is_null(filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING))) {
-					$data['last_session_ip'] = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING); 
-				}
+				$data['last_session_ip'] = $remote_addr !== false ? $remote_addr : filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING);
 				
 				$this->db->update("nuke_users", $data, array("user_id = ?" => $user_id));
+				
+				$this->session_time = $data['user_session_time'];
 				
 				/** 
 				 * Update values stored in Memcached
@@ -1600,6 +1605,7 @@
 			}
 				
 			return true;
+			
 		}
 		
 		/**
