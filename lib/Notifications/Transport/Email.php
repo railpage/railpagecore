@@ -16,6 +16,7 @@
 	use Swift_Message;
 	use Swift_Mailer;
 	use Swift_SmtpTransport;
+	use Swift_MailTransport;
 	use Swift_Encoding;
 	use Swift_Plugins_AntiFloodPlugin;
 	use Swift_Plugins_DecoratorPlugin;
@@ -60,8 +61,8 @@
 			
 			$this->validate();
 			
-			$from_email = $this->data['author']['username'] = "Railpage System User" ? $this->Config->SMTP->username : $this->data['author']['email'];
-			$from_name = $this->data['author']['username'] = "Railpage System User" ? $this->Config->SiteName : $this->data['author']['username'];
+			$from_email = $this->data['author']['username'] == "Railpage System User" ? $this->Config->SMTP->username : $this->data['author']['email'];
+			$from_name = $this->data['author']['username'] == "Railpage System User" ? $this->Config->SiteName : $this->data['author']['username'];
 			
 			/**
 			 * Create a new instance of SwiftMail
@@ -84,9 +85,13 @@
 			 * Create an SMTP transport object
 			 */
 			
-			$transport = Swift_SmtpTransport::newInstance($this->Config->SMTP->host, $this->Config->SMTP->port, $this->Config->SMTP->TLS = true ? "tls" : NULL)
-				->setUsername($this->Config->SMTP->username)
-				->setPassword($this->Config->SMTP->password);
+			if (isset($this->Config->SMTP->password) && !empty($this->Config->SMTP->password) && $this->Config->SMTP->password != "xxxxx") {
+				$transport = Swift_SmtpTransport::newInstance($this->Config->SMTP->host, $this->Config->SMTP->port, $this->Config->SMTP->TLS = true ? "tls" : NULL)
+					->setUsername($this->Config->SMTP->username)
+					->setPassword($this->Config->SMTP->password);
+			} else {
+				$transport = Swift_MailTransport::newInstance(); 
+			}
 			
 			/**
 			 * Set the mailer 
@@ -118,10 +123,12 @@
 			
 			foreach ($this->data['recipients'] as $recipient) {
 				$message->setTo(array($recipient['destination'] => $recipient['username']));
-				$rs = $mailer->send($message, $fail);
+				$stat = $mailer->send($message, $fail);
+				
+				$result[$recipient['destination']] = $stat; 
 				
 				$failures = array_merge($failures, $fail); 
-				$result = array_merge($result, $rs); 
+				
 			}
 			
 			$return = array(

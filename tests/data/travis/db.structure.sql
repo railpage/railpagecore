@@ -1793,6 +1793,7 @@ CREATE TABLE `notifications` (
   `subject` text,
   `body` longtext NOT NULL,
   `response` longtext NOT NULL COMMENT 'Response from the transport. Used for errors/debugging',
+  `meta` longtext NOT NULL COMMENT 'Response from the transport. Used for errors/debugging',
   PRIMARY KEY (`id`),
   KEY `recipient` (`author`,`transport`,`status`,`date_queued`,`date_sent`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Notifications queue, to prevent page blocking when sending emails etc';

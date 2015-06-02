@@ -291,7 +291,7 @@
 				$Smarty->Assign("ban_expire_nice", date($ThisUser->date_format, $expiry));
 			}
 			
-			$email_body = $Smarty->Fetch($Smarty->ResolveTemplate("email_ban"));
+			$email_body = $Smarty->Fetch($Smarty->ResolveTemplate("email.ban"));
 			
 			// Send the confirmation email
 			/*
@@ -317,6 +317,8 @@
 			if ($admin_user_id !== false) {
 				$Notification->setAuthor(new User($admin_user_id));
 			}
+			
+			#print_r($Notification->getArray());
 			
 			$Notification->addRecipient($ThisUser->id, $ThisUser->username, $ThisUser->contact_email);
 			$Notification->body = $Smarty->Fetch($Smarty->ResolveTemplate("email.ban"));
