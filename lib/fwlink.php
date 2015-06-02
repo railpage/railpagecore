@@ -58,43 +58,85 @@
 		public $title;
 		
 		/**
+		 * Memcached ID 
+		 * @since Version 3.9.1
+		 * @var string $mckey
+		 */
+		
+		public $mckey = NULL;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.8.6
 		 * @param int|string $id
 		 */
 		
 		public function __construct($id = false) {
+			
 			parent::__construct();
 			
-			if ($id) {
+			if ($id !== false && !filter_var($id, FILTER_VALIDATE_INT)) {
+				#if (!$newid = $this->Memcached->fetch(sprintf("railpage:fwlink.fromurl=%s", $id))) {
+					$query = "SELECT id FROM fwlink WHERE url = ?";
+					$newid = $this->db->fetchOne($query, $id);
+				#}
 				
-				$mckey = "railpage:fwlink=" . md5($id);
-				
-				if ($row = getMemcacheObject($mckey)) {
-					$this->id = $row['id']; 
-					$this->url = $row['url']; 
-					$this->title = $row['title'];
-				} else {
-					if (filter_var($id, FILTER_VALIDATE_INT)) {
-						$query = "SELECT * FROM fwlink WHERE id = ?";
-					} else {
-						$query = "SELECT * FROM fwlink WHERE url = ?";
-					}
-					
-					if ($row = $this->db->fetchRow($query, $id)) {
-						$this->id = $row['id']; 
-						$this->url = $row['url'];
-						$this->title = $row['title'];
-						
-						setMemcacheObject($mckey, $row, strtotime("+1 month"));
-					}
-				}
-				
-				if (!empty($this->url)) {
-					$this->url_canonical = sprintf("http://%s%s", RP_HOST, $this->url);
-					$this->url_short = sprintf("http://%s/fwlink?id=%d", RP_HOST, $this->id);
+				if (filter_var($newid, FILTER_VALIDATE_INT)) {
+					$id = $newid;
 				}
 			}
+			
+			if (filter_var($id, FILTER_VALIDATE_INT)) {
+				$this->id = $id; 
+				$this->load(); 
+				
+				if (!empty($this->url)) {
+					$this->makeURLs(); 
+				}
+			}
+		
+		}
+		
+		/**
+		 * Populate this object
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function load() {
+			$this->mckey = sprintf("railpage:fwlink=%s", md5($this->id));
+			
+			if ($row = $this->Memcached->fetch($this->mckey)) {
+				$this->id = $row['id']; 
+				$this->url = $row['url']; 
+				$this->title = $row['title'];
+				
+				return;
+			}
+			
+			$query = "SELECT * FROM fwlink WHERE id = ?";
+			
+			if ($row = $this->db->fetchRow($query, $this->id)) {
+				$this->id = $row['id']; 
+				$this->url = $row['url'];
+				$this->title = $row['title'];
+				
+				$this->Memcached->save($this->mckey, $row, strtotime("+1 month"));
+			}
+				
+			return;
+			
+		}
+		
+		/**
+		 * Make extra URLs
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function makeURLs() {
+			$this->url_canonical = sprintf("http://%s%s", RP_HOST, $this->url);
+			$this->url_short = sprintf("http://%s/fwlink?id=%d", RP_HOST, $this->id);
 		}
 		
 		/**
@@ -120,12 +162,10 @@
 			
 			if (empty($this->url) || !is_string($this->url)) {
 				throw new Exception("Cannot validate new link - \$url is empty or not a string"); 
-				return false;
 			}
 			
 			if (empty($this->title) || !is_string($this->title)) {
 				throw new Exception("Cannot validate new link - \$title is empty or not a string"); 
-				return false;
 			}
 			
 			return true;
@@ -138,27 +178,29 @@
 		 */
 		 
 		public function commit() {
-			if ($this->validate()) {
-				$data = array(
-					"url" => $this->url,
-					"title" => $this->title
+			$this->validate(); 
+			
+			$data = array(
+				"url" => $this->url,
+				"title" => $this->title
+			);
+			
+			$this->Memcached->delete($this->mckey); 
+			
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$this->db->insert("fwlink", $data); 
+				$this->id = $this->db->lastInsertId(); 
+			} else {
+				$where = array(
+					"id = ?" => $this->id
 				);
 				
-				if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
-					$this->db->insert("fwlink", $data); 
-					$this->id = $this->db->lastInsertId(); 
-				} else {
-					$where = array(
-						"id = ?" => $this->id
-					);
-					
-					$this->db->update("fwlink", $data, $where); 
-				}
-				
-				return true;
-			} else {
-				return false;
+				$this->db->update("fwlink", $data, $where); 
 			}
+			
+			$this->makeURLs(); 
+			
+			return true;
 		}
 	}
 	

@@ -46,6 +46,25 @@
 		
 		const GROUP_HIDDEN = 2;
 		
+		/** 
+		 * Database object
+		 * @since Version 3.5
+		 * @var object $db
+		 */
+		
+		public $db; 
+		
+		/**
+		 * Constructor
+		 * @since Version 3.5
+		 */
+		
+		public function __construct() {
+			require("db/connect.php"); 
+			
+			$this->db = $db; 
+		}
+		
 		/**
 		 * List all groups
 		 * @since Version 3.5
