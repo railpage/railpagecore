@@ -8,9 +8,9 @@ echo ""
 echo "   -- PHPUnit tests for Railpage --"
 echo ""
 echo "Setting up database:"
-echo " - Dropping old database"
+echo " - Dropping old database (sparta_unittest)"
 mysql -h localhost -e 'drop database sparta_unittest;'
-echo " - Importing database structure"
+echo " - Importing database structure (sparta_unittest)"
 mysql -h localhost < tests/data/travis/db.structure.sql
 echo ""
 echo "Running phpUnit ::"
