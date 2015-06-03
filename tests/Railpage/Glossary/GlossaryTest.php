@@ -43,7 +43,16 @@
 			
 			$Entry->commit(); 
 			
+			$Entry->name = "test"; 
+			$Entry->commit(); 
+			$Entry->name = self::NAME;
+			$Entry->commit(); 
+			
+			$Entry = new Entry($Entry->id);
+			
 			$this->assertFalse(!filter_var($Entry->id, FILTER_VALIDATE_INT));
+			
+			$this->assertEquals($User->id, $Entry->Author->id);
 			
 			return $Entry;
 			

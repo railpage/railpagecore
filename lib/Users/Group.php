@@ -23,6 +23,30 @@
 	class Group extends Groups {
 		
 		/**
+		 * Group type: open/public
+		 * @since Version 3.9.1
+		 * @const int TYPE_OPEN
+		 */
+		
+		const TYPE_OPEN = 0; 
+		
+		/**
+		 * Group type: closed
+		 * @since Version 3.9.1
+		 * @const int TYPE_CLOSED
+		 */
+		
+		const TYPE_CLOSED = 1; 
+		
+		/**
+		 * Group type: hidden
+		 * @since Version 3.9.1
+		 * @const int TYPE_HIDDEN
+		 */
+		
+		const TYPE_HIDDEN = 2; 
+		
+		/**
 		 * Group ID
 		 * @var int $id
 		 */
@@ -122,7 +146,7 @@
 						INNER JOIN nuke_users AS u ON g.group_moderator = u.user_id 
 					WHERE g.group_id = ?";
 			
-			if ($row = $this->db->fetchAll($query, $this->id)) {
+			if ($row = $this->db->fetchRow($query, $this->id)) {
 				$this->name = $row['name']; 
 				$this->type = $row['type']; 
 				$this->desc = $row['description']; 
@@ -141,10 +165,22 @@
 					}
 				}
 				
-				$this->url = new Url(sprintf("%s/%d", "/usergroups", $this->id));
-				$this->url->edit = sprintf("%s/edit", $this->url->url);
-				$this->url->addMember = sprintf("%s/addmember", $this->url->url);
+				$this->makeURLs(); 
 			}
+		}
+		
+		/**
+		 * Make URLs
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function makeURLs() {
+			
+			$this->url = new Url(sprintf("%s/%d", "/usergroups", $this->id));
+			$this->url->edit = sprintf("%s/edit", $this->url->url);
+			$this->url->addMember = sprintf("%s/addmember", $this->url->url);
+			
 		}
 		
 		/**
@@ -213,7 +249,7 @@
 		public function addMember($username = false, $user_id = false, $org_role = false, $org_contact = false, $org_perms = false) {
 			
 			if ($username && !$user_id) {
-				$query = "SELECT user_id, username FROM nuke_users WHERE username = '".$this->db->real_escape_string($username)."' AND user_active = 1"; 
+				$query = "SELECT user_id, username FROM nuke_users WHERE username = ? AND user_active = 1"; 
 				$params = [ $username ];
 				
 				if ($result = $this->db->fetchAll($query, $params)) {
@@ -227,6 +263,8 @@
 						foreach ($result as $row) {
 							$return[$row['user_id']] = $row['username']; 
 						}
+						
+						$this->updateUserGroupMembership($user_id);
 						
 						return $return;
 					}
@@ -250,6 +288,8 @@
 					}
 						
 					$this->db->insert("nuke_bbuser_group", $data); 
+						
+					$this->updateUserGroupMembership($user_id);
 					
 					return true;
 				}
@@ -261,9 +301,36 @@
 				];
 				
 				$this->db->insert("nuke_bbuser_group", $data); 
+						
+				$this->updateUserGroupMembership($user_id);
 				
 				return true;
 			}
+		}
+		
+		/**
+		 * Force refresh the user group membership
+		 * @since Version 3.9.1
+		 * @param \Railpage\Users\User|int $user_id
+		 * @return void
+		 */
+		
+		private function updateUserGroupMembership($User) {
+			
+			if (!$User instanceof User) {
+				$User = new User($User); 
+			}
+			
+			$mckey = sprintf("railpage:group=%d.user_id=%d", $this->id, $User->id);
+			$this->Memcached->delete($mckey);
+			
+			$rdkey = sprintf("railpage:usergroups.user_id=%d", $User->id); 
+			$this->Redis->delete($rdkey); 
+			
+			$User->getGroups(true);
+			
+			return;
+			
 		}
 		 
 		
@@ -276,22 +343,14 @@
 		public function validate() {
 			if (empty($this->name)) {
 				throw new Exception("Cannot validate group - group name cannot be empty"); 
-				return false;
 			} 
 			
 			if (empty($this->desc)) {
 				throw new Exception("Cannot validate group - group description cannot be empty"); 
-				return false;
 			} 
 			
-			if (empty($this->type)) {
-				throw new Exception("Cannot validate group - group type cannot be empty"); 
-				return false;
-			}
-			
-			if (empty($this->owner_user_id)) {
-				throw new Exception("Cannot validate group - group owner user ID cannot be empty"); 
-				return false;
+			if (!filter_var($this->type, FILTER_VALIDATE_INT)) {
+				$this->type = self::TYPE_OPEN;
 			}
 			
 			if (empty($this->owner_user_id)) {
@@ -303,6 +362,10 @@
 				$query = "SELECT user_id FROM nuke_users WHERE username = ?"; 
 				
 				$this->owner_user_id = $this->db->fetchOne($query, $this->owner_username); 
+			}
+			
+			if (empty($this->owner_user_id)) {
+				throw new Exception("Cannot validate group - group owner user ID cannot be empty"); 
 			}
 			
 			return true;
@@ -339,6 +402,8 @@
 				$this->id = $this->db->lastInsertId(); 
 			}
 			
+			$this->makeURLs(); 
+			
 			return true;
 		}
 		
@@ -362,11 +427,12 @@
 		
 			$timer = Debug::getTimer(); 
 			
-			if (!$result = $this->Memcached->fetch($mckey) || $result != "yes") {
-				$query = "SELECT user_id FROM nuke_bbuser_group WHERE group_id = ? AND user_id = ?";
+			if (!$result = $this->Memcached->fetch($mckey)) {
+				$query = "SELECT user_id FROM nuke_bbuser_group WHERE group_id = ? AND user_id = ? AND user_pending = 0";
 				$params = [ $this->id, $user_id ];
 				
-				if ($id = $this->db->fetchOne($query, $params) && filter_var($id, FILTER_VALIDATE_INT)) {
+				$id = $this->db->fetchOne($query, $params);
+				if (filter_var($id, FILTER_VALIDATE_INT)) {
 					$this->Memcached->save($mckey, "yes", strtotime("+1 day")); 
 					Debug::logEvent(__METHOD__ . " found user ID " . $user_id . " in group ID " . $this->id, $timer); 
 					return true; 
@@ -400,8 +466,33 @@
 			]; 
 			
 			$this->db->delete("nuke_bbuser_group", $where); 
+						
+			$this->updateUserGroupMembership($user_id);
 			
 			return true;
+		}
+		
+		/**
+		 * Approve user membership
+		 * @since Version 3.9.1
+		 * @param \Railpage\Users\User|int $User
+		 * @return \Railpage\Users\Group
+		 */
+		
+		public function approveUser($User) {
+			if (!$User instanceof User) {
+				$User = new User($User);
+			}
+			
+			$data = [ "user_pending" => 0 ];
+			$where = [ 
+				"user_id = ?" => $User->id,
+				"group_id = ?" => $this->id
+			];
+			
+			$this->db->update("nuke_bbuser_group", $data, $where); 
+			
+			return $this;
 		}
 	}
 	

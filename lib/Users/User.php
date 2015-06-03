@@ -1437,12 +1437,25 @@
 		 */
 		
 		public function inGroup($group_id = false) {
-			if (!$this->db || !$group_id) {
+			if (!filter_var($group_id, FILTER_VALIDATE_INT)) {
 				return false;
+			}
+			
+			if (!defined("RP_GROUP_ADMINS")) {
+				define("RP_GROUP_ADMINS", 770); 
 			}
 			
 			if ($group_id == RP_GROUP_ADMINS && $this->level >= 2) {
 				return true;
+			}
+			
+			$Group = new Group($group_id); 
+			
+			return $Group->userInGroup($this); 
+			
+			/*
+			if ($this->groups === false) {
+				$this->getGroups(true);
 			}
 			
 			if (is_array($this->groups) && in_array($group_id, $this->groups)) {
@@ -1450,6 +1463,7 @@
 			}
 			
 			return false;
+			*/
 			
 			/*
 			$query = "SELECT group_id FROM nuke_bbuser_group USE INDEX (user_id) WHERE group_id = ? AND user_id = ? AND user_pending = 0";
@@ -2027,34 +2041,38 @@
 		 * Get all groups this user is a member of
 		 * @since Version 3.7
 		 * @return array
+		 * @param boolean $force
 		 */
 		
-		public function getGroups() {
+		public function getGroups($force = false) {
 			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				return false;
 			}
 			
-			$mckey = "railpage:usergroups.user_id=" . $this->id; 
+			$mckey = sprintf("railpage:usergroups.user_id=%d", $this->id);
 			
-			if ($this->groups = $this->Redis->fetch($mckey)) {
+			$this->groups = array(); 
+			
+			if ($force === false && $this->groups = $this->Redis->fetch($mckey)) {
 				return $this->groups; 
-			} else {
-				$query = "SELECT group_id FROM nuke_bbuser_group WHERE user_id = ? AND user_pending = 0";
-				
-				if ($result = $this->db->fetchAll($query, $this->id)) {
-					foreach ($result as $row) {
-						if (!is_array($this->groups) || (is_array($this->groups) && !in_array($row['group_id'], $this->groups))) {
-							$this->groups[] = $row['group_id'];
-						}
-					}
-				}
-				
-				if (!empty($this->groups)) {
-					$this->Redis->save($mckey, $this->groups, strtotime("+24 hours"));
-				}
-			
-				return $this->groups;
 			}
+			
+			$query = "SELECT group_id FROM nuke_bbuser_group WHERE user_id = ? AND user_pending = 0";
+				
+			$this->groups = array(); 
+			
+			if ($result = $this->db->fetchAll($query, $this->id)) {
+				
+				foreach ($result as $row) {
+					#if (!in_array($row['group_id'], $this->groups)) {
+						$this->groups[] = $row['group_id'];
+					#}
+				}
+			}
+			
+			$this->Redis->save($mckey, $this->groups, strtotime("+24 hours"));
+			
+			return $this->groups; 
 		}
 		
 		/**

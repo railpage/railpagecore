@@ -117,38 +117,59 @@
 				$this->id = $id;
 				$this->mckey = sprintf("%s.entry=%d", $this->Module->namespace, $this->id);
 				
-				#$this->Memcached->delete($this->mckey);
-				
-				if (!$row = $this->Memcached->fetch($this->mckey)) {
-					$query = "SELECT type, short, full, example, date, author, status FROM glossary WHERE id = ?";
-					
-					$row = $this->db->fetchRow($query, $this->id);
-					
-					$this->Memcached->save($this->mckey, $row);
-				}
-				
-				if (isset($row) && is_array($row)) {
-					$this->name = $row['short'];
-					$this->text = $row['full'];
-					$this->example = $row['example'];
-					$this->Type = new Type($row['type']);
-					$this->status = isset($row['status']) ? $row['status'] : self::STATUS_APPROVED;
-					
-					if ($row['date'] == "0000-00-00 00:00:00") {
-						$this->Date = new DateTime;
-						$this->commit();
-					} else {
-						$this->Date = new DateTime($row['date']);
-					}
-					
-					$this->Author = new User($row['author']);
-					
-					$this->url = new Url(sprintf("%s?mode=entry&id=%d", $this->Module->url, $this->id));
-					$this->url->edit = sprintf("%s?mode=add&id=%d", $this->Module->url, $this->id);
-					$this->url->publish = sprintf("%s?mode=entry.publish&id=%d", $this->Module->url, $this->id);
-					$this->url->reject = sprintf("%s?mode=entry.reject&id=%d", $this->Module->url, $this->id);
-				}
+				$this->populate();
 			}
+		}
+		
+		/**
+		 * Populate this object
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function populate() {
+				
+			if (!$row = $this->Memcached->fetch($this->mckey)) {
+				$query = "SELECT type, short, full, example, date, author, status FROM glossary WHERE id = ?";
+				
+				$row = $this->db->fetchRow($query, $this->id);
+				
+				$this->Memcached->save($this->mckey, $row);
+			}
+			
+			if (isset($row) && is_array($row)) {
+				$this->name = $row['short'];
+				$this->text = $row['full'];
+				$this->example = $row['example'];
+				$this->Type = new Type($row['type']);
+				$this->status = isset($row['status']) ? $row['status'] : self::STATUS_APPROVED;
+				
+				if ($row['date'] == "0000-00-00 00:00:00") {
+					$this->Date = new DateTime;
+					$this->commit();
+				} else {
+					$this->Date = new DateTime($row['date']);
+				}
+				
+				$this->setAuthor(new User($row['author']));
+				
+				$this->makeURLs(); 
+			}
+		}
+		
+		/**
+		 * Make URLs
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function makeURLs() {
+			
+			$this->url = new Url(sprintf("%s?mode=entry&id=%d", $this->Module->url, $this->id));
+			$this->url->edit = sprintf("%s?mode=add&id=%d", $this->Module->url, $this->id);
+			$this->url->publish = sprintf("%s?mode=entry.publish&id=%d", $this->Module->url, $this->id);
+			$this->url->reject = sprintf("%s?mode=entry.reject&id=%d", $this->Module->url, $this->id);
+			
 		}
 		
 		/**
@@ -228,7 +249,7 @@
 				"full" => $this->text,
 				"example" => $this->example,
 				"date" => $this->Date->format("Y-m-d H:i:s"),
-				"author" => $this->Author->id,
+				"author" => filter_var($this->Author->id, FILTER_VALIDATE_INT),
 				"status" => $this->status
 			);
 			
@@ -237,16 +258,18 @@
 					"id = ?" => $this->id
 				);
 				
-				if (isset($this->mckey) && !empty($this->mckey) && getMemcacheObject($this->mckey)) {
-					deleteMemcacheObject($this->mckey);
+				if (isset($this->mckey) && !empty($this->mckey)) {
+					$this->Memcached->delete($this->mckey);
 				}
 				
 				$this->db->update("glossary", $data, $where);
 			} else {
 				$this->db->insert("glossary", $data);
 				$this->id = $this->db->lastInsertId();
-				$this->url = sprintf("%s?mode=entry.view&id=%d", $this->Module->url, $this->id);
+				$this->mckey = sprintf("%s.entry=%d", $this->Module->namespace, $this->id);
 			}
+				
+			$this->makeURLs(); 
 			
 			return $this;
 		}
