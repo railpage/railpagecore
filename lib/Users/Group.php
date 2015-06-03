@@ -124,7 +124,10 @@
 			
 			if ($group_id) {
 				$this->id = $group_id; 
-				$this->fetch(); 
+				
+				if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+					$this->fetch(); 
+				}
 			}
 		}
 		
@@ -135,9 +138,6 @@
 		 */
 		
 		public function fetch() {
-			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
-				throw new Exception("Cannot fetch group - group ID cannot be empty"); 
-			} 
 			
 			$query = "SELECT g.group_attrs, g.organisation_id, g.group_id AS id, g.group_name AS name, g.group_type AS type, 
 						g.group_description AS description, g.group_moderator AS owner_user_id, u.username AS owner_username 

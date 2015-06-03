@@ -89,10 +89,12 @@
 					$this->id = $id; 
 				} elseif (is_string($id)) {
 					$query = "SELECT id FROM nuke_faqAnswer WHERE url_slug = ?";
-					$this->id = $this->db_readonly->fetchOne($query, $id);
+					$this->id = $this->db->fetchOne($query, $id);
 				}
 				 
-				$this->fetch(); 
+				if ($this->id = filter_var($this->id, FILTER_VALIDATE_INT)) {
+					$this->fetch(); 
+				}
 			}
 		}
 		
@@ -100,11 +102,7 @@
 		 * Fetch item details
 		 */
 		
-		public function fetch() {
-			if (!$this->id) {
-				throw new Exception("Cannot fetch item - no item ID given"); 
-				return false;
-			}
+		private function fetch() {
 			
 			$query = "SELECT id_cat AS category_id, id AS item_id, question AS item_title, answer AS item_text, url_slug AS item_url_slug, timestamp AS item_timestamp FROM nuke_faqAnswer WHERE id = ?";
 			
@@ -114,13 +112,10 @@
 				$this->url_slug		= $row['item_url_slug']; 
 				$this->timestamp	= new DateTime($row['item_timestamp']); 
 				$this->category 	= new Category($row['category_id']); 
+				$this->validate(); 
+				$this->makeUrls();	
 			}
 			
-			if (filter_var($this->url_slug, FILTER_VALIDATE_INT) || empty($this->url_slug) || !is_string($this->url_slug)) {
-				$this->createSlug(); 
-			}
-			
-			$this->makeUrls();
 		}
 		
 		/**
@@ -131,13 +126,15 @@
 		
 		public function validate() {
 			if (empty($this->title)) {
-				throw new Exception("Cannot validate help item - title is empty"); 
-				return false;
+				throw new Exception("Cannot validate help item - title is empty");
 			} 
 			
 			if (empty($this->text)) {
 				throw new Exception("Cannot validate help item - text is empty"); 
-				return false;
+			}
+			
+			if (!$this->category instanceof Category) {
+				throw new Exception("No valid category has been set"); 
 			}
 			
 			if (filter_var($this->url_slug, FILTER_VALIDATE_INT) || empty($this->url_slug) || !is_string($this->url_slug)) {
@@ -183,7 +180,7 @@
 		 * @return string
 		 */
 		
-		public function createSlug() {
+		private function createSlug() {
 			
 			$proposal = ContentUtility::generateUrlSlug($this->title);
 			
@@ -191,7 +188,7 @@
 			 * Check that we haven't used this slug already
 			 */
 			
-			$result = $this->db->fetchAll("SELECT id FROM nuke_faqAnswer WHERE url_slug = ? AND id != ?", array($proposal, $this->id)); 
+			$result = $this->db->fetchAll("SELECT id FROM nuke_faqAnswer WHERE url_slug = ?", $proposal); 
 			
 			if (count($result)) {
 				$proposal .= count($result);
@@ -222,7 +219,7 @@
 		}
 		
 		/**
-		 * Get contributors of this locomotive
+		 * Get contributors to this help item
 		 * @since Version 3.7.5
 		 * @return array
 		 */

@@ -1431,18 +1431,15 @@
 		/**
 		 * Check for group membership
 		 * @since Version 3.0.1
-		 * @version 3.0.1
+		 * @version 3.9.1
 		 * @param int $group_id
 		 * @return boolean
 		 */
 		
 		public function inGroup($group_id = false) {
-			if (!filter_var($group_id, FILTER_VALIDATE_INT)) {
-				return false;
-			}
 			
 			if (!defined("RP_GROUP_ADMINS")) {
-				define("RP_GROUP_ADMINS", 770); 
+				define("RP_GROUP_ADMINS", "michaelisawesome"); 
 			}
 			
 			if ($group_id == RP_GROUP_ADMINS && $this->level >= 2) {

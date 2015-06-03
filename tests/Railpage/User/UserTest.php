@@ -772,7 +772,7 @@
 			
 			
 			if (!defined("RP_GROUP_ADMINS")) {
-				define("RP_GROUP_ADMINS", 770);
+				define("RP_GROUP_ADMINS", "michaelisawesome");
 			}
 			
 			$this->assertFalse($User->inGroup()); 

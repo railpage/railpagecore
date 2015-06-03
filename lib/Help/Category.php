@@ -10,6 +10,8 @@
 	
 	use Exception;
 	use DateTime;
+	use Railpage\Url;
+	use Railpage\ContentUtility;
 	
 	
 	/**
@@ -62,7 +64,9 @@
 			if ($id) {
 				$this->id = $id; 
 				 
-				$this->fetch(); 
+				if ($this->id = filter_var($this->id, FILTER_VALIDATE_INT)) {
+					$this->fetch(); 
+				}
 			}
 		}
 		
@@ -70,11 +74,7 @@
 		 * Fetch category details
 		 */
 		
-		public function fetch() {
-			if (!$this->id) {
-				throw new Exception("Cannot fetch category - no category ID given"); 
-				return false;
-			}
+		private function fetch() {
 			
 			$query = "SELECT id_cat AS category_id, categories AS category_name, url_slug AS category_url_slug FROM nuke_faqCategories WHERE id_cat = ?"; 
 			
@@ -118,7 +118,7 @@
 		 * @return boolean
 		 */
 		
-		public function validate() {
+		private function validate() {
 			if (empty($this->name)) {
 				throw new Exception("Cannot validate category - name cannot be empty"); 
 				return false;
@@ -137,7 +137,8 @@
 		 */
 		
 		private function createSlug() {
-			$proposal = create_slug($this->name);
+			
+			$proposal = ContentUtility::generateUrlSlug($this->name);
 			
 			$result = $this->db->fetchAll("SELECT id_cat FROM nuke_faqCategories WHERE url_slug = ?", $proposal); 
 			

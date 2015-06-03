@@ -98,14 +98,6 @@
 			
 		}
 		
-		public function test_exception_fetch() {
-			
-			$this->setExpectedException("Exception", "Cannot fetch group - group ID cannot be empty"); 
-			$Group = new Group;
-			$Group->fetch();
-			
-		}
-		
 		
 		/**
 		 * @depends test_newUser

@@ -40,31 +40,15 @@
 		public function getCategories() {
 			$query = "SELECT id_cat AS category_id, categories AS category_name, url_slug AS category_url_slug FROM nuke_faqCategories ORDER BY categories";
 			
-			if ($this->db instanceof \sql_db) {
-				if ($rs = $this->db->query($query)) {
-					$return = array(); 
-					
-					while ($row = $rs->fetch_assoc()) {
-						$row['url'] = RP_WEB_ROOT . "/help/" . $row['category_url_slug'];
-						$return[$row['category_id']] = $row; 
-					}
-					
-					return $return;
-				} else {
-					throw new Exception($this->db->error."\n\n".$query); 
-					return false;
-				}
-			} else {
-				$return = array();
+			$return = array();
+			
+			foreach ($this->db->fetchAll($query) as $row) {
+				$row['url'] = RP_WEB_ROOT . "/help/" . $row['category_url_slug'];
 				
-				foreach ($this->db->fetchAll($query) as $row) {
-					$row['url'] = RP_WEB_ROOT . "/help/" . $row['category_url_slug'];
-					
-					$return[$row['category_id']] = $row; 
-				}
-				
-				return $return;
+				$return[$row['category_id']] = $row; 
 			}
+			
+			return $return;
 		}
 		
 		/**
@@ -80,30 +64,9 @@
 				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT id_cat AS category_id FROM nuke_faqCategories where url_slug = '".$this->db->real_escape_string($url_slug)."'"; 
-				
-				if ($rs = $this->db->query($query)) {
-					if ($rs->num_rows == 1) {
-						$row = $rs->fetch_assoc(); 
-						
-						return $row['category_id']; 
-					} elseif ($rs->num_rows > 1) {
-						throw new Exception("More than one category ID found for URL slug ".$url_slug." - this should never happen"); 
-						return false;
-					} else {
-						throw new Exception("No category ID found for URL slug ".$url_slug); 
-						return false;
-					}
-				} else {
-					throw new Exception($this->db->error."\n\n".$query); 
-					return false;
-				}
-			} else {
-				$query = "SELECT id_cat AS category_id FROM nuke_faqCategories where url_slug = ?";
-				
-				return $this->db->fetchOne($query, $url_slug); 
-			}
+			$query = "SELECT id_cat AS category_id FROM nuke_faqCategories where url_slug = ?";
+			
+			return $this->db->fetchOne($query, $url_slug); 
 		}
 		
 		/**
@@ -114,28 +77,17 @@
 		 */
 		
 		public function deleteItem($help_id = false) {
-			if (!$help_id) {
+			if (!$help_id = filter_var($help_id, FILTER_VALIDATE_INT)) {
 				throw new Exception("Cannot delete help item - no ID given"); 
 				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "DELETE FROM nuke_faqAnswer WHERE id = '".$this->db->real_escape_string($help_id)."'"; 
-				
-				if ($rs = $this->db->query($query)) {
-					return true; 
-				} else {
-					throw new Exception($this->db->error."\n\n".$query); 
-					return false;
-				}
-			} else {
-				$where = array(
-					"id = ?" => $help_id
-				);
-				
-				$this->db->delete("nuke_faqAnswer", $where); 
-				return true;
-			}
+			$where = array(
+				"id = ?" => $help_id
+			);
+			
+			$this->db->delete("nuke_faqAnswer", $where); 
+			return true;
 		}
 		
 		/**
@@ -146,42 +98,24 @@
 		 */
 		
 		public function deleteCategory($category_id = false) {
-			if (!$category_id) {
+			if (!$category_id = filter_var($category_id, FILTER_VALIDATE_INT)) {
 				throw new Exception("Cannot delete category - no ID given"); 
 				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "DELETE FROM nuke_faqAnswer where id_cat = '".$this->db->real_escape_string($category_id)."'"; 
-				
-				if ($this->db->query($query)) {
-					$query = "DELETE FROM nuke_faqCategories WHERE id_cat = '".$this->db->real_escape_string($category_id)."'"; 
-					
-					if ($this->db->query($query)) {
-						return true;
-					} else {
-						throw new Exception($this->db->error."\n\n".$query); 
-						return false;
-					}
-				} else {
-					throw new Exception($this->db->error."\n\n".$query); 
-					return false;
-				}
-			} else {
-				$where = array(
-					"id_cat = ?" => $help_id
-				);
-				
-				$this->db->delete("nuke_faqAnswer", $where); 
-				
-				$where = array(
-					"id_cat = ?" => $help_id
-				);
-				
-				$this->db->delete("nuke_faqCategories", $where); 
-				
-				return true;
-			}
+			$where = array(
+				"id_cat = ?" => $category_id
+			);
+			
+			$this->db->delete("nuke_faqAnswer", $where); 
+			
+			$where = array(
+				"id_cat = ?" => $category_id
+			);
+			
+			$this->db->delete("nuke_faqCategories", $where); 
+			
+			return true;
 		}
 	}
 	
