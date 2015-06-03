@@ -12,6 +12,7 @@
 			<directory>config</directory>
 			<directory>db.dist</directory>
 			<directory>etc</directory>
+			<directory>smarty</directory>
 		</blacklist>
 	</filter>
 </phpunit>

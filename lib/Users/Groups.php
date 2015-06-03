@@ -90,13 +90,13 @@
 				return false;
 			}
 			
-			$groups = $this->getGroups(2); 
+			$groups = $this->getGroups(); 
 			
 			foreach ($groups as $id => $group) {
 				if (!isset($group['group_attrs'][$attribute])) {
 					unset($groups[$id]);
 				} elseif ($value && $group['group_attrs'][$attribute] != $value) {
-					unset($grouips[$id]);
+					unset($groups[$id]);
 				}
 			}
 			

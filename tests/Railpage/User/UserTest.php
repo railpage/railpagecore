@@ -798,7 +798,7 @@
 			$allgroups = $Groups->getGroups(); 
 			
 			$this->assertTrue(is_array($allgroups)); 
-			$this->assertEquals(1, count($allgroups)); 
+			$this->assertTrue(count($allgroups) > 0); 
 			
 		}
 	}

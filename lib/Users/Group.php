@@ -135,9 +135,8 @@
 		 */
 		
 		public function fetch() {
-			if (empty($this->id)) {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				throw new Exception("Cannot fetch group - group ID cannot be empty"); 
-				return false;
 			} 
 			
 			$query = "SELECT g.group_attrs, g.organisation_id, g.group_id AS id, g.group_name AS name, g.group_type AS type, 
@@ -170,6 +169,34 @@
 		}
 		
 		/**
+		 * Set the owner of this group
+		 * @since Version 3.9.1
+		 * @return \Railpage\Users\Group
+		 * @param \Railpage\Users\User $User
+		 */
+		
+		public function setOwner(User $User) {
+			$this->owner_user_id = $User->id;
+			$this->owner_username = $User->username;
+			
+			return $this;
+		}
+		
+		/**
+		 * Set the organisation associated to this group
+		 * @since Version 3.9.1
+		 * @return \Railpage\Users\Group
+		 * @param \Railpage\Organisations\Organisation $Org
+		 */
+		
+		public function setOrganisation(Organisation $Org) {
+			$this->organisation_id = $Org->id;
+			$this->organisation = $Org->name;
+			
+			return $this;
+		}
+		
+		/**
 		 * Make URLs
 		 * @since Version 3.9.1
 		 * @return void
@@ -192,10 +219,9 @@
 		 */
 		
 		public function members($items_per_page = 25, $page = 1) {
-			if (empty($this->id)) {
-				throw new Exception("Cannot fetch group - group ID cannot be empty"); 
-				return false;
-			} 
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
+				throw new Exception("Cannot fetch group - group ID cannot be empty");
+			}
 			
 			$thispage = ($page - 1) * $items_per_page;
 			
@@ -252,7 +278,8 @@
 				$query = "SELECT user_id, username FROM nuke_users WHERE username = ? AND user_active = 1"; 
 				$params = [ $username ];
 				
-				if ($result = $this->db->fetchAll($query, $params)) {
+				if ($row = $this->db->fetchRow($query, $params)) {
+					/*
 					if (count($result) === 0) {
 						return false;
 					}
@@ -270,6 +297,8 @@
 					}
 					
 					$row = $result[0]; 
+					*/
+					
 					$user_id = $row['user_id']; 
 					
 					if ($org_role && $org_contact && $org_perms) {
@@ -278,7 +307,7 @@
 							"user_id" => $user_id,
 							"organisation_role" => $org_role,
 							"organisation_contact" => $org_contact,
-							"organisation_perms" => $org_perms
+							"organisation_privileges" => $org_perms
 						];
 					} else {
 						$data = [
@@ -354,10 +383,7 @@
 			}
 			
 			if (empty($this->owner_user_id)) {
-				if (RP_DEBUG) {
-					global $debug;
-					$debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : updating owner_user_id for group ID " . $this->id;
-				}
+				Debug::logEvent(__METHOD__ . " : updating owner_user_id for group ID " . $this->id);
 				
 				$query = "SELECT user_id FROM nuke_users WHERE username = ?"; 
 				
@@ -437,11 +463,11 @@
 					Debug::logEvent(__METHOD__ . " found user ID " . $user_id . " in group ID " . $this->id, $timer); 
 					return true; 
 				}
-				
-				Debug::logEvent(__METHOD__ . " did not find ID " . $user_id . " in group ID " . $this->id, $timer); 
-				
-				return false;
 			}
+				
+			Debug::logEvent(__METHOD__ . " did not find ID " . $user_id . " in group ID " . $this->id, $timer); 
+			
+			return $result;
 		}
 		
 		/**

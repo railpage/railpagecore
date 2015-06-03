@@ -167,77 +167,67 @@
 				$this->id = $this->db->fetchOne("SELECT organisation_id FROM organisation WHERE organisation_slug = ?", $id); 
 			}
 			
-			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
-				// Retrieve this organisation from the database
+			$this->populate(); 
+			
+		}
+		
+		/**
+		 * Populate this object
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function populate() {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
+				return;
+			}
+			
+			// Retrieve this organisation from the database
+			
+			$query = "SELECT o.* FROM organisation AS o WHERE organisation_id = ?";
+			
+			if ($row = $this->db->fetchRow($query, $this->id)) {
+				$this->name 	= $row['organisation_name'];
+				$this->desc 	= $row['organisation_desc'];
+				$this->created 	= $row['organisation_dateadded'];
+				$this->owner 	= $row['organisation_owner'];
+				$this->contact_website 	= $row['organisation_website'];
+				$this->contact_phone 	= $row['organisation_phone'];
+				$this->contact_fax 		= $row['organisation_fax'];
+				$this->contact_email 	= $row['organisation_email'];
 				
-				if ($this->db instanceof \sql_db) {
-					$query = "SELECT o.* FROM organisation AS o WHERE organisation_id = ".$this->db->real_escape_string($this->id);
-					
-					if ($rs = $this->db->query($query)) {
-						$row = $rs->fetch_assoc();
-						
-						// Populate the vars above
-						$this->name 	= $row['organisation_name'];
-						$this->desc 	= $row['organisation_desc'];
-						$this->created 	= $row['organisation_dateadded'];
-						$this->owner 	= $row['organisation_owner'];
-						$this->contact_website 	= $row['organisation_website'];
-						$this->contact_phone 	= $row['organisation_phone'];
-						$this->contact_fax 		= $row['organisation_fax'];
-						$this->contact_email 	= $row['organisation_email'];
-						
-						$this->logo = $row['organisation_logo']; 
-						$this->flickr_photo_id = $row['flickr_photo_id'];
-						
-						// Get the roles for this org
-						$query = "SELECT * FROM organisation_roles WHERE organisation_id = ".$this->db->real_escape_string($this->id);
-						
-						if ($rs = $this->db->query($query)) {
-							while ($row = $rs->fetch_assoc()) {
-								$this->roles[$row['role_id']] = $row['role_name'];
-							}
-						} else {
-							throw new Exception($this->db->error."\n".$query);
-						}
-					} else {
-						throw new Exception("Could not find organisation ID ".$this->id);
-						throw new Exception($this->db->error."\n".$query);
-					}
-				} else {
-					$query = "SELECT o.* FROM organisation AS o WHERE organisation_id = ?";
-					
-					if ($row = $this->db->fetchRow($query, $this->id)) {
-						$this->name 	= $row['organisation_name'];
-						$this->desc 	= $row['organisation_desc'];
-						$this->created 	= $row['organisation_dateadded'];
-						$this->owner 	= $row['organisation_owner'];
-						$this->contact_website 	= $row['organisation_website'];
-						$this->contact_phone 	= $row['organisation_phone'];
-						$this->contact_fax 		= $row['organisation_fax'];
-						$this->contact_email 	= $row['organisation_email'];
-						
-						$this->logo = $row['organisation_logo']; 
-						$this->flickr_photo_id = $row['flickr_photo_id'];
-						
-						$this->slug = $row['organisation_slug']; 
-						
-						if (empty($this->slug)) {
-							$this->slug = parent::createSlug();
-						}
-						
-						$this->url = parent::makePermaLink($this->slug); 
-						
-						// Get the roles for this organisation
-						$query = "SELECT * FROM organisation_roles WHERE organisation_id = ?";
-						
-						if ($result = $this->db->fetchAll($query, $this->id)) {
-							foreach ($result as $row) {
-								$this->roles[$row['role_id']] = $row['role_name'];
-							}
-						}
+				$this->logo = $row['organisation_logo']; 
+				$this->flickr_photo_id = $row['flickr_photo_id'];
+				
+				$this->slug = $row['organisation_slug']; 
+				
+				if (empty($this->slug)) {
+					$this->slug = parent::createSlug();
+				}
+				
+				$this->url = parent::makePermaLink($this->slug); 
+				
+				// Get the roles for this organisation
+				$query = "SELECT * FROM organisation_roles WHERE organisation_id = ?";
+				
+				if ($result = $this->db->fetchAll($query, $this->id)) {
+					foreach ($result as $row) {
+						$this->roles[$row['role_id']] = $row['role_name'];
 					}
 				}
 			}
+		}
+		
+		/**
+		 * Set the owner of this organisation
+		 * @since Version 3.9.1
+		 * @param \Railpage\Users\User $User
+		 * @return \Railpage\Organisations\Organisation
+		 */
+		
+		public function setOwner(User $User) {
+			$this->owner = $User->id;
+			return $this;
 		}
 		
 		/** 
@@ -252,11 +242,27 @@
 				$this->slug = "";
 			}
 			
-			if (empty($this->name) || empty($this->desc)) {
-				return false;
-			} else {
-				return true;
+			if (empty($this->name)) {
+				throw new Exception("Organisation name cannot be empty"); 
 			}
+			
+			if (empty($this->desc)) {
+				throw new Exception("Organisation description cannot be empty"); 
+			}
+			
+			if (empty($this->created)) {
+				$this->created = time(); 
+			}
+			
+			$nulls = [ "contact_website", "contact_phone", "contact_fax", "contact_email", "logo", "flickr_photo_id" ];
+			
+			foreach ($nulls as $var) {
+				if (is_null($this->$var)) {
+					$this->$var = "";
+				}
+			}
+			
+			return true;
 		}
 		
 		/**
@@ -271,64 +277,32 @@
 				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$dataArray = array(); 
-				$dataArray['organisation_name']			= $this->db->real_escape_string($this->name);
-				$dataArray['organisation_desc']			= $this->db->real_escape_string($this->desc);
-				$dataArray['organisation_dateadded']	= $this->db->real_escape_string(time()); 
-				$dataArray['organisation_owner']		= $this->db->real_escape_string($this->owner);
-				$dataArray['organisation_website']		= $this->db->real_escape_string($this->contact_website);
-				$dataArray['organisation_phone']		= $this->db->real_escape_string($this->contact_phone); 
-				$dataArray['organisation_fax']			= $this->db->real_escape_string($this->contact_fax);
-				$dataArray['organisation_email']		= $this->db->real_escape_string($this->contact_email); 
-				$dataArray['organisation_logo'] 		= $this->db->real_escape_string($this->logo); 
-				$dataArray['flickr_photo_id']			= $this->db->real_escape_string($this->flickr_photo_id); 
-				
-				if ($this->id) {
-					$where = array("organisation_id" => $this->id); 
-					$query = $this->db->buildQuery($dataArray, "organisation", $where); 
-				} else {
-					$query = $this->db->buildQuery($dataArray, "organisation"); 
-				} 
-				
-				if ($rs = $this->db->query($query)) {
-					if (empty($this->id)) {
-						return $this->db->insert_id;
-					} else {
-						return true;
-					}
-				} else {
-					throw new Exception($this->db->error."\n".$query); 
-					return false;
+			$data = array(
+				"organisation_name"			=> $this->name,
+				"organisation_desc"			=> $this->desc,
+				"organisation_dateadded"	=> time(),
+				"organisation_owner"		=> $this->owner,
+				"organisation_website"		=> $this->contact_website,
+				"organisation_phone"		=> $this->contact_phone,
+				"organisation_fax"			=> $this->contact_fax,
+				"organisation_email"		=> $this->contact_email,
+				"organisation_logo"			=> $this->logo,
+				"flickr_photo_id"			=> $this->flickr_photo_id,
+				"organisation_slug"			=> $this->slug
+			);
+			
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				// Update
+				if ($this->db->update("organisation", $data, "organisation_id = " . $this->id)) {
+					return true;
 				}
 			} else {
-				$data = array(
-					"organisation_name"			=> $this->name,
-					"organisation_desc"			=> $this->desc,
-					"organisation_dateadded"	=> time(),
-					"organisation_owner"		=> $this->owner,
-					"organisation_website"		=> $this->contact_website,
-					"organisation_phone"		=> $this->contact_phone,
-					"organisation_fax"			=> $this->contact_fax,
-					"organisation_email"		=> $this->contact_email,
-					"organisation_logo"			=> $this->logo,
-					"flickr_photo_id"			=> $this->flickr_photo_id,
-					"organisation_slug"			=> $this->slug
-				);
-				
-				if (filter_var($this->id, FILTER_VALIDATE_INT)) {
-					// Update
-					if ($this->db->update("organisation", $data, "organisation_id = " . $this->id)) {
-						return true;
-					}
-				} else {
-					// Insert
-					if ($this->db->insert("organisation", $data)) {
-						$this->id = $this->db->lastInsertId();
-						
-						$this->slug = $this->createSlug();
-						return true;
-					}
+				// Insert
+				if ($this->db->insert("organisation", $data)) {
+					$this->id = $this->db->lastInsertId();
+					
+					$this->slug = $this->createSlug();
+					return true;
 				}
 			}
 		}
@@ -344,26 +318,9 @@
 				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT operator_id FROM operators WHERE organisation_id = ".$this->id;
-				
-				if ($rs = $this->db->query($query)) {
-					if ($rs->num_rows == 0) {
-						return false;
-					}
-					
-					$row = $rs->fetch_assoc(); 
-					
-					return $row['operator_id'];
-				} else {
-					throw new Exception($this->db->error."\n\n".$query); 
-					return false;
-				}
-			} else {
-				$query = "SELECT operator_id FROM operators WHERE organisation_id = ?";
-				
-				return $this->db->fetchOne($query, $this->id);
-			}
+			$query = "SELECT operator_id FROM operators WHERE organisation_id = ?";
+			
+			return $this->db->fetchOne($query, $this->id);
 		}
 		
 		/**
