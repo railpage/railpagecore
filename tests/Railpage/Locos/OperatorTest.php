@@ -23,6 +23,7 @@
 			
 			$this->assertEquals($id, $Operator->id);
 			$this->assertEquals("Test Operator", $Operator->name);
+			$this->assertEquals("Test Operator", strval($Operator));
 		}
 		
 		/**

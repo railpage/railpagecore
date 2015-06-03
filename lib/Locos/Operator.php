@@ -95,37 +95,20 @@
 			}
 			
 			// Fetch the data
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT * FROM operators WHERE operator_id = ".$this->db->real_escape_string($operator_id); 
-				
-				if ($rs = $this->db->query($query)) {
-					$row = $rs->fetch_assoc(); 
-					
-					$this->id 		= $operator_id; 
-					$this->name		= $row['operator_name']; 
-					$this->organisation_id = $row['organisation_id']; 
-					
-					return true;
-				} else {
-					throw new Exception($this->db->error."\n".$query);
-					return false;
-				}
-			} else {
-				$query = "SELECT * FROM operators WHERE operator_id = ?";
-				
-				$row = $this->db->fetchRow($query, $operator_id);
-				$this->id 		= $operator_id; 
-				$this->name		= $row['operator_name']; 
-				$this->organisation_id = $row['organisation_id']; 
-				$this->url_operator = "/locos/browse/operator/" . $this->id;
-				$this->url_owner = "/locos/browse/owner/" . $this->id;
-				
-				$this->url = new Url(sprintf("/locos/browse/operator/%d", $this->id));
-				$this->url->operator = sprintf("/locos/browse/operator/%d", $this->id);
-				$this->url->owner = sprintf("/locos/browse/owner/%d", $this->id);
-				
-				return true;
-			}
+			$query = "SELECT * FROM operators WHERE operator_id = ?";
+			
+			$row = $this->db->fetchRow($query, $operator_id);
+			$this->id 		= $operator_id; 
+			$this->name		= $row['operator_name']; 
+			$this->organisation_id = $row['organisation_id']; 
+			$this->url_operator = "/locos/browse/operator/" . $this->id;
+			$this->url_owner = "/locos/browse/owner/" . $this->id;
+			
+			$this->url = new Url(sprintf("/locos/browse/operator/%d", $this->id));
+			$this->url->operator = sprintf("/locos/browse/operator/%d", $this->id);
+			$this->url->owner = sprintf("/locos/browse/owner/%d", $this->id);
+			
+			return true;
 		}
 		
 		/**
@@ -157,45 +140,33 @@
 			
 			$this->validate();
 			
-			if ($this->db instanceof \sql_db) {
-				$dataArray = array(); 
-				$dataArray['operator_name'] 	= $this->db->real_escape_string($this->name); 
-				$dataArray['organisation_id']	= $this->db->real_escape_string($this->organisation_id); 
-				
-				if (!empty($this->id)) {
-					$where = array("operator_id" => $this->id);
-					
-					$query = $this->db->buildQuery($dataArray, "operators", $where); 
-				} else {
-					$query = $this->db->buildQuery($dataArray, "operators"); 
-				}
-				
-				if ($rs = $this->db->query($query)) {
-					$this->id = $this->db->insert_id;
-					return true;
-				} else {
-					throw new Exception($this->db->error."\n".$query); 
-					return false;
-				}
-			} else {
-				$data = array(
-					"operator_name" => $this->name,
-					"organisation_id" => $this->organisation_id
+			$data = array(
+				"operator_name" => $this->name,
+				"organisation_id" => $this->organisation_id
+			);
+			
+			if (!empty($this->id)) {
+				$where = array(
+					"operator_id = ?" => $this->id
 				);
 				
-				if (!empty($this->id)) {
-					$where = array(
-						"operator_id = ?" => $this->id
-					);
-					
-					$this->db->update("operators", $data, $where);
-				} else {
-					$this->db->insert("operators", $data); 
-					$this->id = $this->db->lastInsertId(); 
-				}
-				
-				return true;
+				$this->db->update("operators", $data, $where);
+			} else {
+				$this->db->insert("operators", $data); 
+				$this->id = $this->db->lastInsertId(); 
 			}
+			
+			return true;
+		}
+		
+		/**
+		 * Return this as a string
+		 * @since Version 3.9.1
+		 * @return string
+		 */
+		
+		public function __toString() {
+			return $this->name;
 		}
 	}
 	

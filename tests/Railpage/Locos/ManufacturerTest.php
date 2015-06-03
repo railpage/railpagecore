@@ -24,6 +24,7 @@
 			
 			$this->assertEquals($id, $Manufacturer->id);
 			$this->assertEquals("Test Manufacturer", $Manufacturer->name);
+			$this->assertEquals("Test Manufacturer", strval($Manufacturer));
 			$this->assertEquals("Test description", $Manufacturer->desc);
 		}
 		
