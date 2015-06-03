@@ -75,4 +75,23 @@
 		public static function getLog() {
 			return self::$log;
 		}
+		
+		/**
+		 * Record a new instance of the specified class
+		 * @since Version 3.9.1
+		 * @return void
+		 * @param string $object
+		 */
+		
+		public static function RecordInstance($object = NULL) {
+			
+			$trace = debug_backtrace(); 
+			
+			$object = is_null($object) ? $trace[1]['class'] : $object;
+			
+			$message = "\n\n####  Instantiating new instance of " . $object . " from " . $trace[1]['file'] . " on line " . $trace[1]['line'] . "  ####\n";
+			
+			self::logEvent($message);
+
+		}
 	}

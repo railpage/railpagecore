@@ -122,7 +122,7 @@
 				throw new Exception("Cannot validate Operator: the operator name cannot be empty");
 			}
 			
-			if (!filter_var($this->organisation_id)) {
+			if (!filter_var($this->organisation_id, FILTER_VALIDATE_INT)) {
 				$this->organisation_id = 0;
 			}
 			

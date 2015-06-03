@@ -9,6 +9,7 @@
 	namespace Railpage; 
 	
 	use Railpage\AppCore;
+	use Railpage\Debug;
 	use Exception;
 	
 	/**
@@ -40,16 +41,15 @@
 		 * Constructor
 		 */
 		
-		public function construct() {
+		public function __construct() {
+			
 			parent::__construct(); 
 			
 			/**
 			 * Record this in the debug log
 			 */
 			
-			if (function_exists("debug_recordInstance")) {
-				debug_recordInstance(__CLASS__);
-			}
+			Debug::recordInstance(); 
 		}
 		
 		/**
@@ -92,7 +92,7 @@
 			if ($url) {
 				$this->menu[$i]['url'] = strval($url);
 				
-				global $Smarty;
+				$Smarty = AppCore::getSmarty();
 	
 				/**
 				 * Pre-rendering

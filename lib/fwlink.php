@@ -106,17 +106,15 @@
 		private function load() {
 			$this->mckey = sprintf("railpage:fwlink=%s", md5($this->id));
 			
-			if ($row = $this->Memcached->fetch($this->mckey)) {
-				$this->id = $row['id']; 
-				$this->url = $row['url']; 
-				$this->title = $row['title'];
+			if (!$row = $this->Memcached->fetch($this->mckey)) {
 				
-				return;
+				$query = "SELECT * FROM fwlink WHERE id = ?";
+			
+				$row = $this->db->fetchRow($query, $this->id);
+				
 			}
 			
-			$query = "SELECT * FROM fwlink WHERE id = ?";
-			
-			if ($row = $this->db->fetchRow($query, $this->id)) {
+			if (isset($row) && count($row)) {
 				$this->id = $row['id']; 
 				$this->url = $row['url'];
 				$this->title = $row['title'];

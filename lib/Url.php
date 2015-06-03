@@ -10,6 +10,7 @@
 	namespace Railpage;
 	
 	use Railpage\fwlink;
+	use Railpage\Debug;
 	use Exception;
 	
 	/**
@@ -33,11 +34,10 @@
 		 */
 		
 		public function __construct($default_url = false) {
+			
+			Debug::RecordInstance(); 
 				
-			if (!is_null(filter_input(INPUT_SERVER, "debug", FILTER_VALIDATE_BOOLEAN))) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
+			$timer = Debug::getTimer(); 
 			
 			if ($default_url !== false) {
 				
@@ -61,9 +61,7 @@
 				
 			}
 			
-			if (!is_null(filter_input(INPUT_SERVER, "debug", FILTER_VALIDATE_BOOLEAN))) {
-				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $default_url . ") instantiated in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-			}
+			Debug::logEvent("Railpage: " . __CLASS__ . "(" . $default_url . ") instantiated", $timer);
 			
 		}
 		
