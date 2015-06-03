@@ -1437,8 +1437,12 @@
 		 */
 		
 		public function inGroup($group_id = false) {
-			if (!$this->db || !$group_id) {
+			if (!filter_var($group_id, FILTER_VALIDATE_INT)) {
 				return false;
+			}
+			
+			if (!defined("RP_GROUP_ADMINS")) {
+				define("RP_GROUP_ADMINS", 770); 
 			}
 			
 			if ($group_id == RP_GROUP_ADMINS && $this->level >= 2) {
