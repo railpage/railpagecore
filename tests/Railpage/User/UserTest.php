@@ -4,6 +4,8 @@
 	use Railpage\Users\Admin;
 	use Railpage\Users\Base;
 	use Railpage\Users\User;
+	use Railpage\Users\Group;
+	use Railpage\Users\Groups;
 	use Railpage\Warnings\Warning;
 	use Railpage\Forums\Forums;
 	use Railpage\Forums\Post;
@@ -35,7 +37,7 @@
 			
 			$Base = new Base; 
 			$regs = $Base->getUserRegistrationStats(); 
-			$this->assertEquals(1, count($regs)); 
+			$this->assertTrue(count($regs) > 0); 
 			
 			return $User;
 			
@@ -469,16 +471,6 @@
 		 * @depends test_newUser
 		 */
 		
-		public function test_getGroups($User) {
-			
-			$this->assertEquals(false, $User->getGroups()); 
-			
-		}
-		
-		/**
-		 * @depends test_newUser
-		 */
-		
 		public function test_newAPIKey($User) {
 			
 			$User->api_key = NULL;
@@ -562,26 +554,6 @@
 			$User->commit(); 
 			
 			$User->load(); 
-			
-		}
-		
-		/**
-		 * @depends test_newUser
-		 */
-		
-		public function test_groups($User) {
-			
-			if (!defined("RP_GROUP_ADMINS")) {
-				define("RP_GROUP_ADMINS", 770);
-			}
-			
-			$this->assertFalse($User->inGroup()); 
-			$this->assertFalse($User->inGroup(RP_GROUP_ADMINS));
-			
-			$User->level = 2;
-			$this->assertTrue($User->inGroup(RP_GROUP_ADMINS)); 
-			
-			$User->level = 1;
 			
 		}
 		
@@ -746,5 +718,88 @@
 			
 		}
 		
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_group($User) {
+			
+			$User->Redis = new \Railpage\NullCacheDriver;
+			
+			$this->assertEquals(0, count($User->getGroups())); 
+			
+			$Group = new Group; 
+			$Group->name = "Test user group";
+			$Group->desc = "A test user group description";
+			$Group->type = Group::TYPE_HIDDEN;
+			$Group->owner_user_id = $User->id;
+			$Group->commit(); 
+			
+			$this->assertFalse(!filter_var($Group->id, FILTER_VALIDATE_INT)); 
+			
+			$this->assertFalse($Group->userInGroup($User)); 
+			
+			$Group->addMember($User->username, $User->id); 
+			$Group->approveUser($User);
+			$this->assertTrue($Group->userInGroup($User)); 
+			
+			$Group->removeUser($User); 
+			$this->assertFalse($Group->userInGroup($User)); 
+			
+			$Group->addMember($User->username, $User->id, "Manager", "03 9562 2222", "blah"); 
+			$Group->approveUser($User);
+			$this->assertTrue($Group->userInGroup($User)); 
+			
+			$members = $Group->getMembers(); 
+			$this->assertTrue(is_array($members)); 
+			$this->assertTrue(count($members['members']) > 0);
+			
+			$this->assertTrue($User->inGroup($Group->id)); 
+			
+			$this->assertTrue(count($User->getGroups()) > 0); 
+			
+			$NewGroup = new Group($Group->id); 
+			
+			$this->assertEquals($NewGroup->id, $Group->id); 
+			$this->assertEquals($NewGroup->name, $Group->name); 
+			$this->assertEquals($NewGroup->desc, $Group->desc); 
+			$this->assertEquals($NewGroup->type, $Group->type);
+			
+			$Group->type = Group::TYPE_OPEN;
+			$Group->commit(); 
+			
+			
+			
+			
+			if (!defined("RP_GROUP_ADMINS")) {
+				define("RP_GROUP_ADMINS", 770);
+			}
+			
+			$this->assertFalse($User->inGroup()); 
+			$this->assertFalse($User->inGroup(RP_GROUP_ADMINS));
+			
+			$User->level = 2;
+			$this->assertTrue($User->inGroup(RP_GROUP_ADMINS)); 
+			
+			$User->level = 1;
+			
+			
+			return $Group;
+			
+		}
+		
+		/**
+		 * @depends test_group
+		 */
+		
+		public function test_groups($Group) {
+			
+			$Groups = new Groups; 
+			$allgroups = $Groups->getGroups(); 
+			
+			$this->assertTrue(is_array($allgroups)); 
+			$this->assertEquals(1, count($allgroups)); 
+			
+		}
 	}
 	

@@ -739,10 +739,10 @@
 				$Smarty->use_sub_dirs	= true;
 				$Smarty->assign("rp_host", RP_HOST);
 				$Smarty->assign("rand", rand());
-				$Smarty->assign("rp_version", RP_VERSION);
-				$Smarty->assign("rp_web_root", RP_WEB_ROOT);
+				$Smarty->assign("rp_version", defined("RP_VERSION") ? RP_VERSION : "0.0.0");
+				$Smarty->assign("rp_web_root", defined("RP_WEB_ROOT") ? RP_WEB_ROOT : __DIR__);
 				$Smarty->assign("site_name", $Config->SiteName);
-				$Smarty->assign("rp_production", RP_ISPRODUCTION ? true : false);
+				$Smarty->assign("rp_production", (defined("RP_ISPRODUCTION") ? "RP_ISPRODUCTION" : define("RP_ISPRODUCTION", true)) ? true : false);
 				$Smarty->assign("ad_header", $Config->AdHeader);
 				$Smarty->assign("rp_map_styles", json_encode($Config->Google->Maps->Styles));
 				$Smarty->assign("rp_map_icons", json_encode($Config->Google->Maps->Icons));

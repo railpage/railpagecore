@@ -69,7 +69,7 @@
 		public function loadAll() {
 			// Attempt to load combined users & IPs first
 			if (empty($this->users) || empty($this->ip_addresses)) {
-				if ($this->Memcached->contains(self::CACHE_KEY_ALL) && $array = json_decode(gzuncompress($this->Memcached->fetch(self::CACHE_KEY_ALL)), true)) {
+				if ($this->Memcached->contains(self::CACHE_KEY_ALL) && $array = json_decode(gzuncompress($this->Memcached->Fetch(self::CACHE_KEY_ALL)), true)) {
 					$this->users = $array['users'];
 					$this->ip_addresses = $array['ips'];
 					
@@ -127,7 +127,7 @@
 		public function loadUsers($skipCache = false) {
 			$mckey = "railpage:bancontrol.users;v5"; 
 			
-			if ($skipCache || !$this->Memcached->contains($mckey) || !$this->users = json_decode(gzuncompress($this->Memcached->fetch($mckey)), true)) {
+			if ($skipCache || !$this->Memcached->contains($mckey) || !$this->users = json_decode(gzuncompress($this->Memcached->Fetch($mckey)), true)) {
 				$query = "SELECT b.id, b.user_id, b.ban_time, b.ban_expire, b.ban_reason, b.banned_by AS admin_user_id, bu.username, bu.reported_to_sfs, au.username AS admin_username
 					FROM bancontrol AS b
 					LEFT JOIN nuke_users AS bu ON b.user_id = bu.user_id
@@ -160,7 +160,7 @@
 		public function loadIPs($skipCache = false) {
 			$mckey = "railpage:bancontrol.ips;v4"; 
 			
-			if ($skipCache || !$this->Memcached->contains($mckey) || !$this->ip_addresses = json_decode(gzuncompress($this->Memcached->fetch($mckey)), true)) {
+			if ($skipCache || !$this->Memcached->contains($mckey) || !$this->ip_addresses = json_decode(gzuncompress($this->Memcached->Fetch($mckey)), true)) {
 				$query = "SELECT b.id, b.ip, b.ban_time, b.ban_expire, b.ban_reason, b.banned_by AS admin_user_id, au.username AS admin_username
 					FROM bancontrol AS b
 					LEFT JOIN nuke_users AS au ON b.banned_by = au.user_id
@@ -230,11 +230,11 @@
 			$this->Memcached = AppCore::getMemcached();
 			
 			try {
-				if ($this->Memcached->fetch("railpage:bancontrol.users")) {
+				if ($this->Memcached->Fetch("railpage:bancontrol.users")) {
 					$this->Memcached->delete("railpage:bancontrol.users"); 
 				}
 				
-				if ($this->Memcached->fetch(self::CACHE_KEY_ALL)) {
+				if ($this->Memcached->Fetch(self::CACHE_KEY_ALL)) {
 					$this->Memcached->delete(self::CACHE_KEY_ALL);
 				}
 			} catch (Exception $e) {
@@ -284,14 +284,14 @@
 			$Smarty = AppCore::GetSmarty(); 
 		
 			// Send the ban email
-			$smarty->assign("userdata_username", $ThisUser->username);
-			$smarty->assign("ban_reason", $reason);
+			$Smarty->Assign("userdata_username", $ThisUser->username);
+			$Smarty->Assign("ban_reason", $reason);
 			
 			if ($expiry > 0) {
-				$smarty->assign("ban_expire_nice", date($ThisUser->date_format, $expire));
+				$Smarty->Assign("ban_expire_nice", date($ThisUser->date_format, $expiry));
 			}
 			
-			$email_body = $Smarty->fetch($Smarty->ResolveTemplate("email_ban"));
+			$email_body = $Smarty->Fetch($Smarty->ResolveTemplate("email.ban"));
 			
 			// Send the confirmation email
 			/*
@@ -317,6 +317,8 @@
 			if ($admin_user_id !== false) {
 				$Notification->setAuthor(new User($admin_user_id));
 			}
+			
+			#print_r($Notification->getArray());
 			
 			$Notification->addRecipient($ThisUser->id, $ThisUser->username, $ThisUser->contact_email);
 			$Notification->body = $Smarty->Fetch($Smarty->ResolveTemplate("email.ban"));
@@ -452,12 +454,12 @@
 				try {
 					$ThisUser->commit(); 
 					
-					global $smarty;
+					$Smarty = AppCore::getSmarty(); 
 		
 					// Send the ban email
-					$smarty->assign("userdata_username", $ThisUser->username);
+					$Smarty->Assign("userdata_username", $ThisUser->username);
 					
-					$email_body = $smarty->fetch($smarty->ResolveTemplate("email_unban"));
+					$email_body = $Smarty->Fetch($Smarty->ResolveTemplate("email_unban"));
 					
 					// Send the confirmation email
 					require_once("Mail.php");

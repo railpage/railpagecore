@@ -22,7 +22,7 @@
 			
 			$User = new User;
 			$User->username = "BanControl tester";
-			$User->contact_email = "michael+phpunit+bantest@railpage.com.au";
+			$User->contact_email = "michael+phpunitbantest@railpage.com.au";
 			$User->setPassword("BanControl"); 
 			$User->commit(); 
 			

@@ -23,7 +23,7 @@
 			
 			$this->assertFalse(!filter_var($User->id, FILTER_VALIDATE_INT));
 			
-			return $User->id;
+			return $User;
 			
 		}
 		
@@ -31,9 +31,7 @@
 		 * @depends testAddUser
 		 */
 		
-		public function testAddEntry($user_id) {
-			
-			$User = new User($user_id);
+		public function testAddEntry($User) {
 			
 			$Type = new Type(self::TYPE);
 			$Entry = new Entry;
@@ -45,7 +43,16 @@
 			
 			$Entry->commit(); 
 			
+			$Entry->name = "test"; 
+			$Entry->commit(); 
+			$Entry->name = self::NAME;
+			$Entry->commit(); 
+			
+			$Entry = new Entry($Entry->id);
+			
 			$this->assertFalse(!filter_var($Entry->id, FILTER_VALIDATE_INT));
+			
+			$this->assertEquals($User->id, $Entry->Author->id);
 			
 			return $Entry;
 			
@@ -53,22 +60,20 @@
 		
 		/**
 		 * @depends testAddEntry
-		 * @depends testAddUser
 		 */
 		
-		public function testCompareEntry($Entry, $user_id) {
+		public function testCompareEntry($Entry) {
 			
-			$entry_id = $Entry->id;
-			$User = new User($user_id);
-			unset($Entry);
+			$NewEntry = new Entry($Entry->id); 
 			
-			$Entry = new Entry($entry_id); 
+			$this->assertEquals($Entry->name, $NewEntry->name);
 			
-			$this->assertEquals(self::TYPE, $Entry->Type->name); 
-			$this->assertEquals(self::NAME, $Entry->name);
-			$this->assertEquals(self::TEXT, $Entry->text); 
-			$this->assertEquals(self::EXAMPLE, $Entry->example); 
-			$this->assertEquals($User->username, $Entry->Author->username); 
+			$this->assertEquals(self::TYPE, $NewEntry->Type->name); 
+			$this->assertEquals(self::NAME, $NewEntry->name);
+			$this->assertEquals(self::TEXT, $NewEntry->text); 
+			$this->assertEquals(self::EXAMPLE, $NewEntry->example); 
+			$this->assertEquals($Entry->Author->id, $NewEntry->Author->id); 
+			$this->assertEquals($Entry->Author->username, $NewEntry->Author->username); 
 			
 		}
 		
