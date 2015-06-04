@@ -11,6 +11,24 @@
 			$Type->name = "Test Type";
 			$Type->commit(); 
 			
+			$NewType = new Type; 
+			$NewType->name = "Test type"; 
+			$NewType->commit(); 
+			
+			$Database = $Type->getDatabaseConnection(); 
+			$data = [ "slug" => "" ];
+			$where = [ "id = ?" => $Type->id ];
+			$Database->update("loco_type", $data, $where);
+			
+			$Database = $Type->getDatabaseConnection(); 
+			$data = [ "slug" => "" ];
+			$where = [ "id = ?" => $NewType->id ];
+			$Database->update("loco_type", $data, $where);
+			
+			
+			$Type = new Type($Type->id); 
+			$NewType = new Type($NewType->id); 
+			
 			return $Type->id;
 		}
 		
@@ -44,5 +62,15 @@
 			$this->assertEquals($updated_name, $Type->name);
 			
 		}
+		
+		public function test_break_validate() {
+			
+			$this->setExpectedException("Exception", "Cannot validate changes to this loco type: name cannot be empty");
+			
+			$Type = new Type;
+			$Type->commit(); 
+			
+		}
+		
 	}
 	

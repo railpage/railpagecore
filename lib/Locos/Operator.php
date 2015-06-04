@@ -73,11 +73,7 @@
 			parent::__construct(); 
 			
 			if (filter_var($operator_id, FILTER_VALIDATE_INT)) {
-				try {
-					$this->fetch($operator_id); 
-				} catch (Exception $e) {
-					throw new Exception($e->getMessage()); 
-				}
+				$this->fetch($operator_id);
 			}
 		}
 		
@@ -88,11 +84,7 @@
 		 * @param int $operator_id
 		 */
 		
-		public function fetch($operator_id = false) {
-			if (!$operator_id) {
-				throw new Exception("No operator ID provided"); 
-				return false;
-			}
+		private function fetch($operator_id = false) {
 			
 			// Fetch the data
 			$query = "SELECT * FROM operators WHERE operator_id = ?";
@@ -101,14 +93,18 @@
 			$this->id 		= $operator_id; 
 			$this->name		= $row['operator_name']; 
 			$this->organisation_id = $row['organisation_id']; 
-			$this->url_operator = "/locos/browse/operator/" . $this->id;
-			$this->url_owner = "/locos/browse/owner/" . $this->id;
-			
+		}
+		
+		/**
+		 * Make object URLs
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function makeURLs() {
 			$this->url = new Url(sprintf("/locos/browse/operator/%d", $this->id));
 			$this->url->operator = sprintf("/locos/browse/operator/%d", $this->id);
 			$this->url->owner = sprintf("/locos/browse/owner/%d", $this->id);
-			
-			return true;
 		}
 		
 		/**
@@ -155,6 +151,8 @@
 				$this->db->insert("operators", $data); 
 				$this->id = $this->db->lastInsertId(); 
 			}
+			
+			$this->makeURLs(); 
 			
 			return true;
 		}

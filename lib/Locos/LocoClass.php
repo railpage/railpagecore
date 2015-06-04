@@ -1460,4 +1460,14 @@
 		public function getManufacturer() {
 			return new Manufacturer($this->manufacturer_id); 
 		}
+		
+		/**
+		 * Echo this class as a string
+		 * @since Version 3.9.1
+		 * @return string
+		 */
+		
+		public function __toString() {
+			return $this->name;
+		}
 	}

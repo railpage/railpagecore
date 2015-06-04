@@ -88,10 +88,10 @@
 		/**
 		 * Affected locomotive object
 		 * @since Version 3.8.7
-		 * @var \Railpage\Locos\Locomotive $Loco
+		 * @var object $Object
 		 */
 		
-		public $Loco;
+		public $Object;
 		
 		/**
 		 * Resolution
@@ -108,28 +108,52 @@
 		 */
 		
 		public function __construct($id = NULL) {
+			
 			parent::__construct(); 
 			
-			if (filter_var($id, FILTER_VALIDATE_INT)) {
-				$query = "SELECT * FROM loco_unit_corrections WHERE correction_id = ?";
+			if ($id = filter_var($id, FILTER_VALIDATE_INT)) {
 				
-				$row = $this->db->fetchRow($query, $id);
+				$this->populate($id); 
+			}
+		}
+		
+		/**
+		 * Populate this object
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function populate($id) {
+			
+			$query = "SELECT * FROM loco_unit_corrections WHERE correction_id = ?";
+			
+			$row = $this->db->fetchRow($query, $id);
+			
+			if (count($row)) {
+				$this->id = $id;
+				$this->text = $row['text'];
+				$this->User = new User($row['user_id']);
+				$this->Date = new DateTime($row['date']);
+				$this->status = $row['status'];
+				$this->Resolution = new stdClass;
 				
-				if (count($row)) {
-					$this->id = $id;
-					$this->text = $row['text'];
-					$this->Loco = new Locomotive($row['loco_id']);
-					$this->User = new User($row['user_id']);
-					$this->Date = new DateTime($row['date']);
-					$this->status = $row['status'];
-					$this->Resolution = new stdClass;
-					
-					if (filter_var($row['resolved_by'], FILTER_VALIDATE_INT)) {
-						$this->Resolution->User = new User($row['resolved_by']);
-						$this->Resolution->Date = new DateTime($row['resolved_date']);
-					}
+				if (filter_var($row['resolved_by'], FILTER_VALIDATE_INT)) {
+					$this->Resolution->User = new User($row['resolved_by']);
+					$this->Resolution->Date = new DateTime($row['resolved_date']);
+				}
+				
+				if ($loco_id = filter_var($row['loco_id'], FILTER_VALIDATE_INT)) {
+					$this->Object = new Locomotive($loco_id); 
+					return;
+				}
+				
+				if ($class_id = filter_var($row['class_id'], FILTER_VALIDATE_INT)) {
+					$this->Object = new LocoClass($class_id); 
+					return;
 				}
 			}
+				
+			throw new Exception("Unable to determine if this correction belongs to a locomotive or a locomotive class"); 
 		}
 		
 		/**
@@ -146,8 +170,8 @@
 				throw new Exception("Cannot validate changes to this correction: no text provided");
 			}
 			
-			if (!$this->Loco instanceof Locomotive) {
-				throw new Exception("Cannot validate changes to this correction: no locomotive provided");
+			if (!$this->Object instanceof Locomotive && !$this->Object instanceof LocoClass) {
+				throw new Exception("Cannot validate changes to this correction: no locomotive or locomotive class provided");
 			}
 			
 			if (!$this->User instanceof User) {
@@ -166,16 +190,63 @@
 		}
 		
 		/**
+		 * Get the loco ID or class ID for the DB insert
+		 * @since Version 3.9.1
+		 * @return null|int
+		 * @param string $column
+		 */
+		
+		private function getObjectIdForSQL($column) {
+			
+			$return = NULL;
+			
+			switch ($column) {
+				case "class_id" : 
+					$return = $this->Object instanceof LocoClass ? $this->Object->id : NULL;
+					break;
+				
+				case "loco_id" : 
+					$return = $this->Object instanceof Locomotive ? $this->Object->id : NULL;
+					break;
+				
+			}
+			
+			return $return;
+		}
+		
+		/**
+		 * Set the object that this correction applies to
+		 * @since Version 3.9.1
+		 * @param \Railpage\Locos\Locomotive | \Railpage\Locos\LocoClass $Object
+		 * @return \Railpage\Locos\Correction
+		 */
+		
+		public function setObject($Object = NULL) {
+			
+			if ($Object instanceof Locomotive) {
+				$this->Object = $Object;
+			}
+			
+			if ($Object instanceof LocoClass) {
+				$this->Object = $Object;
+			}
+			
+			return $this;
+			
+		}
+		
+		/**
 		 * Commit changes to this correction
 		 * @since Version 3.8.7
-		 * @return boolean
+		 * @return \Railpage\Locos\Correction
 		 */
 		
 		public function commit() {
 			$this->validate();
 			
 			$data = array(
-				"loco_id" => $this->Loco->id,
+				"loco_id" => $this->getObjectIdForSQL("loco_id"),
+				"class_id" => $this->getObjectIdForSQL("class_id"),
 				"user_id" => $this->User->id,
 				"date" => $this->Date->format("Y-m-d H:i:s"),
 				"status" => $this->status,
@@ -195,19 +266,19 @@
 				$this->id = $this->db->lastInsertId();
 			}
 			
-			return true;
+			return $this;
 		}
 		
 		/**
 		 * Close this correction
 		 * @since Version 3.8.7
 		 * @throws \Exception if $this->Resolution->User is not an instance of \Railpage\Users\User
-		 * @return boolean
+		 * @return \Railpage\Locos\Correction
 		 * @param string $reason
 		 */
 		
 		public function close($reason = NULL) {
-			if (!$this->Resolution->User instanceof User) {
+			if (!isset($this->Resolution->User) || !$this->Resolution->User instanceof User) {
 				throw new Exception("Cannot close correction - User resolving this correction not specified");
 			}
 			
@@ -233,7 +304,12 @@
 			$Message->setAuthor($this->Resolution->User);
 			$Message->setRecipient($this->User);
 			$Message->subject = "Your Locomotives database correction has been accepted";
-			$Message->body = "Your suggested correction for [url=" . $this->Loco->url->url . "]" . $this->Loco->number . "[/url] in [url=" . $this->Loco->Class->url->url . "]" . $this->Loco->Class->name . "[/url] has been accepted by " . $this->Resolution->User->username . ".";
+			
+			if ($this->Object instanceof Locomotive) {
+				$Message->body = "Your suggested correction for [url=" . $this->Object->url->url . "]" . strval($this->Object) . "[/url] in [url=" . $this->Object->Class->url->url . "]" . $this->Object->Class->name . "[/url] has been accepted by " . $this->Resolution->User->username . ".";
+			} else {
+				$Message->body = "Your suggested correction for [url=" . $this->Object->url . "]" . strval($this->Object) . "[/url] has been accepted by " . $this->Resolution->User->username . ".";
+			}
 			
 			if (!empty($this->text)) {
 				$Message->body .= "\n\n[quote=Your suggestion]" . $this->text . "[/quote]";
@@ -247,19 +323,19 @@
 			
 			$Message->send();
 			
-			return true;
+			return $this;
 		}
 		
 		/**
 		 * Ignore this correction
 		 * @since Version 3.8.7
 		 * @throws \Exception if $this->Resolution->User is not an instance of \Railpage\Users\User
-		 * @return boolean
+		 * @return \Railpage\Locos\Correction
 		 * @param string $reason
 		 */
 		
 		public function ignore($reason = NULL) {
-			if (!$this->Resolution->User instanceof User) {
+			if (!isset($this->Resolution->User) || !$this->Resolution->User instanceof User) {
 				throw new Exception("Cannot ignore correction - User resolving this correction not specified");
 			}
 			
@@ -285,7 +361,12 @@
 			$Message->setAuthor($this->Resolution->User);
 			$Message->setRecipient($this->User);
 			$Message->subject = "Your Locomotives database correction was not accepted";
-			$Message->body = "Your suggested correction for [url=" . $this->Loco->url->url . "]" . $this->Loco->number . "[/url] in [url=" . $this->Loco->Class->url->url . "]" . $this->Loco->Class->name . "[/url] was not accepted by " . $this->Resolution->User->username . ".";
+			
+			if ($this->Object instanceof Locomotive) {
+				$Message->body = "Your suggested correction for [url=" . $this->Object->url->url . "]" . strval($this->Object) . "[/url] in [url=" . $this->Object->Class->url->url . "]" . $this->Object->Class->name . "[/url] was not accepted by " . $this->Resolution->User->username . ".";
+			} else {
+				$Message->body = "Your suggested correction for [url=" . $this->Object->url . "]" . strval($this->Object) . "[/url] was not accepted by " . $this->Resolution->User->username . ".";
+			}
 			
 			if (!empty($this->text)) {
 				$Message->body .= "\n\n[quote=Your suggestion]" . $this->text . "[/quote]";
@@ -299,7 +380,55 @@
 			
 			$Message->send();
 			
-			return true;
+			return $this;
+		}
+		
+		/**
+		 * Reject - alias of ignore
+		 * @since Version 3.9.1
+		 * @throws \Exception if $this->Resolution->User is not an instance of \Railpage\Users\User
+		 * @return \Railpage\Locos\Correction
+		 * @param string $reason
+		 */
+		
+		public function reject($reason) {
+			
+			return $this->ignore($reason); 
+			
+		}
+		
+		/**
+		 * Approve - alias of close
+		 * @since Version 3.9.1
+		 * @throws \Exception if $this->Resolution->User is not an instance of \Railpage\Users\User
+		 * @return \Railpage\Locos\Correction
+		 * @param string $reason
+		 */
+		
+		public function approve($reason) {
+			
+			return $this->close($reason); 
+			
+		}
+		 
+		
+		/**
+		 * Set the user object who has closed or ignored this correction
+		 * @since Version 3.9.1
+		 * @param \Railpage\Users\User $Maintainer
+		 * @return \Railpage\Locos\Correction
+		 */
+		
+		public function setMaintainer(User $Maintainer) {
+			
+			if (!isset($this->Resolution)) {
+				$this->Resolution = new stdClass;
+			}
+			
+			$this->Resolution->User = $Maintainer;
+			
+			return $this;
+			
 		}
 	}
 	

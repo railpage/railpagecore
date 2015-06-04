@@ -14,6 +14,7 @@
 	use Railpage\Locos\Locomotive;
 	use Railpage\Locos\Date;
 	use Railpage\Debug;
+	use Railpage\Assets\Asset;
 	use DateTime;
 	use Exception;
 	use InvalidArgumentException;
@@ -64,7 +65,9 @@
 		public static function getSubmitData(Locomotive $Loco) {
 			
 			// Drop whitespace from loco numbers of all types except steam
-			if (in_array($Loco->class_id, array(2, 3, 4, 5, 6)) || in_array($Loco->Class->type_id, array(2, 3, 4, 5, 6))) {
+			if (in_array($Loco->class_id, array(2, 3, 4, 5, 6)) || 
+					($Loco->Class instanceof LocoClass && in_array($Loco->Class->type_id, array(2, 3, 4, 5, 6))) || 
+					($Loco->class instanceof LocoClass && in_array($Loco->class->type_id, array(2, 3, 4, 5, 6)))) {
 				$Loco->number = str_replace(" ", "", $Loco->number);
 			}
 			
@@ -82,7 +85,7 @@
 				"manufacturer_id" => $Loco->manufacturer_id,
 				"loco_name" => $Loco->name,
 				"meta" => json_encode($Loco->meta),
-				"asset_id" => $Loco->Asset instanceof \Railpage\Assets\Asset ? $Loco->Asset->id : 0
+				"asset_id" => $Loco->Asset instanceof Asset ? $Loco->Asset->id : 0
 			);
 			
 			if (empty($Loco->date_added)) {

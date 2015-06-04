@@ -525,9 +525,7 @@
 			
 			$mckey = "railpage:loco.wheelarrangements"; 
 			
-			if (!$force && $return = $this->Memcached->fetch($mckey)) {
-				return $return;
-			} else {
+			if ($force || !$return = $this->Memcached->fetch($mckey)) {
 				$return['stat'] = "ok"; 
 				$return['count'] = 0;
 				
@@ -537,9 +535,9 @@
 				}
 				
 				$this->Memcached->save($mckey, $return, strtotime("+1 month")); 
-				
-				return $return;
 			}
+				
+			return $return;
 		}
 		
 		/**
@@ -556,9 +554,7 @@
 			
 			$mckey = Manufacturer::MEMCACHED_KEY_ALL;
 			
-			if (!$force && $return = $this->Memcached->fetch($mckey)) {
-				return $return;
-			} else {
+			if ($force || !$return = $this->Memcached->fetch($mckey)) {
 				$return['stat'] = "ok"; 
 				$return['count'] = 0;
 				
@@ -567,10 +563,10 @@
 					$return['manufacturers'][$row['manufacturer_id']] = $row;
 				}
 				
-				$this->Memcached->save($mckey, $return, strtotime("+1 month")); 
+				$this->Memcached->save($mckey, $return, strtotime("+1 month"));
+			} 
 				
-				return $return;
-			}
+			return $return;
 		}
 		
 		/**

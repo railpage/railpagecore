@@ -80,78 +80,97 @@
 		 */
 		
 		public function __construct($id = false) {
+			
 			parent::__construct(); 
+			
+			if ($id = filter_var($id, FILTER_VALIDATE_INT)) {
+				$this->id = $id;
+				$this->populate(); 
+			}
+			
+		}
+		
+		/**
+		 * Populate this object
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function populate() {
 			
 			$update = false;
 			
-			if ($id && $row = $this->db->fetchRow("SELECT d.*, dt.* FROM loco_unit_date AS d INNER JOIN loco_date_type AS dt ON d.loco_date_id = dt.loco_date_id WHERE d.date_id = ?", $id)) {
-				$this->id = $id;
-				$this->text = $row['text'];
-				$this->rich_text = $row['text'];
-				$this->meta = json_decode($row['meta'], true);
-				$this->action = $row['loco_date_text'];
-				$this->action_id = $row['loco_date_id'];
+			$row = $this->db->fetchRow("SELECT d.*, dt.* FROM loco_unit_date AS d INNER JOIN loco_date_type AS dt ON d.loco_date_id = dt.loco_date_id WHERE d.date_id = ?", $this->id); 
+			
+			if ($row === false) {
+				return;
+			}
+			
+			$this->text = $row['text'];
+			$this->rich_text = $row['text'];
+			$this->meta = json_decode($row['meta'], true);
+			$this->action = $row['loco_date_text'];
+			$this->action_id = $row['loco_date_id'];
+			
+			if ($row['timestamp'] == "0000-00-00") {
+				$this->Date = new DateTime();
+				$this->Date->setTimestamp($row['date']); 
 				
-				if ($row['timestamp'] == "0000-00-00") {
-					$this->Date = new DateTime();
-					$this->Date->setTimestamp($row['date']); 
+				$update = true;
+			} else {
+				$this->Date = new DateTime($row['timestamp']); 
+			}
+			
+			/**
+			 * Create the rich text entry
+			 */
+			
+			if (count($this->meta)) {
+				
+				foreach ($this->meta as $key => $data) {
+					$this->rich_text .= "\n<strong>" . ucfirst($key) . ": </strong>";
 					
-					$update = true;
-				} else {
-					$this->Date = new DateTime($row['timestamp']); 
-				}
-				
-				/**
-				 * Create the rich text entry
-				 */
-				
-				if (count($this->meta)) {
-					
-					foreach ($this->meta as $key => $data) {
-						$this->rich_text .= "\n<strong>" . ucfirst($key) . ": </strong>";
+					switch ($key) {
 						
-						switch ($key) {
+						case "livery" : 
 							
-							case "livery" : 
-								
-								#$this->rich_text .= "[url=/flickr?tag=railpage:livery=" . $data['id'] . "]" . $data['name'] . "[/url]";
-								$this->rich_text .= "<a data-livery-id=\"" . $data['id'] . "\" data-livery-name=\"" . $data['name'] . "\" href='#' class='rp-modal-livery'>" . $data['name'] . "</a>";
+							#$this->rich_text .= "[url=/flickr?tag=railpage:livery=" . $data['id'] . "]" . $data['name'] . "[/url]";
+							$this->rich_text .= "<a data-livery-id=\"" . $data['id'] . "\" data-livery-name=\"" . $data['name'] . "\" href='#' class='rp-modal-livery'>" . $data['name'] . "</a>";
+						
+						break;
+						
+						case "owner" : 
 							
-							break;
+							$Operator = new Operator($data['id']);
 							
-							case "owner" : 
-								
-								$Operator = new Operator($data['id']);
-								
-								$this->rich_text .= "[url=" . $Operator->url_owner . "]" . $Operator->name . "[/url]";
+							$this->rich_text .= "[url=" . $Operator->url_owner . "]" . $Operator->name . "[/url]";
+						
+						break;
+						
+						case "operator" :
 							
-							break;
+							$Operator = new Operator($data['id']);
 							
-							case "operator" :
-								
-								$Operator = new Operator($data['id']);
-								
-								$this->rich_text .= "[url=" . $Operator->url_operator . "]" . $Operator->name . "[/url]";
-								
-							break;
+							$this->rich_text .= "[url=" . $Operator->url_operator . "]" . $Operator->name . "[/url]";
 							
-							case "position" : 
+						break;
+						
+						case "position" : 
+						
+							if (!isset($data['title']) || empty($data['title'])) {
+								$data['title'] = "Location";
+							}
 							
-								if (!isset($data['title']) || empty($data['title'])) {
-									$data['title'] = "Location";
-								}
-								
-								$this->rich_text .= "<a data-lat=\"" . $data['lat'] . "\" data-lon=\"" . $data['lon'] . "\" data-zoom=\"" . $data['zoom'] . "\" data-title=\"" . $data['title'] . "\" data-toggle='modal' href='#' class='rp-modal-map'>Click to view</a>";
-								
-							break;
-						}
+							$this->rich_text .= "<a data-lat=\"" . $data['lat'] . "\" data-lon=\"" . $data['lon'] . "\" data-zoom=\"" . $data['zoom'] . "\" data-title=\"" . $data['title'] . "\" data-toggle='modal' href='#' class='rp-modal-map'>Click to view</a>";
+							
+						break;
 					}
 				}
-				
-				$this->Loco = new Locomotive($row['loco_unit_id']);
-				
-				$this->url = new Url($this->Loco->url->url);
 			}
+			
+			$this->Loco = new Locomotive($row['loco_unit_id']);
+			
+			$this->url = new Url($this->Loco->url);
 			
 			/**
 			 * Update this object if required
@@ -213,6 +232,8 @@
 		
 		/**
 		 * Commit changes to this locomotive
+		 * @since Version 3.9.1
+		 * @return \Railpage\Locos\Date
 		 */
 		
 		public function commit() {
@@ -237,6 +258,8 @@
 				$this->db->insert("loco_unit_date", $data); 
 				$this->id = $this->db->lastInsertId(); 
 			}
+			
+			return $this;
 		}
 	}
 	

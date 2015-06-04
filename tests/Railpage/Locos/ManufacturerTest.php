@@ -12,6 +12,8 @@
 			$Manufacturer->desc = "Test description";
 			$Manufacturer->commit(); 
 			
+			$NewMan = new Manufacturer($Manufacturer->slug);
+			
 			return $Manufacturer->id;
 		}
 		
@@ -48,6 +50,44 @@
 			
 			$this->assertEquals($updated_name, $Manufacturer->name);
 			$this->assertEquals($updated_desc, $Manufacturer->desc);
+			
+			return $Manufacturer;
+			
+		}
+		
+		public function test_break_validate() {
+			
+			$this->setExpectedException("Exception", "Cannot validate changes to this locomotive manufacturer: manufacturer name cannot be empty");
+			
+			$Manufacturer = new Manufacturer; 
+			$Manufacturer->commit(); 
+			
+		}
+		
+		/**
+		 * @depends testUpdate
+		 */
+		
+		public function testFetchNoSlug($Manufacturer) {
+			
+			$NewMan = new Manufacturer;
+			$NewMan->name = $Manufacturer->name;
+			$NewMan->desc = "asdfsdf";
+			$NewMan->commit(); 
+			
+			$Database = $Manufacturer->getDatabaseConnection(); 
+			
+			$data = [ "slug" => "" ];
+			$where = [ "manufacturer_id = ?" => $Manufacturer->id ];
+			$Database->update("loco_manufacturer", $data, $where); 
+			
+			$Manufacturer = new Manufacturer($Manufacturer->id); 
+			
+			$data = [ "slug" => "" ];
+			$where = [ "manufacturer_id = ?" => $NewMan->id ];
+			$Database->update("loco_manufacturer", $data, $where); 
+			
+			$NewMan = new Manufacturer($NewMan->id); 
 			
 		}
 	}

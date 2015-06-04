@@ -12,6 +12,10 @@
 	use Railpage\Locos\Gauge;
 	use Railpage\Locos\Liveries\Base as Liveries;
 	use Railpage\Locos\Liveries\Livery;
+	use Railpage\Users\User;
+	use Railpage\Images\Images;
+	use Railpage\Images\Image;
+	use Railpage\Assets\Asset;
 	
 	class LocoTest extends PHPUnit_Framework_TestCase {
 		
@@ -32,6 +36,18 @@
 		const CLASS_TRACTIVE_EFFORT = "4000 hp";
 		const CLASS_MODEL = "AC1235blah";
 		const LOCO_NUM = 1100;
+		
+		public function test_addUser() {
+			
+			$User = new User;
+			$User->username = "Locos test";
+			$User->setPassword('asfdasdf'); 
+			$User->contact_email = "michael+phpunit+locos@railpage.com.au";
+			$User->commit(); 
+			
+			return $User;
+			
+		}
 		
 		public function testAddManufacturer() {
 			$Manufacturer = new Manufacturer;
@@ -98,6 +114,7 @@
 		}
 		
 		public function testAddStatus() {
+			
 			$Locos = new Locos;
 			$Locos->addStatus("Operational");
 			
@@ -105,6 +122,29 @@
 			
 			$last = array_pop($statuses['status']); 
 			return $last['id'];
+			
+		}
+		
+		public function test_break_status() {
+			
+			$this->setExpectedException("Exception", "No name was given for this status");
+			
+			$Locos = new Locos;
+			$Locos->addStatus(); 
+			
+		}
+		
+		public function test_measurements() {
+			
+			$Locos = new Locos;
+			
+			$cm = 160;
+			$imp = $Locos->convert_to_inches($cm); 
+			
+			$this->assertEquals("5 foot 3 inches", sprintf("%d foot %d inches", $imp['ft'], $imp['in']));
+			
+			$this->assertEquals($cm, $Locos->convert_to_cm(5, 3));
+			
 		}
 		
 		/**
@@ -141,11 +181,23 @@
 		
 		/**
 		 * @depends testAddLocoClass
-		 * @depends testAddGauge
-		 * @depends testAddStatus
 		 */
 		
-		public function testAddLoco($class_id, $gauge_id, $status_id) {
+		public function test_getRandomClass() {
+			
+			$Locos = new Locos;
+			$this->assertTrue(is_array($Locos->getRandomClass())); 
+			
+		}
+		
+		/**
+		 * @depends testAddLocoClass
+		 * @depends testAddGauge
+		 * @depends testAddStatus
+		 * @depends testAddManufacturer
+		 */
+		
+		public function testAddLoco($class_id, $gauge_id, $status_id, $manufacturer_id) {
 			$Class = new LocoClass($class_id);
 			$Gauge = new Gauge($gauge_id);
 			
@@ -172,6 +224,14 @@
 			     ->setGauge($Gauge)
 			     ->commit(); 
 			
+			$Loco->name = "Test blah";
+			$Loco->commit(); 
+			
+			$NewLoco = new Locomotive(NULL, $class_id, $Loco->number);
+			
+			$tags = $Loco->getTags(); 
+			$this->assertTrue(is_array($tags)); 
+			
 			return $id;
 		}
 		
@@ -189,6 +249,32 @@
 			
 			$this->assertEquals((self::LOCO_NUM) + 1, $NextLoco->number); 
 			$this->assertEquals(self::CLASS_NAME, $NextLoco->Class->name);
+			
+			$Gauge = $Loco->getGauge(); 
+			$Manufacturer = $Loco->getManufacturer(); 
+			
+			$Loco->setManufacturer(new Manufacturer($Manufacturer->id))
+				 ->getManufacturer();
+			
+			$Loco->getArray();
+			$Loco->builders_num = "1";
+			$Loco->status_id = 4;
+			$desc = $Loco->generateDescription();
+			
+			$Loco->status_id = 5;
+			$desc = $Loco->generateDescription();
+			
+			$Loco->status_id = 9;
+			$desc = $Loco->generateDescription();
+			
+			$NextLoco = $NextLoco->next();
+			$this->assertNotInstanceOf("Railpage\\Locos\\Locomotive", $NextLoco); 
+			
+			$Previous = $Loco->next()->previous(); 
+			$this->assertInstanceOf("Railpage\\Locos\\Locomotive", $Previous);
+			
+			$Previous = $Previous->previous(); 
+			$this->assertNotInstanceOf("Railpage\\Locos\\Locomotive", $Previous);
 			
 		}
 		
@@ -230,5 +316,291 @@
 				$this->assertEquals($row['manufacturer']['id'], $Manufacturer->id);
 			}
 		}
+		
+		public function test_break_loco_number() {
+			
+			$this->setExpectedException("Exception", "No locomotive number specified"); 
+			
+			$Loco = new Locomotive;
+			$Loco->commit(); 
+			
+		}
+				
+		public function test_break_loco_class() {
+			
+			$this->setExpectedException("Exception", "Cannot add locomotive because we don't know which class to add it into"); 
+			
+			$Loco = new Locomotive; 
+			$Loco->number = "1233";
+			$Loco->commit(); 
+			
+		}
+		
+		/**
+		 * @depends testAddLocoClass
+		 */
+				
+		public function test_break_loco_gauge($class_id) {
+			
+			$this->setExpectedException("Exception", "No gauge has been set"); 
+			
+			$Loco = new Locomotive; 
+			$Loco->setLocoClass(new LocoClass($class_id));
+			$Loco->number = "1233";
+			$Loco->commit(); 
+			
+		}
+		
+		/**
+		 * @depends testAddLocoClass
+		 * @depends testAddGauge
+		 */
+				
+		public function test_break_loco_status($class_id, $gauge_id) {
+			
+			$this->setExpectedException("Exception", "No status has been set"); 
+			
+			$Loco = new Locomotive; 
+			$Loco->setLocoClass(new LocoClass($class_id));
+			$Loco->setGauge(new Gauge($gauge_id));
+			$Loco->number = "1233";
+			$Loco->commit(); 
+			
+		}
+		
+		/**
+		 * @depends testAddLocoClass
+		 * @depends testAddGauge
+		 * @depends testAddStatus
+		 */
+				
+		public function test_add_loco_class_a($class_id, $gauge_id, $status_id) {
+			
+			$Loco = new Locomotive; 
+			$Loco->class = new LocoClass($class_id);
+			$Loco->setGauge(new Gauge($gauge_id));
+			$Loco->number = "1233";
+			$Loco->status_id = $status_id;
+			$Loco->commit(); 
+			
+			$Loco = new Locomotive; 
+			$Loco->class_id = $class_id;
+			$Loco->setGauge(new Gauge($gauge_id));
+			$Loco->number = "1234";
+			$Loco->status_id = $status_id;
+			$Loco->commit(); 
+			
+		}
+		
+		/**
+		 * @depends testAddLoco
+		 * @depends test_addUser
+		 */
+		
+		public function test_addNote($loco_id, $User) {
+			
+			$Loco = new Locomotive($loco_id); 
+			$Loco->addNote("test note text", $User);
+			$note_id = $Loco->addNote("test note text1111", $User->id);
+			
+			$notes = $Loco->loadNotes();
+			
+			// edit it
+			$Loco->addNote("test note text 121231333", $User->id, $note_id);
+			
+			$notes = $Loco->loadNotes();
+			
+			// get contributors
+			$list = $Loco->getContributors(); 
+			
+			$this->setExpectedException("Exception", "No note text given"); 
+			$Loco->addNote(); 
+			
+		}
+		
+		/**
+		 * @depends testAddLoco
+		 * @depends test_addUser
+		 */
+		
+		public function test_addNote_break_user($loco_id, $User) {
+			
+			$this->setExpectedException("Exception", "No user provided");
+			
+			$Loco = new Locomotive($loco_id); 
+			$Loco->addNote("asdfadf"); 
+			
+		}
+		
+		/**
+		 * @depends testAddLoco
+		 */
+		
+		public function test_hasCoverImage($loco_id) {
+			
+			$Loco = new Locomotive($loco_id); 
+			$this->assertFalse($Loco->hasCoverImage()); 
+			
+			return $Loco;
+			
+		}
+		
+		/**
+		 * @depends test_hasCoverImage
+		 */
+		
+		public function test_setCoverImage($Loco) {
+			
+			$Image = (new Images)->findImage("flickr", "18230769058"); 
+			
+			$Loco->setCoverImage($Image); 
+			$this->assertTrue($Loco->hasCoverImage()); 
+			
+			$Loco->getCoverImage(); 
+			
+		}
+		
+		/**
+		 * @depends testAddLoco
+		 * @depends test_addUser
+		 */
+		
+		public function test_addLocoCorrection($loco_id, $User) {
+			
+			$Loco = new Locomotive($loco_id); 
+			$Loco->newCorrection("test blah", $User->id); 
+			
+			$Correction = new Correction;
+			$Correction->text = "test 123132";
+			$Correction->setUser($User); 
+			$Correction->setObject($Loco);
+			$Correction->commit(); 
+			
+			$Correction = new Correction($Correction->id); 
+			$Correction->text = "asdfafaf";
+			$Correction->status = Correction::STATUS_CLOSED;
+			$Correction->commit(); 
+			
+			$opencorrections = $Loco->corrections();
+			$allcorrections = $Loco->corrections(false);
+			
+			$this->assertTrue(count($allcorrections) > 1);
+			
+			$this->assertTrue(count($opencorrections) == 1);
+			
+			$Correction->status = Correction::STATUS_OPEN;
+			return $Correction;
+			
+		}
+		
+		/**
+		 * @depends testAddLocoClass
+		 * @depends testAddLoco
+		 * @depends test_addUser
+		 */
+		
+		public function test_addClassCorrection($class_id, $loco_id, $User) {
+			
+			$Class = new LocoClass($class_id); 
+			$Loco = new Locomotive($loco_id);
+			
+			$Correction = new Correction;
+			$Correction->text = "test class 123132";
+			$Correction->setUser($User); 
+			$Correction->setObject($Class);
+			$Correction->commit()->setMaintainer($User)->approve("Accepted");
+			
+			$Correction = new Correction;
+			$Correction->text = "test class 1zzz";
+			$Correction->setUser($User); 
+			$Correction->setObject($Class);
+			$Correction->commit()->setMaintainer($User)->reject("blah test");
+			
+			$Correction = new Correction($Correction->id);
+			
+			$Correction = new Correction;
+			$Correction->text = "test loco 123132";
+			$Correction->setUser($User); 
+			$Correction->setObject($Loco);
+			$Correction->commit()->setMaintainer($User)->approve("Accepted");
+			
+			$Correction = new Correction;
+			$Correction->text = "test loco 1zzz";
+			$Correction->setUser($User); 
+			$Correction->setObject($Loco);
+			$Correction->commit()->setMaintainer($User)->reject("blah test");
+			
+			// break some stuff
+			$Database = $Correction->getDatabaseConnection(); 
+			$data = [ "loco_id" => NULL, "class_id" => NULL ];
+			$where = [ "correction_id = ?" => $Correction->id ];
+			$Database->update("loco_unit_corrections", $data, $where); 
+			
+			$this->setExpectedException("Exception", "Unable to determine if this correction belongs to a locomotive or a locomotive class"); 
+			$Correction = new Correction($Correction->id); 
+			
+		}
+		
+		/**
+		 * @depends test_addLocoCorrection
+		 */
+		
+		public function test_break_approveCorrection($Correction) {
+			
+			$this->setExpectedException("Exception", "Cannot close correction - User resolving this correction not specified");
+			
+			$Correction->close(); 
+			
+		}
+		
+		/**
+		 * @depends test_addLocoCorrection
+		 */
+		
+		public function test_break_rejectCorrection($Correction) {
+			
+			$this->setExpectedException("Exception", "Cannot ignore correction - User resolving this correction not specified");
+			
+			$Correction->ignore(); 
+			
+		}
+		
+		public function test_addLivery() {
+			
+			$Livery = new Livery;
+			$Livery->name = "Test livery";
+			$Livery->country = "AU";
+			$Livery->region = "VIC";
+			
+			$Livery->commit(); 
+			
+			return $Livery;
+			
+		}
+		
+		/**
+		 * @depends testAddLoco
+		 */
+		
+		public function test_listAllTheThings() {
+			
+			$Locos = new Locos;
+			
+			$Locos->listModels(); 
+			$Locos->listGroupings(); 
+			$Locos->listGauges(); 
+			$Locos->listLiveries(); 
+			$Locos->listOperators(); 
+			$Locos->listLiveries(); 
+			$Locos->listAllLocos(); 
+			$Locos->listYears(); 
+			$Locos->listStatus(); 
+			$Locos->listTypes(); 
+			$Locos->listManufacturers(); 
+			$Locos->listWheelArrangements(); 
+			$Locos->listOrgLinkTypes();
+			
+		}
+			
 	}
 	

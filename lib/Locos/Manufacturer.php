@@ -53,6 +53,14 @@
 		public $desc;
 		
 		/**
+		 * URL Slug
+		 * @since Version 3.9.1
+		 * @var string $slug
+		 */
+		
+		public $slug;
+		
+		/**
 		 * Organistion object linked to this manufacturer
 		 * @since Version 3.8.7
 		 * @var \Railpage\Organisations\Organisation $Organisation

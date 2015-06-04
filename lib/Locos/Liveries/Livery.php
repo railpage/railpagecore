@@ -10,6 +10,8 @@
 	
 	use Exception;
 	use Railpage\Images\Images;
+	use Railpage\Debug;
+	use Railpage\Url;
 	
 	/**
 	 * Livery class
@@ -141,21 +143,18 @@
 		 * @param boolean $recurse
 		 */
 		
-		public function __construct($id, $recurse = true) {
+		public function __construct($id = false, $recurse = true) {
 			
 			parent::__construct();
 			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_startx = microtime(true);
-			}
+			$timer = Debug::getTimer(); 
 			
 			$this->namespace = "railpage.locos.liveries.livery";
 			
 			// Fetch any child objects
 			$this->recurse = $recurse;
 			
-			if ($id) {
+			if (filter_var($id, FILTER_VALIDATE_INT)) {
 				$this->id = $id;
 				
 				$this->url = "/flickr?tag=railpage:livery=" . $this->id;
@@ -163,9 +162,7 @@
 				$this->fetch();
 			}
 			
-			if (RP_DEBUG) {
-				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") instantiated in " . round(microtime(true) - $debug_timer_startx, 5) . "s";
-			}
+			Debug::logEvent(__METHOD__, $timer); 
 		}
 		
 		/**

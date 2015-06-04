@@ -4,6 +4,7 @@
 	class OperatorTest extends PHPUnit_Framework_TestCase {
 		
 		public function testAdd() {
+			
 			$Operator = new Operator;
 			
 			$this->assertInstanceOf("Railpage\\Locos\\Operator", $Operator);
@@ -12,6 +13,7 @@
 			$Operator->commit(); 
 			
 			return $Operator->id;
+			
 		}
 		
 		/**
@@ -19,11 +21,13 @@
 		 */
 		
 		public function testGet($id) {
+			
 			$Operator = new Operator($id);
 			
 			$this->assertEquals($id, $Operator->id);
 			$this->assertEquals("Test Operator", $Operator->name);
 			$this->assertEquals("Test Operator", strval($Operator));
+			
 		}
 		
 		/**
@@ -31,6 +35,7 @@
 		 */
 		
 		public function testUpdate($id) {
+			
 			$Operator = new Operator($id);
 			
 			$Operator->name = "Test Operator Updated";
@@ -46,6 +51,16 @@
 			
 			$this->assertEquals($updated_name, $Operator->name);
 			$this->assertEquals($updated_org_id, $Operator->organisation_id);
+			
+		}
+		
+		public function test_break_name() {
+			
+			$this->setExpectedException("Exception", "Cannot validate Operator: the operator name cannot be empty");
+			
+			$Operator = new Operator;
+			$Operator->commit(); 
+			
 		}
 	}
 	

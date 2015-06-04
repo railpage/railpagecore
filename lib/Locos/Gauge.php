@@ -54,6 +54,14 @@
 		public $width_imperial;
 		
 		/**
+		 * Memcached key
+		 * @since Version 3.9.1
+		 * @var string $mckey
+		 */
+		
+		public $mckey;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.9.1
 		 * @param int|string $id
@@ -86,13 +94,13 @@
 				return;
 			}
 			
-			$key = sprintf("railpage:locos.gauge_id=%d", $this->id);
+			$this->mckey = sprintf("railpage:locos.gauge_id=%d", $this->id);
 			 
-			if (!$row = $this->Memcached->fetch($key)) {
+			if (!$row = $this->Memcached->fetch($this->mckey)) {
 				$query = "SELECT * FROM loco_gauge WHERE gauge_id = ?";
 				
 				$row = $this->db->fetchRow($query, $this->id); 
-				$this->Memcached->save($key, $row); 
+				$this->Memcached->save($this->mckey, $row); 
 			}
 			
 			$this->name = $row['gauge_name'];
@@ -158,6 +166,8 @@
 		public function commit() {
 			$this->validate(); 
 			
+			$this->Memcached->delete($this->mckey);
+			
 			$data = array(
 				"gauge_name" => $this->name,
 				"gauge_metric" => $this->width_metric,
@@ -167,7 +177,7 @@
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
 				$where = array(
-					"id = ?" => $this->id
+					"gauge_id = ?" => $this->id
 				);
 				
 				$this->db->update("loco_gauge", $data, $where); 

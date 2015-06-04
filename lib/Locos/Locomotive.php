@@ -20,6 +20,7 @@
 	use Exception;
 	use stdClass;
 	use Railpage\Registry;
+	use Railpage\Users\Utility\AvatarUtility;
 		
 	/**
 	 * Loco object
@@ -469,6 +470,10 @@
 		
 		private function makeLinks() {
 			
+			if (!$this->Class instanceof LocoClass) {
+				return;
+			}
+			
 			$this->url = new Url(strtolower($this->makeLocoURL($this->Class->slug, $this->number)));
 			$this->url->edit = sprintf("%s?mode=loco.edit&id=%d", $this->Module->url, $this->id);
 			$this->url->sightings = sprintf("%s/sightings", $this->url->url);
@@ -743,11 +748,18 @@
 		 * @param int $note_id
 		 */
 		
-		public function addNote($note_text = false, $user_id, $note_id = false) {
+		public function addNote($note_text = false, $user_id = false, $note_id = false) {
 			if (!$note_text || empty($note_text)) {
 				throw new Exception("No note text given"); 
-				return false;
 			} 
+			
+			if (!$user_id instanceof User && !filter_var($user_id, FILTER_VALIDATE_INT)) {
+				throw new Exception("No user provided"); 
+			}
+			
+			if ($user_id instanceof User) {
+				$user_id = $user_id->id;
+			}
 			
 			$data = array(
 				"loco_id" => $this->id,
@@ -789,7 +801,7 @@
 					try {
 						$User = new User($row['user_id']);
 						
-						$row['user_avatar'] = format_avatar($row['user_avatar'], 50);
+						$row['user_avatar'] = AvatarUtility::Format($row['user_avatar'], 50, 50);
 						$row['user_url'] = $User->url;
 					} catch (Exception $e) {
 						global $Error; 
@@ -831,6 +843,17 @@
 		 */
 		
 		public function addDate($loco_date_id = false, $date = false, $text = false) {
+			
+			$Date = new Date;
+			$Date->action = $text;
+			$Date->action_id = $loco_date_id;
+			$Date->Date = new DateTime($date); 
+			
+			$Date->commit(); 
+			
+			return true;
+			
+			/*
 			if (!$loco_date_id) {
 				throw new Exception("Cannot add date - no date type given");
 				return false;
@@ -853,28 +876,7 @@
 			
 			$this->db->insert("loco_unit_date", $data);
 			return true;
-		}
-		
-		/**
-		 * Register a hit against this loco
-		 * @since Version 3.2
-		 * @return boolean
-		 */
-		
-		public function hit() {
-			return false;
-			
-			$data = array(
-				"loco_id" => $this->id,
-				"class_id" => $this->Class->id,
-				"time" => time(),
-				"ip" => filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL),
-				"user_id" => $_SESSION['user_id']
-			);
-			
-			$this->db->insert("loco_hits", $data); 
-			
-			return true;
+			*/
 		}
 		
 		/**
@@ -914,19 +916,13 @@
 		 */
 		
 		public function newCorrection($correction_text = false, $user_id = false) {
-			if (!$correction_text || !$user_id) {
-				throw new Exception("Cannot save correction - both \$correction_text and \$user_id must be provided"); 
-				return false;
-			}
 			
-			$data = array(
-				"text" => $correction_text,
-				"loco_id" => $this->id,
-				"user_id" => $user_id,
-				"date" => new \Zend_Db_Expr('NOW()')
-			);
+			$Correction = new Correction;
+			$Correction->text = $correction_text;
+			$Correction->setUser(new User($user_id)); 
+			$Correction->setObject($this);
+			$Correction->commit(); 
 			
-			$this->db->insert("loco_unit_corrections", $data); 
 			return true;
 		}
 		
@@ -1265,7 +1261,7 @@
 			$return = array(); 
 			
 			foreach ($this->db->fetchAll($query, $this->id) as $row) {
-				$row['timestamp'] = \DateTime::createFromFormat("Y-m-d H:i:s", $row['timestamp']); 
+				$row['timestamp'] = DateTime::createFromFormat("Y-m-d H:i:s", $row['timestamp']); 
 				$row['args'] = json_decode($row['args'], true);
 				$return[] = $row; 
 			}
@@ -1696,17 +1692,31 @@
 		}
 		
 		/**
+		 * Set the manufacturer
+		 * @since Version 3.9.1
+		 * @param \Railpage\Locos\Manufacturer $Manufacturer
+		 * @return \Railpage\Locos\LocoClass
+		 */
+		
+		public function setManufacturer(Manufacturer $Manufacturer) {
+			$this->manufacturer_id = $Manufacturer->id;
+			$this->manufacturer = $Manufacturer->name;
+			
+			return $this;
+		}
+		
+		/**
 		 * Get the loco manufacturer
 		 * @since Version 3.9.1
 		 * @return \Railpage\Locos\Manufacturer
 		 */
 		
 		public function getManufacturer() {
-			if (filter_var($this->manufacturer_id, FILTER_VALIDATE_INT)) {
+			#if (filter_var($this->manufacturer_id, FILTER_VALIDATE_INT)) {
 				return new Manufacturer($this->manufacturer_id); 
-			}
+			#}
 			
-			return $this->Class->getManufacturer(); 
+			#return $this->Class->getManufacturer(); 
 		}
 		
 		/**
@@ -1752,5 +1762,15 @@
 			}
 			
 			return $str;
+		}
+		
+		/**
+		 * Echo this locomotive as a string
+		 * @since Version 3.9.1
+		 * @return string
+		 */
+		
+		public function __toString() {
+			return $this->number;
 		}
 	}
