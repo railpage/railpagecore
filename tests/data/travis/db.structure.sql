@@ -1328,7 +1328,8 @@ DROP TABLE IF EXISTS `loco_unit_corrections`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `loco_unit_corrections` (
   `correction_id` int(11) NOT NULL AUTO_INCREMENT,
-  `loco_id` int(11) NOT NULL,
+  `loco_id` int(11) DEFAULT NULL,
+  `class_id` int(11) DEFAULT NULL,
   `user_id` int(11) NOT NULL,
   `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `status` tinyint(1) NOT NULL DEFAULT '0',
