@@ -11,6 +11,8 @@
 	use Railpage\SiteEvent\Base;
 	use Exception;
 	use DateTime;
+	use Railpage\Debug;
+	use Railpage\Url;
 	
 	/**
 	 * Show / create an event
@@ -97,15 +99,14 @@
 		 */
 		
 		public function __construct($event_id = false) {
+			
 			parent::__construct(); 
 			
 			/**
 			 * Record this in the debug log
 			 */
 			
-			if (function_exists("debug_recordInstance")) {
-				debug_recordInstance(__CLASS__);
-			}
+			Debug::RecordInstance(); 
 			
 			if ($event_id) {
 				$this->id = $event_id; 
@@ -117,44 +118,23 @@
 		/**
 		 * Fetch an event
 		 * @since Version 3.6
-		 * @return boolean
+		 * @return void
 		 */
 		
-		public function fetch() {
-			if (!$this->id) {
-				throw new Exception("Cannot fetch event - no event ID given"); 
-				return false;
-			}
+		private function fetch() {
 			
 			$query = "SELECT e.id, e.module, e.user_id, u.username, e.timestamp, e.title, e.args, e.key, e.value FROM log_general AS e INNER JOIN nuke_users AS u ON u.user_id = e.user_id WHERE e.id = ?"; 
 			
-			if ($this->db instanceof \sql_db) {
-				if ($stmt = $this->db->prepare($query)) {
-					$stmt->bind_param("i", $this->id);
-					
-					$stmt->execute();
-					$stmt->bind_result($this->id, $this->module_name, $this->user_id, $this->username, $this->timestamp, $this->title, $this->args, $this->key, $this->value);
-					
-					$stmt->fetch();
-					$stmt->close();
-					
-					$this->args = json_decode($this->args, true); 
-					
-					return true;
-				}
-			} else {
-				$row = $this->db->fetchRow($query, $this->id);
-				$this->module_name = $row['module'];
-				$this->user_id = $row['user_id'];
-				$this->username = $row['username'];
-				$this->timestamp = $row['timestamp'];
-				$this->title = $row['title'];
-				$this->args = json_decode($row['args'], true);
-				$this->key = $row['key'];
-				$this->value = $row['value'];
-				
-				return true;
-			}
+			$row = $this->db->fetchRow($query, $this->id);
+			$this->module_name = $row['module'];
+			$this->user_id = $row['user_id'];
+			$this->username = $row['username'];
+			$this->timestamp = $row['timestamp'];
+			$this->title = $row['title'];
+			$this->args = json_decode($row['args'], true);
+			$this->key = $row['key'];
+			$this->value = $row['value'];
+			
 		}
 		
 		/**
@@ -193,59 +173,29 @@
 		 */
 		
 		public function commit() {
-			try {
-				$this->validate(); 
-			} catch (Exception $e) {
-				throw new Exception($e->getMessage()); 
-				return false;
-			}
+			$this->validate(); 
 			
-			if ($this->db instanceof \sql_db) {
-				$dataArray = array(); 
-				$dataArray['module'] = $this->db->real_escape_string($this->module_name);
-				$dataArray['user_id'] = $this->db->real_escape_string($this->user_id); 
-				$dataArray['title'] = $this->db->real_escape_string($this->title); 
-				$dataArray['args'] = $this->db->real_escape_string(is_array($this->args) ? json_encode($this->args) : $this->args); 
-				$dataArray['key'] = $this->db->real_escape_string($this->key); 
-				$dataArray['value'] = $this->db->real_escape_string($this->value); 
-				
-				if (empty($this->id)) {
-					$dataArray['timestamp'] = "NOW()"; 
-					
-					$query = $this->db->buildQuery($dataArray, "log_general"); 
-				} else {
-					$query = $this->db->buildQuery($dataArray, "log_general", array("id" => $this->db->real_escape_string($this->id))); 
-				} 
-				
-				if ($this->db->query($query)) {
-					return true;
-				} else {
-					throw new Exception($this->db->error."\n\n".$query); 
-					return false;
-				}
-			} else {
-				$data = array(
-					"module" => $this->module_name,
-					"user_id" => $this->user_id,
-					"title" => $this->title,
-					"args" => is_array($this->args) ? json_encode($this->args) : $this->args,
-					"key" => $this->key,
-					"value" => $this->value
+			$data = array(
+				"module" => $this->module_name,
+				"user_id" => $this->user_id,
+				"title" => $this->title,
+				"args" => is_array($this->args) ? json_encode($this->args) : $this->args,
+				"key" => $this->key,
+				"value" => $this->value
+			);
+			
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$where = array(
+					"id = ?" => $this->id
 				);
 				
-				if (filter_var($this->id, FILTER_VALIDATE_INT)) {
-					$where = array(
-						"id = ?" => $this->id
-					);
-					
-					$this->db->update("log_general", $data, $where);
-				} else {
-					$this->db->insert("log_general", $data);
-					$this->id = $this->db->lastInsertId();
-				}
-				
-				return true;
+				$this->db->update("log_general", $data, $where);
+			} else {
+				$this->db->insert("log_general", $data);
+				$this->id = $this->db->lastInsertId();
 			}
+			
+			return true;
 		}
 	}
 	
