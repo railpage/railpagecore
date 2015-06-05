@@ -1219,6 +1219,12 @@
 				$this->default_theme = self::DEFAULT_THEME;
 			}
 			
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
+				if (!$this->isUsernameAvailable()) {
+					throw new Exception(sprintf("The desired username %s is already in use", $this->username)); 
+				}
+			}
+			
 			return true;
 		}
 		

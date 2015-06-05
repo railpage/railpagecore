@@ -143,6 +143,76 @@
 			
 		}
 		
+		public function test_warning_break_recipient() {
+			
+			$this->setExpectedException("Exception", "Cannot validate warning level adjustment - no or invalid recipient provided");
+			
+			$Warning = new Warning;
+			$Warning->commit(); 
+			
+		}
+		
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_warning_break_issuer($User) {
+			
+			$this->setExpectedException("Exception", "Cannot validate warning level adjustment - no or invalid issuer provided");
+			
+			$Warning = new Warning;
+			$Warning->setRecipient($User); 
+			$Warning->commit(); 
+			
+		}
+		
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_warning_break_level($User) {
+			
+			$this->setExpectedException("Exception", "Cannot validate warning level adjustment - no new warning level provided");
+			
+			$Warning = new Warning;
+			$Warning->setRecipient($User)->setIssuer($User);
+			$Warning->commit(); 
+			
+		}
+		
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_warning_break_reason($User) {
+			
+			$this->setExpectedException("Exception", "Cannot validate warning level adjustment - reason cannot be empty");
+			
+			$Warning = new Warning;
+			$Warning->setRecipient($User)->setIssuer($User);
+			$Warning->level = 20;
+			$Warning->commit(); 
+			
+		}
+		
+		/**
+		 * @depends test_newUser
+		 */
+		
+		public function test_warning_break_exempt($User) {
+			
+			$User->warning_exempt = 1;
+			
+			$this->setExpectedException("Exception", sprintf("Cannot add warning to this user (ID %d, Username %s). Disallowed by system policy.", $User->id, $User->username));
+			
+			$Warning = new Warning;
+			$Warning->setRecipient($User)->setIssuer($User);
+			$Warning->level = 20;
+			$Warning->reason = "Testing";
+			$Warning->commit(); 
+			
+		}
+		
 		/**
 		 * @depends test_newUser
 		 */
@@ -173,6 +243,19 @@
 			
 			$this->assertTrue($User->loadWarnings()); 
 			$this->assertTrue(!empty($User->warnings));
+			
+			return $Warning;
+			
+		}
+		
+		/**
+		 * @depends test_issueWarning
+		 */
+		
+		public function test_updateWarning($Warning) {
+			
+			// reload it
+			$Warning = new Warning($Warning->id); 
 			
 		}
 		
@@ -253,6 +336,7 @@
 			$Base = new Base; 
 			
 			$dups = $Base->findDuplicateUsernames();
+			
 			$this->assertEquals(0, count($dups)); 
 			
 		}
