@@ -122,45 +122,40 @@
 			$this->Module = new Module("ideas");
 			
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
-				$this->id = $id;
-				
-				$query = "SELECT * FROM idea_ideas WHERE id = ?";
-				
-				if ($row = $this->db->fetchRow($query, $this->id)) {
-					$this->title = $row['title'];
-					$this->slug = $row['slug'];
-					$this->description = $row['description'];
-					$this->Author = new User($row['author']);
-					$this->Date = new DateTime($row['date']);
-					$this->Category = new Category($row['category_id']);
-					$this->status = $row['status'];
-					$this->forum_thread_id = $row['forum_thread_id'];
-					$this->redmine_id = $row['redmine_id'];
-				}
+				$this->populate("id", $id); 
 			} elseif (is_string($id) && strlen($id) > 1) {
-				$this->slug = $id;
-				
-				$query = "SELECT * FROM idea_ideas WHERE slug = ?";
-				
-				if ($row = $this->db->fetchRow($query, $this->slug)) {
-					$this->title = $row['title'];
-					$this->id = $row['id'];
-					$this->description = $row['description'];
-					$this->Author = new User($row['author']);
-					$this->Date = new DateTime($row['date']);
-					$this->Category = new Category($row['category_id']);
-					$this->status = $row['status'];
-					$this->forum_thread_id = $row['forum_thread_id'];
-					$this->redmine_id = $row['redmine_id'];
-					
-					
-				}
+				$this->populate("slug", $id); 
 			}
+		}
+		
+		/**
+		 * Populate this object
+		 * @since Version 3.9.1
+		 * @param string $column
+		 * @param string|int $value
+		 * @return void
+		 */
+		
+		private function populate($column, $value) {
 			
-			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+			$query = $column == "id" ? "SELECT * FROM idea_ideas WHERE id = ?" : "SELECT * FROM idea_ideas WHERE slug = ?";
+			
+			if ($row = $this->db->fetchRow($query, $this->slug)) {
+				$this->title = $row['title'];
+				$this->id = $row['id'];
+				$this->slug = $row['slug'];
+				$this->description = $row['description'];
+				$this->Author = new User($row['author']);
+				$this->Date = new DateTime($row['date']);
+				$this->Category = new Category($row['category_id']);
+				$this->status = $row['status'];
+				$this->forum_thread_id = $row['forum_thread_id'];
+				$this->redmine_id = $row['redmine_id'];
+			
 				$this->fetchVotes();
 				$this->makeURLs(); 
 			}
+			
 		}
 		
 		/**
@@ -170,6 +165,7 @@
 		 */
 		
 		private function makeURLs() {
+			
 			$this->url = new Url(sprintf("%s/%s", $this->Category->url, $this->slug));
 			
 			$this->url->implemented = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_IMPLEMENTED);
@@ -186,6 +182,7 @@
 			if (filter_var($this->redmine_id, FILTER_VALIDATE_INT)) {
 				$this->url->redmine = sprintf("http://redmine.railpage.org/redmine/issues/%d", $this->redmine_id); 
 			}
+			
 		}
 		
 		/**

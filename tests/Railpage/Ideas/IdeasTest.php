@@ -4,6 +4,11 @@
 	use Railpage\Ideas\Category;
 	use Railpage\Ideas\Idea;
 	use Railpage\Users\User;
+	use Railpage\Forums\Forums;
+	use Railpage\Forums\Forum;
+	use Railpage\Forums\Category as ForumCategory;
+	use Railpage\Forums\Thread;
+	use Railpage\Forums\Post;
 	
 	class IdeasTest extends PHPUnit_Framework_TestCase {
 		
@@ -193,6 +198,168 @@
 			$Category = new Category($cat_id); 
 			$Category->name = NULL; 
 			$Category->commit(); 
+			
+		}
+		
+		/**
+		 * @depends testAddIdea
+		 */
+		
+		public function test_break_idea_title($idea_id) {
+			
+			$this->setExpectedException("Exception", "Title of the idea cannot be empty");
+			
+			$Idea = new Idea($idea_id); 
+			$Idea->title = NULL;
+			$Idea->commit(); 
+			
+		}
+		
+		/**
+		 * @depends testAddIdea
+		 */
+		
+		public function test_break_idea_title_long($idea_id) {
+			
+			$this->setExpectedException("Exception", "The title for this idea is too long");
+			
+			$Idea = new Idea($idea_id); 
+			$Idea->title = "Bacon ipsum dolor amet t-bone kielbasa meatloaf, cow doner picanha filet mignon pig venison shank pork.";
+			$Idea->commit(); 
+			
+		}
+		
+		/**
+		 * @depends testAddIdea
+		 */
+		
+		public function test_break_idea_description($idea_id) {
+			
+			$this->setExpectedException("Exception", "Description for the idea cannot be empty");
+			
+			$Idea = new Idea($idea_id); 
+			$Idea->description = NULL;
+			$Idea->commit(); 
+			
+		}
+		
+		/**
+		 * @depends testAddIdea
+		 */
+		
+		public function test_break_idea_category($idea_id) {
+			
+			$this->setExpectedException("Exception", "There must be a valid author specified for this idea");
+			
+			$Idea = new Idea($idea_id); 
+			$Idea->Author = NULL;
+			$Idea->commit(); 
+			
+		}
+		
+		/**
+		 * @depends testAddIdea
+		 */
+		
+		public function test_break_idea_author($idea_id) {
+			
+			$this->setExpectedException("Exception", "Each idea must belong to a valid category");
+			
+			$Idea = new Idea($idea_id); 
+			$Idea->Category = NULL;
+			$Idea->commit(); 
+			
+		}
+		
+		/**
+		 * @depends testAddIdea
+		 */
+		
+		public function test_idea_status($idea_id) {
+			
+			$Idea = new Idea($idea_id); 
+			$Idea->status = NULL;
+			$Idea->redmine_id = 1;
+			$Idea->commit(); 
+			
+			$this->assertEquals(Ideas::STATUS_ACTIVE, $Idea->status); 
+			
+		}
+		
+		/**
+		 * @depends testAddIdea
+		 */
+		
+		public function test_canvote_status($idea_id) {
+			
+			$Idea = new Idea($idea_id); 
+			
+			$Idea->status = Ideas::STATUS_DELETED;
+			$this->assertFalse($Idea->canVote($Idea->Author));
+			
+			$Idea->status = Ideas::STATUS_ACTIVE;
+			$this->assertFalse($Idea->canVote($Idea->Author));
+			
+			$this->setExpectedException("Exception", "We couldn't add your vote to this idea. You must be logged in and not already voted for this idea");
+			$Idea->vote($Idea->Author);
+			
+		}
+		
+		/**
+		 * @depends testAddIdea
+		 */
+		
+		public function test_getarray($idea_id) {
+			
+			$Idea = new Idea($idea_id); 
+			$Idea->getArray(); 
+			
+		}
+		
+		/**
+		 * @depends testAddIdea
+		 */
+		
+		public function test_createThread($idea_id) {
+			
+			$Idea = new Idea($idea_id); 
+			
+			$Category = new ForumCategory;
+			$Category->title = "Ideas";
+			$Category->commit(); 
+			
+			$Forum = new Forum;
+			$Forum->setCategory($Category);
+			$Forum->name = "Ideas forum";
+			$Forum->commit();
+			
+			$Thread = new Thread;
+			$Thread->title = $Idea->title;
+			$Thread->setForum($Forum); 
+			$Thread->commit(); 
+			
+			$Post = new Post;
+			$Post->setAuthor($Idea->Author)->setThread($Thread);
+			$Post->text = $Idea->description;
+			$Post->commit(); 
+			
+			return $Post;
+			
+		}
+		
+		/**
+		 * @depends createThread
+		 * @depends testAddIdea
+		 */
+		
+		public function test_setIdeaThread($Post, $idea_id) {
+			
+			$Idea = new Idea($idea_id); 
+			
+			$this->assertNull($Idea->getForumThread()); 
+			$Idea->setForumThread($Post->Thread);
+			
+			$this->assertInstanceOf("Railpage\\Forums\\Thread", $Idea->getForumThread()); 
 			
 		}
 	}
