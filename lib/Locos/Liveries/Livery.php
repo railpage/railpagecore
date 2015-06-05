@@ -149,6 +149,8 @@
 			
 			$timer = Debug::getTimer(); 
 			
+			Debug::RecordInstance();
+			
 			$this->namespace = "railpage.locos.liveries.livery";
 			
 			// Fetch any child objects
@@ -289,6 +291,13 @@
 			
 			if (empty($this->country)) {
 				throw new Exception("Cannot validate changes to this livery - country cannot be empty"); 
+			}
+			
+			$nulls = [ "introduced", "withdrawn", "superseded_by", "superseded_by_id", "supersedes", "supersedes_id", "photo_id" ];
+			foreach ($nulls as $var) {
+				if (is_null($this->$var)) {
+					$this->$var = "";
+				}
 			}
 			
 			return true;

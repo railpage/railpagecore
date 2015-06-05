@@ -174,18 +174,21 @@
 				  ->setType($Type)
 				  ->commit(); 
 			
+			$this->assertEquals($Manufacturer->id, $Class->getManufacturer()->id); 
+			
 			$this->assertFalse(!filter_var($Class->id, FILTER_VALIDATE_INT)); 
 			
 			return $Class->id;
 		}
 		
 		/**
-		 * @depends testAddLocoClass
+		 * @depends test_setCoverImage
 		 */
 		
 		public function test_getRandomClass() {
 			
 			$Locos = new Locos;
+			
 			$this->assertTrue(is_array($Locos->getRandomClass())); 
 			
 		}
@@ -574,6 +577,10 @@
 			
 			$Livery->commit(); 
 			
+			$Livery = new Livery($Livery->id); 
+			$Livery->name = "Test livery 2 blah";
+			$Livery->commit(); 
+			
 			return $Livery;
 			
 		}
@@ -582,8 +589,9 @@
 		 * @depends testAddLoco
 		 */
 		
-		public function test_listAllTheThings() {
+		public function test_listAllTheThings($loco_id) {
 			
+			$Loco = new Locomotive($loco_id);
 			$Locos = new Locos;
 			
 			$Locos->listModels(); 
@@ -599,6 +607,75 @@
 			$Locos->listManufacturers(); 
 			$Locos->listWheelArrangements(); 
 			$Locos->listOrgLinkTypes();
+			
+			$Locos->classByManufacturer(); 
+			$Locos->classByWheelset(); 
+			$Locos->classByType(); 
+			
+			$Locos->listClasses(); 
+			$Locos->listClasses($Loco->Class->getType()->id);
+			$Locos->listClasses(array($Loco->Class->getType()->id));
+			
+		}
+		
+		/**
+		 * @depends testAddLoco
+		 * @depends test_addUser
+		 */
+		
+		public function test_rateLoco($loco_id, $User) {
+			
+			$Loco = new Locomotive($loco_id); 
+			
+			$this->assertEquals(2.5, $Loco->getRating()); 
+			
+			$Loco->setRating($User, 5); 
+			$Loco->userRating($User);
+			$this->assertEquals(5, $Loco->userRating($User->id)); 
+			
+			$Loco->setRating($User->id, 4);
+			
+			$this->assertTrue(is_array($Loco->getRating(true)));
+			
+		}
+		
+		public function test_break_rate_getloco() {
+			
+			$this->setExpectedException("Exception", "Cannot fetch rating - no loco ID given"); 
+			
+			$Loco = new Locomotive;
+			$Loco->getRating(); 
+			
+		}
+		
+		public function test_break_rate_getuser() {
+			
+			$this->setExpectedException("Exception", "Cannot fetch user rating for this loco - no user given"); 
+			
+			$Loco = new Locomotive;
+			$Loco->userRating(); 
+			
+		}
+		
+		public function test_break_rate_set_nouser() {
+			
+			$this->setExpectedException("Exception", "Cannot set user rating for this loco - no user given"); 
+			
+			$Loco = new Locomotive;
+			$Loco->setRating(); 
+			
+		}
+		
+		/**
+		 * @depends test_addUser
+		 */
+		
+		public function test_break_rate_set_norating($User) {
+			
+			$this->setExpectedException("Exception", "Cannot set user rating for this loco - no rating given");
+			
+			$Loco = new Locomotive;
+			$Loco->setRating($User); 
 			
 		}
 			

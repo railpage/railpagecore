@@ -13,6 +13,7 @@
 	use DateTime;
 	use stdClass;
 	use Railpage\Url;
+	use Railpage\fwlink;
 	use Railpage\Images\Images;
 	use Railpage\Images\Image;
 	use Railpage\Assets\Asset;
@@ -254,9 +255,7 @@
 			 * Record this in the debug log
 			 */
 				
-			if (function_exists("debug_recordInstance")) {
-				debug_recordInstance(__CLASS__);
-			}
+			Debug::RecordInstance();
 			
 			$this->Templates = new stdClass;
 			$this->Templates->view = "class";
@@ -410,7 +409,7 @@
 				 
 				if (isset($row['asset_id']) && $row['asset_id'] > 0) {
 					try {
-						$this->Asset = new \Railpage\Assets\Asset($row['asset_id']);
+						$this->Asset = new Asset($row['asset_id']);
 					} catch (Exception $e) {
 						global $Error; 
 						$Error->save($e); 
@@ -423,7 +422,7 @@
 				
 				try {
 					#var_dump($this->url);die;
-					$this->fwlink = new \Railpage\fwlink($this->url);
+					$this->fwlink = new fwlink($this->url);
 					
 					if (empty($this->fwlink->url) && !empty(trim($this->name))) {
 						$this->fwlink->url = $this->url;
@@ -591,10 +590,7 @@
 		public function commit() {
 			$this->validate();
 			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
+			$timer = Debug::getTimer();
 			
 			$this->flushMemcached();
 			
@@ -623,7 +619,7 @@
 				$data['date_modified'] = time(); 
 			}
 			
-			if ($this->Asset instanceof \Railpage\Assets\Asset) {
+			if ($this->Asset instanceof Asset) {
 				$data['asset_id'] = $this->Asset->id;
 			}
 			
@@ -655,44 +651,11 @@
 				$verb = "Insert";
 			}
 			
-			if (RP_DEBUG) {
-				$site_debug[] = "Zend_DB: SUCCESS " . $verb . " loco class ID " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-			}
+			Debug::logEvent(__METHOD__ . " :: ID " . $this->id, $timer); 
 			
-			deleteMemcacheObject("railpage:loco.class.bytype=all");
+			$this->Memcached->delete("railpage:loco.class.bytype=all");
 			
 			return true;
-		}
-		
-		/**
-		 * Register a hit against this class
-		 * @since Version 3.2
-		 * @return boolean
-		 */
-		
-		public function hit() {
-			return false;
-			
-			$dataArray = array(); 
-			
-			$dataArray['class_id'] 	= $this->id;
-			$dataArray['time']		= time(); 
-			$dataArray['ip']		= filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL);
-			$dataArray['user_id']	= $_SESSION['user_id']; 
-			
-			if ($this->db instanceof \sql_db) {
-				$query = $this->db->buildQuery($dataArray, "loco_hits"); 
-				
-				if ($this->db->query($query)) {
-					return true;
-				} else {
-					throw new Exception($this->db->error);
-					return false;
-				}
-			} else {
-				$this->db->insert("loco_hits", $dataArray); 
-				return true;
-			}
 		}
 		
 		/**
@@ -799,36 +762,17 @@
 		 */
 		
 		public function getEvents() {
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT ll.*, u.username FROM log_locos AS ll LEFT JOIN nuke_users AS u ON ll.user_id = u.user_id WHERE ll.class_id = '".$this->db->real_escape_string($this->id)."' ORDER BY timestamp DESC"; 
-				
-				if ($rs = $this->db->query($query)) {
-					$return = array(); 
-					
-					while ($row = $rs->fetch_assoc()) {
-						$row['timestamp'] = \DateTime::createFromFormat("Y-m-d H:i:s", $row['timestamp']); 
-						$row['args'] = json_decode($row['args'], true);
-						$return[] = $row; 
-					}
-					
-					return $return;
-				} else {
-					throw new Exception($this->db->error); 
-					return false;
-				}
-			} else {
-				$query = "SELECT ll.*, u.username FROM log_locos AS ll LEFT JOIN nuke_users AS u ON ll.user_id = u.user_id WHERE ll.class_id = ? ORDER BY timestamp DESC"; 
-				
-				$return = array(); 
-				
-				foreach ($this->db->fetchAll($query, $this->id) as $row) {
-					$row['timestamp'] = \DateTime::createFromFormat("Y-m-d H:i:s", $row['timestamp']); 
-					$row['args'] = json_decode($row['args'], true);
-					$return[] = $row; 
-				}
-				
-				return $return;
+			$query = "SELECT ll.*, u.username FROM log_locos AS ll LEFT JOIN nuke_users AS u ON ll.user_id = u.user_id WHERE ll.class_id = ? ORDER BY timestamp DESC"; 
+			
+			$return = array(); 
+			
+			foreach ($this->db->fetchAll($query, $this->id) as $row) {
+				$row['timestamp'] = \DateTime::createFromFormat("Y-m-d H:i:s", $row['timestamp']); 
+				$row['args'] = json_decode($row['args'], true);
+				$return[] = $row; 
 			}
+			
+			return $return;
 		}
 		
 		/**
@@ -1449,6 +1393,16 @@
 			$this->type = $Type->name;
 			
 			return $this;
+		}
+		
+		/**
+		 * Get the locomotive class type
+		 * @since Version 3.9.1
+		 * @return \Railpage\Locos\Type
+		 */
+		
+		public function getType() {
+			return filter_var($this->type_id, FILTER_VALIDATE_INT) ? new Type($this->type_id) : false;
 		}
 		
 		/**

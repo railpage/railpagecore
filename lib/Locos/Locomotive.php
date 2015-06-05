@@ -305,9 +305,7 @@
 			 * Record this in the debug log
 			 */
 				
-			if (function_exists("debug_recordInstance")) {
-				debug_recordInstance(__CLASS__);
-			}
+			Debug::RecordInstance();
 			
 			$this->bootstrap(); 
 			
@@ -962,9 +960,8 @@
 		 */
 		
 		public function getRating($detailed = false) {
-			if (empty($this->id)) {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				throw new Exception("Cannot fetch rating - no loco ID given"); 
-				return false;
 			}
 			
 			if ($detailed) {
@@ -985,16 +982,12 @@
 				$row['whole_avg'] = round($row['dec_avg']);
 				
 				return $row;
-			} else {
-				$query = "SELECT AVG(rating) as average_rating FROM rating_loco WHERE loco_id = ?"; 
-				$row = $this->db->fetchRow($query, $this->id);
-				
-				if ($row['average_rating']) {
-					return $row['average_rating'];
-				} else {
-					return floatval("2.5");
-				}
 			}
+			
+			$query = "SELECT AVG(rating) as average_rating FROM rating_loco WHERE loco_id = ?"; 
+			$row = $this->db->fetchRow($query, $this->id);
+			
+			return isset($row['average_rating']) ? $row['average_rating'] : floatval("2.5"); 
 		}
 		
 		/**
@@ -1005,19 +998,19 @@
 		 */
 		
 		public function userRating($user_id = false) {
-			if (!$user_id || empty($user_id)) {
+			if (!$user_id instanceof User && !filter_var($user_id, FILTER_VALIDATE_INT)) {
 				throw new Exception("Cannot fetch user rating for this loco - no user given"); 
+			}
+			
+			if ($user_id instanceof User) {
+				$user_id = $user_id->id;
 			}
 			
 			$query = "SELECT rating FROM rating_loco WHERE user_id = ? AND loco_id = ? LIMIT 1"; 
 			
-			$row = $this->db->fetchAll($query, array($user_id, $this->id)); 
+			$rating = $this->db->fetchOne($query, array($user_id, $this->id)); 
 			
-			if (count($row)) {
-				return true;
-			} else {
-				return false;
-			}
+			return $rating;
 		}
 		
 		/**
@@ -1029,11 +1022,15 @@
 		 */
 		 
 		public function setRating($user_id = false, $rating = false) {
-			if (!$user_id || empty($user_id)) {
+			if (!$user_id instanceof User && !filter_var($user_id, FILTER_VALIDATE_INT)) {
 				throw new Exception("Cannot set user rating for this loco - no user given"); 
 			}
 			
-			if (!$rating || empty($rating)) {
+			if ($user_id instanceof User) {
+				$user_id = $user_id->id;
+			}
+			
+			if (!filter_var($rating, FILTER_VALIDATE_INT)) {
 				throw new Exception("Cannot set user rating for this loco - no rating given"); 
 			}
 			

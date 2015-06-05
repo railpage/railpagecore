@@ -89,20 +89,44 @@
 			$this->slug = $row['slug'];
 			
 			if (empty($this->slug)) {
-				$proposal = ContentUtility::generateUrlSlug($this->arrangement, 30);
-				
-				$query = "SELECT id FROM wheel_arrangements WHERE slug = ?";
-				$result = $this->db->fetchAll($query, $proposal);
-				
-				if (count($result)) {
-					$proposal = $proposal . count($result);
-				}
-				
-				$this->slug = $proposal;
-				$this->commit();
+				$this->generateSlug(); 
+				$this->commit(); 
 			}
 			
+			$this->makeURLs(); 
+		}
+		
+		/**
+		 * Populate our URLs
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function makeURLs() {
+			
 			$this->url = new Url(sprintf("/locos/wheelset/%s", $this->slug));
+			
+		}
+		
+		/**
+		 * Generate a URL slug
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function generateSlug() {
+			
+			$proposal = ContentUtility::generateUrlSlug(sprintf("%s-%s", $this->name, $this->arrangement), 30);
+			
+			$query = "SELECT id FROM wheel_arrangements WHERE slug = ?";
+			$result = $this->db->fetchAll($query, $proposal);
+			
+			if (count($result)) {
+				$proposal = $proposal . count($result);
+			}
+			
+			$this->slug = $proposal;
+
 		}
 		
 		/**
@@ -119,18 +143,10 @@
 			}
 					
 			if (empty($this->slug)) {
-				$proposal = ContentUtility::generateUrlSlug($this->arrangement, 30);
-				
-				$query = "SELECT id FROM wheel_arrangements WHERE slug = ?";
-				$result = $this->db->fetchAll($query, $proposal);
-				
-				if (count($result)) {
-					$proposal = $proposal . count($result);
-				}
-				
-				$this->slug = $proposal;
-				$this->url = new Url(sprintf("/locos/wheelset/%s", $this->slug));
+				$this->generateSlug(); 
 			}
+			
+			$this->makeURLs();
 			
 			return true;
 		}

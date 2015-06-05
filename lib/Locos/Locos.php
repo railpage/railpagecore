@@ -359,7 +359,9 @@
 		public function classByManufacturer() {
 			$classes = $this->listClasses();
 			
-			$return = array();
+			$return = array(
+				"stat" => "err"
+			);
 			
 			if ($classes['stat'] === "ok") {
 				$return['stat'] = "ok";
@@ -369,8 +371,6 @@
 				}
 				
 				ksort($return['manufacturer']);
-			} else {
-				$return = $classes;
 			}
 			
 			return $return;
@@ -385,7 +385,10 @@
 		
 		public function classByWheelset() {
 			$classes = $this->listClasses();
-			$return = array();
+			
+			$return = array(
+				"stat" => "err"
+			);
 			
 			if ($classes['stat'] === "ok") {
 				$return['stat'] = "ok";
@@ -395,8 +398,6 @@
 				}
 				
 				ksort($return['wheels']);
-			} else {
-				$return = $classes;
 			}
 			
 			return $return;
@@ -411,7 +412,10 @@
 		
 		public function classByType() {
 			$classes = $this->listClasses();
-			$return = array();
+			
+			$return = array(
+				"stat" => "err"
+			);
 			
 			if ($classes['stat'] === "ok") {
 				$return['stat'] = "ok";
@@ -421,8 +425,6 @@
 				}
 				
 				ksort($return['type']);
-			} else {
-				$return = $classes;
 			}
 			
 			return $return;
@@ -622,7 +624,9 @@
 		
 		public function listyears() {
 			$classes = $this->listClasses();
-			$return = array(); 
+			$return = array(
+				"stat" => "err"
+			);
 			
 			if ($classes['stat'] === "ok") {
 				$return['stat'] = "ok";
@@ -634,8 +638,6 @@
 				}
 				
 				ksort($return['years']);
-			} else {
-				$return = $classes;
 			}
 			
 			return $return;
@@ -786,6 +788,7 @@
 		 * @return boolean
 		 */
 		
+		/*
 		public function addBuilder($builder_name = false, $builder_desc = false) {
 			if (!$builder_name) {
 				throw new Exception("Cannot add builder - name required");
@@ -805,6 +808,7 @@
 			$this->db->insert("loco_manufacturer", $data); 
 			return true;
 		}
+		*/
 		
 		/**
 		 * Add an operator
@@ -815,6 +819,7 @@
 		 * @return boolean
 		 */
 		
+		/*
 		public function addOperator($operator_name = false, $operator_desc = false) {
 			if (!$operator_name) {
 				throw new Exception("Cannot add operator - name required");
@@ -832,6 +837,7 @@
 			$this->db->insert("operators", $data); 
 			return true;
 		}
+		*/
 		
 		/**
 		 * Edit note
@@ -928,6 +934,7 @@
 		 * @return boolean
 		 */
 		
+		/*
 		public function editDate($date_id = false, $date_type_id = false, $date = false, $text) {
 			if (!$date_id || !$date_type_id || !$date) {
 				throw new Exception("Cannot edit date - missing required fields"); 
@@ -951,6 +958,7 @@
 			
 			return true;
 		}
+		*/
 		
 		/**
 		 * Delete a date
@@ -1192,6 +1200,7 @@
 		 * @return boolean
 		 */
 		
+		/*
 		public function closeCorrection($id = false, $user_id = false) {
 			if (!$id) {
 				throw new Exception("Cannot close correction - no ID given"); 
@@ -1216,6 +1225,7 @@
 			$this->db->update("loco_unit_corrections", $data, $where);
 			return true;
 		}
+		*/
 		
 		/**
 		 * Ignore a suggested correction
@@ -1225,6 +1235,7 @@
 		 * @return boolean
 		 */
 		
+		/*
 		public function ignoreCorrection($id = false, $user_id = false) {
 			if (!$id) {
 				throw new Exception("Cannot ignore correction - no ID given"); 
@@ -1249,26 +1260,7 @@
 			$this->db->update("loco_unit_corrections", $data, $where);
 			return true;
 		}
-		
-		/**
-		 * Add wheel arrangement
-		 * @since Version 3.4
-		 * @return boolean
-		 * @param string $title
-		 * @param string $arrangement
-		 */
-		
-		public function addWheelArrangement($title = "", $arrangement = false) {
-			$this->Memcached->delete("railpage:loco.wheelarrangements");
-
-			$data = array(
-				"title" => $title, 
-				"arrangement" => $arrangement
-			);
-			
-			$this->db->insert("wheel_arrangements", $data);
-			return true;
-		}
+		*/
 		
 		/**
 		 * Get latest owner of a locomotive
@@ -1330,6 +1322,28 @@
 			
 			return $return;
 		}
+		
+		/**
+		 * Add wheel arrangement
+		 * @since Version 3.4
+		 * @return boolean
+		 * @param string $title
+		 * @param string $arrangement
+		 */
+		
+		/*
+		public function addWheelArrangement($title = "", $arrangement = false) {
+			$this->Memcached->delete("railpage:loco.wheelarrangements");
+
+			$data = array(
+				"title" => $title, 
+				"arrangement" => $arrangement
+			);
+			
+			$this->db->insert("wheel_arrangements", $data);
+			return true;
+		}
+		*/
 		
 		/**
 		 * Add a new locomotive group
