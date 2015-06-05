@@ -10,6 +10,8 @@
 	
 	use Railpage\AppCore;
 	use Railpage\Module;
+	use Railpage\Debug;
+	use Railpage\ContentUtility;
 	use Railpage\Url;
 	use Exception;
 	use DateTime;
@@ -154,14 +156,14 @@
 		 */
 		
 		public function getEvents(DateTime $Start = NULL, DateTime $End = NULL, $limit = 15) {
-			if (is_null($Start)) {
+			if (!$Start instanceof DateTime) {
 				$Start = new DateTime;
 			}
 			
 			$query = "SELECT ed.* FROM event_dates AS ed INNER JOIN event AS e ON ed.event_id = e.id WHERE e.category_id = ? AND ed.date >= ?";
 			$params = array($this->id, $Start->format("Y-m-d"));
 			
-			if (!is_null($End)) {
+			if ($End instanceof DateTime) {
 				$query .= " AND ed.date <= ?";
 				$params[] = $End->format("Y-m-d");
 			}
@@ -179,7 +181,11 @@
 		
 		private function createSlug() {
 			
-			$proposal = substr(create_slug($this->name), 0, 14);
+			if (!empty($this->slug)) {
+				return;
+			}
+			
+			$proposal = ContentUtility::generateUrlSlug($this->name, 14);
 			
 			$result = $this->db->fetchAll("SELECT id FROM event_categories WHERE slug = ?", $proposal); 
 			
@@ -188,7 +194,6 @@
 			}
 			
 			$this->slug = $proposal;
-			$this->commit();
 			
 		}
 		
@@ -199,9 +204,7 @@
 		 */
 		
 		private function createUrls() {
-			if (empty($this->slug)) {
-				$this->createSlug(); 
-			}
+			$this->createSlug(); 
 			
 			$this->url = new Url(sprintf("%s/category/%s", $this->Module->url, $this->slug));
 		}
