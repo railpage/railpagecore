@@ -9,6 +9,8 @@
 	namespace Railpage; 
 	
 	use Railpage\AppCore;
+	use Railpage\Debug;
+	use Railpage\Url;
 	use Exception;
 	use InvalidArgumentException;
 	
@@ -43,13 +45,8 @@
 		public function __construct() {
 			// Placeholder - do nothing for now
 			
-			/**
-			 * Record this in the debug log
-			 */
+			Debug::RecordInstance(); 
 			
-			if (function_exists("debug_recordInstance")) {
-				debug_recordInstance(__CLASS__);
-			}
 		}
 		
 		/**
@@ -176,12 +173,10 @@
 		 */
 		
 		public function GetHTML() {
-			global $smarty;
+			$Smarty = AppCore::GetSmarty(); 
 			
-			#printArray($this->menu);die;
-			
-			$smarty->assign("submenu", $this->menu);
-			return $smarty->fetch(RP_SITE_ROOT . DS . "content" . DS . "inc.submenu.tpl");
+			$Smarty->Assign("submenu", $this->menu);
+			return $Smarty->Fetch(RP_SITE_ROOT . DS . "content" . DS . "inc.submenu.tpl");
 		}
 		
 		/**
@@ -218,6 +213,10 @@
 		 */
 		
 		public function HasItems() {
+			if (!is_array($this->menu) || count($this->menu) === 0) {
+				return false;
+			}
+			
 			foreach ($this->menu as $section) {
 				if (isset($section['menu']) && count($section['menu'])) {
 					return true;

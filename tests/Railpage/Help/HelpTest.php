@@ -3,6 +3,8 @@
 	use Railpage\Help\Category;
 	use Railpage\Help\Help;
 	use Railpage\Help\Item;
+	use Railpage\Users\User;
+	use Railpage\SiteEvent;
 	
 	class HelpTest extends PHPUnit_Framework_TestCase {
 		
@@ -51,6 +53,33 @@
 			$this->assertEquals($NewItem->title, $Item->title); 
 			
 			return $Item;
+			
+		}
+		
+		/**
+		 * @depends testAddItem
+		 */
+		
+		public function test_logContributor($Item) {
+			
+			$User = new User;
+			$User->username = "helptester";
+			$User->contact_email = "michael+phpunit+help@railpage.com.au";
+			$User->setPassword('sadfasdfaf'); 
+			$User->commit(); 
+			
+			$Event = new SiteEvent;
+			$Event->user_id = $User->id; 
+			$Event->module_name = "help";
+			$Event->title = "Help item created";
+			$Event->args = array();
+			$Event->key = "help_id";
+			$Event->value = $Item->id;
+			$Event->commit();
+			
+			$contributors = $Item->getContributors();
+			
+			$this->assertTrue(count($contributors) > 0);
 			
 		}
 		

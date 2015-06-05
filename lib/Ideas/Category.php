@@ -10,6 +10,7 @@
 	
 	use Railpage\AppCore;
 	use Railpage\Module;
+	use Railpage\ContentUtility;
 	use Exception;
 	use DateTime;
 	
@@ -42,7 +43,7 @@
 		 * @var string $slug
 		 */
 		
-		private $slug;
+		public $slug;
 		
 		/**
 		 * Category URL
@@ -121,7 +122,7 @@
 		private function validate() {
 			
 			if (empty($this->name)) {
-				throw new Exception("Idea category name cannot be emtpy");
+				throw new Exception("Idea category name cannot be empty");
 			}
 			
 			if (empty($this->slug)) {
@@ -138,7 +139,8 @@
 		 */
 		
 		private function createSlug() {
-			$proposal = create_slug($this->name);
+			
+			$proposal = ContentUtility::generateUrlSlug($this->name);
 			
 			$result = $this->db->fetchAll("SELECT id FROM idea_categories WHERE slug = ?", $proposal); 
 			
@@ -147,6 +149,7 @@
 			}
 			
 			$this->slug = $proposal;
+			
 		}
 		
 		/**

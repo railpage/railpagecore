@@ -195,23 +195,6 @@
 			}
 			
 			/**
-			 * Add this slug to the database
-			 */
-			
-			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
-				
-				$data = array(
-					"url_slug" => $proposal
-				);
-				
-				$where = array(
-					"id = ?" => $this->id
-				);
-				
-				$this->db->update("nuke_faqAnswer", $data, $where); 
-			}
-			
-			/**
 			 * Return it
 			 */
 			
@@ -239,19 +222,13 @@
 		/**
 		 * Create URLs
 		 * @since Version 3.8.7
-		 * @return $this
+		 * @return void
 		 */
 		
 		private function makeUrls() {
 			
-			if (is_string($this->url_slug) && !empty($row['item_url_slug'])) {
-				$this->url = RP_WEB_ROOT . "/help/" . $this->category->url_slug . "/" . $this->url_slug;
-			} else {
-				$this->url = RP_WEB_ROOT . "/help/" . $this->category->url_slug . "/" . $this->id;
-			}
+			$this->url = new Url(sprintf("%s/%s/%s", $this->Module->url, $this->category->url_slug, $this->url_slug));
 			
-			$url = is_string($this->url_slug) ? sprintf("%s/%s/%s", $this->Module->url, $this->category->url_slug, $this->url_slug) : sprintf("%s/%s/%s", $this->Module->url, $this->category->url_slug, $this->id);
-			$this->url = new Url($url);
 		}
 	}
 	

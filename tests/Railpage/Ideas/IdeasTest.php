@@ -21,6 +21,16 @@
 			
 			$this->assertFalse(!filter_var($Category->id, FILTER_VALIDATE_INT)); 
 			
+			$NewCat = new Category($Category->slug); 
+			$this->assertEquals($Category->id, $NewCat->id);
+			
+			// Duplicate it
+			$Clone = new Category;
+			$Clone->name = self::CAT_TITLE; 
+			$Clone->commit(); 
+			
+			$this->assertNotEquals($Category->slug, $Clone->slug); 
+			
 			return $Category->id;
 			
 		}
@@ -52,7 +62,32 @@
 			$this->assertEquals($idea_id, $Idea->id); 
 			$this->assertEquals(self::IDEA_TITLE, $Idea->title);
 			
+			$NewIdea = new Idea($Idea->slug); 
+			$this->assertEquals($Idea->id, $NewIdea->id);
+			
+			$Clone = new Idea; 
+			$Clone->Category = new Category($category_id);
+			$Clone->title = self::IDEA_TITLE;
+			$Clone->description = self::IDEA_DESC;
+			$Clone->setAuthor($User)->commit(); 
+			
+			$this->assertNotEquals($Clone->slug, $Idea->slug); 
+			
 			return $idea_id;
+			
+		}
+		
+		/**
+		 * @depends testAddIdea
+		 */
+		
+		public function testCatGetIdeas($idea_id) {
+			
+			$Idea = new Idea($idea_id); 
+			
+			foreach ($Idea->Category->getIdeas() as $ThisIdea) {
+				$this->assertInstanceOf("Railpage\\Ideas\\Idea", $ThisIdea); 
+			}
 			
 		}
 		
@@ -71,6 +106,12 @@
 			$this->assertEquals(Ideas::STATUS_ACTIVE, $Idea->status);
 			$this->assertInstanceOf("\\Railpage\\Users\\User", $Idea->Author); 
 			$this->assertInstanceOf("\\DateTime", $Idea->Date);
+			
+			$Idea->commit(); 
+			
+			$NewIdea = new Idea($Idea->slug); 
+			
+			$this->assertEquals($Idea->id, $NewIdea->id); 
 			
 		}
 		
@@ -128,6 +169,31 @@
 				$this->assertFalse(!filter_var($Idea->id, FILTER_VALIDATE_INT)); 
 				
 			}
+		}
+		
+		/**
+		 * @depends testAddCategory
+		 */
+		
+		public function testUpdateCategory($cat_id) {
+			
+			$Cat = new Category($cat_id); 
+			$Cat->commit(); 
+			
+		}
+		
+		/**
+		 * @depends testAddCategory
+		 */
+		
+		public function test_break_category_name($cat_id) {
+			
+			$this->setExpectedException("Exception", "Idea category name cannot be empty");
+			
+			$Category = new Category($cat_id); 
+			$Category->name = NULL; 
+			$Category->commit(); 
+			
 		}
 	}
 	

@@ -118,7 +118,7 @@
 				return sprintf($diff > 1 ? '%s months ago' : 'last month', $diff);
 			}
 		
-			$diff = date('Y', $now) - date('Y', $date);
+			$diff = date('Y', $now) - date('Y', $timestamp);
 		
 			return sprintf($diff > 1 ? '%s years ago' : 'last year', $diff);
 			

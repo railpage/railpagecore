@@ -14,6 +14,7 @@
 	use Railpage\SiteEvent;
 	use Railpage\Forums\Thread;
 	use Railpage\Url;
+	use Railpage\ContentUtility;
 	use Exception;
 	use DateTime;
 	
@@ -42,7 +43,7 @@
 		 * @var string $slug
 		 */
 		
-		private $slug;
+		public $slug;
 		
 		/**
 		 * Idea URL
@@ -254,7 +255,7 @@
 		
 		private function createSlug() {
 			
-			$proposal = substr(create_slug($this->title), 0, 30);
+			$proposal = ContentUtility::generateUrlSlug($this->title);
 			
 			$result = $this->db->fetchAll("SELECT id FROM idea_ideas WHERE slug = ?", $proposal); 
 			

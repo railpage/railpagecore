@@ -102,7 +102,7 @@
 		public function __construct($id = false) {
 			parent::__construct(); 
 			
-			if (filter_var($id, FILTER_VALIDATE_INT)) {
+			if ($id = filter_var($id, FILTER_VALIDATE_INT)) {
 				$this->id = $id;
 				
 				$query = "SELECT * FROM phpbb_warnings WHERE warn_id = ?";
@@ -205,12 +205,8 @@
 		 * @return $this
 		 */
 		
-		public function setRecipient(User $User = NULL) {
-			if ($User instanceof User) {
-				$this->Recipient = $User;
-			} else {
-				throw new Exception("Cannot set warning recipient to desired user - invalid user specified");
-			}
+		public function setRecipient(User $User) {
+			$this->Recipient = $User;
 			
 			return $this;
 		}
@@ -222,12 +218,8 @@
 		 * @return $this
 		 */
 		
-		public function setIssuer(User $User = NULL) {
-			if ($User instanceof User) {
-				$this->Issuer = $User;
-			} else {
-				throw new Exception("Cannot set warning issuer to desired user - invalid user specified");
-			}
+		public function setIssuer(User $User) {
+			$this->Issuer = $User;
 			
 			return $this;
 		}

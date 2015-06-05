@@ -54,6 +54,8 @@
 			
 			$this->assertEquals($User->id, $Entry->Author->id);
 			
+			$Entry->approve(); 
+			
 			return $Entry;
 			
 		}
@@ -77,6 +79,10 @@
 			
 		}
 		
+		/**
+		 * @depends testAddEntry
+		 */
+		
 		public function testGetEntry() {
 			
 			$Type = new Type(self::TYPE); 
@@ -84,6 +90,96 @@
 			foreach ($Type->getEntries() as $Entry) {
 				$this->assertEquals(self::NAME, $Entry->name); 
 			}
+			
+		}
+		
+		public function test_loadTypes() {
+			
+			$types = [ "code", "acronym", "station", "slang", "general", "term" ];
+			
+			foreach ($types as $type) {
+				
+				$GlossaryType = new Type($type); 
+				
+			}
+		}
+		
+		/**
+		 * @depends testAddUser
+		 */
+		
+		public function test_delete($User) {
+			
+			$Type = new Type(self::TYPE);
+			$Entry = new Entry;
+			$Entry->name = self::NAME;
+			$Entry->text = self::TEXT;
+			$Entry->example = self::EXAMPLE;
+			$Entry->Type = $Type;
+			$Entry->setAuthor($User); 
+			
+			$Entry->commit(); 
+			
+			$Entry->reject(); 
+			
+		}
+		
+		public function test_break_name() {
+			
+			$this->setExpectedException("Exception", "Entry name cannot be empty");
+			
+			$Entry = new Entry;
+			$Entry->commit(); 
+			
+		}
+		
+		public function test_break_text() {
+			
+			$this->setExpectedException("Exception", "Entry text cannot be empty");
+			
+			$Entry = new Entry;
+			$Entry->name = "asdf";
+			$Entry->commit(); 
+			
+		}
+		
+		public function test_break_type() {
+			
+			$this->setExpectedException("Exception", "Entry type is invalid");
+			
+			$Entry = new Entry;
+			$Entry->name = "asdf";
+			$Entry->text = "asfdfafadfsaf";
+			$Entry->commit(); 
+			
+		}
+		
+		public function test_break_user() {
+			
+			$this->setExpectedException("Exception", "No author given for glossary entry");
+			
+			$Entry = new Entry;
+			$Entry->Type = new Type(self::TYPE);
+			$Entry->example = NULL;
+			$Entry->name = "asdf";
+			$Entry->text = "asfdfafadfsaf";
+			$Entry->commit(); 
+			
+		}
+		
+		/**
+		 * @depends testAddEntry
+		 */
+		
+		public function test_nukeDate($Entry) {
+			
+			$Database = $Entry->getDatabaseConnection(); 
+			
+			$data = [ "date" => "0000-00-00 00:00:00" ];
+			$where = [ "id = ?" => $Entry->id ];
+			$Database->update("glossary", $data, $where); 
+			
+			$Entry = new Entry($Entry->id); 
 			
 		}
 	}

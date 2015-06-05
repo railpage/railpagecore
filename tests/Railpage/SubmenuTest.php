@@ -24,6 +24,20 @@
 			$Submenu->Section();
 		}
 		
+		public function test_hasItems() {
+			
+			$Submenu = new Submenu;
+			$Submenu->HasItems(); 
+			
+		}
+		
+		public function test_nogrouping_addmeta() {
+			
+			$Submenu = new Submenu;
+			$Submenu->Section("Test 3")->Add("Test3", "/test3", false, array("class" => "testclass")); 
+			
+		}
+		
 		public function testSetGroupingSubtitle() {
 			$Submenu = new Submenu;
 			$Submenu->AddGrouping("Test 1"); 
@@ -35,6 +49,7 @@
 		public function testAddItem() {
 			$Submenu = new Submenu;
 			$Submenu->Add("No grouping", "/nogrouping"); 
+			$Submenu->Add("No grouping", "/nogrouping"); // Add it again 
 			$Submenu->AddGrouping("Test 1"); 
 			$Submenu->Add("Test", "/test", "Test 1"); 
 			$Submenu->Section("Test 2")->Add("Test2", "/test2");
