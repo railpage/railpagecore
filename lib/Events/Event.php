@@ -13,6 +13,7 @@
 	use Railpage\Organisations\Organisation;
 	use Railpage\Place;
 	use Railpage\Module;
+	use Railpage\Debug;
 	use Railpage\Url;
 	use DateTime;
 	use Exception;
@@ -117,41 +118,51 @@
 		public function __construct($id = false) {
 			parent::__construct();
 			
-			/**
-			 * Record this in the debug log
-			 */
+			Debug::RecordInstance(); 
 			
-			if (function_exists("debug_recordInstance")) {
-				debug_recordInstance(__CLASS__);
-			}
-			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
+			$timer = Debug::getTimer(); 
 			
 			$this->Module = new Module("events");
 			$this->namespace = $this->Module->namespace;
 			
-			if (filter_var($id, FILTER_VALIDATE_INT)) {
-				$query = "SELECT * FROM event WHERE id = ?";
-				$this->mckey = sprintf("railpage:events.event=%d", $id);
-			} elseif (is_string($id) && strlen($id) > 2) {
-				$query = "SELECT * FROM event WHERE slug = ?";
-				$this->mckey = getMemcacheObject(sprintf("railpage:events.event=%s", $id));
+			$this->populate($id); 
+			
+			Debug::logEvent(__METHOD__, $timer); 
+			
+		}
+		
+		/**
+		 * Populate this object
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function populate($id) {
+			
+			if ($id === false) {
+				return;
 			}
 			
-			if (empty($this->mckey) || $this->mckey === false || !$row = getMemcacheObject($this->mckey)) {
-				if (isset($query)) {	
-					$row = $this->db->fetchRow($query, $id);
-					$this->mckey = sprintf("railpage:events.event=%d", $row['id']);
-					setMemcacheObject($this->mckey, $row);
-					setMemcacheObject(sprintf("railpage:events.event=%s", $row['slug']), $row['id']);
-				}
+			if (!filter_var($id, FILTER_VALIDATE_INT)) {
+				$id = $this->db->fetchOne("SELECT id FROM event WHERE slug = ?", $id); 
+			}
+			
+			if (!$id = filter_var($id, FILTER_VALIDATE_INT)) {
+				return;
+			}
+			
+			$this->id = $id;
+			$this->mckey = sprintf("railpage:events.event=%d", $this->id);
+			$query = "SELECT * FROM event WHERE id = ?";
+			
+			if (!$row = $this->Memcached->fetch($this->mckey)) {
+				$row = $this->db->fetchRow($query, $this->id);
+				Debug::logEvent(__METHOD__ . " - fetched from SQL"); 
+				
+				$this->Memcached->save($this->mckey, $row);
 			}
 			
 			if (isset($row) && is_array($row)) {
-				$this->id = $row['id'];
 				$this->title = $row['title'];
 				$this->desc = $row['description']; 
 				$this->meta = json_decode($row['meta'], true);
@@ -183,10 +194,6 @@
 				$this->Templates = new stdClass();
 				$this->Templates->view = sprintf("%s/event.tpl", $this->Module->Paths->html);
 			}
-			
-			if (RP_DEBUG) {
-				$site_debug[] = __CLASS__ . "::" . __METHOD__ . " completed in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-			}
 		}
 		
 		/**
@@ -201,17 +208,14 @@
 		private function validate() {
 			if (empty($this->title)) {
 				throw new Exception("Validation failed for event. Title cannot be empty");
-				return false;
 			}
 			
 			if (empty($this->desc)) {
 				throw new Exception("Validation failed for event. Description cannot be empty");
-				return false;
 			}
 			
 			if (!$this->Category instanceof EventCategory) {
 				throw new Exception("Validation failed for event. Event must have a category!");
-				return false;
 			}
 			
 			if (!isset($this->slug) || empty($this->slug)) {
@@ -239,7 +243,7 @@
 			$this->validate(); 
 			
 			if (isset($this->mckey) && !empty($this->mckey)) {
-				deleteMemcacheObject($this->mckey);
+				$this->Memcached->delete($this->mckey);
 			}
 			
 			$data = array(

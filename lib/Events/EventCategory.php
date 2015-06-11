@@ -72,6 +72,8 @@
 		public function __construct($category_id = NULL) {
 			parent::__construct();
 			
+			$timer = Debug::getTimer(); 
+			
 			$this->Module = new Module("events");
 			$this->namespace = $this->Module->namespace;
 			
@@ -91,6 +93,8 @@
 					$this->createUrls();
 				}
 			}
+			
+			Debug::logEvent(__METHOD__, $timer); 
 		}
 		
 		/**

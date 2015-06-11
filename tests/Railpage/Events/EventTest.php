@@ -279,6 +279,9 @@
 		
 		public function testGetEventsForDate($EventDate) {
 			
+			$EventDate->setStatus(EventDate::STATUS_RUNNING);
+			$EventDate->Event->approve(); 
+			
 			$result = (new Events)->getEventsForDate($EventDate->Date);
 			
 			$this->assertEquals(1, count($result)); 
