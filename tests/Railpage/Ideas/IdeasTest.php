@@ -335,29 +335,31 @@
 			
 			$Thread = new Thread;
 			$Thread->title = $Idea->title;
-			$Thread->setForum($Forum); 
-			$Thread->commit(); 
+			$Thread->setForum($Forum)->setAuthor($Idea->Author)->commit(); 
 			
 			$Post = new Post;
-			$Post->setAuthor($Idea->Author)->setThread($Thread);
 			$Post->text = $Idea->description;
-			$Post->commit(); 
+			$Post->ip = "8.8.8.8";
+			$Post->setAuthor($Idea->Author)->setThread($Thread)->commit(); 
 			
-			return $Post;
+			$this->assertFalse(!filter_var($Post->id, FILTER_VALIDATE_INT)); 
+			
+			return $Thread->id;
 			
 		}
 		
 		/**
-		 * @depends createThread
+		 * @depends test_createThread
 		 * @depends testAddIdea
 		 */
 		
-		public function test_setIdeaThread($Post, $idea_id) {
+		public function test_setIdeaThread($thread_id, $idea_id) {
 			
+			$Thread = new Thread($thread_id);
 			$Idea = new Idea($idea_id); 
 			
 			$this->assertNull($Idea->getForumThread()); 
-			$Idea->setForumThread($Post->Thread);
+			$Idea->setForumThread($Thread);
 			
 			$this->assertInstanceOf("Railpage\\Forums\\Thread", $Idea->getForumThread()); 
 			

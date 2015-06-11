@@ -52,6 +52,13 @@
 			$this->assertEquals($NewItem->id, $Item->id); 
 			$this->assertEquals($NewItem->title, $Item->title); 
 			
+			// duplicate it to test the URL slug creator
+			$NewItem = new Item;
+			$NewItem->title = self::ITEM_TITLE;
+			$NewItem->text = self::ITEM_TEXT;
+			$NewItem->category = $Category;
+			$NewItem->commit(); 
+			
 			return $Item;
 			
 		}
@@ -188,12 +195,17 @@
 			
 		}
 		
-		public function test_deleteItem() {
+		/**
+		 * @depends testAddItem
+		 */
+		
+		public function test_deleteItem($Item) {
 			
 			$Help = new Help;
 			
-			$Category = $this->testAddCategory();
-			$Item = $this->testAddItem($Category); 
+			$Item = clone($Item); 
+			$Item->id = NULL;
+			$Item->commit(); 
 			
 			$this->assertTrue($Help->deleteItem($Item->id)); 
 			
