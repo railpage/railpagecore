@@ -182,18 +182,6 @@
 		}
 		
 		/**
-		 * @depends test_setCoverImage
-		 */
-		
-		public function test_getRandomClass() {
-			
-			$Locos = new Locos;
-			
-			$this->assertTrue(is_array($Locos->getRandomClass())); 
-			
-		}
-		
-		/**
 		 * @depends testAddLocoClass
 		 * @depends testAddGauge
 		 * @depends testAddStatus
@@ -460,6 +448,20 @@
 			$this->assertTrue($Loco->hasCoverImage()); 
 			
 			$Loco->getCoverImage(); 
+			
+			return $Image;
+			
+		}
+		
+		/**
+		 * @depends test_setCoverImage
+		 */
+		
+		public function test_getRandomClass() {
+			
+			$Locos = new Locos;
+			
+			$this->assertTrue(is_array($Locos->getRandomClass())); 
 			
 		}
 		

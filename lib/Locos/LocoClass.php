@@ -297,7 +297,7 @@
 				} else {
 					$this->id = $this->db->fetchOne("SELECT id FROM loco_class WHERE slug = ?", $this->id);
 					
-					$this->Memcached->save($slugkey, $this->id, strtotime("+1 week"));
+					$this->Memcached->save($slugkey, $this->id, strtotime("+1 year"));
 				}
 			}
 			
@@ -1191,7 +1191,7 @@
 					"url" => $Image->url->getURLs()
 				);
 				
-				$this->Memcached->save($mckey, $return, strtotime("+1 month"));
+				$this->Memcached->save($mckey, $return, strtotime("+1 year"));
 				
 				return $return;
 			}
@@ -1224,7 +1224,7 @@
 					)
 				);
 				
-				$this->Memcached->save($mckey, $return, strtotime("+1 month"));
+				$this->Memcached->save($mckey, $return, strtotime("+1 year"));
 				
 				return $return;
 			}
@@ -1254,7 +1254,7 @@
 					"url" => $Image->url->getURLs()
 				);
 				
-				$this->Memcached->save($mckey, $return, strtotime("+1 month"));
+				$this->Memcached->save($mckey, $return, strtotime("+1 year"));
 				
 				return $return;
 			}

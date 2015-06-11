@@ -12,6 +12,8 @@
 	use DateTime;
 	use Exception;
 	use Railpage\Url;
+	use Railpage\ContentUtility;
+	use Railpage\Debug;
 		
 	/** 
 	 * Locomotive operators
@@ -70,11 +72,16 @@
 		 */
 		
 		public function __construct($operator_id = false) {
+			
+			$timer = Debug::getTimer(); 
+			
 			parent::__construct(); 
 			
 			if (filter_var($operator_id, FILTER_VALIDATE_INT)) {
 				$this->fetch($operator_id);
 			}
+			
+			Debug::logEvent(__METHOD__, $timer);
 		}
 		
 		/**
@@ -121,6 +128,8 @@
 			if (!filter_var($this->organisation_id, FILTER_VALIDATE_INT)) {
 				$this->organisation_id = 0;
 			}
+			
+			$this->name = ContentUtility::FormatTitle($this->name); 
 			
 			return true;
 		}

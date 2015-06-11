@@ -12,6 +12,7 @@
 	use Railpage\ContentUtility;
 	use Exception;
 	use InvalidArgumentException;
+	use Railpage\Debug;
 	
 	/**
 	 * Locomotive type - steam, diesel-electric, etc
@@ -51,6 +52,9 @@
 		 */
 		
 		public function __construct($id = NULL) {
+			
+			$timer = Debug::getTimer(); 
+			
 			parent::__construct();
 			
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
@@ -64,6 +68,8 @@
 				$row = $this->db->fetchRow("SELECT * FROM loco_type WHERE slug = ?", $id);
 				$this->load($row);
 			}
+			
+			Debug::logEvent(__METHOD__, $timer);
 		}
 		
 		/**

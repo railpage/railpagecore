@@ -305,7 +305,7 @@
 			 * Record this in the debug log
 			 */
 				
-			Debug::RecordInstance();
+			Debug::RecordInstance(NULL, $id);
 			
 			$this->bootstrap(); 
 			
@@ -320,7 +320,7 @@
 				$this->fetch(); 
 			}
 			
-			Debug::logEvent(sprintf("Railpage: %s(%d)", __CLASS__, $this->id), $timer); 
+			Debug::logEvent(sprintf("%s(%d)", __METHOD__, $this->id), $timer); 
 		}
 		
 		/**
@@ -363,7 +363,7 @@
 				} else {
 					$class = $this->db->fetchOne("SELECT id FROM loco_class WHERE slug = ?", $class); 
 					
-					$this->Memcached->save($slug_mckey, $class, strtotime("+48 hours"));
+					$this->Memcached->save($slug_mckey, $class, strtotime("+1 year"));
 				}
 			}
 			
@@ -388,14 +388,14 @@
 				
 				$loco_id = $this->db->fetchOne($query, $params);
 				
-				$this->Memcached->save(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class, $number), $loco_id, strtotime("+1 month"));
+				$this->Memcached->save(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class, $number), $loco_id, strtotime("+1 year"));
 			}
 			
 			if (filter_var($loco_id, FILTER_VALIDATE_INT)) {
 				$this->id = filter_var($loco_id, FILTER_VALIDATE_INT);
 			}
 			
-			Debug::logEvent(sprintf("Railpage: %s()", __METHOD__), $timer); 
+			Debug::logEvent(__METHOD__, $timer); 
 		}
 		
 		/**
@@ -455,7 +455,7 @@
 			
 			$this->makeLinks();
 			
-			Debug::logEvent(sprintf("Railpage: %s()", __METHOD__), $timer); 
+			Debug::logEvent(__METHOD__, $timer); 
 			
 			return $row; 
 		}
@@ -543,6 +543,7 @@
 				if (isset($this->owners[0]['organisation_id']) && isset($this->owners[0]['organisation_name'])) {
 					$this->owner_id = $this->owners[0]['organisation_id']; 
 					$this->owner 	= $this->owners[0]['organisation_name']; 
+					#$this->commit(); 
 				} else {
 					$this->owner_id = 0;
 					$this->owner 	= "Unknown";
@@ -570,7 +571,8 @@
 				
 				if (isset($this->operators[0]['organisation_id']) && isset($this->operators[0]['organisation_name'])) {
 					$this->operator_id 	= $this->operators[0]['organisation_id']; 
-					$this->operator 	= $this->operators[0]['organisation_name']; 
+					$this->operator 	= $this->operators[0]['organisation_name'];  
+					#$this->commit(); 
 				} else {
 					$this->operator_id 	= 0;
 					$this->operator 	= "Unknown";
@@ -636,7 +638,7 @@
 			$this->StatsD->target->view = sprintf("%s.%d.view", $this->namespace, $this->id);
 			$this->StatsD->target->edit = sprintf("%s.%d.view", $this->namespace, $this->id);
 			
-			Debug::logEvent(sprintf("Railpage: %s()", __METHOD__), $timer); 
+			Debug::logEvent(__METHOD__, $timer); 
 		}
 		
 		/**

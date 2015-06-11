@@ -10,6 +10,7 @@
 	
 	use Railpage\AppCore;
 	use Railpage\Module;
+	use Railpage\Debug;
 	use Railpage\Url;
 	use Railpage\ContentUtility;
 	use Exception;
@@ -68,6 +69,9 @@
 		 */
 		
 		public function __construct($id = false) {
+			
+			$timer = Debug::getTimer(); 
+			
 			parent::__construct(); 
 			
 			$this->Module = new Module("locos"); 
@@ -80,6 +84,8 @@
 			}
 			
 			$this->populate(); 
+			
+			Debug::logEvent(__METHOD__, $timer); 
 			
 		}
 		

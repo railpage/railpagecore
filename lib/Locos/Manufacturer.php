@@ -11,6 +11,7 @@
 	use Railpage\Organisations\Organisation;
 	use Railpage\Url;
 	use Railpage\ContentUtility;
+	use Railpage\Debug;
 	use Exception;
 	use DateTime;
 	
@@ -75,6 +76,9 @@
 		 */
 		
 		public function __construct($id = NULL) {
+			
+			$timer = Debug::getTimer(); 
+			
 			parent::__construct();
 			
 			if (!is_null($id)) {
@@ -109,6 +113,8 @@
 					$this->url = new Url(sprintf("/locos/builder/%s", $this->slug));
 				}
 			}
+			
+			Debug::logEvent(__METHOD__, $timer);
 		}
 		
 		/**
@@ -120,7 +126,6 @@
 		public function validate() {
 			if (empty($this->name)) {
 				throw new Exception("Cannot validate changes to this locomotive manufacturer: manufacturer name cannot be empty");
-				return false;
 			}
 			
 			if (empty($this->slug)) {
@@ -136,6 +141,8 @@
 				$this->slug = $proposal;
 				$this->url = new Url(sprintf("/locos/builder/%s", $this->slug));
 			}
+			
+			$this->name = ContentUtility::FormatTitle($this->name); 
 			
 			return true;
 		}

@@ -10,6 +10,7 @@
 	
 	use Exception;
 	use Railpage\Url;
+	use Railpage\Debug;
 	use Railpage\ContentUtility;
 	
 	/**
@@ -58,6 +59,9 @@
 		 */
 		
 		public function __construct($id = NULL) {
+			
+			$timer = Debug::getTimer(); 
+			
 			parent::__construct();
 			
 			if (!is_null($id)) {
@@ -69,6 +73,8 @@
 				
 				$this->load($row); 
 			}
+			
+			Debug::logEvent(__METHOD__, $timer);
 		}
 		
 		/**

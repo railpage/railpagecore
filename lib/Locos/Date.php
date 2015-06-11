@@ -11,6 +11,7 @@
 	use DateTime;
 	use Exception;
 	use Railpage\Url;
+	use Railpage\Debug;
 	
 	/**
 	 * Date class
@@ -81,12 +82,16 @@
 		
 		public function __construct($id = false) {
 			
+			$timer = Debug::getTimer(); 
+			
 			parent::__construct(); 
 			
 			if ($id = filter_var($id, FILTER_VALIDATE_INT)) {
 				$this->id = $id;
 				$this->populate(); 
 			}
+			
+			Debug::logEvent(__METHOD__, $timer);
 			
 		}
 		
@@ -98,9 +103,15 @@
 		
 		private function populate() {
 			
+			$this->mckey = sprintf("railpage.locos.date=%d", $this->id) ;
 			$update = false;
 			
-			$row = $this->db->fetchRow("SELECT d.*, dt.* FROM loco_unit_date AS d INNER JOIN loco_date_type AS dt ON d.loco_date_id = dt.loco_date_id WHERE d.date_id = ?", $this->id); 
+			if (!$row = $this->Redis->fetch($this->mckey)) {
+				
+				$row = $this->db->fetchRow("SELECT d.*, dt.* FROM loco_unit_date AS d INNER JOIN loco_date_type AS dt ON d.loco_date_id = dt.loco_date_id WHERE d.date_id = ?", $this->id); 
+				
+				$this->Redis->save($this->mckey, $row, strtotime("+1 year"));
+			}
 			
 			if ($row === false) {
 				return;
@@ -249,6 +260,9 @@
 			);
 			
 			if (filter_var($this->id)) {
+				
+				$this->Redis->delete($this->mckey);
+				
 				$where = array(
 					"date_id = ?" => $this->id
 				);

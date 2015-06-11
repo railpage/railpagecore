@@ -48,7 +48,7 @@
 				
 				Debug::logEvent("Zend_DB: Fetch loco ID", $timer); 
 					
-				$Memcached->save($Loco->mckey, $row, strtotime("+1 month")); 
+				$Memcached->save($Loco->mckey, $row, strtotime("+1 year")); 
 			}
 			
 			return $row;
