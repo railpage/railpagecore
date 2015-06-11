@@ -6,6 +6,8 @@
 	use Railpage\Locations\Region;
 	use Railpage\Locations\Date;
 	use Railpage\Locations\DateType;
+	use Railpage\Locations\Correction;
+	use Railpage\Users\User;
 	
 	class LocationsTest extends PHPUnit_Framework_TestCase {
 		
@@ -38,7 +40,205 @@
 			$this->assertEquals(self::LOCATION_LON, $Location->lon); 
 			$this->assertEquals(Location::STATUS_INACTIVE, $Location->active); 
 			
+			$NewLocation = new Location($Location->slug); 
+			$this->assertEquals($Location->id, $NewLocation->id); 
+			
+			$Database = $NewLocation->getDatabaseConnection(); 
+			$data = [ "slug" => "" ];
+			$where = [ "id = ?" => $NewLocation->id ];
+			$Database->update("location", $data, $where); 
+			
+			$NewLocation = new Location($Location->id);
+			
 			return $id;
+			
+		}
+		
+		/**
+		 * @depends testAddLocation
+		 */
+		
+		public function test_duplicate($location_id) {
+			
+			$Location = new Location($location_id); 
+			$Location = clone $Location; 
+			
+			$Location->id = NULL;
+			$Location->slug = NULL; 
+			$Location->commit(); 
+			
+			return $Location;
+			
+		}
+		
+		public function test_addUser() {
+			
+			$User = new User;
+			$User->username = "locations";
+			$User->contact_email = "michael+phpunit+locations@railpage.com.au";
+			$User->setPassword("asdfafasfasdf");
+			$User->commit(); 
+			
+			return $User;
+			
+		}
+		
+		/**
+		 * @depends test_duplicate
+		 * @depends test_addUser
+		 */
+		
+		public function test_addCorrection($Location, $User) {
+			
+			$Correction = new Correction;
+			$Correction->comments = "asdfsadf";
+			$Correction->setLocation($Location)->setAuthor($User)->commit(); 
+			
+			$this->assertFalse(!filter_var($Correction->id, FILTER_VALIDATE_INT));
+			
+			$Correction = new Correction($Correction->id); 
+			
+			$New = new Correction(99999); 
+			$this->assertTrue(empty($New->comments)); 
+			
+			return $Correction;
+			
+		}
+		
+		/**
+		 * @depends test_addCorrection
+		 */
+		
+		public function test_updateCorrection($Correction) {
+			
+			$Correction->comments = "asfasdfasdfafdasdfasdfadf";
+			$Correction->commit(); 
+			
+		}
+		
+		/**
+		 * @depends test_addCorrection
+		 */
+		
+		public function test_break_correction_author($Correction) {
+			
+			$this->setExpectedException("Exception", "No valid user has been set"); 
+			
+			$Correction = clone $Correction; 
+			$Correction->Author = NULL;
+			$Correction->commit(); 
+			
+		}
+		
+		/**
+		 * @depends test_addCorrection
+		 */
+		
+		public function test_break_correction_location($Correction) {
+			
+			$this->setExpectedException("Exception", "No valid location has been set"); 
+			
+			$Correction = clone $Correction; 
+			$Correction->Location = NULL;
+			$Correction->commit(); 
+			
+		}
+		
+		/**
+		 * @depends test_addCorrection
+		 */
+		
+		public function test_break_correction_comments($Correction) {
+			
+			$this->setExpectedException("Exception", "No comments were added"); 
+			
+			$Correction = clone $Correction; 
+			$Correction->comments = NULL;
+			$Correction->commit(); 
+			
+		}
+		
+		/**
+		 * @depends test_addCorrection
+		 * @depends test_addUser
+		 */
+		
+		public function test_rejectCorrection($Correction, $User) {
+			
+			$Correction->reject($User, "because I can"); 
+			
+		}
+		
+		/**
+		 * @depends test_addCorrection
+		 * @depends test_addUser
+		 */
+		
+		public function test_approveCorrection($Correction, $User) {
+			
+			$Correction->resolve($User, "because I can also approve it"); 
+			
+			$Correction = new Correction($Correction->id);
+			
+		}
+		
+		/**
+		 * @depends test_duplicate
+		 */
+		
+		public function test_break_validate_lat($Location) {
+			
+			$this->setExpectedException("Exception", "Cannot validate location - no latitude value"); 
+			$Location = clone $Location;
+			$Location->lat = NULL;
+			$Location->commit();
+			
+		}
+		
+		/**
+		 * @depends test_duplicate
+		 */
+		
+		public function test_break_validate_lon($Location) {
+			
+			$this->setExpectedException("Exception", "Cannot validate location - no longitude value"); 
+			$Location = clone $Location;
+			$Location->lon = NULL;
+			$Location->commit();
+			
+		}
+		
+		/**
+		 * @depends test_duplicate
+		 */
+		
+		public function test_break_validate_name($Location) {
+			
+			$this->setExpectedException("Exception", "Cannot validate location - no name specified"); 
+			$Location = clone $Location;
+			$Location->name = NULL;
+			$Location->commit();
+			
+		}
+		
+		/**
+		 * @depends test_duplicate
+		 */
+		
+		public function test_break_validate_description($Location) {
+			
+			$this->setExpectedException("Exception", "Cannot validate location - no description specified"); 
+			$Location = clone $Location;
+			$Location->desc = NULL;
+			$Location->commit();
+			
+		}
+			
+		
+		public function test_break_loadLocation() {
+			
+			$this->setExpectedException("Exception", "Unable to fetch data for location ID " . 9999); 
+			$Location = new Location(9999); 
 			
 		}
 		
@@ -68,6 +268,31 @@
 			
 			$Location = new Location($id); 
 			$this->assertEquals(Location::STATUS_ACTIVE, $Location->active); 
+			
+			$this->setExpectedException("Exception", "Cannot approve location - no location created yet"); 
+			$Location->id = NULL; 
+			$Location->approve(); 
+			
+		}
+		
+		/**
+		 * @depends testAddLocation
+		 */
+		
+		public function testRejectLocation($id) {
+			
+			$Location = new Location($id); 
+			$Location = clone $Location;
+			$Location->id = NULL; 
+			$Location->commit();
+			$Location->reject(); 
+			
+			$this->setExpectedException("Exception", "Cannot validate location - no description specified"); 
+			
+			$Location = new Location($id); 
+			$Location = clone $Location;
+			$Location->id = NULL; 
+			$Location->reject();
 			
 		}
 		

@@ -14,6 +14,7 @@
 	use DateTime;
 	use Railpage\Place;
 	use Railpage\Url;
+	use Railpage\Debug;
 	
 	/**
 	 * Class
@@ -85,38 +86,19 @@
 		
 		public function __construct($country = null, $region = false) {
 			
+			Debug::RecordInstance(); 
+			$timer = Debug::GetTimer(); 
+			
 			if (is_null(filter_var($country, FILTER_SANITIZE_STRING))) {
 				throw new InvalidArgumentException("No country was specified"); 
 			}
 			
 			parent::__construct(); 
 			
-			/**
-			 * Record this in the debug log
-			 */
-				
-			if (function_exists("debug_recordInstance")) {
-				debug_recordInstance(__CLASS__);
-			}
-			
-			/**
-			 * Start the debug timer
-			 */
-			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
-			
 			$this->load($country, $region); 
 			
-			/**
-			 * End the debug timer
-			 */
-				
-			if (RP_DEBUG) {
-				$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : fetched WOE data from Yahoo in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-			}
+			Debug::LogEvent(__METHOD__, $timer); 
+			
 		}
 		
 		/**
@@ -215,6 +197,18 @@
 			}
 			
 			return $locations;
+			
+		}
+		
+		/**
+		 * Get this object as a string
+		 * @since Version 3.9.1
+		 * @return string
+		 */
+		
+		public function __toString() {
+			
+			return sprintf("%s, %s", $this->name, $this->Country);
 			
 		}
 	}

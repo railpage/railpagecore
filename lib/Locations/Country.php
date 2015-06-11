@@ -12,6 +12,8 @@
 	use Exception;
 	use DateTime;
 	use Railpage\Place;
+	use Railpage\Debug;
+	use Railpage\Url;
 	
 	
 	/**
@@ -72,38 +74,16 @@
 			parent::__construct(); 
 			
 			$this->code = $code;
-			$this->url = "/locations/" . strtolower($this->code);
+			$this->url = new Url("/locations/" . strtolower($this->code));
 			
-			/**
-			 * Record this in the debug log
-			 */
-				
-			if (function_exists("debug_recordInstance")) {
-				debug_recordInstance(__CLASS__);
-			}
-			
-			/**
-			 * Start the debug timer
-			 */
-			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
+			Debug::RecordInstance();
+			$timer = Debug::GetTimer(); 
 			
 			/**
 			 * Fetch the WOE (Where On Earth) data from Yahoo
 			 */
 			
 			$woe = Place::getWOEData(strtoupper($code));
-			
-			/**
-			 * End the debug timer
-			 */
-				
-			if (RP_DEBUG) {
-				$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : fetched WOE data from Yahoo in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-			}
 			
 			if (isset($woe['places']['place'][0]['name'])) {
 				$woe = $woe['places']['place'][0];
@@ -112,7 +92,7 @@
 				
 				if (isset($woe['country attrs'])) {
 					$this->code = $woe['country attrs']['code'];
-					$this->url = "/locations/" . strtolower($this->code);	
+					$this->url = new Url("/locations/" . strtolower($this->code));
 				}
 				
 				$this->centre = new stdClass; 
@@ -132,6 +112,8 @@
 					$this->timezone = $woe['timezone'];
 				}
 			}
+			
+			Debug::LogEvent(__METHOD__, $timer);
 		}
 		
 		/**
@@ -287,6 +269,18 @@
 			}
 			
 			return $locations;
+		}
+		
+		/**
+		 * Get this object as a string
+		 * @since Version 3.9.1
+		 * @return string
+		 */
+		
+		public function __toString() {
+			
+			return $this->name;
+			
 		}
 	}
 	

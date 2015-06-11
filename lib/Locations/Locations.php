@@ -11,6 +11,7 @@
 	use Exception;
 	use Railpage\AppCore;
 	use Railpage\Module;
+	use Railpage\Users\User;
 	
 	/**
 	 * Base Locations class
@@ -580,6 +581,36 @@
 			}
 			
 			return new Location(array_rand($locations));
+		}
+		
+		/**
+		 * Get all open corrections
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getOpenCorrections() {
+			
+			$query = "SELECT l.name AS location_name, u.username, c.* FROM location_corrections AS c LEFT JOIN location AS l ON c.location_id = l.id LEFT JOIN nuke_users AS u ON u.user_id = c.user_id WHERE c.status = ? ORDER BY c.date_added DESC";
+			
+			$return = array(); 
+			
+			foreach ($this->db->fetchAll($query, Correction::STATUS_NEW) as $row) {
+				$return[] = array(
+					"location" => (new Location($row['location_id']))->getArray(),
+					"author" => (new User($row['user_id']))->getArray(),
+					"correction" => array(
+						"comments" => $row['comments'],
+						"date" => array(
+							"added" => $row['date_added'],
+							"closed" => $row['date_closed']
+						)
+					)
+				);
+			}
+			
+			return $return;
+			
 		}
 	}
 	

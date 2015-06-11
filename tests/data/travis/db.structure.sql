@@ -952,6 +952,25 @@ CREATE TABLE `location` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `location_corrections`
+--
+
+DROP TABLE IF EXISTS `location_corrections`;
+CREATE TABLE `location_corrections` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `location_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `comments` text NOT NULL,
+  `status` tinyint(1) NOT NULL DEFAULT '0',
+  `date_added` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `date_closed` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `location_id` (`location_id`,`user_id`,`status`),
+  KEY `date_added` (`date_added`,`date_closed`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `location_date`
 --
 
