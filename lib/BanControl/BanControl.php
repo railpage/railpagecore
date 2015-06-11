@@ -28,6 +28,22 @@
 		const CACHE_KEY_ALL = "railpage:bancontrol.all;v1";
 		
 		/**
+		 * Cache key for individual user ban
+		 * @since Version 3.9.1
+		 * @const string CACHE_KEY_USER
+		 */
+		
+		const CACHE_KEY_USER = "railpage:ban.user=%d";
+		
+		/**
+		 * Cche key for individual IP ban
+		 * @since Version 3.9.1
+		 * @const string CACHE_KEY_IP
+		 */
+		
+		const CACHE_KEY_IP = "railpage:ban.addr=%s";
+		
+		/**
 		 * Gzip level for caching
 		 * @since Version 3.9.1
 		 * @const int CACHE_GZIP_LEVEL
@@ -258,6 +274,12 @@
 			
 			$this->db->insert("bancontrol", $data);
 			
+			$cachekey_user = sprintf(self::CACHE_KEY_USER, $user_id);
+			
+			$expire = $expiry > 0 ? $expiry : 0; 
+			$this->Memcached->save($cachekey_user, true, $expire); 
+
+			
 			/**
 			 * Update the cache
 			 */
@@ -379,6 +401,10 @@
 			
 			$this->db->insert("bancontrol", $data);
 			
+			$cachekey_ip = sprintf(self::CACHE_KEY_IP, $ip_addr);
+			$expire = $expiry > 0 ? $expiry : 0; 
+			$this->Memcached->save($cachekey_ip, true, $expire); 
+			
 			/**
 			 * Update the cache
 			 */
@@ -439,6 +465,9 @@
 				
 				$this->db->update("bancontrol", $data, $where);
 				$success = true;
+			
+				$cachekey_user = sprintf(self::CACHE_KEY_USER, $user_id);
+				$this->Memcached->save($cachekey_user, false, strtotime("+5 weeks")); 
 			}
 			
 			if ($success) {
@@ -493,11 +522,11 @@
 		 * Unban IP address
 		 * @since Version 3.5
 		 * @param int $ban_id
-		 * @param string $ban_ip
+		 * @param string $ip_addr
 		 * @return boolean
 		 */
 		
-		public function unBanIp($ban_id, $ban_ip = false) {
+		public function unBanIp($ban_id, $ip_addr = false) {
 			
 			/**
 			 * Empty the cache
@@ -520,17 +549,25 @@
 				"ban_active" => "0"
 			);
 			
-			if ($ban_ip === false) {
+			if ($ip_addr === false) {
 				$where = array(
 					"id = ?" => $ban_id
 				);
+			
+				$query = "SELECT ip FROM bancontrol WHERE id = ?"; 
+				$ip_addr = $this->db->fetchOne($query, $ban_id);
+				
 			} else {
 				$where = array(
-					"ip = ?" => $ban_ip
+					"ip = ?" => $ip_addr
 				);
 			}
 			
 			$this->db->update("bancontrol", $data, $where);
+			
+			$cachekey_ip = sprintf(self::CACHE_KEY_IP, $ip_addr);
+			$this->Memcached->save($cachekey_ip, false, strtotime("+5 weeks")); 
+			
 			return true;
 		}
 		
@@ -576,6 +613,9 @@
 			$where = array(
 				"id = ?" => $ban_id
 			);
+			
+			$cachekey_user = sprintf(self::CACHE_KEY_USER, $user_id);
+			$this->Memcached->save($cachekey_user, false, $expire); 
 			
 			$this->db->update("bancontrol", $data, $where);
 			return true;
@@ -656,16 +696,21 @@
 		/**
 		 * Check if an IP address is banned
 		 * @since Version 3.9
-		 * @param string $ip
+		 * @param string $ipaddr
 		 * @return boolean
 		 */
 		
-		public function isIPBanned($ip = false) {
-			if (!$ip) {
+		public function isIPBanned($ipaddr = false) {
+			
+			if (!$ipaddr) {
 				throw new Exception("Cannot check for banned IP address because no or an invaild IP address was given");
 			}
 			
-			return isset($this->ip_addresses[$ip]);
+			if (empty($this->ip_addresses)) {
+				$this->loadAll(); 
+			}
+			
+			return isset($this->ip_addresses[$ipaddr]);
 		}
 		
 		/**
@@ -675,16 +720,71 @@
 		 * @return boolean
 		 */
 		
-		public function isUserBanned($user = false) {
-			if (!$user) {
-				throw new Exception("Cannot check for banned IP address because no or an invaild user ID was given");
+		public function isUserBanned($user = NULL) {
+			
+			if (is_null($user) || (!$user instanceof User && !filter_var($user, FILTER_VALIDATE_INT))) {
+				return false;
 			}
 			
 			if ($user instanceof User) {
 				$user = $user->id;
 			}
 			
+			if (empty($this->users)) {
+				$this->loadAll(); 
+			}
+			
 			return isset($this->users[$user]);
+			
+		}
+		
+		/**
+		 * Check if the client is banned
+		 * @since Version 3.9.1
+		 * @param int $user_id
+		 * @param string $remote_addr
+		 * @return boolean
+		 */
+		
+		public static function isClientBanned($user_id, $remote_addr) {
+			
+			$cachekey_user = sprintf(self::CACHE_KEY_USER, $user_id);
+			$cachekey_addr = sprintf(self::CACHE_KEY_IP, $remote_addr); 
+			
+			$Memcached = AppCore::getMemcached(); 
+			
+			$mcresult_user = $Memcached->fetch($cachekey_user); 
+			$mcresult_addr = $Memcached->fetch($cachekey_addr); 
+			
+			if ($mcresult_user || $mcresult_addr) {
+				return true;
+			}
+			
+			if ($mcresult_user === false && $mcresult_addr === false) {
+				return false;
+			}
+			
+			try {
+				$Redis = AppCore::getRedis();
+				$BanControl = $Redis->fetch("railpage:bancontrol");
+			} catch (Exception $e) {
+				$BanControl = new BanControl;
+			}
+			
+			if ($BanControl->isUserBanned($user_id)) {
+				$Memcached->save($cachekey_user, true, strtotime("+5 weeks")); 
+				return true;
+			}
+			
+			if ($BanControl->isIPBanned($remote_addr)) {
+				$Memcached->save($cachekey_user, false, strtotime("+5 weeks")); 
+				$Memcached->save($cachekey_addr, true, strtotime("+5 weeks")); 
+				return true;
+			}
+			
+			$Memcached->save($cachekey_addr, false, strtotime("+5 weeks")); 
+			
+			return false;
 		}
 	}
 	
