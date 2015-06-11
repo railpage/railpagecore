@@ -121,6 +121,7 @@
 		"smarty/smarty": "~3.1"
 	},
 	"require-dev" : {
-		"codeclimate/php-test-reporter": "dev-master"
+		"codeclimate/php-test-reporter": "dev-master",
+		"johnkary/phpunit-speedtrap": "~1.0@dev"
 	}
 }

@@ -61,7 +61,7 @@
 				
 			}
 			
-			Debug::logEvent("Railpage: " . __CLASS__ . "(" . $default_url . ") instantiated", $timer);
+			Debug::logEvent(__METHOD__, $timer);
 			
 		}
 		

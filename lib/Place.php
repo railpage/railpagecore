@@ -13,7 +13,7 @@
 	use Railpage\Locations\Country;
 	use Railpage\Locations\Region;
 	use Railpage\Locations\Location;
-	
+	use Railpage\Debug;
 	use Railpage\GTFS\GTFS;
 	
 	use Exception;
@@ -88,6 +88,9 @@
 		public function __construct($lat, $lon, $radius = 0.1) {
 			parent::__construct(); 
 			
+			$timer = Debug::getTimer(); 
+			Debug::RecordInstance(); 
+			
 			$this->GuzzleClient = new Client;
 			
 			$this->lat = $lat;
@@ -95,28 +98,9 @@
 			$this->radius = $radius;
 			$this->url = sprintf("/place?lat=%s&lon=%s", $this->lat, $this->lon);
 			
-			/**
-			 * Start the debug timer
-			 */
-			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
-			
-			if (function_exists("debug_recordInstance")) {
-				debug_recordInstance(__CLASS__);
-			}
-			
 			$this->load(); 
 			
-			/**
-			 * End the debug timer
-			 */
-				
-			if (RP_DEBUG) {
-				$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : fetched WOE data from Yahoo in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-			}
+			Debug::logEvent(__METHOD__, $timer); 
 		}
 		
 		/**

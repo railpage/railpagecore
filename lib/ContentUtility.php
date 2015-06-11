@@ -9,6 +9,7 @@
 	namespace Railpage;
 	
 	use Railpage\Url;
+	use Railpage\Debug;
 	use DateTime;
 	use Exception;
 	use InvalidArgumentException;
@@ -154,6 +155,45 @@
 			}
 			
 			return true;
+			
+		}
+		
+		/**
+		 * Format a title
+		 * @since Version 3.9.1
+		 * @param string $text
+		 * @return $text
+		 */
+		
+		public static function FormatTitle($text = NULL) {
+			
+			if (is_null($text)) {
+				return $text;
+			}
+			
+			$timer = Debug::getTimer(); 
+			Debug::RecordInstance(); 
+			
+			$text = htmlentities($text, ENT_COMPAT, "UTF-8");
+			$text = str_replace("&trade;&trade;", "&trade;", $text);
+			
+			if (function_exists("html_entity_decode_utf8")) {
+				$text = html_entity_decode_utf8($text);
+			}
+			
+			$text = stripslashes($text);
+			
+			if (substr($text, 0, 4) == "Re: ") {
+				$text = substr($text, 4, strlen($text));
+			}
+			
+			if (substr($text, -1) == ".") {
+				$text = substr($text, 0, -1);
+			}
+			
+			Debug::logEvent(__METHOD__, $timer); 
+			
+			return $text;
 			
 		}
 

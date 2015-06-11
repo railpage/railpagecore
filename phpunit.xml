@@ -4,6 +4,7 @@
 			 <directory>tests</directory>
 		</testsuite>
 	</testsuites>
+	
 	<filter>
 		<blacklist>
 			<directory>lib/vendor</directory>
@@ -15,4 +16,8 @@
 			<directory>smarty</directory>
 		</blacklist>
 	</filter>
+	
+	<listeners>
+		<listener class="JohnKary\PHPUnit\Listener\SpeedTrapListener" />
+	</listeners>
 </phpunit>

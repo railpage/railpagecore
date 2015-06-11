@@ -171,11 +171,17 @@
 			
 			if (isset($PHPUnitTest) && $PHPUnitTest === true) {
 				
-				require("db.dist" . DS . "zend_db.php"); 
-				$this->db = $ZendDB;
-				$this->destroy = true;
+				try {
+					$this->db = $Registry->get("db_phpunit");
+				} catch (Exception $e) {
+					require("db.dist" . DS . "zend_db.php"); 
+					$this->db = $ZendDB;
+					$this->destroy = true;
+					
+					$Registry->set("db_phpunit", $this->db);
+				}
 				
-				$ZendDB_ReadOnly = $ZendDB;
+				$ZendDB_ReadOnly = $this->db;
 				
 			} else {
 				

@@ -77,19 +77,54 @@
 		}
 		
 		/**
+		 * Print the pretty site debug log
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		public static function PrintPretty() {
+			// temporary
+			global $site_debug; 
+			
+			foreach ($site_debug as $event) {
+				preg_match("/([0-9]+\.[0-9]+)s/", $event, $matches); 
+				
+				if (substr($event, 0, 1) === "#") {
+					echo "<br>";
+				}
+				
+				if (isset($matches[1])) {
+					if (floatval($matches[1]) >= 0.1) {
+						echo "<span style='background:red;color:whitesmoke;'>" . $event ."</span>";
+					} elseif (floatval($matches[1]) >= 0.05 && floatval($matches[1]) < 0.1) {
+						echo "<span style='background:orange;color:whitesmoke;'>" . $event ."</span>";
+					} else {
+						echo $event;
+					}
+				} else {
+					echo $event;
+				}
+				
+				echo "<br>"; 
+			}
+		}
+		
+		/**
 		 * Record a new instance of the specified class
 		 * @since Version 3.9.1
 		 * @return void
 		 * @param string $object
 		 */
 		
-		public static function RecordInstance($object = NULL) {
+		public static function RecordInstance($object = NULL, $id = false) {
 			
 			$trace = debug_backtrace(); 
 			
 			$object = is_null($object) ? $trace[1]['class'] : $object;
 			
-			$message = "\n\n####  Instantiating new instance of " . $object . " from " . $trace[1]['file'] . " on line " . $trace[1]['line'] . "  ####\n";
+			$idstring = $id === false ? "" : "(" . $id . ") ";
+			
+			$message = "####  Instantiating new instance of " . $object . $idstring . " from " . $trace[1]['file'] . " on line " . $trace[1]['line'] . ", called from " . $trace[1]['class'] . "::" . $trace[1]['function'] . "()  ####";
 			
 			self::logEvent($message);
 
