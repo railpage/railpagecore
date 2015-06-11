@@ -140,7 +140,7 @@
 			
 			$query = $column == "id" ? "SELECT * FROM idea_ideas WHERE id = ?" : "SELECT * FROM idea_ideas WHERE slug = ?";
 			
-			if ($row = $this->db->fetchRow($query, $this->slug)) {
+			if ($row = $this->db->fetchRow($query, $value)) {
 				$this->title = $row['title'];
 				$this->id = $row['id'];
 				$this->slug = $row['slug'];
@@ -223,6 +223,10 @@
 			
 			if (empty($this->votes)) {
 				$this->votes = 0;
+			}
+			
+			if (is_array($this->votes)) {
+				$this->votes = count($this->votes); 
 			}
 			
 			if (empty($this->slug)) {

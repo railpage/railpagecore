@@ -401,7 +401,7 @@
 			$Diff = $this->Date->diff($Now);
 			
 			if ($Diff->d >= self::MAXAGE) {
-				removeMemcacheObject($this->mckey);
+				$this->Memcached->delete($this->mckey);
 				return true;
 			}
 			
@@ -544,6 +544,7 @@
 				$this->links->provider = isset($data['urls']['url'][0]['_content']) ? $data['urls']['url'][0]['_content'] : $data['urls'][key($data['urls'])];
 				
 				$this->commit();
+				$this->cacheGeoData(); 
 				
 				return true;
 			}
@@ -1276,6 +1277,85 @@
 			}
 			
 			return $liveries;
+		}
+		
+		/**
+		 * Insert this photo into the geocache
+		 * @since Version 3.9.1
+		 * @return \Railpage\Images\Image
+		 */
+		
+		private function cacheGeoData() {
+			
+			if (!$this->Place instanceof Place) {
+				return $this;
+			}
+			
+			$data = [
+				"photo_id" => $this->photo_id,
+				"lat" => $this->Place->lat, 
+				"lon" => $this->Place->lon,
+				"owner" => $this->author->url,
+				"ownername" => $this->author->username,
+				"title" => $this->title,
+				"tags" => isset($this->meta['tags']) ? $this->meta['tags'] : array(),
+				"dateadded" => "",
+				"dateupload" => "",
+				"datetaken" => ""
+			];
+			
+			$sizes = [ 75, 100, 240, 500, 640, 1024, 320, 800 ];
+				
+			foreach ($this->sizes as $k => $row) {
+				$i = array_search($row['width'], $sizes);
+				if ($i !== false) {
+					$size = sprintf("size%d", $i); 
+					$width = sprintf("%s_w", $size);
+					$height = sprintf("%s_h", $size);
+			
+					$data[$size] = $row['source'];
+					$data[$width] = $row['width'];
+					$data[$height] = $row['height'];
+					
+					continue;
+				}
+				
+				if ($k == "original" || $k == "largest" || $row['width'] >= 1024) {
+					$size = sprintf("size%d", 8); 
+					$width = sprintf("%s_w", $size);
+					$height = sprintf("%s_h", $size);
+					
+					$data[$size] = $row['source'];
+					$data[$width] = $row['width'];
+					$data[$height] = $row['height'];
+					
+					continue;
+				}
+			}
+			
+			if (is_array($data['tags'])) {
+				$data['tags'] = implode(" ", $data['tags']); 
+			}
+			
+			$query = "INSERT IGNORE INTO flickr_geodata SET ";
+			
+			$terms = count($data);
+			foreach ($data as $key => $val) {
+				$terms--;
+				
+				$query .= $key . ' = ' . $this->db->quote($val);
+				
+				if ($terms) {
+					$query .= ', ';
+				}
+			}
+			
+			$cn = $this->db->getConnection();
+			
+			$result = $cn->query($query); 
+			
+			return $this;
+			
 		}
 	}
 	

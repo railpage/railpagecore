@@ -945,15 +945,10 @@
 		 */
 		 
 		public function __construct() {
-	 
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start_z = microtime(true);
-			}
 			
-			if (function_exists("debug_recordInstance")) {	
-				debug_recordInstance(__CLASS__);
-			}
+			$timer = Debug::getTimer(); 
+			
+			Debug::RecordInstance(); 
 			
 			parent::__construct(); 
 			
@@ -975,9 +970,7 @@
 				}
 			}
 			
-			if (RP_DEBUG) {
-				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") instantiated in " . round(microtime(true) - $debug_timer_start_z, 5) . "s";
-			}
+			Debug::LogEvent(__METHOD__, $timer); 
 		}
 		
 		/**
@@ -2960,7 +2953,14 @@
 				"username" => $this->username,
 				"realname" => $this->real_name,
 				"contact_email" => $this->contact_email,
-				"avatar" => $this->avatar
+				"avatar" => $this->avatar,
+				"avatar_sizes" => array(
+					"tiny" => Utility\AvatarUtility::Format($this->avatar, 25, 25),
+					"thumb" => Utility\AvatarUtility::Format($this->avatar, 50, 50),
+					"small" => Utility\AvatarUtility::Format($this->avatar, 75, 75),
+					"medium" => Utility\AvatarUtility::Format($this->avatar, 100, 100)
+				),
+				"url" => $this->url->getURLs()
 			);
 		}
 		

@@ -11,6 +11,7 @@
 	use Railpage\AppCore;
 	
 	use Exception;
+	use Railpage\Debug;
 	use DateTime;
 	
 	/**
@@ -114,8 +115,11 @@
 		 */
 		
 		public function find($keys = false, $value = false, $limit = 25) {
+			
+			$timer = Debug::getTimer(); 
+			
 			if (!$keys) {
-				throw new \Exception("Cannot find events - \$keys cannot be empty"); 
+				throw new Exception("Cannot find events - \$keys cannot be empty"); 
 				return false;
 			}
 			
@@ -142,48 +146,18 @@
 			
 			$where[] = $limit;
 			
-			if ($this->db instanceof sql_db) {
-				if ($stmt = $this->db->prepare($query)) {
-					$stmt->bind_param("i", $limit);
+			$return = array();
+			
+			foreach ($this->db->fetchAll($query, $where) as $row) {
+				$row['timestamp'] = new DateTime($row['timestamp']);
+				$row['args'] = json_decode($row['args'], true);
 					
-					$stmt->execute();
-					
-					$return = array(); 
-					
-					$stmt->bind_result($id, $user_id, $username, $timestamp, $title, $args, $key, $value);
-					
-					while ($stmt->fetch()) {
-						$row['id'] = $id; 
-						$row['user_id'] = $user_id; 
-						$row['username'] = $username;
-						$row['timestamp'] = new \DateTime($timestamp); 
-						$row['title'] = $title; 
-						$row['args'] = json_decode($args, true); 
-						$row['key'] = $key; 
-						$row['value'] = $value; 
-						
-						$return[$id] = $row;
-					}
-					
-					$stmt->close();
-					
-					return $return;
-				} else {
-					throw new \Exception($this->db->error."\n\n".$query); 
-					return false;
-				}
-			} else {
-				$return = array();
-				
-				foreach ($this->db->fetchAll($query, $where) as $row) {
-					$row['timestamp'] = new DateTime($row['timestamp']);
-					$row['args'] = json_decode($row['args'], true);
-						
-					$return[$row['id']] = $row;
-				}
-				
-				return $return;
+				$return[$row['id']] = $row;
 			}
+			
+			Debug::logEvent(__METHOD__, $timer);
+			
+			return $return;
 		}
 	}
 	

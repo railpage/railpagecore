@@ -16,6 +16,7 @@
 	use Railpage\Jobs\Jobs;
 	use Railpage\Jobs\Job;
 	use Railpage\AppCore;
+	use Railpage\Debug;
 	use Exception;
 	use DateTime;
 	use DateInterval;
@@ -162,7 +163,7 @@
 			parent::__construct();
 			
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
-				$this->id = $id;
+				$this->id = filter_var($id, FILTER_VALIDATE_INT);
 			} else {
 				$this->id = $this->db->fetchOne("SELECT organisation_id FROM organisation WHERE organisation_slug = ?", $id); 
 			}
@@ -182,40 +183,47 @@
 				return;
 			}
 			
-			// Retrieve this organisation from the database
+			$this->mckey = sprintf("railpage:organisations.organisation=%d", $this->id); 
 			
-			$query = "SELECT o.* FROM organisation AS o WHERE organisation_id = ?";
+			$timer = Debug::getTimer(); 
 			
-			if ($row = $this->db->fetchRow($query, $this->id)) {
-				$this->name 	= $row['organisation_name'];
-				$this->desc 	= $row['organisation_desc'];
-				$this->created 	= $row['organisation_dateadded'];
-				$this->owner 	= $row['organisation_owner'];
-				$this->contact_website 	= $row['organisation_website'];
-				$this->contact_phone 	= $row['organisation_phone'];
-				$this->contact_fax 		= $row['organisation_fax'];
-				$this->contact_email 	= $row['organisation_email'];
+			if (!$row = $this->Memcached->fetch($this->mckey)) {
+				$query = "SELECT o.* FROM organisation AS o WHERE organisation_id = ?";
+				$row = $this->db->fetchRow($query, $this->id);
 				
-				$this->logo = $row['organisation_logo']; 
-				$this->flickr_photo_id = $row['flickr_photo_id'];
-				
-				$this->slug = $row['organisation_slug']; 
-				
-				if (empty($this->slug)) {
-					$this->slug = parent::createSlug();
-				}
-				
-				$this->url = parent::makePermaLink($this->slug); 
-				
-				// Get the roles for this organisation
-				$query = "SELECT * FROM organisation_roles WHERE organisation_id = ?";
-				
-				if ($result = $this->db->fetchAll($query, $this->id)) {
-					foreach ($result as $row) {
-						$this->roles[$row['role_id']] = $row['role_name'];
-					}
+				$this->Memcached->save($this->mckey, $row);
+			}
+			
+			$this->name 	= $row['organisation_name'];
+			$this->desc 	= $row['organisation_desc'];
+			$this->created 	= $row['organisation_dateadded'];
+			$this->owner 	= $row['organisation_owner'];
+			$this->contact_website 	= $row['organisation_website'];
+			$this->contact_phone 	= $row['organisation_phone'];
+			$this->contact_fax 		= $row['organisation_fax'];
+			$this->contact_email 	= $row['organisation_email'];
+			
+			$this->logo = $row['organisation_logo']; 
+			$this->flickr_photo_id = $row['flickr_photo_id'];
+			
+			$this->slug = $row['organisation_slug']; 
+			
+			if (empty($this->slug)) {
+				$this->slug = parent::createSlug();
+			}
+			
+			$this->url = parent::makePermaLink($this->slug); 
+			
+			// Get the roles for this organisation
+			$query = "SELECT * FROM organisation_roles WHERE organisation_id = ?";
+			
+			if ($result = $this->db->fetchAll($query, $this->id)) {
+				foreach ($result as $row) {
+					$this->roles[$row['role_id']] = $row['role_name'];
 				}
 			}
+			
+			Debug::logEvent(__METHOD__, $timer);
 		}
 		
 		/**
@@ -292,6 +300,8 @@
 			);
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$this->Memcached->delete($this->mckey); 
+				
 				// Update
 				if ($this->db->update("organisation", $data, "organisation_id = " . $this->id)) {
 					return true;

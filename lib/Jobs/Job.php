@@ -144,50 +144,60 @@
 		
 		public function __construct($job_id = false) {
 			
-			try {
-				parent::__construct(); 
-			} catch (Exception $e) {
-				throw new Exception($e->getMessage()); 
+			parent::__construct();
+			
+			if ($this->id = filter_var($job_id, FILTER_VALIDATE_INT)) {
+				$this->mckey = sprintf("railpage:jobs.job=%d", $this->id); 
+				$this->populate(); 
 			}
 			
-			if ($job_id) {
-				$this->id = $job_id; 
+		}
+		
+		/**
+		 * Populate this object
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function populate() {
+			$query = "SELECT organisation_id, conversions, job_added, reference_id, job_urls, job_location_id, job_classification_id, job_thread_id, job_title, job_description, job_expiry, DATEDIFF(job_expiry, NOW()) AS job_expiry_until, job_salary, job_special_cond, job_duration FROM jn_jobs WHERE job_id = ?";
+			
+			if (!$result = $this->Memcached->fetch($this->mckey)) {			
+				$result = $this->db->fetchRow($query, $this->id);
 				
-				$query = "SELECT organisation_id, conversions, job_added, reference_id, job_urls, job_location_id, job_classification_id, job_thread_id, job_title, job_description, job_expiry, DATEDIFF(job_expiry, NOW()) AS job_expiry_until, job_salary, job_special_cond, job_duration FROM jn_jobs WHERE job_id = ?";
-				
-				if ($result = $this->db->fetchRow($query, $this->id)) {
-					$this->title 		= $result['job_title'];
-					$this->desc 		= $result['job_description'];
-					$this->expiry 		= $this->expiry = new \DateTime($result['job_expiry']);
-					$this->expiry_until	= $result['job_expiry_until'];
-					$this->salary		= $result['job_salary'];
-					$this->special_cond	= $result['job_special_cond'];
-					$this->duration		= $result['job_duration']; 
-					$this->reference_id = $result['reference_id'];
-					$this->conversions = $result['conversions'];
+				$this->Memcached->save($this->mckey, $result); 
+			}
+			
+			$this->title 		= $result['job_title'];
+			$this->desc 		= $result['job_description'];
+			$this->expiry 		= $this->expiry = new DateTime($result['job_expiry']);
+			$this->expiry_until	= $result['job_expiry_until'];
+			$this->salary		= $result['job_salary'];
+			$this->special_cond	= $result['job_special_cond'];
+			$this->duration		= $result['job_duration']; 
+			$this->reference_id = $result['reference_id'];
+			$this->conversions = $result['conversions'];
+			
+			if (empty($this->duration) || $this->duration === 0) {
+				$this->duration = "Ongoing"; 
+			}
+			
+			if ($result['job_added'] != "0000-00-00 00:00:00") {
+				$this->Open = new DateTime($result['job_added']);
+			}
+			
+			$this->Organisation = new Organisation($result['organisation_id']);
+			$this->Location = new Location($result['job_location_id']);
+			$this->Classification = new Classification($result['job_classification_id']);
+			
+			$this->url = new Url(sprintf("%s/%d", $this->Module->url, $this->id));
+			$this->url->conversion = sprintf("%s?apply", $this->url->url);
+			
+			if (is_array(json_decode($result['job_urls'], true))) {
+				foreach (json_decode($result['job_urls'], true) as $title => $link) {
 					
-					if (empty($this->duration) || $this->duration === 0) {
-						$this->duration = "Ongoing"; 
-					}
-					
-					if ($result['job_added'] != "0000-00-00 00:00:00") {
-						$this->Open = new DateTime($result['job_added']);
-					}
-					
-					$this->Organisation = new Organisation($result['organisation_id']);
-					$this->Location = new Location($result['job_location_id']);
-					$this->Classification = new Classification($result['job_classification_id']);
-					
-					$this->url = new Url(sprintf("%s/%d", $this->Module->url, $this->id));
-					$this->url->conversion = sprintf("%s?apply", $this->url->url);
-					
-					if (is_array(json_decode($result['job_urls'], true))) {
-						foreach (json_decode($result['job_urls'], true) as $title => $link) {
-							
-							if (!is_null($link)) {
-								$this->url->$title = $link;
-							}
-						}
+					if (!is_null($link)) {
+						$this->url->$title = $link;
 					}
 				}
 			}
@@ -257,12 +267,7 @@
 		 */
 		
 		public function commit() {
-			try {
-				$this->validate(); 
-			} catch (Exception $e) {
-				throw new Exception($e->getMessage()); 
-				return false;
-			}
+			$this->validate(); 
 			
 			/**
 			 * Firstly, check if this reference ID exists anywhere in the database. If it does, update, not create.
@@ -294,6 +299,9 @@
 			);
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+			
+				$this->Memcached->delete($this->mckey); 
+			
 				// Update
 				if ($this->db->update("jn_jobs", $data, "job_id = " . $this->id)) {
 					return true;

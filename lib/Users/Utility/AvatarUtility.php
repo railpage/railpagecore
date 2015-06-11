@@ -58,6 +58,18 @@
 				}
 			}
 			
+			if (isset($parts['host']) && $parts['host'] == "www.gravatar.com" && isset($parts['query'])) {
+				parse_str($parts['query'], $query);
+				
+				$query['s'] = $width;
+				$bits = array(); 
+				foreach ($query as $key => $val) {
+					$bits[] = sprintf("%s=%s", $key, $val); 
+				}
+				
+				return sprintf("%s://%s%s?%s", $parts['scheme'], $parts['host'], $parts['path'], implode("&", $bits));
+			}
+			
 			$mckey = sprintf("railpage.user:avatar=%s;width=%s;height=%s", $user_avatar, $width, $height);
 			
 			/**

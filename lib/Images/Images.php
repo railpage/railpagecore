@@ -11,7 +11,9 @@
 	namespace Railpage\Images;
 	
 	use Railpage\AppCore;
+	use Railpage\Debug;
 	use Exception;
+	use InvalidArgumentException;
 	use DateTime;
 	
 	/**
@@ -50,15 +52,31 @@
 		 */
 		
 		public function __construct() {
+			
 			parent::__construct(); 
 			
-			/**
-			 * Record this in the debug log
-			 */
+			Debug::recordInstance() ;
 			
-			if (function_exists("debug_recordInstance")) {
-				debug_recordInstance(__CLASS__);
+		}
+		
+		/**
+		 * Delete a photo from the geodata cache
+		 * @since Version 3.9.1
+		 * @param string $provider
+		 * @param string $photo_id
+		 */
+		
+		public function deleteFromCache($provider, $photo_id = false) {
+			
+			if ($photo_id === false) {
+				throw new InvalidArgumentException("No photo ID was provided"); 
 			}
+			
+			$where = [ "photo_id = ?" => $photo_id ];
+			$this->db->delete("flickr_geodata", $where); 
+			
+			return $this;
+			
 		}
 		
 		/**
