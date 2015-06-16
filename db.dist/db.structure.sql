@@ -1,32 +1,194 @@
--- MySQL dump 10.13  Distrib 5.5.43, for debian-linux-gnu (x86_64)
+-- phpMyAdmin SQL Dump
+-- version 4.0.6deb1
+-- http://www.phpmyadmin.net
 --
--- Host: arjan.railpage.org    Database: sparta
--- ------------------------------------------------------
--- Server version	5.5.39-MariaDB-1~saucy-log
+-- Host: localhost
+-- Generation Time: Jun 16, 2015 at 08:53 AM
+-- Server version: 5.5.39-MariaDB-1~saucy-log
+-- PHP Version: 5.5.3-1ubuntu2.6
 
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8 */;
-/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-/*!40103 SET TIME_ZONE='+00:00' */;
-/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET time_zone = "+00:00";
+
+--
+-- Database: `sparta`
+--
+CREATE DATABASE IF NOT EXISTS `sparta` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+USE `sparta`;
+
+DELIMITER $$
+--
+-- Procedures
+--
+DROP PROCEDURE IF EXISTS `FixLastPostID`$$
+CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `FixLastPostID`()
+BEGIN
+DECLARE done INT DEFAULT 0;
+DECLARE temp_post_id INT;
+DECLARE temp_topic_id INT;
+DECLARE result varchar(4000);
+DECLARE cur1 CURSOR FOR SELECT post_id, topic_id FROM nuke_bbposts WHERE post_time IN (SELECT MAX(post_time) FROM nuke_bbposts GROUP BY topic_id) ORDER BY topic_id DESC;
+
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+
+OPEN cur1;
+
+REPEAT
+FETCH cur1 INTO temp_post_id, temp_topic_id;
+IF NOT done THEN
+UPDATE nuke_bbtopics SET topic_last_post_id = temp_post_id WHERE topic_id = temp_topic_id;
+END IF;
+UNTIL done END REPEAT;
+
+CLOSE cur1;
+END$$
+
+DROP PROCEDURE IF EXISTS `geolocation`$$
+CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `geolocation`(IN location_lat double, IN location_lon double, IN dist int, IN max int)
+BEGIN
+DECLARE lon1 float;
+DECLARE lon2 float;
+DECLARE lat1 float;
+DECLARE lat2 float;
+
+SET SQL_SELECT_LIMIT = max;
+
+
+SET lon1 = location_lon-dist/abs(cos(radians(location_lat))*69);
+SET lon2 = location_lon+dist/abs(cos(radians(location_lat))*69);
+SET lat1 = location_lat-(dist/69); 
+SET lat2 = location_lat+(dist/69); 
+
+
+
+SELECT location.*, 3956 * 2 * ASIN(SQRT(POWER(SIN((location_lat - location.lat) * pi() / 180 / 2), 2) + COS(location_lat * pi() / 180) * COS(location.lat * pi() / 180) * POWER(SIN((location_lon - location.long) * pi() / 180 / 2), 2))) AS distance 
+FROM location 
+WHERE location.long BETWEEN lon1 AND lon2
+AND location.lat BETWEEN lat1 AND lat2
+HAVING distance < dist
+ORDER BY distance;
+
+SET SQL_SELECT_LIMIT = default;
+
+END$$
+
+DROP PROCEDURE IF EXISTS `geophotos`$$
+CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `geophotos`(IN location_id int, IN dist int, IN max int)
+BEGIN
+DECLARE location_lon double;
+DECLARE location_lat double;
+DECLARE lon1 float;
+DECLARE lon2 float;
+DECLARE lat1 float;
+DECLARE lat2 float;
+
+SET SQL_SELECT_LIMIT = max;
+
+
+SELECT location.lat, location.long INTO location_lat, location_lon FROM location WHERE location.id = location_id LIMIT 1;
+
+
+SET lon1 = location_lon-dist/abs(cos(radians(location_lat))*69);
+SET lon2 = location_lon+dist/abs(cos(radians(location_lat))*69);
+SET lat1 = location_lat-(dist/69); 
+SET lat2 = location_lat+(dist/69); 
+
+
+
+SELECT flickr_geodata.*, 3956 * 2 * ASIN(SQRT(POWER(SIN((location.lat - flickr_geodata.lat) * pi() / 180 / 2), 2) + COS(location.lat * pi() / 180) * COS(flickr_geodata.lat * pi() / 180) * POWER(SIN((location.long - flickr_geodata.lon) * pi() / 180 / 2), 2))) AS distance 
+FROM flickr_geodata, location 
+WHERE location.id = location_id
+AND flickr_geodata.lon BETWEEN lon1 AND lon2
+AND flickr_geodata.lat BETWEEN lat1 AND lat2
+HAVING distance < dist
+ORDER BY distance;
+
+SET SQL_SELECT_LIMIT = default;
+
+END$$
+
+DROP PROCEDURE IF EXISTS `latlngphotos`$$
+CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `latlngphotos`(IN lat double, IN lon double, IN dist int, IN max int)
+BEGIN
+
+DECLARE lon1 float;
+DECLARE lon2 float;
+DECLARE lat1 float;
+DECLARE lat2 float;
+
+SET SQL_SELECT_LIMIT = max;
+
+SET lon1 = lon-dist/abs(cos(radians(lat))*69);
+SET lon2 = lon+dist/abs(cos(radians(lat))*69);
+SET lat1 = lat-(dist/69); 
+SET lat2 = lat+(dist/69); 
+
+SELECT flickr_geodata.*, 3956 * 2 * ASIN(SQRT(POWER(SIN((lat - flickr_geodata.lat) * pi() / 180 / 2), 2) + COS(lat * pi() / 180) * COS(flickr_geodata.lat * pi() / 180) * POWER(SIN((lon - flickr_geodata.lon) * pi() / 180 / 2), 2))) AS distance 
+FROM flickr_geodata
+WHERE flickr_geodata.lon BETWEEN lon1 AND lon2
+AND flickr_geodata.lat BETWEEN lat1 AND lat2
+HAVING distance < dist
+ORDER BY distance;
+
+SET SQL_SELECT_LIMIT = default;
+
+END$$
+
+DROP PROCEDURE IF EXISTS `newscounters`$$
+CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `newscounters`()
+BEGIN
+UPDATE nuke_stories SET weeklycounter = 0;
+END$$
+
+DROP PROCEDURE IF EXISTS `PopulateLocoClass`$$
+CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `PopulateLocoClass`(IN loco_number VARCHAR(8), IN loco_number_last VARCHAR(8), IN loco_class_id INT, IN loco_gauge_id INT, IN loco_status_id INT, IN loco_manufacturer_id INT, IN prefix TEXT)
+BEGIN
+
+simple_loop: LOOP
+
+SET @num_length := CHAR_LENGTH(loco_number);
+
+INSERT INTO `sparta`.`loco_unit` (`loco_id`, `loco_num`, `loco_name`, `loco_gauge`, `loco_gauge_id`, `loco_status_id`, `class_id`, `owner_id`, `operator_id`, `date_added`, `date_modified`, `entered_service`, `withdrawn`, `builders_number`, `photo_id`, `manufacturer_id`) VALUES (NULL, CONCAT(prefix, loco_number), '', '', loco_gauge_id, loco_status_id, loco_class_id, '0', '0', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), '0', '0', '', '0', loco_manufacturer_id);
+
+SET loco_number = lpad(loco_number + 1, @num_length, 0);
+
+IF loco_number > loco_number_last THEN
+LEAVE simple_loop;
+END IF;
+
+END LOOP simple_loop;
+END$$
+
+DROP PROCEDURE IF EXISTS `PopulateLocoOrgs`$$
+CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `PopulateLocoOrgs`(IN LOCO_CLASS_ID INT, IN LOCO_OPERATOR_ID INT, IN LOCO_LINK_WEIGHT INT, IN LOCO_LINK_TYPE INT)
+BEGIN
+
+INSERT INTO `sparta`.`loco_org_link` (`loco_id`, `operator_id`, `link_type`, `link_weight`) SELECT `loco_id`, LOCO_OPERATOR_ID, LOCO_LINK_TYPE, LOCO_LINK_WEIGHT FROM `sparta`.`loco_unit` WHERE `class_id` = LOCO_CLASS_ID AND `loco_id` NOT IN (SELECT `loco_id` FROM `sparta`.`loco_org_link` WHERE `operator_id` = LOCO_OPERATOR_ID AND `link_type` = LOCO_LINK_TYPE);
+
+END$$
+
+DROP PROCEDURE IF EXISTS `update_viewed_thread`$$
+CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `update_viewed_thread`(IN `val_topic_id` INT, IN `val_user_id` INT)
+BEGIN
+SELECT SQL_CALC_FOUND_ROWS topic_id, user_id FROM viewed_threads WHERE topic_id = val_topic_id AND user_id = val_user_id;
+
+IF FOUND_ROWS() = 0 THEN
+INSERT INTO viewed_threads (topic_id, user_id, time) VALUES (val_topic_id, val_user_id, CURRENT_TIMESTAMP());
+ELSE
+UPDATE viewed_threads SET time = CURRENT_TIMESTAMP() WHERE topic_id = val_topic_id AND user_id = val_user_id;
+END IF;
+END$$
+
+DELIMITER ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `api`
 --
 
-CREATE DATABASE /*!32312 IF NOT EXISTS*/ `sparta` /*!40100 DEFAULT CHARACTER SET utf8 */;
-
-USE `sparta`;
-
 DROP TABLE IF EXISTS `api`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `api` (
+CREATE TABLE IF NOT EXISTS `api` (
   `api_key` varchar(128) NOT NULL,
   `api_secret` varchar(128) NOT NULL,
   `api_name` varchar(128) NOT NULL,
@@ -36,16 +198,15 @@ CREATE TABLE `api` (
   UNIQUE KEY `api_key` (`api_key`),
   KEY `user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `asset`
 --
 
 DROP TABLE IF EXISTS `asset`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `asset` (
+CREATE TABLE IF NOT EXISTS `asset` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `hash` varchar(32) NOT NULL,
   `type_id` int(11) NOT NULL,
@@ -53,17 +214,16 @@ CREATE TABLE `asset` (
   PRIMARY KEY (`id`),
   KEY `type_id` (`type_id`),
   KEY `hash` (`hash`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=212 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `asset_bak`
 --
 
 DROP TABLE IF EXISTS `asset_bak`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `asset_bak` (
+CREATE TABLE IF NOT EXISTS `asset_bak` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `hash` varchar(32) DEFAULT NULL,
   `namespace` varchar(256) NOT NULL,
@@ -77,17 +237,16 @@ CREATE TABLE `asset_bak` (
   KEY `loco_id` (`namespace_key`),
   KEY `namespace` (`namespace`(255)),
   KEY `hash` (`hash`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=165 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `asset_link`
 --
 
 DROP TABLE IF EXISTS `asset_link`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `asset_link` (
+CREATE TABLE IF NOT EXISTS `asset_link` (
   `asset_link_id` int(11) NOT NULL AUTO_INCREMENT,
   `asset_id` int(11) NOT NULL,
   `namespace` varchar(256) NOT NULL,
@@ -99,48 +258,31 @@ CREATE TABLE `asset_link` (
   KEY `loco_id` (`namespace_key`),
   KEY `namespace` (`namespace`(255)),
   KEY `asset_id` (`asset_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=192 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `asset_type`
 --
 
 DROP TABLE IF EXISTS `asset_type`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `asset_type` (
+CREATE TABLE IF NOT EXISTS `asset_type` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` text NOT NULL,
   `type` enum('video','photo','website','document','diagram') NOT NULL,
   PRIMARY KEY (`id`),
   KEY `type` (`type`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=14 ;
 
---
--- Table structure for table `ban_domains`
---
-
-DROP TABLE IF EXISTS `ban_domains`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `ban_domains` (
-  `domain_id` int(12) NOT NULL AUTO_INCREMENT,
-  `domain_name` varchar(256) NOT NULL,
-  `ban_date` int(12) NOT NULL,
-  PRIMARY KEY (`domain_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `bancontrol`
 --
 
 DROP TABLE IF EXISTS `bancontrol`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `bancontrol` (
+CREATE TABLE IF NOT EXISTS `bancontrol` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(10) NOT NULL,
   `ip` varchar(255) NOT NULL,
@@ -154,17 +296,30 @@ CREATE TABLE `bancontrol` (
   KEY `ban_active` (`ban_active`),
   KEY `banned_by` (`banned_by`),
   KEY `ip` (`ip`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=12196 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `ban_domains`
+--
+
+DROP TABLE IF EXISTS `ban_domains`;
+CREATE TABLE IF NOT EXISTS `ban_domains` (
+  `domain_id` int(12) NOT NULL AUTO_INCREMENT,
+  `domain_name` varchar(256) NOT NULL,
+  `ban_date` int(12) NOT NULL,
+  PRIMARY KEY (`domain_id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=3 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `chronicle_item`
 --
 
 DROP TABLE IF EXISTS `chronicle_item`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `chronicle_item` (
+CREATE TABLE IF NOT EXISTS `chronicle_item` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `status` tinyint(1) NOT NULL DEFAULT '0',
   `date` datetime NOT NULL,
@@ -178,17 +333,16 @@ CREATE TABLE `chronicle_item` (
   KEY `date` (`date`,`type_id`),
   KEY `status` (`status`),
   KEY `user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=3542 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `chronicle_link`
 --
 
 DROP TABLE IF EXISTS `chronicle_link`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `chronicle_link` (
+CREATE TABLE IF NOT EXISTS `chronicle_link` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `item_id` int(11) NOT NULL,
   `module` varchar(12) NOT NULL,
@@ -196,66 +350,62 @@ CREATE TABLE `chronicle_link` (
   `object_id` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `item_id` (`item_id`,`module`,`object`,`object_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=3542 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `chronicle_type`
 --
 
 DROP TABLE IF EXISTS `chronicle_type`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `chronicle_type` (
+CREATE TABLE IF NOT EXISTS `chronicle_type` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `grouping` enum('Locos','Locations','Other') NOT NULL,
   `text` text NOT NULL,
   PRIMARY KEY (`id`),
   KEY `grouping` (`grouping`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=21 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `config`
 --
 
 DROP TABLE IF EXISTS `config`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `config` (
+CREATE TABLE IF NOT EXISTS `config` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `date` int(11) NOT NULL,
   `key` varchar(256) NOT NULL,
   `name` varchar(128) NOT NULL,
   `value` varchar(2048) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=10 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `download_categories`
 --
 
 DROP TABLE IF EXISTS `download_categories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `download_categories` (
+CREATE TABLE IF NOT EXISTS `download_categories` (
   `category_id` int(11) NOT NULL AUTO_INCREMENT,
   `category_title` varchar(50) NOT NULL DEFAULT '',
   `category_description` mediumtext NOT NULL,
   `parentid` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`category_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=29 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `download_hits`
 --
 
 DROP TABLE IF EXISTS `download_hits`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `download_hits` (
+CREATE TABLE IF NOT EXISTS `download_hits` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `download_id` int(11) NOT NULL,
   `date` datetime NOT NULL,
@@ -263,17 +413,16 @@ CREATE TABLE `download_hits` (
   `remote_addr` text,
   PRIMARY KEY (`id`),
   KEY `download_id` (`download_id`,`date`,`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `download_items`
 --
 
 DROP TABLE IF EXISTS `download_items`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `download_items` (
+CREATE TABLE IF NOT EXISTS `download_items` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `category_id` int(11) NOT NULL DEFAULT '0',
   `title` varchar(100) NOT NULL DEFAULT '',
@@ -293,17 +442,16 @@ CREATE TABLE `download_items` (
   PRIMARY KEY (`id`),
   KEY `category_id` (`category_id`),
   KEY `user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=864 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `event`
 --
 
 DROP TABLE IF EXISTS `event`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `event` (
+CREATE TABLE IF NOT EXISTS `event` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(128) NOT NULL,
   `description` text NOT NULL,
@@ -322,17 +470,16 @@ CREATE TABLE `event` (
   KEY `slug` (`slug`),
   KEY `status` (`status`),
   KEY `user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=62 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `event_categories`
 --
 
 DROP TABLE IF EXISTS `event_categories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `event_categories` (
+CREATE TABLE IF NOT EXISTS `event_categories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(128) NOT NULL DEFAULT '',
   `description` text NOT NULL,
@@ -340,17 +487,16 @@ CREATE TABLE `event_categories` (
   UNIQUE KEY `id_2` (`id`),
   KEY `id` (`id`),
   KEY `slug` (`slug`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=14 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `event_dates`
 --
 
 DROP TABLE IF EXISTS `event_dates`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `event_dates` (
+CREATE TABLE IF NOT EXISTS `event_dates` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `event_id` int(11) NOT NULL,
   `date` date NOT NULL,
@@ -363,17 +509,16 @@ CREATE TABLE `event_dates` (
   KEY `event_id` (`event_id`,`date`,`start`),
   KEY `approved` (`status`),
   KEY `user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=171 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `feedback`
 --
 
 DROP TABLE IF EXISTS `feedback`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `feedback` (
+CREATE TABLE IF NOT EXISTS `feedback` (
   `assigned_to` int(11) NOT NULL,
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `time` int(11) NOT NULL,
@@ -385,76 +530,71 @@ CREATE TABLE `feedback` (
   `status` int(11) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`,`area`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=155 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `feedback_area`
 --
 
 DROP TABLE IF EXISTS `feedback_area`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `feedback_area` (
+CREATE TABLE IF NOT EXISTS `feedback_area` (
   `feedback_id` int(11) NOT NULL AUTO_INCREMENT,
   `feedback_title` varchar(256) NOT NULL,
   PRIMARY KEY (`feedback_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=6 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `feedback_status`
 --
 
 DROP TABLE IF EXISTS `feedback_status`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `feedback_status` (
+CREATE TABLE IF NOT EXISTS `feedback_status` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(1024) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=4 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `flickr_cache`
 --
 
 DROP TABLE IF EXISTS `flickr_cache`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `flickr_cache` (
+CREATE TABLE IF NOT EXISTS `flickr_cache` (
   `request` char(35) NOT NULL,
   `response` longtext NOT NULL,
   `expiration` datetime NOT NULL,
   KEY `request` (`request`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=0;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `flickr_favourites`
 --
 
 DROP TABLE IF EXISTS `flickr_favourites`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `flickr_favourites` (
+CREATE TABLE IF NOT EXISTS `flickr_favourites` (
   `photo_id` varchar(24) NOT NULL,
   `user_id` int(11) NOT NULL,
   `time` int(11) NOT NULL,
   KEY `photo_id` (`photo_id`),
   KEY `user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `flickr_geodata`
 --
 
 DROP TABLE IF EXISTS `flickr_geodata`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `flickr_geodata` (
+CREATE TABLE IF NOT EXISTS `flickr_geodata` (
   `photo_id` varchar(20) NOT NULL,
   `lat` decimal(11,8) NOT NULL,
   `lon` decimal(11,8) NOT NULL,
@@ -478,35 +618,34 @@ CREATE TABLE `flickr_geodata` (
   `size5` varchar(512) NOT NULL,
   `size5_w` int(11) NOT NULL,
   `size5_h` int(11) NOT NULL,
-  `size6` varchar(512) NOT NULL,
-  `size6_w` int(11) NOT NULL,
-  `size6_h` int(11) NOT NULL,
+  `size6` varchar(512) DEFAULT NULL,
+  `size6_w` int(11) NOT NULL DEFAULT '0',
+  `size6_h` int(11) NOT NULL DEFAULT '0',
   `title` varchar(2048) DEFAULT NULL,
   `tags` mediumtext,
   `dateadded` int(11) DEFAULT NULL,
   `dateupload` int(11) DEFAULT NULL,
   `datetaken` int(11) DEFAULT NULL,
-  `size7` varchar(512) NOT NULL,
-  `size7_w` int(11) NOT NULL,
-  `size7_h` int(11) NOT NULL,
-  `size8` varchar(512) NOT NULL,
-  `size8_w` int(11) NOT NULL,
-  `size8_h` int(11) NOT NULL,
+  `size7` varchar(512) DEFAULT NULL,
+  `size7_w` int(11) NOT NULL DEFAULT '0',
+  `size7_h` int(11) NOT NULL DEFAULT '0',
+  `size8` varchar(512) DEFAULT NULL,
+  `size8_w` int(11) NOT NULL DEFAULT '0',
+  `size8_h` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`photo_id`),
   KEY `lat` (`lat`),
   KEY `lon` (`lon`),
   KEY `owner` (`owner`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=0;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `flickr_rating`
 --
 
 DROP TABLE IF EXISTS `flickr_rating`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `flickr_rating` (
+CREATE TABLE IF NOT EXISTS `flickr_rating` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `photo_id` bigint(20) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -514,33 +653,31 @@ CREATE TABLE `flickr_rating` (
   `rating` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `photo_id` (`photo_id`,`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=189 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `fwlink`
 --
 
 DROP TABLE IF EXISTS `fwlink`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `fwlink` (
+CREATE TABLE IF NOT EXISTS `fwlink` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `url` varchar(256) NOT NULL,
   `title` text NOT NULL,
   PRIMARY KEY (`id`),
   KEY `url` (`url`(255))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=24407 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `gallery_mig_album`
 --
 
 DROP TABLE IF EXISTS `gallery_mig_album`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `gallery_mig_album` (
+CREATE TABLE IF NOT EXISTS `gallery_mig_album` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(128) NOT NULL,
   `title` text NOT NULL,
@@ -555,17 +692,16 @@ CREATE TABLE `gallery_mig_album` (
   KEY `name` (`name`,`parent_id`),
   KEY `parent_id` (`parent_id`),
   KEY `owner_2` (`owner`,`owner_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=2828 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `gallery_mig_image`
 --
 
 DROP TABLE IF EXISTS `gallery_mig_image`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `gallery_mig_image` (
+CREATE TABLE IF NOT EXISTS `gallery_mig_image` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `album_id` int(11) NOT NULL,
   `owner` int(11) NOT NULL,
@@ -579,57 +715,79 @@ CREATE TABLE `gallery_mig_image` (
   KEY `album_id` (`album_id`,`owner`),
   KEY `date_taken` (`date_taken`,`date_uploaded`),
   KEY `hidden` (`hidden`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=44503 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `geoplace`
+--
+
+DROP TABLE IF EXISTS `geoplace`;
+CREATE TABLE IF NOT EXISTS `geoplace` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `country_code` varchar(4) NOT NULL,
+  `country_name` text NOT NULL,
+  `region_code` varchar(10) NOT NULL,
+  `region_name` text NOT NULL,
+  `neighbourhood` varchar(32) NOT NULL,
+  `point` point NOT NULL,
+  `timezone` text NOT NULL,
+  `bb_southwest` point NOT NULL,
+  `bb_northeast` point NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `country_code` (`country_code`,`region_code`),
+  SPATIAL KEY `point` (`point`)
+) ENGINE=Aria  DEFAULT CHARSET=utf8 PAGE_CHECKSUM=0 TRANSACTIONAL=0 AUTO_INCREMENT=445 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `glossary`
 --
 
 DROP TABLE IF EXISTS `glossary`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `glossary` (
+CREATE TABLE IF NOT EXISTS `glossary` (
   `id` int(12) NOT NULL AUTO_INCREMENT,
   `type` enum('acronym','term','code','station','slang') NOT NULL DEFAULT 'term',
-  `short` varchar(16) DEFAULT NULL,
+  `short` varchar(32) DEFAULT NULL,
   `full` text,
   `example` text NOT NULL,
   `date` datetime NOT NULL,
   `author` int(11) NOT NULL,
   `status` tinyint(1) NOT NULL DEFAULT '1',
+  `slug` varchar(22) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `type` (`type`),
   KEY `date` (`date`),
   KEY `author` (`author`),
-  KEY `status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+  KEY `status` (`status`),
+  KEY `slug` (`slug`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=50 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `idea_categories`
 --
 
 DROP TABLE IF EXISTS `idea_categories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `idea_categories` (
+CREATE TABLE IF NOT EXISTS `idea_categories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(32) NOT NULL,
   `slug` varchar(32) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `slug` (`slug`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=15 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `idea_ideas`
 --
 
 DROP TABLE IF EXISTS `idea_ideas`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `idea_ideas` (
+CREATE TABLE IF NOT EXISTS `idea_ideas` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `category_id` int(11) NOT NULL,
   `title` varchar(64) NOT NULL,
@@ -640,7 +798,7 @@ CREATE TABLE `idea_ideas` (
   `date` datetime NOT NULL,
   `status` tinyint(2) NOT NULL DEFAULT '1',
   `forum_thread_id` int(11) NOT NULL DEFAULT '0',
-  `redmine_id` int(11) NOT NULL DEFAULT '0',
+  `redmine_id` int(10) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `slug` (`slug`,`votes`),
   KEY `author` (`author`),
@@ -649,17 +807,16 @@ CREATE TABLE `idea_ideas` (
   KEY `status` (`status`),
   KEY `forum_thread_id` (`forum_thread_id`),
   KEY `redmine_id` (`redmine_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=66 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `idea_votes`
 --
 
 DROP TABLE IF EXISTS `idea_votes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `idea_votes` (
+CREATE TABLE IF NOT EXISTS `idea_votes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `idea_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -667,17 +824,16 @@ CREATE TABLE `idea_votes` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   KEY `idea_id` (`idea_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=270 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `image`
 --
 
 DROP TABLE IF EXISTS `image`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `image` (
+CREATE TABLE IF NOT EXISTS `image` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `provider` enum('flickr','westonlangford','rpoldgallery','picasaweb','vicsig') NOT NULL,
   `photo_id` bigint(11) NOT NULL,
@@ -687,20 +843,25 @@ CREATE TABLE `image` (
   `meta` longtext NOT NULL,
   `title` text NOT NULL,
   `description` text NOT NULL,
+  `hits_today` int(11) NOT NULL,
+  `hits_weekly` int(11) NOT NULL,
+  `hits_overall` int(11) NOT NULL,
+  `geoplace` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `image_source` (`provider`,`photo_id`,`modified`),
-  KEY `lat` (`lat`,`lon`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+  KEY `lat` (`lat`,`lon`),
+  KEY `hits_today` (`hits_today`,`hits_weekly`,`hits_overall`),
+  KEY `geoplace` (`geoplace`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=67940 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `image_competition`
 --
 
 DROP TABLE IF EXISTS `image_competition`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `image_competition` (
+CREATE TABLE IF NOT EXISTS `image_competition` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` text NOT NULL,
   `theme` text NOT NULL,
@@ -716,17 +877,16 @@ CREATE TABLE `image_competition` (
   PRIMARY KEY (`id`),
   KEY `slug` (`slug`,`status`,`voting_date_open`,`voting_date_close`,`author`),
   KEY `submissions_date_open` (`submissions_date_open`,`submissions_date_close`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=5 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `image_competition_submissions`
 --
 
 DROP TABLE IF EXISTS `image_competition_submissions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `image_competition_submissions` (
+CREATE TABLE IF NOT EXISTS `image_competition_submissions` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `competition_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -736,17 +896,16 @@ CREATE TABLE `image_competition_submissions` (
   `status` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `competition_id` (`competition_id`,`user_id`,`image_id`,`date_added`,`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=29 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `image_competition_votes`
 --
 
 DROP TABLE IF EXISTS `image_competition_votes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `image_competition_votes` (
+CREATE TABLE IF NOT EXISTS `image_competition_votes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `competition_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -756,17 +915,16 @@ CREATE TABLE `image_competition_votes` (
   PRIMARY KEY (`id`),
   KEY `competition_id` (`competition_id`,`user_id`,`image_id`),
   KEY `date` (`date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=20 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `image_link`
 --
 
 DROP TABLE IF EXISTS `image_link`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `image_link` (
+CREATE TABLE IF NOT EXISTS `image_link` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `image_id` int(11) NOT NULL,
   `namespace` enum('railpage.locos.loco','railpage.locos.class','railpage.locations.location','railpage.locos.liveries.livery') NOT NULL,
@@ -775,17 +933,16 @@ CREATE TABLE `image_link` (
   PRIMARY KEY (`id`),
   KEY `namespace` (`namespace`,`namespace_key`,`ignored`),
   KEY `image_id` (`image_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=60650 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `image_position`
 --
 
 DROP TABLE IF EXISTS `image_position`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `image_position` (
+CREATE TABLE IF NOT EXISTS `image_position` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `image_id` varchar(20) NOT NULL,
   `image_type` enum('flickr','asset') NOT NULL,
@@ -795,50 +952,64 @@ CREATE TABLE `image_position` (
   `position_y` varchar(8) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `image_id` (`image_id`,`image_type`,`namespace`,`namespace_key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Define an offset position for an image. Useful for loco cover photos.';
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='Define an offset position for an image. Useful for loco cover photos.' AUTO_INCREMENT=430 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `image_weekly`
+--
+
+DROP TABLE IF EXISTS `image_weekly`;
+CREATE TABLE IF NOT EXISTS `image_weekly` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `image_id` int(11) NOT NULL,
+  `datefrom` date NOT NULL,
+  `added_by` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `image_id` (`image_id`,`datefrom`,`added_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `jn_applications`
 --
 
 DROP TABLE IF EXISTS `jn_applications`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `jn_applications` (
+CREATE TABLE IF NOT EXISTS `jn_applications` (
   `jn_application_id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Unique ID for this job application',
   `jn_job_id` int(11) NOT NULL COMMENT 'Job ID',
   `user_id` int(11) NOT NULL COMMENT 'User ID',
   `jn_application_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Timestamp of application',
   PRIMARY KEY (`jn_application_id`),
   KEY `jn_job_id` (`jn_job_id`,`user_id`,`jn_application_time`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Railpage JobNet - Applications to advertised positions';
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Railpage JobNet - Applications to advertised positions' AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `jn_classifications`
 --
 
 DROP TABLE IF EXISTS `jn_classifications`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `jn_classifications` (
+CREATE TABLE IF NOT EXISTS `jn_classifications` (
   `jn_classification_id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Unique ID of the job classification',
   `jn_classification_name` varchar(128) NOT NULL COMMENT 'Regular name for the classification',
   `jn_parent_id` int(11) NOT NULL DEFAULT '0' COMMENT 'Parent jn_classification_id number',
   PRIMARY KEY (`jn_classification_id`),
   KEY `jn_parent_id` (`jn_parent_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=65 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `jn_jobs`
 --
 
 DROP TABLE IF EXISTS `jn_jobs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `jn_jobs` (
+
+CREATE TABLE IF NOT EXISTS `jn_jobs` (
   `job_id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Unique job ID',
   `reference_id` int(11) NOT NULL COMMENT 'The reference ID from the job poster',
   `job_title` varchar(1024) NOT NULL COMMENT 'Job title or name of position, eg "Trainee driver"',
@@ -859,33 +1030,31 @@ CREATE TABLE `jn_jobs` (
   KEY `job_thread_id` (`job_thread_id`),
   KEY `reference_id` (`reference_id`),
   KEY `job_added` (`job_added`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Railpage JobNet - Advertised positions';
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='Railpage JobNet - Advertised positions' AUTO_INCREMENT=173 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `jn_locations`
 --
 
 DROP TABLE IF EXISTS `jn_locations`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `jn_locations` (
+CREATE TABLE IF NOT EXISTS `jn_locations` (
   `jn_location_id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Unique job location ID',
   `jn_location_name` varchar(128) NOT NULL COMMENT 'Name of this location, eg: Melbourne > South East',
   `jn_parent_id` int(11) NOT NULL DEFAULT '0' COMMENT 'Parent ID, eg Melbourne is the parent of Melbourne > South East',
   PRIMARY KEY (`jn_location_id`),
   KEY `jn_parent_id` (`jn_parent_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Railpage JobNet - Job locations';
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='Railpage JobNet - Job locations' AUTO_INCREMENT=55 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loadstats`
 --
 
 DROP TABLE IF EXISTS `loadstats`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loadstats` (
+CREATE TABLE IF NOT EXISTS `loadstats` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `time` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -899,17 +1068,16 @@ CREATE TABLE `loadstats` (
   `stat_dbload` decimal(3,2) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `location`
 --
 
 DROP TABLE IF EXISTS `location`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `location` (
+CREATE TABLE IF NOT EXISTS `location` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `lat` decimal(11,8) NOT NULL,
   `long` decimal(11,8) NOT NULL,
@@ -948,15 +1116,30 @@ CREATE TABLE `location` (
   KEY `long` (`long`),
   KEY `country_slug` (`country_slug`),
   KEY `region_slug` (`region_slug`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=434 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `locations_like`
+--
+
+DROP TABLE IF EXISTS `locations_like`;
+CREATE TABLE IF NOT EXISTS `locations_like` (
+  `location_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  KEY `location_id` (`location_id`),
+  KEY `user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `location_corrections`
 --
 
 DROP TABLE IF EXISTS `location_corrections`;
-CREATE TABLE `location_corrections` (
+CREATE TABLE IF NOT EXISTS `location_corrections` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `location_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -967,17 +1150,16 @@ CREATE TABLE `location_corrections` (
   PRIMARY KEY (`id`),
   KEY `location_id` (`location_id`,`user_id`,`status`),
   KEY `date_added` (`date_added`,`date_closed`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=5 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `location_date`
 --
 
 DROP TABLE IF EXISTS `location_date`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `location_date` (
+CREATE TABLE IF NOT EXISTS `location_date` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `date` date NOT NULL,
   `location_id` int(11) NOT NULL,
@@ -987,46 +1169,29 @@ CREATE TABLE `location_date` (
   PRIMARY KEY (`id`),
   KEY `date` (`date`,`type_id`),
   KEY `location_id` (`location_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=4 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `location_datetypes`
 --
 
 DROP TABLE IF EXISTS `location_datetypes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `location_datetypes` (
+CREATE TABLE IF NOT EXISTS `location_datetypes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(128) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=4 ;
 
---
--- Table structure for table `locations_like`
---
-
-DROP TABLE IF EXISTS `locations_like`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `locations_like` (
-  `location_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  KEY `location_id` (`location_id`),
-  KEY `user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_class`
 --
 
 DROP TABLE IF EXISTS `loco_class`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_class` (
+CREATE TABLE IF NOT EXISTS `loco_class` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `parent` int(11) NOT NULL DEFAULT '0',
   `source_id` int(11) NOT NULL,
@@ -1056,47 +1221,46 @@ CREATE TABLE `loco_class` (
   KEY `Model` (`Model`(255)),
   KEY `asset_id` (`asset_id`),
   KEY `country` (`country`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=378 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_date_type`
 --
 
 DROP TABLE IF EXISTS `loco_date_type`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_date_type` (
+CREATE TABLE IF NOT EXISTS `loco_date_type` (
   `loco_date_id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_date_text` text NOT NULL,
   PRIMARY KEY (`loco_date_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=21 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_gauge`
 --
 
 DROP TABLE IF EXISTS `loco_gauge`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_gauge` (
+CREATE TABLE IF NOT EXISTS `loco_gauge` (
   `gauge_id` int(11) NOT NULL AUTO_INCREMENT,
   `gauge_name` varchar(64) CHARACTER SET latin1 NOT NULL,
   `gauge_imperial` varchar(64) CHARACTER SET latin1 NOT NULL,
   `gauge_metric` varchar(64) CHARACTER SET latin1 NOT NULL,
-  PRIMARY KEY (`gauge_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+  `slug` varchar(12) NOT NULL,
+  PRIMARY KEY (`gauge_id`),
+  KEY `slug` (`slug`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=8 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_groups`
 --
 
 DROP TABLE IF EXISTS `loco_groups`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_groups` (
+CREATE TABLE IF NOT EXISTS `loco_groups` (
   `group_id` int(11) NOT NULL AUTO_INCREMENT,
   `group_name` varchar(256) CHARACTER SET latin1 NOT NULL,
   `active` tinyint(1) NOT NULL DEFAULT '1',
@@ -1104,34 +1268,32 @@ CREATE TABLE `loco_groups` (
   `date_end` date NOT NULL,
   PRIMARY KEY (`group_id`),
   KEY `active` (`active`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=58 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_groups_members`
 --
 
 DROP TABLE IF EXISTS `loco_groups_members`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_groups_members` (
+CREATE TABLE IF NOT EXISTS `loco_groups_members` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `group_id` int(11) NOT NULL,
   `loco_unit_id` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `loco_unit_id` (`loco_unit_id`),
   KEY `group_id` (`group_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=3 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_hits`
 --
 
 DROP TABLE IF EXISTS `loco_hits`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_hits` (
+CREATE TABLE IF NOT EXISTS `loco_hits` (
   `loco_id` int(11) NOT NULL,
   `class_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -1139,16 +1301,15 @@ CREATE TABLE `loco_hits` (
   `ip` varchar(128) NOT NULL,
   KEY `loco_id` (`loco_id`,`class_id`,`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_link`
 --
 
 DROP TABLE IF EXISTS `loco_link`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_link` (
+CREATE TABLE IF NOT EXISTS `loco_link` (
   `link_id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_id_a` int(11) NOT NULL,
   `loco_id_b` int(11) NOT NULL,
@@ -1157,31 +1318,29 @@ CREATE TABLE `loco_link` (
   KEY `loco_id_a` (`loco_id_a`),
   KEY `loco_id_b` (`loco_id_b`),
   KEY `link_type_id` (`link_type_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=808 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_link_type`
 --
 
 DROP TABLE IF EXISTS `loco_link_type`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_link_type` (
+CREATE TABLE IF NOT EXISTS `loco_link_type` (
   `link_type_id` int(11) NOT NULL AUTO_INCREMENT,
   `link_type_name` varchar(128) NOT NULL,
   PRIMARY KEY (`link_type_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=3 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_livery`
 --
 
 DROP TABLE IF EXISTS `loco_livery`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_livery` (
+CREATE TABLE IF NOT EXISTS `loco_livery` (
   `livery_id` int(11) NOT NULL AUTO_INCREMENT,
   `livery` varchar(1024) NOT NULL,
   `introduced` varchar(256) NOT NULL,
@@ -1196,34 +1355,32 @@ CREATE TABLE `loco_livery` (
   KEY `supersedes` (`supersedes`),
   KEY `region` (`region`),
   KEY `country` (`country`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=165 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_manufacturer`
 --
 
 DROP TABLE IF EXISTS `loco_manufacturer`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_manufacturer` (
+CREATE TABLE IF NOT EXISTS `loco_manufacturer` (
   `manufacturer_id` int(11) NOT NULL AUTO_INCREMENT,
   `manufacturer_name` varchar(256) NOT NULL,
   `manufacturer_desc` text NOT NULL,
   `slug` varchar(32) NOT NULL,
   PRIMARY KEY (`manufacturer_id`),
   KEY `slug` (`slug`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=96 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_notes`
 --
 
 DROP TABLE IF EXISTS `loco_notes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_notes` (
+CREATE TABLE IF NOT EXISTS `loco_notes` (
   `note_id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -1231,17 +1388,16 @@ CREATE TABLE `loco_notes` (
   `note_text` text NOT NULL,
   PRIMARY KEY (`note_id`),
   KEY `loco_id` (`loco_id`,`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=380 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_org_link`
 --
 
 DROP TABLE IF EXISTS `loco_org_link`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_org_link` (
+CREATE TABLE IF NOT EXISTS `loco_org_link` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_id` int(11) NOT NULL,
   `operator_id` int(11) NOT NULL,
@@ -1253,61 +1409,57 @@ CREATE TABLE `loco_org_link` (
   KEY `operator_id` (`operator_id`),
   KEY `link_type` (`link_type`),
   KEY `link_weight` (`link_weight`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=23155 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_org_link_type`
 --
 
 DROP TABLE IF EXISTS `loco_org_link_type`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_org_link_type` (
+CREATE TABLE IF NOT EXISTS `loco_org_link_type` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(128) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=3 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_status`
 --
 
 DROP TABLE IF EXISTS `loco_status`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_status` (
+CREATE TABLE IF NOT EXISTS `loco_status` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(256) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=13 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_type`
 --
 
 DROP TABLE IF EXISTS `loco_type`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_type` (
+CREATE TABLE IF NOT EXISTS `loco_type` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(256) NOT NULL,
   `slug` varchar(32) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `slug` (`slug`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=11 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_unit`
 --
 
 DROP TABLE IF EXISTS `loco_unit`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_unit` (
+CREATE TABLE IF NOT EXISTS `loco_unit` (
   `loco_id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_num` varchar(12) NOT NULL,
   `loco_name` varchar(512) NOT NULL,
@@ -1333,19 +1485,19 @@ CREATE TABLE `loco_unit` (
   KEY `manufacturer_id` (`manufacturer_id`),
   KEY `class_id` (`class_id`),
   KEY `asset_id` (`asset_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=7334 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_unit_corrections`
 --
 
 DROP TABLE IF EXISTS `loco_unit_corrections`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_unit_corrections` (
+CREATE TABLE IF NOT EXISTS `loco_unit_corrections` (
   `correction_id` int(11) NOT NULL AUTO_INCREMENT,
-  `loco_id` int(11) NOT NULL,
+  `loco_id` int(11) DEFAULT NULL,
+  `class_id` int(11) DEFAULT NULL,
   `user_id` int(11) NOT NULL,
   `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `status` tinyint(1) NOT NULL DEFAULT '0',
@@ -1353,19 +1505,19 @@ CREATE TABLE `loco_unit_corrections` (
   `resolved_date` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   `text` varchar(2048) NOT NULL,
   PRIMARY KEY (`correction_id`),
+  UNIQUE KEY `class_id` (`class_id`),
   KEY `loco_id` (`loco_id`),
   KEY `user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=84 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_unit_date`
 --
 
 DROP TABLE IF EXISTS `loco_unit_date`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_unit_date` (
+CREATE TABLE IF NOT EXISTS `loco_unit_date` (
   `date_id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_unit_id` int(11) NOT NULL,
   `loco_date_id` int(11) NOT NULL,
@@ -1377,17 +1529,16 @@ CREATE TABLE `loco_unit_date` (
   KEY `loco_unit_id` (`loco_unit_id`),
   KEY `date_id` (`loco_date_id`),
   KEY `timestamp` (`timestamp`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=4221 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_unit_livery`
 --
 
 DROP TABLE IF EXISTS `loco_unit_livery`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_unit_livery` (
+CREATE TABLE IF NOT EXISTS `loco_unit_livery` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `provider` enum('flickr') NOT NULL,
   `photo_id` bigint(20) NOT NULL,
@@ -1399,34 +1550,32 @@ CREATE TABLE `loco_unit_livery` (
   KEY `provider` (`provider`,`photo_id`,`loco_id`,`livery_id`),
   KEY `added` (`added`),
   KEY `ignored` (`ignored`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=6988 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `loco_unit_source`
 --
 
 DROP TABLE IF EXISTS `loco_unit_source`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `loco_unit_source` (
+CREATE TABLE IF NOT EXISTS `loco_unit_source` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_id` int(11) NOT NULL,
   `source_id` int(11) NOT NULL,
   `desc` mediumtext NOT NULL,
   PRIMARY KEY (`id`),
   KEY `loco_id` (`loco_id`,`source_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `log_api`
 --
 
 DROP TABLE IF EXISTS `log_api`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `log_api` (
+CREATE TABLE IF NOT EXISTS `log_api` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `date` datetime NOT NULL,
   `version` enum('1','2') NOT NULL,
@@ -1436,17 +1585,16 @@ CREATE TABLE `log_api` (
   PRIMARY KEY (`id`),
   KEY `version` (`version`),
   KEY `date` (`date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `log_downloads`
 --
 
 DROP TABLE IF EXISTS `log_downloads`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `log_downloads` (
+CREATE TABLE IF NOT EXISTS `log_downloads` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `download_id` int(11) NOT NULL,
   `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -1455,17 +1603,16 @@ CREATE TABLE `log_downloads` (
   `username` varchar(128) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `download_id` (`download_id`,`date`,`ip`,`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=0;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=0 AUTO_INCREMENT=30923 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `log_errors`
 --
 
 DROP TABLE IF EXISTS `log_errors`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `log_errors` (
+CREATE TABLE IF NOT EXISTS `log_errors` (
   `error_id` int(11) NOT NULL AUTO_INCREMENT,
   `error_text` mediumtext NOT NULL,
   `error_time` int(11) NOT NULL,
@@ -1475,17 +1622,16 @@ CREATE TABLE `log_errors` (
   `error_acknowledged` tinyint(1) NOT NULL DEFAULT '0',
   `trace` mediumtext NOT NULL,
   PRIMARY KEY (`error_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=355052 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `log_general`
 --
 
 DROP TABLE IF EXISTS `log_general`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `log_general` (
+CREATE TABLE IF NOT EXISTS `log_general` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `module` varchar(32) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -1497,34 +1643,32 @@ CREATE TABLE `log_general` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`,`timestamp`),
   KEY `key` (`key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=116232 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `log_herrings`
 --
 
 DROP TABLE IF EXISTS `log_herrings`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `log_herrings` (
+CREATE TABLE IF NOT EXISTS `log_herrings` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `time` int(11) NOT NULL,
   `post_id` int(11) NOT NULL,
   `poster_id` int(11) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=3512 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `log_locos`
 --
 
 DROP TABLE IF EXISTS `log_locos`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `log_locos` (
+CREATE TABLE IF NOT EXISTS `log_locos` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -1535,17 +1679,16 @@ CREATE TABLE `log_locos` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`,`timestamp`),
   KEY `loco_id` (`loco_id`,`class_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=1268 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `log_logins`
 --
 
 DROP TABLE IF EXISTS `log_logins`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `log_logins` (
+CREATE TABLE IF NOT EXISTS `log_logins` (
   `login_id` int(11) NOT NULL AUTO_INCREMENT,
   `login_time` int(11) NOT NULL,
   `login_ip` varchar(256) NOT NULL,
@@ -1556,17 +1699,16 @@ CREATE TABLE `log_logins` (
   PRIMARY KEY (`login_id`),
   KEY `user_id` (`user_id`),
   KEY `login_time` (`login_time`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=1574148 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `log_pageactivity`
 --
 
 DROP TABLE IF EXISTS `log_pageactivity`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `log_pageactivity` (
+CREATE TABLE IF NOT EXISTS `log_pageactivity` (
   `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `url` varchar(2048) NOT NULL,
   `pagetitle` varchar(2048) NOT NULL,
@@ -1575,16 +1717,15 @@ CREATE TABLE `log_pageactivity` (
   `loggedin` int(11) NOT NULL DEFAULT '0',
   KEY `time` (`time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `log_staff`
 --
 
 DROP TABLE IF EXISTS `log_staff`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `log_staff` (
+CREATE TABLE IF NOT EXISTS `log_staff` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `key` varchar(32) NOT NULL,
   `key_val` int(11) NOT NULL,
@@ -1597,17 +1738,16 @@ CREATE TABLE `log_staff` (
   KEY `timestamp` (`timestamp`),
   KEY `title` (`title`),
   KEY `key` (`key`,`key_val`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=6454 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `log_useractivity`
 --
 
 DROP TABLE IF EXISTS `log_useractivity`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `log_useractivity` (
+CREATE TABLE IF NOT EXISTS `log_useractivity` (
   `log_id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `ip` varchar(64) CHARACTER SET latin1 NOT NULL,
@@ -1619,17 +1759,16 @@ CREATE TABLE `log_useractivity` (
   KEY `user_id` (`user_id`),
   KEY `ip` (`ip`),
   KEY `module_id` (`module_id`,`date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=839719 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `messages`
 --
 
 DROP TABLE IF EXISTS `messages`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `messages` (
+CREATE TABLE IF NOT EXISTS `messages` (
   `message_id` int(10) NOT NULL AUTO_INCREMENT,
   `message_active` tinyint(1) NOT NULL DEFAULT '1',
   `message_text` varchar(512) NOT NULL,
@@ -1638,56 +1777,39 @@ CREATE TABLE `messages` (
   `date_end` date NOT NULL,
   `object_ns` varchar(64) NOT NULL,
   `object_id` int(10) NOT NULL,
+  `target_user` int(11) NOT NULL,
   PRIMARY KEY (`message_id`),
   KEY `message_active` (`message_active`),
   KEY `message_title` (`message_title`),
   KEY `date_start` (`date_start`,`date_end`),
-  KEY `object_ns` (`object_ns`,`object_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+  KEY `object_ns` (`object_ns`,`object_id`),
+  KEY `target_user` (`target_user`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=28 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `messages_viewed`
 --
 
 DROP TABLE IF EXISTS `messages_viewed`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `messages_viewed` (
+CREATE TABLE IF NOT EXISTS `messages_viewed` (
   `row_id` int(11) NOT NULL AUTO_INCREMENT,
   `message_id` int(10) NOT NULL,
   `user_id` int(10) NOT NULL,
   PRIMARY KEY (`row_id`),
   KEY `message_id` (`message_id`),
   KEY `user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=1929 ;
 
---
--- Table structure for table `news_feed`
---
-
-DROP TABLE IF EXISTS `news_feed`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `news_feed` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `user_id` int(11) NOT NULL,
-  `topics` text NOT NULL,
-  `keywords` text NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `newsletter`
 --
 
 DROP TABLE IF EXISTS `newsletter`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `newsletter` (
+CREATE TABLE IF NOT EXISTS `newsletter` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `subject` text NOT NULL,
   `publishdate` date NOT NULL,
@@ -1697,33 +1819,88 @@ CREATE TABLE `newsletter` (
   PRIMARY KEY (`id`),
   KEY `publishdate` (`publishdate`,`status`),
   KEY `template_id` (`template_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=4 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `newsletter_templates`
 --
 
 DROP TABLE IF EXISTS `newsletter_templates`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `newsletter_templates` (
+CREATE TABLE IF NOT EXISTS `newsletter_templates` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` text NOT NULL,
   `html` text NOT NULL,
   `contenturl` text NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=2 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `news_feed`
+--
+
+DROP TABLE IF EXISTS `news_feed`;
+CREATE TABLE IF NOT EXISTS `news_feed` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `topics` text NOT NULL,
+  `keywords` text NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=14 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `notifications`
+--
+
+DROP TABLE IF EXISTS `notifications`;
+CREATE TABLE IF NOT EXISTS `notifications` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `author` int(11) NOT NULL,
+  `transport` int(11) NOT NULL,
+  `status` int(11) NOT NULL,
+  `date_queued` datetime NOT NULL,
+  `date_sent` datetime NOT NULL,
+  `subject` text,
+  `body` longtext NOT NULL,
+  `response` longtext NOT NULL COMMENT 'Response from the transport. Used for errors/debugging',
+  `meta` longtext NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `recipient` (`author`,`transport`,`status`,`date_queued`,`date_sent`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='Notifications queue, to prevent page blocking when sending emails etc' AUTO_INCREMENT=350 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `notifications_recipients`
+--
+
+DROP TABLE IF EXISTS `notifications_recipients`;
+CREATE TABLE IF NOT EXISTS `notifications_recipients` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `notification_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `name` text NOT NULL,
+  `destination` text NOT NULL,
+  `date_sent` datetime NOT NULL,
+  `status` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `notification_id` (`notification_id`,`user_id`,`date_sent`,`status`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=448 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `notification_prefs`
 --
 
 DROP TABLE IF EXISTS `notification_prefs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `notification_prefs` (
+CREATE TABLE IF NOT EXISTS `notification_prefs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL COMMENT 'User ID that this preference belongs to',
   `notify_off` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'Turn off notifications completely',
@@ -1736,17 +1913,16 @@ CREATE TABLE `notification_prefs` (
   KEY `notify_topic_reply` (`notify_topic_reply`),
   KEY `notify_pm` (`notify_pm`),
   KEY `notify_job_apply` (`notify_job_apply`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1 COMMENT='Notification email preferences';
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1 COMMENT='Notification email preferences' AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `notification_rules`
 --
 
 DROP TABLE IF EXISTS `notification_rules`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `notification_rules` (
+CREATE TABLE IF NOT EXISTS `notification_rules` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `namespace` varchar(256) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -1754,17 +1930,16 @@ CREATE TABLE `notification_rules` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   KEY `namespace` (`namespace`(255))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1 COMMENT='Custom per-user notification rules';
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1 COMMENT='Custom per-user notification rules' AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `notification_sent`
 --
 
 DROP TABLE IF EXISTS `notification_sent`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `notification_sent` (
+CREATE TABLE IF NOT EXISTS `notification_sent` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `timestamp` datetime NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -1774,75 +1949,31 @@ CREATE TABLE `notification_sent` (
   `template_id` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `timestamp` (`timestamp`,`user_id`,`namespace`(255),`template_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1 COMMENT='Previously sent notifications';
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1 COMMENT='Previously sent notifications' AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `notification_templates`
 --
 
 DROP TABLE IF EXISTS `notification_templates`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `notification_templates` (
+CREATE TABLE IF NOT EXISTS `notification_templates` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `namespace` varchar(256) NOT NULL,
   `template` longtext NOT NULL,
   PRIMARY KEY (`id`),
   KEY `namespace` (`namespace`(255))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1 COMMENT='BBCode notification templates';
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1 COMMENT='BBCode notification templates' AUTO_INCREMENT=1 ;
 
---
--- Table structure for table `notifications`
---
-
-DROP TABLE IF EXISTS `notifications`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `notifications` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `author` int(11) NOT NULL,
-  `transport` int(11) NOT NULL,
-  `status` int(11) NOT NULL,
-  `date_queued` datetime NOT NULL,
-  `date_sent` datetime NOT NULL,
-  `subject` text,
-  `body` longtext NOT NULL,
-  `response` longtext NOT NULL COMMENT 'Response from the transport. Used for errors/debugging',
-  PRIMARY KEY (`id`),
-  KEY `recipient` (`author`,`transport`,`status`,`date_queued`,`date_sent`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Notifications queue, to prevent page blocking when sending emails etc';
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `notifications_recipients`
---
-
-DROP TABLE IF EXISTS `notifications_recipients`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `notifications_recipients` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `notification_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `name` text NOT NULL,
-  `destination` text NOT NULL,
-  `date_sent` datetime NOT NULL,
-  `status` int(11) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `notification_id` (`notification_id`,`user_id`,`date_sent`,`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_alliance`
 --
 
 DROP TABLE IF EXISTS `nuke_alliance`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_alliance` (
+CREATE TABLE IF NOT EXISTS `nuke_alliance` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(255) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `descrip` mediumtext COLLATE utf8_unicode_ci,
@@ -1852,17 +1983,16 @@ CREATE TABLE `nuke_alliance` (
   `imgsrc` mediumtext COLLATE utf8_unicode_ci,
   `url` mediumtext COLLATE utf8_unicode_ci NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=7 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_authors`
 --
 
 DROP TABLE IF EXISTS `nuke_authors`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_authors` (
+CREATE TABLE IF NOT EXISTS `nuke_authors` (
   `aid` varchar(25) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `name` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
   `url` varchar(255) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
@@ -1889,74 +2019,69 @@ CREATE TABLE `nuke_authors` (
   PRIMARY KEY (`aid`),
   KEY `aid` (`aid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbarcade`
 --
 
 DROP TABLE IF EXISTS `nuke_bbarcade`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbarcade` (
+CREATE TABLE IF NOT EXISTS `nuke_bbarcade` (
   `arcade_name` varchar(255) NOT NULL DEFAULT '',
   `arcade_value` varchar(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`arcade_name`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbarcade_categories`
 --
 
 DROP TABLE IF EXISTS `nuke_bbarcade_categories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbarcade_categories` (
+CREATE TABLE IF NOT EXISTS `nuke_bbarcade_categories` (
   `arcade_catid` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `arcade_cattitle` varchar(100) NOT NULL DEFAULT '',
   `arcade_nbelmt` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `arcade_catorder` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `arcade_catauth` tinyint(2) NOT NULL DEFAULT '0',
   KEY `arcade_catid` (`arcade_catid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbarcade_comments`
 --
 
 DROP TABLE IF EXISTS `nuke_bbarcade_comments`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbarcade_comments` (
+CREATE TABLE IF NOT EXISTS `nuke_bbarcade_comments` (
   `game_id` mediumint(8) NOT NULL DEFAULT '0',
   `comments_value` varchar(255) NOT NULL DEFAULT ''
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbarcade_fav`
 --
 
 DROP TABLE IF EXISTS `nuke_bbarcade_fav`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbarcade_fav` (
+CREATE TABLE IF NOT EXISTS `nuke_bbarcade_fav` (
   `order` mediumint(8) NOT NULL DEFAULT '0',
   `user_id` mediumint(8) NOT NULL DEFAULT '0',
   `game_id` mediumint(8) NOT NULL DEFAULT '0'
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbauth_access`
 --
 
 DROP TABLE IF EXISTS `nuke_bbauth_access`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbauth_access` (
+CREATE TABLE IF NOT EXISTS `nuke_bbauth_access` (
   `group_id` mediumint(8) NOT NULL DEFAULT '0',
   `forum_id` smallint(5) unsigned NOT NULL DEFAULT '0',
   `auth_view` tinyint(1) NOT NULL DEFAULT '0',
@@ -1974,125 +2099,101 @@ CREATE TABLE `nuke_bbauth_access` (
   KEY `group_id` (`group_id`),
   KEY `forum_id` (`forum_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbauth_arcade_access`
 --
 
 DROP TABLE IF EXISTS `nuke_bbauth_arcade_access`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbauth_arcade_access` (
+CREATE TABLE IF NOT EXISTS `nuke_bbauth_arcade_access` (
   `group_id` mediumint(8) NOT NULL DEFAULT '0',
   `arcade_catid` mediumint(8) unsigned NOT NULL DEFAULT '0',
   KEY `group_id` (`group_id`),
   KEY `arcade_catid` (`arcade_catid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbbanlist`
 --
 
 DROP TABLE IF EXISTS `nuke_bbbanlist`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbbanlist` (
+CREATE TABLE IF NOT EXISTS `nuke_bbbanlist` (
   `ban_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `ban_userid` mediumint(8) NOT NULL DEFAULT '0',
   `ban_ip` varchar(8) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `ban_email` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`ban_id`),
   KEY `ban_ip_user_id` (`ban_ip`,`ban_userid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=33 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbcategories`
 --
 
 DROP TABLE IF EXISTS `nuke_bbcategories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbcategories` (
+CREATE TABLE IF NOT EXISTS `nuke_bbcategories` (
   `cat_id` int(8) NOT NULL AUTO_INCREMENT,
   `cat_title` varchar(100) DEFAULT NULL,
   `cat_order` int(8) NOT NULL DEFAULT '0',
   PRIMARY KEY (`cat_id`),
   KEY `cat_order` (`cat_order`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=11 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbconfig`
 --
 
 DROP TABLE IF EXISTS `nuke_bbconfig`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbconfig` (
+CREATE TABLE IF NOT EXISTS `nuke_bbconfig` (
   `config_name` varchar(255) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `config_value` varchar(255) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   PRIMARY KEY (`config_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbconfirm`
 --
 
 DROP TABLE IF EXISTS `nuke_bbconfirm`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbconfirm` (
+CREATE TABLE IF NOT EXISTS `nuke_bbconfirm` (
   `confirm_id` char(32) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `session_id` char(32) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `code` char(6) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   PRIMARY KEY (`session_id`,`confirm_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbdisallow`
 --
 
 DROP TABLE IF EXISTS `nuke_bbdisallow`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbdisallow` (
+CREATE TABLE IF NOT EXISTS `nuke_bbdisallow` (
   `disallow_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `disallow_username` varchar(25) DEFAULT NULL,
   PRIMARY KEY (`disallow_id`)
-) ENGINE=Aria DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=Aria  DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=18 ;
 
---
--- Table structure for table `nuke_bbforum_prune`
---
-
-DROP TABLE IF EXISTS `nuke_bbforum_prune`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbforum_prune` (
-  `prune_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
-  `forum_id` smallint(5) unsigned NOT NULL DEFAULT '0',
-  `prune_days` smallint(5) unsigned NOT NULL DEFAULT '0',
-  `prune_freq` smallint(5) unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`prune_id`),
-  KEY `forum_id` (`forum_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbforums`
 --
 
 DROP TABLE IF EXISTS `nuke_bbforums`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbforums` (
-  `forum_id` smallint(5) unsigned NOT NULL DEFAULT '0',
+CREATE TABLE IF NOT EXISTS `nuke_bbforums` (
+  `forum_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `cat_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `forum_name` varchar(150) DEFAULT NULL,
   `forum_desc` text,
@@ -2118,32 +2219,46 @@ CREATE TABLE `nuke_bbforums` (
   PRIMARY KEY (`forum_id`),
   KEY `cat_id` (`cat_id`),
   KEY `forum_order` (`forum_order`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=73 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `nuke_bbforum_prune`
+--
+
+DROP TABLE IF EXISTS `nuke_bbforum_prune`;
+CREATE TABLE IF NOT EXISTS `nuke_bbforum_prune` (
+  `prune_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
+  `forum_id` smallint(5) unsigned NOT NULL DEFAULT '0',
+  `prune_days` smallint(5) unsigned NOT NULL DEFAULT '0',
+  `prune_freq` smallint(5) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`prune_id`),
+  KEY `forum_id` (`forum_id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=3 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbgamehash`
 --
 
 DROP TABLE IF EXISTS `nuke_bbgamehash`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbgamehash` (
+CREATE TABLE IF NOT EXISTS `nuke_bbgamehash` (
   `gamehash_id` char(32) NOT NULL DEFAULT '',
   `game_id` mediumint(8) NOT NULL DEFAULT '0',
   `user_id` mediumint(8) NOT NULL DEFAULT '0',
   `hash_date` int(11) NOT NULL DEFAULT '0'
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbgames`
 --
 
 DROP TABLE IF EXISTS `nuke_bbgames`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbgames` (
+CREATE TABLE IF NOT EXISTS `nuke_bbgames` (
   `game_id` mediumint(8) NOT NULL AUTO_INCREMENT,
   `game_pic` varchar(50) NOT NULL DEFAULT '',
   `game_desc` varchar(255) NOT NULL DEFAULT '',
@@ -2160,17 +2275,16 @@ CREATE TABLE `nuke_bbgames` (
   `game_set` mediumint(8) NOT NULL DEFAULT '0',
   `arcade_catid` mediumint(8) NOT NULL DEFAULT '1',
   KEY `game_id` (`game_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=27 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbgroups`
 --
 
 DROP TABLE IF EXISTS `nuke_bbgroups`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbgroups` (
+CREATE TABLE IF NOT EXISTS `nuke_bbgroups` (
   `group_id` mediumint(8) NOT NULL AUTO_INCREMENT,
   `group_type` tinyint(4) NOT NULL DEFAULT '1',
   `group_name` varchar(40) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
@@ -2182,31 +2296,29 @@ CREATE TABLE `nuke_bbgroups` (
   PRIMARY KEY (`group_id`),
   KEY `group_single_user` (`group_single_user`),
   KEY `organisation_id` (`organisation_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=1241 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbhackgame`
 --
 
 DROP TABLE IF EXISTS `nuke_bbhackgame`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbhackgame` (
+CREATE TABLE IF NOT EXISTS `nuke_bbhackgame` (
   `user_id` mediumint(8) NOT NULL DEFAULT '0',
   `game_id` mediumint(8) NOT NULL DEFAULT '0',
   `date_hack` int(11) NOT NULL DEFAULT '0'
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbposts`
 --
 
 DROP TABLE IF EXISTS `nuke_bbposts`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbposts` (
+CREATE TABLE IF NOT EXISTS `nuke_bbposts` (
   `post_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `topic_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `forum_id` smallint(5) unsigned NOT NULL DEFAULT '0',
@@ -2233,17 +2345,16 @@ CREATE TABLE `nuke_bbposts` (
   KEY `poster_id` (`poster_id`),
   KEY `post_time` (`post_time`),
   KEY `pinned` (`pinned`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=1979261 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbposts_edit`
 --
 
 DROP TABLE IF EXISTS `nuke_bbposts_edit`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbposts_edit` (
+CREATE TABLE IF NOT EXISTS `nuke_bbposts_edit` (
   `edit_id` int(11) NOT NULL AUTO_INCREMENT,
   `post_id` int(32) NOT NULL DEFAULT '0',
   `thread_id` int(11) NOT NULL DEFAULT '0',
@@ -2257,17 +2368,16 @@ CREATE TABLE `nuke_bbposts_edit` (
   KEY `thread_id` (`thread_id`),
   KEY `poster_id` (`poster_id`),
   KEY `editor_id` (`editor_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=62298 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbposts_reputation`
 --
 
 DROP TABLE IF EXISTS `nuke_bbposts_reputation`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbposts_reputation` (
+CREATE TABLE IF NOT EXISTS `nuke_bbposts_reputation` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `post_id` int(11) NOT NULL,
   `type` tinyint(2) NOT NULL,
@@ -2276,17 +2386,16 @@ CREATE TABLE `nuke_bbposts_reputation` (
   PRIMARY KEY (`id`),
   KEY `post_id` (`post_id`,`type`,`date`),
   KEY `user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=6151 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbposts_text`
 --
 
 DROP TABLE IF EXISTS `nuke_bbposts_text`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbposts_text` (
+CREATE TABLE IF NOT EXISTS `nuke_bbposts_text` (
   `post_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `bbcode_uid` varchar(10) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `post_subject` varchar(150) COLLATE utf8_unicode_ci DEFAULT NULL,
@@ -2296,16 +2405,15 @@ CREATE TABLE `nuke_bbposts_text` (
   PRIMARY KEY (`post_id`),
   KEY `url_slug` (`url_slug`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbprivmsgs`
 --
 
 DROP TABLE IF EXISTS `nuke_bbprivmsgs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbprivmsgs` (
+CREATE TABLE IF NOT EXISTS `nuke_bbprivmsgs` (
   `privmsgs_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `privmsgs_type` tinyint(4) NOT NULL DEFAULT '0',
   `privmsgs_subject` varchar(255) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
@@ -2323,17 +2431,16 @@ CREATE TABLE `nuke_bbprivmsgs` (
   PRIMARY KEY (`privmsgs_id`),
   KEY `idx_from` (`privmsgs_from_userid`),
   KEY `idx_to` (`privmsgs_to_userid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=331196 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbprivmsgs_archive`
 --
 
 DROP TABLE IF EXISTS `nuke_bbprivmsgs_archive`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbprivmsgs_archive` (
+CREATE TABLE IF NOT EXISTS `nuke_bbprivmsgs_archive` (
   `privmsgs_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `privmsgs_type` tinyint(4) NOT NULL DEFAULT '0',
   `privmsgs_subject` varchar(255) COLLATE utf8_unicode_ci NOT NULL DEFAULT '0',
@@ -2348,49 +2455,46 @@ CREATE TABLE `nuke_bbprivmsgs_archive` (
   PRIMARY KEY (`privmsgs_id`),
   KEY `privmsgs_from_userid` (`privmsgs_from_userid`),
   KEY `privmsgs_to_userid` (`privmsgs_to_userid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=314647 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbprivmsgs_text`
 --
 
 DROP TABLE IF EXISTS `nuke_bbprivmsgs_text`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbprivmsgs_text` (
+CREATE TABLE IF NOT EXISTS `nuke_bbprivmsgs_text` (
   `privmsgs_text_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `privmsgs_bbcode_uid` varchar(10) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `privmsgs_text` mediumtext COLLATE utf8_unicode_ci,
   PRIMARY KEY (`privmsgs_text_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbranks`
 --
 
 DROP TABLE IF EXISTS `nuke_bbranks`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbranks` (
+CREATE TABLE IF NOT EXISTS `nuke_bbranks` (
   `rank_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `rank_title` varchar(50) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `rank_min` mediumint(8) NOT NULL DEFAULT '0',
   `rank_special` tinyint(1) DEFAULT NULL,
   `rank_image` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`rank_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=74 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbscores`
 --
 
 DROP TABLE IF EXISTS `nuke_bbscores`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbscores` (
+CREATE TABLE IF NOT EXISTS `nuke_bbscores` (
   `game_id` mediumint(8) NOT NULL DEFAULT '0',
   `user_id` mediumint(8) NOT NULL DEFAULT '0',
   `score_game` int(11) NOT NULL DEFAULT '0',
@@ -2400,16 +2504,15 @@ CREATE TABLE `nuke_bbscores` (
   KEY `game_id` (`game_id`),
   KEY `user_id` (`user_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbsearch_pending`
 --
 
 DROP TABLE IF EXISTS `nuke_bbsearch_pending`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbsearch_pending` (
+CREATE TABLE IF NOT EXISTS `nuke_bbsearch_pending` (
   `post_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `mode` varchar(20) COLLATE utf8_unicode_ci DEFAULT 'single',
   `post_subject` varchar(150) COLLATE utf8_unicode_ci DEFAULT NULL,
@@ -2417,16 +2520,15 @@ CREATE TABLE `nuke_bbsearch_pending` (
   KEY `post_id` (`post_id`),
   FULLTEXT KEY `mode` (`mode`,`post_subject`,`post_text`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbsearch_results`
 --
 
 DROP TABLE IF EXISTS `nuke_bbsearch_results`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbsearch_results` (
+CREATE TABLE IF NOT EXISTS `nuke_bbsearch_results` (
   `search_id` int(11) unsigned NOT NULL DEFAULT '0',
   `session_id` varchar(32) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `search_array` longtext COLLATE utf8_unicode_ci NOT NULL,
@@ -2435,48 +2537,45 @@ CREATE TABLE `nuke_bbsearch_results` (
   KEY `session_id` (`session_id`),
   KEY `search_time` (`search_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbsearch_wordlist`
 --
 
 DROP TABLE IF EXISTS `nuke_bbsearch_wordlist`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbsearch_wordlist` (
+CREATE TABLE IF NOT EXISTS `nuke_bbsearch_wordlist` (
   `word_text` varchar(50) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '',
   `word_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `word_common` tinyint(1) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`word_text`),
   KEY `word_id` (`word_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbsearch_wordmatch`
 --
 
 DROP TABLE IF EXISTS `nuke_bbsearch_wordmatch`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbsearch_wordmatch` (
+CREATE TABLE IF NOT EXISTS `nuke_bbsearch_wordmatch` (
   `post_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `word_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `title_match` tinyint(1) NOT NULL DEFAULT '0',
   KEY `word_id` (`word_id`),
   KEY `post_id` (`post_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbsessions`
 --
 
 DROP TABLE IF EXISTS `nuke_bbsessions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbsessions` (
+CREATE TABLE IF NOT EXISTS `nuke_bbsessions` (
   `session_id` char(32) NOT NULL DEFAULT '',
   `session_user_id` mediumint(8) NOT NULL DEFAULT '0',
   `session_start` int(11) NOT NULL DEFAULT '0',
@@ -2488,32 +2587,30 @@ CREATE TABLE `nuke_bbsessions` (
   KEY `session_user_id` (`session_user_id`),
   KEY `session_id_ip_user_id` (`session_id`,`session_ip`,`session_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbsmilies`
 --
 
 DROP TABLE IF EXISTS `nuke_bbsmilies`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbsmilies` (
+CREATE TABLE IF NOT EXISTS `nuke_bbsmilies` (
   `smilies_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `code` varchar(50) DEFAULT NULL,
   `smile_url` varchar(100) DEFAULT NULL,
   `emoticon` varchar(75) DEFAULT NULL,
   PRIMARY KEY (`smilies_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=76 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbthemes`
 --
 
 DROP TABLE IF EXISTS `nuke_bbthemes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbthemes` (
+CREATE TABLE IF NOT EXISTS `nuke_bbthemes` (
   `themes_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `template_name` varchar(30) NOT NULL DEFAULT '',
   `style_name` varchar(30) NOT NULL DEFAULT '',
@@ -2558,17 +2655,16 @@ CREATE TABLE `nuke_bbthemes` (
   `img_size_poll` smallint(5) unsigned DEFAULT NULL,
   `img_size_privmsg` smallint(5) unsigned DEFAULT NULL,
   PRIMARY KEY (`themes_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=5 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbthemes_name`
 --
 
 DROP TABLE IF EXISTS `nuke_bbthemes_name`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbthemes_name` (
+CREATE TABLE IF NOT EXISTS `nuke_bbthemes_name` (
   `themes_id` smallint(5) unsigned NOT NULL DEFAULT '0',
   `tr_color1_name` char(50) DEFAULT NULL,
   `tr_color2_name` char(50) DEFAULT NULL,
@@ -2602,16 +2698,15 @@ CREATE TABLE `nuke_bbthemes_name` (
   `span_class3_name` char(50) DEFAULT NULL,
   PRIMARY KEY (`themes_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbtopics`
 --
 
 DROP TABLE IF EXISTS `nuke_bbtopics`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbtopics` (
+CREATE TABLE IF NOT EXISTS `nuke_bbtopics` (
   `topic_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `forum_id` smallint(8) unsigned NOT NULL DEFAULT '0',
   `topic_title` char(150) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
@@ -2634,17 +2729,16 @@ CREATE TABLE `nuke_bbtopics` (
   KEY `topic_type` (`topic_type`),
   KEY `topic_poster` (`topic_poster`),
   KEY `url_slug` (`url_slug`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=11381815 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbtopics_watch`
 --
 
 DROP TABLE IF EXISTS `nuke_bbtopics_watch`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbtopics_watch` (
+CREATE TABLE IF NOT EXISTS `nuke_bbtopics_watch` (
   `topic_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `user_id` mediumint(8) NOT NULL DEFAULT '0',
   `notify_status` tinyint(1) NOT NULL DEFAULT '0',
@@ -2652,16 +2746,15 @@ CREATE TABLE `nuke_bbtopics_watch` (
   KEY `user_id` (`user_id`),
   KEY `notify_status` (`notify_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbuser_group`
 --
 
 DROP TABLE IF EXISTS `nuke_bbuser_group`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbuser_group` (
+CREATE TABLE IF NOT EXISTS `nuke_bbuser_group` (
   `group_id` mediumint(8) NOT NULL DEFAULT '0',
   `user_id` mediumint(8) NOT NULL DEFAULT '0',
   `user_pending` tinyint(1) DEFAULT '0',
@@ -2672,16 +2765,15 @@ CREATE TABLE `nuke_bbuser_group` (
   KEY `user_id` (`user_id`),
   KEY `user_pending` (`user_pending`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbvote_desc`
 --
 
 DROP TABLE IF EXISTS `nuke_bbvote_desc`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbvote_desc` (
+CREATE TABLE IF NOT EXISTS `nuke_bbvote_desc` (
   `vote_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `topic_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `vote_text` text NOT NULL,
@@ -2689,17 +2781,16 @@ CREATE TABLE `nuke_bbvote_desc` (
   `vote_length` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`vote_id`),
   KEY `topic_id` (`topic_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1452 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbvote_results`
 --
 
 DROP TABLE IF EXISTS `nuke_bbvote_results`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbvote_results` (
+CREATE TABLE IF NOT EXISTS `nuke_bbvote_results` (
   `vote_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `vote_option_id` tinyint(4) unsigned NOT NULL DEFAULT '0',
   `vote_option_text` varchar(255) NOT NULL DEFAULT '',
@@ -2707,16 +2798,15 @@ CREATE TABLE `nuke_bbvote_results` (
   KEY `vote_option_id` (`vote_option_id`),
   KEY `vote_id` (`vote_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbvote_voters`
 --
 
 DROP TABLE IF EXISTS `nuke_bbvote_voters`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbvote_voters` (
+CREATE TABLE IF NOT EXISTS `nuke_bbvote_voters` (
   `vote_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `vote_user_id` mediumint(8) NOT NULL DEFAULT '0',
   `vote_user_ip` char(8) NOT NULL DEFAULT '',
@@ -2724,31 +2814,29 @@ CREATE TABLE `nuke_bbvote_voters` (
   KEY `vote_user_id` (`vote_user_id`),
   KEY `vote_user_ip` (`vote_user_ip`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_bbwords`
 --
 
 DROP TABLE IF EXISTS `nuke_bbwords`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_bbwords` (
+CREATE TABLE IF NOT EXISTS `nuke_bbwords` (
   `word_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `word` char(100) NOT NULL DEFAULT '',
   `replacement` char(100) NOT NULL DEFAULT '',
   PRIMARY KEY (`word_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=144 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_blocks`
 --
 
 DROP TABLE IF EXISTS `nuke_blocks`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_blocks` (
+CREATE TABLE IF NOT EXISTS `nuke_blocks` (
   `bid` int(10) NOT NULL AUTO_INCREMENT,
   `bkey` varchar(15) NOT NULL DEFAULT '',
   `title` varchar(60) NOT NULL DEFAULT '',
@@ -2765,17 +2853,16 @@ CREATE TABLE `nuke_blocks` (
   PRIMARY KEY (`bid`),
   KEY `bid` (`bid`),
   KEY `title` (`title`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=57 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_comments`
 --
 
 DROP TABLE IF EXISTS `nuke_comments`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_comments` (
+CREATE TABLE IF NOT EXISTS `nuke_comments` (
   `tid` int(11) NOT NULL AUTO_INCREMENT,
   `pid` int(11) NOT NULL DEFAULT '0',
   `sid` int(11) NOT NULL DEFAULT '0',
@@ -2792,17 +2879,16 @@ CREATE TABLE `nuke_comments` (
   KEY `tid` (`tid`),
   KEY `pid` (`pid`),
   KEY `sid` (`sid`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=13973 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_config`
 --
 
 DROP TABLE IF EXISTS `nuke_config`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_config` (
+CREATE TABLE IF NOT EXISTS `nuke_config` (
   `sitename` varchar(255) NOT NULL DEFAULT '',
   `nukeurl` varchar(255) NOT NULL DEFAULT '',
   `site_logo` varchar(255) NOT NULL DEFAULT '',
@@ -2859,16 +2945,15 @@ CREATE TABLE `nuke_config` (
   `copyright` text NOT NULL,
   `Version_Num` varchar(10) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_contactbook`
 --
 
 DROP TABLE IF EXISTS `nuke_contactbook`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_contactbook` (
+CREATE TABLE IF NOT EXISTS `nuke_contactbook` (
   `uid` int(11) NOT NULL DEFAULT '0',
   `contactid` int(11) NOT NULL AUTO_INCREMENT,
   `firstname` varchar(50) DEFAULT NULL,
@@ -2887,31 +2972,29 @@ CREATE TABLE `nuke_contactbook` (
   PRIMARY KEY (`contactid`),
   KEY `uid` (`uid`),
   KEY `contactid` (`contactid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_counter`
 --
 
 DROP TABLE IF EXISTS `nuke_counter`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_counter` (
+CREATE TABLE IF NOT EXISTS `nuke_counter` (
   `type` varchar(80) NOT NULL DEFAULT '',
   `var` varchar(80) NOT NULL DEFAULT '',
   `count` int(10) unsigned NOT NULL DEFAULT '0'
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_downloads_categories`
 --
 
 DROP TABLE IF EXISTS `nuke_downloads_categories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_downloads_categories` (
+CREATE TABLE IF NOT EXISTS `nuke_downloads_categories` (
   `cid` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(50) NOT NULL DEFAULT '',
   `cdescription` text NOT NULL,
@@ -2919,17 +3002,16 @@ CREATE TABLE `nuke_downloads_categories` (
   PRIMARY KEY (`cid`),
   KEY `cid` (`cid`),
   KEY `title` (`title`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=22 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_downloads_downloads`
 --
 
 DROP TABLE IF EXISTS `nuke_downloads_downloads`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_downloads_downloads` (
+CREATE TABLE IF NOT EXISTS `nuke_downloads_downloads` (
   `lid` int(11) NOT NULL AUTO_INCREMENT,
   `cid` int(11) NOT NULL DEFAULT '0',
   `sid` int(11) NOT NULL DEFAULT '0',
@@ -2956,17 +3038,16 @@ CREATE TABLE `nuke_downloads_downloads` (
   KEY `cid` (`cid`),
   KEY `sid` (`sid`),
   KEY `title` (`title`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=364 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_downloads_editorials`
 --
 
 DROP TABLE IF EXISTS `nuke_downloads_editorials`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_downloads_editorials` (
+CREATE TABLE IF NOT EXISTS `nuke_downloads_editorials` (
   `downloadid` int(11) NOT NULL DEFAULT '0',
   `adminid` varchar(60) NOT NULL DEFAULT '',
   `editorialtimestamp` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
@@ -2975,16 +3056,15 @@ CREATE TABLE `nuke_downloads_editorials` (
   PRIMARY KEY (`downloadid`),
   KEY `downloadid` (`downloadid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_downloads_modrequest`
 --
 
 DROP TABLE IF EXISTS `nuke_downloads_modrequest`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_downloads_modrequest` (
+CREATE TABLE IF NOT EXISTS `nuke_downloads_modrequest` (
   `requestid` int(11) NOT NULL AUTO_INCREMENT,
   `lid` int(11) NOT NULL DEFAULT '0',
   `cid` int(11) NOT NULL DEFAULT '0',
@@ -3001,17 +3081,16 @@ CREATE TABLE `nuke_downloads_modrequest` (
   `homepage` varchar(200) NOT NULL DEFAULT '',
   PRIMARY KEY (`requestid`),
   UNIQUE KEY `requestid` (`requestid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=63 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_downloads_newdownload`
 --
 
 DROP TABLE IF EXISTS `nuke_downloads_newdownload`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_downloads_newdownload` (
+CREATE TABLE IF NOT EXISTS `nuke_downloads_newdownload` (
   `lid` int(11) NOT NULL AUTO_INCREMENT,
   `cid` int(11) NOT NULL DEFAULT '0',
   `sid` int(11) NOT NULL DEFAULT '0',
@@ -3030,17 +3109,16 @@ CREATE TABLE `nuke_downloads_newdownload` (
   KEY `cid` (`cid`),
   KEY `sid` (`sid`),
   KEY `title` (`title`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=10 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_downloads_votedata`
 --
 
 DROP TABLE IF EXISTS `nuke_downloads_votedata`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_downloads_votedata` (
+CREATE TABLE IF NOT EXISTS `nuke_downloads_votedata` (
   `ratingdbid` int(11) NOT NULL AUTO_INCREMENT,
   `ratinglid` int(11) NOT NULL DEFAULT '0',
   `ratinguser` varchar(60) NOT NULL DEFAULT '',
@@ -3050,17 +3128,16 @@ CREATE TABLE `nuke_downloads_votedata` (
   `ratingtimestamp` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
   PRIMARY KEY (`ratingdbid`),
   KEY `ratingdbid` (`ratingdbid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=149 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_encyclopedia`
 --
 
 DROP TABLE IF EXISTS `nuke_encyclopedia`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_encyclopedia` (
+CREATE TABLE IF NOT EXISTS `nuke_encyclopedia` (
   `eid` int(10) NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL DEFAULT '',
   `description` text NOT NULL,
@@ -3068,17 +3145,16 @@ CREATE TABLE `nuke_encyclopedia` (
   `active` int(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`eid`),
   KEY `eid` (`eid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_encyclopedia_text`
 --
 
 DROP TABLE IF EXISTS `nuke_encyclopedia_text`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_encyclopedia_text` (
+CREATE TABLE IF NOT EXISTS `nuke_encyclopedia_text` (
   `tid` int(10) NOT NULL AUTO_INCREMENT,
   `eid` int(10) NOT NULL DEFAULT '0',
   `title` varchar(255) NOT NULL DEFAULT '',
@@ -3088,17 +3164,16 @@ CREATE TABLE `nuke_encyclopedia_text` (
   KEY `tid` (`tid`),
   KEY `eid` (`eid`),
   KEY `title` (`title`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_ephem`
 --
 
 DROP TABLE IF EXISTS `nuke_ephem`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_ephem` (
+CREATE TABLE IF NOT EXISTS `nuke_ephem` (
   `eid` int(11) NOT NULL AUTO_INCREMENT,
   `did` int(2) NOT NULL DEFAULT '0',
   `mid` int(2) NOT NULL DEFAULT '0',
@@ -3107,17 +3182,16 @@ CREATE TABLE `nuke_ephem` (
   `elanguage` varchar(30) NOT NULL DEFAULT '',
   PRIMARY KEY (`eid`),
   KEY `eid` (`eid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_externalsearch`
 --
 
 DROP TABLE IF EXISTS `nuke_externalsearch`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_externalsearch` (
+CREATE TABLE IF NOT EXISTS `nuke_externalsearch` (
   `linkid` int(13) NOT NULL AUTO_INCREMENT,
   `rphosted` int(1) NOT NULL DEFAULT '0',
   `linktitle` text NOT NULL,
@@ -3125,17 +3199,16 @@ CREATE TABLE `nuke_externalsearch` (
   `linkurl` text NOT NULL,
   KEY `linkid` (`linkid`),
   FULLTEXT KEY `linktitle` (`linktitle`,`linktext`,`linkurl`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_faqAnswer`
 --
 
 DROP TABLE IF EXISTS `nuke_faqAnswer`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_faqAnswer` (
+CREATE TABLE IF NOT EXISTS `nuke_faqAnswer` (
   `id` tinyint(4) NOT NULL AUTO_INCREMENT,
   `id_cat` tinyint(4) NOT NULL DEFAULT '0',
   `question` varchar(255) COLLATE utf8_unicode_ci DEFAULT '',
@@ -3144,33 +3217,31 @@ CREATE TABLE `nuke_faqAnswer` (
   `url_slug` varchar(128) COLLATE utf8_unicode_ci NOT NULL,
   PRIMARY KEY (`id`),
   KEY `id_cat` (`id_cat`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=100 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_faqCategories`
 --
 
 DROP TABLE IF EXISTS `nuke_faqCategories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_faqCategories` (
+CREATE TABLE IF NOT EXISTS `nuke_faqCategories` (
   `id_cat` tinyint(3) NOT NULL AUTO_INCREMENT,
   `url_slug` varchar(128) COLLATE utf8_unicode_ci NOT NULL,
   `categories` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
   `flanguage` varchar(30) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   PRIMARY KEY (`id_cat`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=16 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_g2config`
 --
 
 DROP TABLE IF EXISTS `nuke_g2config`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_g2config` (
+CREATE TABLE IF NOT EXISTS `nuke_g2config` (
   `embedUri` varchar(255) DEFAULT NULL,
   `g2Uri` varchar(255) DEFAULT NULL,
   `activeUserId` int(10) DEFAULT NULL,
@@ -3179,16 +3250,15 @@ CREATE TABLE `nuke_g2config` (
   `g2configurationDone` tinyint(1) DEFAULT NULL,
   `embedVersion` varchar(255) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_gallery`
 --
 
 DROP TABLE IF EXISTS `nuke_gallery`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_gallery` (
+CREATE TABLE IF NOT EXISTS `nuke_gallery` (
   `album_name` varchar(255) NOT NULL DEFAULT '',
   `album_title` varchar(255) NOT NULL DEFAULT '',
   `parent_album_name` varchar(255) DEFAULT NULL,
@@ -3197,16 +3267,15 @@ CREATE TABLE `nuke_gallery` (
   `mod_date` int(11) NOT NULL DEFAULT '0',
   UNIQUE KEY `album_name` (`album_name`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_hallfame_queue`
 --
 
 DROP TABLE IF EXISTS `nuke_hallfame_queue`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_hallfame_queue` (
+CREATE TABLE IF NOT EXISTS `nuke_hallfame_queue` (
   `qid` int(11) NOT NULL AUTO_INCREMENT,
   `qdate` varchar(255) NOT NULL DEFAULT '',
   `qnomid` int(20) NOT NULL DEFAULT '0',
@@ -3218,33 +3287,31 @@ CREATE TABLE `nuke_hallfame_queue` (
   `qaccept` int(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`qid`),
   FULLTEXT KEY `hofreason` (`hofreason`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_headlines`
 --
 
 DROP TABLE IF EXISTS `nuke_headlines`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_headlines` (
+CREATE TABLE IF NOT EXISTS `nuke_headlines` (
   `hid` int(11) NOT NULL AUTO_INCREMENT,
   `sitename` varchar(30) NOT NULL DEFAULT '',
   `headlinesurl` varchar(200) NOT NULL DEFAULT '',
   PRIMARY KEY (`hid`),
   KEY `hid` (`hid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=4 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_journal`
 --
 
 DROP TABLE IF EXISTS `nuke_journal`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_journal` (
+CREATE TABLE IF NOT EXISTS `nuke_journal` (
   `jid` int(11) NOT NULL AUTO_INCREMENT,
   `aid` varchar(30) NOT NULL DEFAULT '',
   `title` varchar(80) DEFAULT NULL,
@@ -3258,17 +3325,16 @@ CREATE TABLE `nuke_journal` (
   PRIMARY KEY (`jid`),
   KEY `jid` (`jid`),
   KEY `aid` (`aid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=117 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_journal_comments`
 --
 
 DROP TABLE IF EXISTS `nuke_journal_comments`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_journal_comments` (
+CREATE TABLE IF NOT EXISTS `nuke_journal_comments` (
   `cid` int(11) NOT NULL AUTO_INCREMENT,
   `rid` varchar(48) NOT NULL DEFAULT '',
   `aid` varchar(30) NOT NULL DEFAULT '',
@@ -3279,17 +3345,16 @@ CREATE TABLE `nuke_journal_comments` (
   KEY `cid` (`cid`),
   KEY `rid` (`rid`),
   KEY `aid` (`aid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=6 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_journal_stats`
 --
 
 DROP TABLE IF EXISTS `nuke_journal_stats`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_journal_stats` (
+CREATE TABLE IF NOT EXISTS `nuke_journal_stats` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `joid` varchar(48) NOT NULL DEFAULT '',
   `nop` varchar(48) NOT NULL DEFAULT '',
@@ -3298,34 +3363,32 @@ CREATE TABLE `nuke_journal_stats` (
   `micro` varchar(128) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   KEY `id` (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=67 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_links_categories`
 --
 
 DROP TABLE IF EXISTS `nuke_links_categories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_links_categories` (
+CREATE TABLE IF NOT EXISTS `nuke_links_categories` (
   `cid` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(50) CHARACTER SET latin1 NOT NULL DEFAULT '',
   `cdescription` text CHARACTER SET latin1 NOT NULL,
   `parentid` int(11) NOT NULL DEFAULT '0',
   `slug` varchar(128) CHARACTER SET latin1 NOT NULL,
   PRIMARY KEY (`cid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=46 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_links_editorials`
 --
 
 DROP TABLE IF EXISTS `nuke_links_editorials`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_links_editorials` (
+CREATE TABLE IF NOT EXISTS `nuke_links_editorials` (
   `linkid` int(11) NOT NULL DEFAULT '0',
   `adminid` varchar(60) CHARACTER SET latin1 NOT NULL DEFAULT '',
   `editorialtimestamp` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
@@ -3334,16 +3397,15 @@ CREATE TABLE `nuke_links_editorials` (
   PRIMARY KEY (`linkid`),
   KEY `linkid` (`linkid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_links_links`
 --
 
 DROP TABLE IF EXISTS `nuke_links_links`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_links_links` (
+CREATE TABLE IF NOT EXISTS `nuke_links_links` (
   `lid` int(11) NOT NULL AUTO_INCREMENT,
   `cid` int(11) NOT NULL DEFAULT '0',
   `sid` int(11) NOT NULL DEFAULT '0',
@@ -3367,17 +3429,16 @@ CREATE TABLE `nuke_links_links` (
   KEY `cid` (`cid`),
   KEY `sid` (`sid`),
   KEY `user_id` (`user_id`,`link_broken`,`link_approved`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=308 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_links_modrequest`
 --
 
 DROP TABLE IF EXISTS `nuke_links_modrequest`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_links_modrequest` (
+CREATE TABLE IF NOT EXISTS `nuke_links_modrequest` (
   `requestid` int(11) NOT NULL AUTO_INCREMENT,
   `lid` int(11) NOT NULL DEFAULT '0',
   `cid` int(11) NOT NULL DEFAULT '0',
@@ -3390,17 +3451,16 @@ CREATE TABLE `nuke_links_modrequest` (
   `brokenlink` int(3) NOT NULL DEFAULT '0',
   PRIMARY KEY (`requestid`),
   UNIQUE KEY `requestid` (`requestid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=48 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_links_newlink`
 --
 
 DROP TABLE IF EXISTS `nuke_links_newlink`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_links_newlink` (
+CREATE TABLE IF NOT EXISTS `nuke_links_newlink` (
   `lid` int(11) NOT NULL AUTO_INCREMENT,
   `cid` int(11) NOT NULL DEFAULT '0',
   `sid` int(11) NOT NULL DEFAULT '0',
@@ -3415,17 +3475,16 @@ CREATE TABLE `nuke_links_newlink` (
   KEY `lid` (`lid`),
   KEY `cid` (`cid`),
   KEY `sid` (`sid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=3 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_links_settings`
 --
 
 DROP TABLE IF EXISTS `nuke_links_settings`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_links_settings` (
+CREATE TABLE IF NOT EXISTS `nuke_links_settings` (
   `num_links` smallint(2) NOT NULL DEFAULT '0',
   `scroll` tinyint(1) NOT NULL DEFAULT '0',
   `scroll_amt` tinyint(1) NOT NULL DEFAULT '0',
@@ -3433,16 +3492,15 @@ CREATE TABLE `nuke_links_settings` (
   `scroll_height` int(4) NOT NULL DEFAULT '0',
   `num_line_breaks` tinyint(1) NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_links_votedata`
 --
 
 DROP TABLE IF EXISTS `nuke_links_votedata`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_links_votedata` (
+CREATE TABLE IF NOT EXISTS `nuke_links_votedata` (
   `ratingdbid` int(11) NOT NULL AUTO_INCREMENT,
   `ratinglid` int(11) NOT NULL DEFAULT '0',
   `ratinguser` varchar(60) CHARACTER SET latin1 NOT NULL DEFAULT '',
@@ -3452,29 +3510,27 @@ CREATE TABLE `nuke_links_votedata` (
   `ratingtimestamp` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
   PRIMARY KEY (`ratingdbid`),
   KEY `ratingdbid` (`ratingdbid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=271 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_main`
 --
 
 DROP TABLE IF EXISTS `nuke_main`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_main` (
+CREATE TABLE IF NOT EXISTS `nuke_main` (
   `main_module` varchar(255) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_message`
 --
 
 DROP TABLE IF EXISTS `nuke_message`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_message` (
+CREATE TABLE IF NOT EXISTS `nuke_message` (
   `mid` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(100) NOT NULL DEFAULT '',
   `content` text NOT NULL,
@@ -3485,17 +3541,16 @@ CREATE TABLE `nuke_message` (
   `mlanguage` varchar(30) NOT NULL DEFAULT '',
   PRIMARY KEY (`mid`),
   UNIQUE KEY `mid` (`mid`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=64 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_modules`
 --
 
 DROP TABLE IF EXISTS `nuke_modules`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_modules` (
+CREATE TABLE IF NOT EXISTS `nuke_modules` (
   `mid` int(10) NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL DEFAULT '',
   `custom_title` varchar(255) NOT NULL DEFAULT '',
@@ -3508,34 +3563,32 @@ CREATE TABLE `nuke_modules` (
   KEY `mid` (`mid`),
   KEY `title` (`title`),
   KEY `custom_title` (`custom_title`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=123 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_modules_categories`
 --
 
 DROP TABLE IF EXISTS `nuke_modules_categories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_modules_categories` (
+CREATE TABLE IF NOT EXISTS `nuke_modules_categories` (
   `mcid` int(11) NOT NULL AUTO_INCREMENT,
   `mcname` varchar(60) NOT NULL DEFAULT '',
   `visible` int(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`mcid`),
   KEY `mcid` (`mcid`),
   KEY `mcname` (`mcname`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_msanalysis_admin`
 --
 
 DROP TABLE IF EXISTS `nuke_msanalysis_admin`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_msanalysis_admin` (
+CREATE TABLE IF NOT EXISTS `nuke_msanalysis_admin` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `max_items` int(10) NOT NULL DEFAULT '10',
   `max_view` int(10) NOT NULL DEFAULT '25',
@@ -3569,17 +3622,16 @@ CREATE TABLE `nuke_msanalysis_admin` (
   `copyright` varchar(25) NOT NULL DEFAULT 'Maty Scripts',
   `version` varchar(25) NOT NULL DEFAULT 'MS-Analysis v1.1',
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_msanalysis_browsers`
 --
 
 DROP TABLE IF EXISTS `nuke_msanalysis_browsers`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_msanalysis_browsers` (
+CREATE TABLE IF NOT EXISTS `nuke_msanalysis_browsers` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `ibrowser` varchar(255) NOT NULL DEFAULT '',
   `hits` int(25) NOT NULL DEFAULT '0',
@@ -3590,17 +3642,16 @@ CREATE TABLE `nuke_msanalysis_browsers` (
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `ibrowser` (`ibrowser`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=310 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_msanalysis_countries`
 --
 
 DROP TABLE IF EXISTS `nuke_msanalysis_countries`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_msanalysis_countries` (
+CREATE TABLE IF NOT EXISTS `nuke_msanalysis_countries` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `domain` char(20) NOT NULL DEFAULT '',
   `description` char(50) NOT NULL DEFAULT '',
@@ -3613,17 +3664,16 @@ CREATE TABLE `nuke_msanalysis_countries` (
   KEY `id` (`id`),
   KEY `domain` (`domain`),
   KEY `description` (`description`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=197 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_msanalysis_domains`
 --
 
 DROP TABLE IF EXISTS `nuke_msanalysis_domains`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_msanalysis_domains` (
+CREATE TABLE IF NOT EXISTS `nuke_msanalysis_domains` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `domain` char(20) NOT NULL DEFAULT '',
   `description` char(50) NOT NULL DEFAULT '',
@@ -3631,17 +3681,16 @@ CREATE TABLE `nuke_msanalysis_domains` (
   KEY `id` (`id`),
   KEY `domain` (`domain`),
   KEY `description` (`description`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=266 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_msanalysis_modules`
 --
 
 DROP TABLE IF EXISTS `nuke_msanalysis_modules`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_msanalysis_modules` (
+CREATE TABLE IF NOT EXISTS `nuke_msanalysis_modules` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `modulename` varchar(50) NOT NULL DEFAULT '',
   `hits` int(25) NOT NULL DEFAULT '0',
@@ -3652,17 +3701,16 @@ CREATE TABLE `nuke_msanalysis_modules` (
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `modulename` (`modulename`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=695 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_msanalysis_online`
 --
 
 DROP TABLE IF EXISTS `nuke_msanalysis_online`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_msanalysis_online` (
+CREATE TABLE IF NOT EXISTS `nuke_msanalysis_online` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `time` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
   `uname` varchar(25) NOT NULL DEFAULT '',
@@ -3677,17 +3725,16 @@ CREATE TABLE `nuke_msanalysis_online` (
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `time` (`time`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=18643522 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_msanalysis_os`
 --
 
 DROP TABLE IF EXISTS `nuke_msanalysis_os`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_msanalysis_os` (
+CREATE TABLE IF NOT EXISTS `nuke_msanalysis_os` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `ios` varchar(25) NOT NULL DEFAULT '',
   `hits` int(25) NOT NULL DEFAULT '0',
@@ -3695,20 +3742,20 @@ CREATE TABLE `nuke_msanalysis_os` (
   `hitstoday` int(25) NOT NULL DEFAULT '0',
   `xdays` date NOT NULL DEFAULT '2003-08-10',
   `hitsxdays` int(25) NOT NULL DEFAULT '0',
+
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `ios` (`ios`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=22 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_msanalysis_referrals`
 --
 
 DROP TABLE IF EXISTS `nuke_msanalysis_referrals`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_msanalysis_referrals` (
+CREATE TABLE IF NOT EXISTS `nuke_msanalysis_referrals` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `referral` varchar(255) NOT NULL DEFAULT '',
   `hits` int(25) NOT NULL DEFAULT '0',
@@ -3719,17 +3766,16 @@ CREATE TABLE `nuke_msanalysis_referrals` (
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `referral` (`referral`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=5007 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_msanalysis_scr`
 --
 
 DROP TABLE IF EXISTS `nuke_msanalysis_scr`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_msanalysis_scr` (
+CREATE TABLE IF NOT EXISTS `nuke_msanalysis_scr` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `scr_res` varchar(25) NOT NULL DEFAULT '',
   `hits` int(25) NOT NULL DEFAULT '0',
@@ -3740,17 +3786,16 @@ CREATE TABLE `nuke_msanalysis_scr` (
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `scr_res` (`scr_res`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=418 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_msanalysis_search`
 --
 
 DROP TABLE IF EXISTS `nuke_msanalysis_search`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_msanalysis_search` (
+CREATE TABLE IF NOT EXISTS `nuke_msanalysis_search` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `words` varchar(255) NOT NULL DEFAULT '',
   `hits` int(25) NOT NULL DEFAULT '0',
@@ -3761,17 +3806,16 @@ CREATE TABLE `nuke_msanalysis_search` (
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `words` (`words`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_msanalysis_users`
 --
 
 DROP TABLE IF EXISTS `nuke_msanalysis_users`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_msanalysis_users` (
+CREATE TABLE IF NOT EXISTS `nuke_msanalysis_users` (
   `uid` int(11) NOT NULL AUTO_INCREMENT,
   `uname` varchar(25) NOT NULL DEFAULT '',
   `browser` varchar(50) NOT NULL DEFAULT '',
@@ -3788,17 +3832,16 @@ CREATE TABLE `nuke_msanalysis_users` (
   PRIMARY KEY (`uid`),
   KEY `uid` (`uid`),
   KEY `uname` (`uname`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=7932 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_newscomau`
 --
 
 DROP TABLE IF EXISTS `nuke_newscomau`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_newscomau` (
+CREATE TABLE IF NOT EXISTS `nuke_newscomau` (
   `sid` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(80) DEFAULT NULL,
   `xtime` int(11) DEFAULT NULL,
@@ -3806,17 +3849,16 @@ CREATE TABLE `nuke_newscomau` (
   `bodytext` text NOT NULL,
   PRIMARY KEY (`sid`),
   KEY `sid` (`sid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=59 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_nsndownloads_config`
 --
 
 DROP TABLE IF EXISTS `nuke_nsndownloads_config`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_nsndownloads_config` (
+CREATE TABLE IF NOT EXISTS `nuke_nsndownloads_config` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `module_name` varchar(40) NOT NULL DEFAULT '',
   `module2_name` varchar(40) NOT NULL DEFAULT '',
@@ -3830,47 +3872,44 @@ CREATE TABLE `nuke_nsndownloads_config` (
   `show_hits` int(1) NOT NULL DEFAULT '1',
   `show_date` int(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_nucal_attendees`
 --
 
 DROP TABLE IF EXISTS `nuke_nucal_attendees`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_nucal_attendees` (
+CREATE TABLE IF NOT EXISTS `nuke_nucal_attendees` (
   `event_id` int(10) NOT NULL,
   `user_id` int(10) NOT NULL,
   KEY `event_id` (`event_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_nucal_categories`
 --
 
 DROP TABLE IF EXISTS `nuke_nucal_categories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_nucal_categories` (
+CREATE TABLE IF NOT EXISTS `nuke_nucal_categories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(128) NOT NULL DEFAULT '',
   `description` text NOT NULL,
   `showinblock` tinyint(1) NOT NULL DEFAULT '1',
   KEY `id` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=10 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_nucal_events`
 --
 
 DROP TABLE IF EXISTS `nuke_nucal_events`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_nucal_events` (
+CREATE TABLE IF NOT EXISTS `nuke_nucal_events` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(128) NOT NULL DEFAULT '',
   `location` varchar(128) NOT NULL DEFAULT '',
@@ -3907,17 +3946,16 @@ CREATE TABLE `nuke_nucal_events` (
   KEY `lon` (`lon`),
   KEY `flagged` (`flagged`),
   KEY `organisation_id` (`organisation_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=1341 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_nucal_options`
 --
 
 DROP TABLE IF EXISTS `nuke_nucal_options`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_nucal_options` (
+CREATE TABLE IF NOT EXISTS `nuke_nucal_options` (
   `allow_user_submitted_events` tinyint(1) NOT NULL DEFAULT '0',
   `user_submitted_events_need_admin_aproval` tinyint(1) NOT NULL DEFAULT '1',
   `calendar_title` varchar(128) NOT NULL DEFAULT 'Calendar of Events',
@@ -3935,28 +3973,26 @@ CREATE TABLE `nuke_nucal_options` (
   `month_hover_color` varchar(6) NOT NULL DEFAULT 'C0C0C0',
   `show_mdy` tinyint(1) NOT NULL DEFAULT '1'
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_optimize_gain`
 --
 
 DROP TABLE IF EXISTS `nuke_optimize_gain`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_optimize_gain` (
+CREATE TABLE IF NOT EXISTS `nuke_optimize_gain` (
   `gain` decimal(10,3) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_pages`
 --
 
 DROP TABLE IF EXISTS `nuke_pages`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_pages` (
+CREATE TABLE IF NOT EXISTS `nuke_pages` (
   `pid` int(10) NOT NULL AUTO_INCREMENT,
   `cid` int(10) NOT NULL DEFAULT '0',
   `title` varchar(255) NOT NULL DEFAULT '',
@@ -3973,84 +4009,31 @@ CREATE TABLE `nuke_pages` (
   PRIMARY KEY (`pid`),
   KEY `pid` (`pid`),
   KEY `cid` (`cid`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=22 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_pages_categories`
 --
 
 DROP TABLE IF EXISTS `nuke_pages_categories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_pages_categories` (
+CREATE TABLE IF NOT EXISTS `nuke_pages_categories` (
   `cid` int(10) NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL DEFAULT '',
   `description` text NOT NULL,
   PRIMARY KEY (`cid`),
   KEY `cid` (`cid`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=4 ;
 
---
--- Table structure for table `nuke_poll_check`
---
-
-DROP TABLE IF EXISTS `nuke_poll_check`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_poll_check` (
-  `ip` varchar(20) NOT NULL DEFAULT '',
-  `time` varchar(14) NOT NULL DEFAULT '',
-  `pollID` int(10) NOT NULL DEFAULT '0',
-  KEY `ip` (`ip`),
-  KEY `pollID` (`pollID`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `nuke_poll_data`
---
-
-DROP TABLE IF EXISTS `nuke_poll_data`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_poll_data` (
-  `pollID` int(11) NOT NULL DEFAULT '0',
-  `optionText` varchar(512) CHARACTER SET utf8 NOT NULL DEFAULT '',
-  `optionCount` int(11) NOT NULL DEFAULT '0',
-  `voteID` int(11) NOT NULL DEFAULT '0',
-  KEY `pollID` (`pollID`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `nuke_poll_desc`
---
-
-DROP TABLE IF EXISTS `nuke_poll_desc`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_poll_desc` (
-  `pollID` int(11) NOT NULL AUTO_INCREMENT,
-  `pollTitle` varchar(100) NOT NULL DEFAULT '',
-  `timeStamp` int(11) NOT NULL DEFAULT '0',
-  `voters` mediumint(9) NOT NULL DEFAULT '0',
-  `planguage` varchar(30) NOT NULL DEFAULT '',
-  `artid` int(10) NOT NULL DEFAULT '0',
-  PRIMARY KEY (`pollID`),
-  KEY `artid` (`artid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_pollcomments`
 --
 
 DROP TABLE IF EXISTS `nuke_pollcomments`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_pollcomments` (
+CREATE TABLE IF NOT EXISTS `nuke_pollcomments` (
   `tid` int(11) NOT NULL AUTO_INCREMENT,
   `pid` int(11) NOT NULL DEFAULT '0',
   `pollID` int(11) NOT NULL DEFAULT '0',
@@ -4067,17 +4050,64 @@ CREATE TABLE `nuke_pollcomments` (
   KEY `tid` (`tid`),
   KEY `pid` (`pid`),
   KEY `pollID` (`pollID`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=639 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `nuke_poll_check`
+--
+
+DROP TABLE IF EXISTS `nuke_poll_check`;
+CREATE TABLE IF NOT EXISTS `nuke_poll_check` (
+  `ip` varchar(20) NOT NULL DEFAULT '',
+  `time` varchar(14) NOT NULL DEFAULT '',
+  `pollID` int(10) NOT NULL DEFAULT '0',
+  KEY `ip` (`ip`),
+  KEY `pollID` (`pollID`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `nuke_poll_data`
+--
+
+DROP TABLE IF EXISTS `nuke_poll_data`;
+CREATE TABLE IF NOT EXISTS `nuke_poll_data` (
+  `pollID` int(11) NOT NULL DEFAULT '0',
+  `optionText` varchar(512) CHARACTER SET utf8 NOT NULL DEFAULT '',
+  `optionCount` int(11) NOT NULL DEFAULT '0',
+  `voteID` int(11) NOT NULL DEFAULT '0',
+  KEY `pollID` (`pollID`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `nuke_poll_desc`
+--
+
+DROP TABLE IF EXISTS `nuke_poll_desc`;
+CREATE TABLE IF NOT EXISTS `nuke_poll_desc` (
+  `pollID` int(11) NOT NULL AUTO_INCREMENT,
+  `pollTitle` varchar(100) NOT NULL DEFAULT '',
+  `timeStamp` int(11) NOT NULL DEFAULT '0',
+  `voters` mediumint(9) NOT NULL DEFAULT '0',
+  `planguage` varchar(30) NOT NULL DEFAULT '',
+  `artid` int(10) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`pollID`),
+  KEY `artid` (`artid`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=98 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_popsettings`
 --
 
 DROP TABLE IF EXISTS `nuke_popsettings`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_popsettings` (
+CREATE TABLE IF NOT EXISTS `nuke_popsettings` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `uid` int(11) NOT NULL DEFAULT '0',
   `account` varchar(50) DEFAULT '',
@@ -4092,17 +4122,16 @@ CREATE TABLE `nuke_popsettings` (
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `uid` (`uid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=55 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_priv_msgs`
 --
 
 DROP TABLE IF EXISTS `nuke_priv_msgs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_priv_msgs` (
+CREATE TABLE IF NOT EXISTS `nuke_priv_msgs` (
   `msg_id` int(10) NOT NULL AUTO_INCREMENT,
   `msg_image` varchar(100) DEFAULT NULL,
   `subject` varchar(100) DEFAULT NULL,
@@ -4115,34 +4144,32 @@ CREATE TABLE `nuke_priv_msgs` (
   KEY `msg_id` (`msg_id`),
   KEY `to_userid` (`to_userid`),
   KEY `from_userid` (`from_userid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_public_messages`
 --
 
 DROP TABLE IF EXISTS `nuke_public_messages`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_public_messages` (
+CREATE TABLE IF NOT EXISTS `nuke_public_messages` (
   `mid` int(10) NOT NULL AUTO_INCREMENT,
   `content` varchar(255) NOT NULL DEFAULT '',
   `date` varchar(14) DEFAULT NULL,
   `who` varchar(25) NOT NULL DEFAULT '',
   PRIMARY KEY (`mid`),
   KEY `mid` (`mid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_queue`
 --
 
 DROP TABLE IF EXISTS `nuke_queue`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_queue` (
+CREATE TABLE IF NOT EXISTS `nuke_queue` (
   `qid` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `uid` mediumint(9) NOT NULL DEFAULT '0',
   `uname` varchar(40) NOT NULL DEFAULT '',
@@ -4158,133 +4185,16 @@ CREATE TABLE `nuke_queue` (
   PRIMARY KEY (`qid`),
   KEY `uid` (`uid`),
   KEY `uname` (`uname`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=8422 ;
 
---
--- Table structure for table `nuke_quiz_admin`
---
-
-DROP TABLE IF EXISTS `nuke_quiz_admin`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_quiz_admin` (
-  `quizID` int(11) NOT NULL AUTO_INCREMENT,
-  `quizTitle` varchar(150) NOT NULL DEFAULT '',
-  `timeStamp` int(11) NOT NULL DEFAULT '0',
-  `comment` text,
-  `image` varchar(50) DEFAULT NULL,
-  `cid` int(11) NOT NULL DEFAULT '1',
-  PRIMARY KEY (`quizID`),
-  KEY `quizzID` (`quizID`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `nuke_quiz_categories`
---
-
-DROP TABLE IF EXISTS `nuke_quiz_categories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_quiz_categories` (
-  `cid` int(9) NOT NULL AUTO_INCREMENT,
-  `name` varchar(50) NOT NULL DEFAULT '',
-  `comment` varchar(255) DEFAULT NULL,
-  `image` varchar(50) DEFAULT NULL,
-  PRIMARY KEY (`cid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `nuke_quiz_check`
---
-
-DROP TABLE IF EXISTS `nuke_quiz_check`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_quiz_check` (
-  `ip` varchar(20) DEFAULT NULL,
-  `time` varchar(14) NOT NULL DEFAULT '',
-  `username` varchar(50) DEFAULT NULL,
-  `email` varchar(50) DEFAULT NULL,
-  `qid` int(11) NOT NULL DEFAULT '0',
-  `score` tinyint(2) NOT NULL DEFAULT '0',
-  `answers` varchar(255) NOT NULL DEFAULT '',
-  KEY `qid` (`qid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `nuke_quiz_data`
---
-
-DROP TABLE IF EXISTS `nuke_quiz_data`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_quiz_data` (
-  `pollID` int(11) NOT NULL DEFAULT '0',
-  `optionText` char(150) NOT NULL DEFAULT '',
-  `optionCount` int(11) NOT NULL DEFAULT '0',
-  `voteID` int(11) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `nuke_quiz_desc`
---
-
-DROP TABLE IF EXISTS `nuke_quiz_desc`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_quiz_desc` (
-  `pollID` int(11) NOT NULL AUTO_INCREMENT,
-  `pollTitle` blob NOT NULL,
-  `timeStamp` int(11) NOT NULL DEFAULT '0',
-  `voters` mediumint(9) NOT NULL DEFAULT '0',
-  `qid` tinyint(9) NOT NULL DEFAULT '0',
-  `answer` varchar(30) NOT NULL DEFAULT '0',
-  `coef` tinyint(3) NOT NULL DEFAULT '1',
-  `good` text,
-  `bad` text,
-  `comment` text,
-  `image` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`pollID`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `nuke_quiz_index`
---
-
-DROP TABLE IF EXISTS `nuke_quiz_index`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_quiz_index` (
-  `quizid` int(11) NOT NULL AUTO_INCREMENT,
-  `quiztitle` varchar(255) NOT NULL DEFAULT '',
-  `quizdesc` text NOT NULL,
-  `quizactive` int(1) NOT NULL DEFAULT '0',
-  `quizhidden` int(1) NOT NULL DEFAULT '1',
-  `quizowner` int(18) NOT NULL DEFAULT '0',
-  `quizstatus` int(1) NOT NULL DEFAULT '0',
-  `currentuser` int(18) NOT NULL DEFAULT '0',
-  `turnexpires` int(30) NOT NULL DEFAULT '0',
-  `currquestion` longtext NOT NULL,
-  `quizcat` int(5) NOT NULL DEFAULT '1',
-  KEY `quizid` (`quizid`),
-  FULLTEXT KEY `quiztitle` (`quiztitle`,`quizdesc`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_quizz_admin`
 --
 
 DROP TABLE IF EXISTS `nuke_quizz_admin`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_quizz_admin` (
+CREATE TABLE IF NOT EXISTS `nuke_quizz_admin` (
   `quizzID` int(11) NOT NULL AUTO_INCREMENT,
   `quizzTitle` varchar(100) NOT NULL DEFAULT '',
   `timeStamp` int(11) NOT NULL DEFAULT '0',
@@ -4306,33 +4216,31 @@ CREATE TABLE `nuke_quizz_admin` (
   `conditions` text,
   PRIMARY KEY (`quizzID`),
   KEY `quizzID` (`quizzID`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=6 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_quizz_categories`
 --
 
 DROP TABLE IF EXISTS `nuke_quizz_categories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_quizz_categories` (
+CREATE TABLE IF NOT EXISTS `nuke_quizz_categories` (
   `cid` int(9) NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL DEFAULT '',
   `comment` varchar(255) DEFAULT NULL,
   `image` varchar(50) DEFAULT NULL,
   PRIMARY KEY (`cid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=7 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_quizz_check`
 --
 
 DROP TABLE IF EXISTS `nuke_quizz_check`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_quizz_check` (
+CREATE TABLE IF NOT EXISTS `nuke_quizz_check` (
   `ip` varchar(20) DEFAULT NULL,
   `time` varchar(14) NOT NULL DEFAULT '',
   `username` varchar(50) DEFAULT NULL,
@@ -4342,46 +4250,43 @@ CREATE TABLE `nuke_quizz_check` (
   `answers` varchar(255) NOT NULL DEFAULT '',
   KEY `qid` (`qid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_quizz_data`
 --
 
 DROP TABLE IF EXISTS `nuke_quizz_data`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_quizz_data` (
+CREATE TABLE IF NOT EXISTS `nuke_quizz_data` (
   `pollID` int(11) NOT NULL DEFAULT '0',
   `optionText` char(50) NOT NULL DEFAULT '',
   `optionCount` int(11) NOT NULL DEFAULT '0',
   `voteID` int(11) NOT NULL DEFAULT '0'
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_quizz_datacontrib`
 --
 
 DROP TABLE IF EXISTS `nuke_quizz_datacontrib`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_quizz_datacontrib` (
+CREATE TABLE IF NOT EXISTS `nuke_quizz_datacontrib` (
   `pollID` int(11) NOT NULL DEFAULT '0',
   `optionText` char(50) NOT NULL DEFAULT '',
   `optionCount` int(11) NOT NULL DEFAULT '0',
   `voteID` int(11) NOT NULL DEFAULT '0'
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_quizz_desc`
 --
 
 DROP TABLE IF EXISTS `nuke_quizz_desc`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_quizz_desc` (
+CREATE TABLE IF NOT EXISTS `nuke_quizz_desc` (
   `pollID` int(11) NOT NULL AUTO_INCREMENT,
   `pollTitle` varchar(100) NOT NULL DEFAULT '',
   `timeStamp` int(11) NOT NULL DEFAULT '0',
@@ -4394,17 +4299,16 @@ CREATE TABLE `nuke_quizz_desc` (
   `comment` text,
   `image` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`pollID`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=14 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_quizz_descontrib`
 --
 
 DROP TABLE IF EXISTS `nuke_quizz_descontrib`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_quizz_descontrib` (
+CREATE TABLE IF NOT EXISTS `nuke_quizz_descontrib` (
   `pollID` int(11) NOT NULL AUTO_INCREMENT,
   `pollTitle` varchar(100) NOT NULL DEFAULT '',
   `timeStamp` int(11) NOT NULL DEFAULT '0',
@@ -4417,47 +4321,154 @@ CREATE TABLE `nuke_quizz_descontrib` (
   `comment` text,
   `image` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`pollID`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `nuke_quiz_admin`
+--
+
+DROP TABLE IF EXISTS `nuke_quiz_admin`;
+CREATE TABLE IF NOT EXISTS `nuke_quiz_admin` (
+  `quizID` int(11) NOT NULL AUTO_INCREMENT,
+  `quizTitle` varchar(150) NOT NULL DEFAULT '',
+  `timeStamp` int(11) NOT NULL DEFAULT '0',
+  `comment` text,
+  `image` varchar(50) DEFAULT NULL,
+  `cid` int(11) NOT NULL DEFAULT '1',
+  PRIMARY KEY (`quizID`),
+  KEY `quizzID` (`quizID`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `nuke_quiz_categories`
+--
+
+DROP TABLE IF EXISTS `nuke_quiz_categories`;
+CREATE TABLE IF NOT EXISTS `nuke_quiz_categories` (
+  `cid` int(9) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL DEFAULT '',
+  `comment` varchar(255) DEFAULT NULL,
+  `image` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`cid`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `nuke_quiz_check`
+--
+
+DROP TABLE IF EXISTS `nuke_quiz_check`;
+CREATE TABLE IF NOT EXISTS `nuke_quiz_check` (
+  `ip` varchar(20) DEFAULT NULL,
+  `time` varchar(14) NOT NULL DEFAULT '',
+  `username` varchar(50) DEFAULT NULL,
+  `email` varchar(50) DEFAULT NULL,
+  `qid` int(11) NOT NULL DEFAULT '0',
+  `score` tinyint(2) NOT NULL DEFAULT '0',
+  `answers` varchar(255) NOT NULL DEFAULT '',
+  KEY `qid` (`qid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `nuke_quiz_data`
+--
+
+DROP TABLE IF EXISTS `nuke_quiz_data`;
+CREATE TABLE IF NOT EXISTS `nuke_quiz_data` (
+  `pollID` int(11) NOT NULL DEFAULT '0',
+  `optionText` char(150) NOT NULL DEFAULT '',
+  `optionCount` int(11) NOT NULL DEFAULT '0',
+  `voteID` int(11) NOT NULL DEFAULT '0'
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `nuke_quiz_desc`
+--
+
+DROP TABLE IF EXISTS `nuke_quiz_desc`;
+CREATE TABLE IF NOT EXISTS `nuke_quiz_desc` (
+  `pollID` int(11) NOT NULL AUTO_INCREMENT,
+  `pollTitle` blob NOT NULL,
+  `timeStamp` int(11) NOT NULL DEFAULT '0',
+  `voters` mediumint(9) NOT NULL DEFAULT '0',
+  `qid` tinyint(9) NOT NULL DEFAULT '0',
+  `answer` varchar(30) NOT NULL DEFAULT '0',
+  `coef` tinyint(3) NOT NULL DEFAULT '1',
+  `good` text,
+  `bad` text,
+  `comment` text,
+  `image` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`pollID`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `nuke_quiz_index`
+--
+
+DROP TABLE IF EXISTS `nuke_quiz_index`;
+CREATE TABLE IF NOT EXISTS `nuke_quiz_index` (
+  `quizid` int(11) NOT NULL AUTO_INCREMENT,
+  `quiztitle` varchar(255) NOT NULL DEFAULT '',
+  `quizdesc` text NOT NULL,
+  `quizactive` int(1) NOT NULL DEFAULT '0',
+  `quizhidden` int(1) NOT NULL DEFAULT '1',
+  `quizowner` int(18) NOT NULL DEFAULT '0',
+  `quizstatus` int(1) NOT NULL DEFAULT '0',
+  `currentuser` int(18) NOT NULL DEFAULT '0',
+  `turnexpires` int(30) NOT NULL DEFAULT '0',
+  `currquestion` longtext NOT NULL,
+  `quizcat` int(5) NOT NULL DEFAULT '1',
+  KEY `quizid` (`quizid`),
+  FULLTEXT KEY `quiztitle` (`quiztitle`,`quizdesc`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_quotes`
 --
 
 DROP TABLE IF EXISTS `nuke_quotes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_quotes` (
+CREATE TABLE IF NOT EXISTS `nuke_quotes` (
   `qid` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `quote` text,
   PRIMARY KEY (`qid`),
   KEY `qid` (`qid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_referer`
 --
 
 DROP TABLE IF EXISTS `nuke_referer`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_referer` (
+CREATE TABLE IF NOT EXISTS `nuke_referer` (
   `rid` int(11) NOT NULL AUTO_INCREMENT,
   `url` varchar(100) NOT NULL DEFAULT '',
   PRIMARY KEY (`rid`),
   KEY `rid` (`rid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=686657 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_related`
 --
 
 DROP TABLE IF EXISTS `nuke_related`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_related` (
+CREATE TABLE IF NOT EXISTS `nuke_related` (
   `rid` int(11) NOT NULL AUTO_INCREMENT,
   `tid` int(11) NOT NULL DEFAULT '0',
   `name` varchar(30) NOT NULL DEFAULT '',
@@ -4465,17 +4476,16 @@ CREATE TABLE `nuke_related` (
   PRIMARY KEY (`rid`),
   KEY `rid` (`rid`),
   KEY `tid` (`tid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_reviews`
 --
 
 DROP TABLE IF EXISTS `nuke_reviews`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_reviews` (
+CREATE TABLE IF NOT EXISTS `nuke_reviews` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
   `date` date NOT NULL DEFAULT '0000-00-00',
   `title` varchar(150) NOT NULL DEFAULT '',
@@ -4490,17 +4500,16 @@ CREATE TABLE `nuke_reviews` (
   `rlanguage` varchar(30) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   KEY `id` (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_reviews_add`
 --
 
 DROP TABLE IF EXISTS `nuke_reviews_add`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_reviews_add` (
+CREATE TABLE IF NOT EXISTS `nuke_reviews_add` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
   `date` date DEFAULT NULL,
   `title` varchar(150) NOT NULL DEFAULT '',
@@ -4513,17 +4522,16 @@ CREATE TABLE `nuke_reviews_add` (
   `rlanguage` varchar(30) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   KEY `id` (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_reviews_comments`
 --
 
 DROP TABLE IF EXISTS `nuke_reviews_comments`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_reviews_comments` (
+CREATE TABLE IF NOT EXISTS `nuke_reviews_comments` (
   `cid` int(10) NOT NULL AUTO_INCREMENT,
   `rid` int(10) NOT NULL DEFAULT '0',
   `userid` varchar(25) NOT NULL DEFAULT '',
@@ -4534,30 +4542,28 @@ CREATE TABLE `nuke_reviews_comments` (
   KEY `cid` (`cid`),
   KEY `rid` (`rid`),
   KEY `userid` (`userid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_reviews_main`
 --
 
 DROP TABLE IF EXISTS `nuke_reviews_main`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_reviews_main` (
+CREATE TABLE IF NOT EXISTS `nuke_reviews_main` (
   `title` varchar(100) DEFAULT NULL,
   `description` text
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_seccont`
 --
 
 DROP TABLE IF EXISTS `nuke_seccont`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_seccont` (
+CREATE TABLE IF NOT EXISTS `nuke_seccont` (
   `artid` int(11) NOT NULL AUTO_INCREMENT,
   `secid` int(11) NOT NULL DEFAULT '0',
   `title` text NOT NULL,
@@ -4567,33 +4573,31 @@ CREATE TABLE `nuke_seccont` (
   PRIMARY KEY (`artid`),
   KEY `artid` (`artid`),
   KEY `secid` (`secid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_sections`
 --
 
 DROP TABLE IF EXISTS `nuke_sections`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_sections` (
+CREATE TABLE IF NOT EXISTS `nuke_sections` (
   `secid` int(11) NOT NULL AUTO_INCREMENT,
   `secname` varchar(40) NOT NULL DEFAULT '',
   `image` varchar(50) NOT NULL DEFAULT '',
   PRIMARY KEY (`secid`),
   KEY `secid` (`secid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_session`
 --
 
 DROP TABLE IF EXISTS `nuke_session`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_session` (
+CREATE TABLE IF NOT EXISTS `nuke_session` (
   `uname` varchar(25) NOT NULL DEFAULT '',
   `time` varchar(14) NOT NULL DEFAULT '',
   `host_addr` varchar(48) NOT NULL DEFAULT '',
@@ -4601,16 +4605,15 @@ CREATE TABLE `nuke_session` (
   KEY `time` (`time`),
   KEY `guest` (`guest`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_sommaire`
 --
 
 DROP TABLE IF EXISTS `nuke_sommaire`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_sommaire` (
+CREATE TABLE IF NOT EXISTS `nuke_sommaire` (
   `groupmenu` int(2) NOT NULL DEFAULT '0',
   `name` varchar(200) DEFAULT NULL,
   `image` varchar(99) DEFAULT NULL,
@@ -4622,16 +4625,15 @@ CREATE TABLE `nuke_sommaire` (
   `class` tinytext,
   PRIMARY KEY (`groupmenu`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_sommaire_categories`
 --
 
 DROP TABLE IF EXISTS `nuke_sommaire_categories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_sommaire_categories` (
+CREATE TABLE IF NOT EXISTS `nuke_sommaire_categories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `groupmenu` int(2) NOT NULL DEFAULT '0',
   `module` varchar(50) NOT NULL DEFAULT '',
@@ -4639,34 +4641,32 @@ CREATE TABLE `nuke_sommaire_categories` (
   `url_text` text NOT NULL,
   `image` varchar(50) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=464 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_spelling_words`
 --
 
 DROP TABLE IF EXISTS `nuke_spelling_words`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_spelling_words` (
+CREATE TABLE IF NOT EXISTS `nuke_spelling_words` (
   `id` mediumint(9) NOT NULL AUTO_INCREMENT,
   `word` varchar(30) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '',
   `sound` varchar(10) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   UNIQUE KEY `word` (`word`),
   KEY `sound` (`sound`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=192935 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_staff`
 --
 
 DROP TABLE IF EXISTS `nuke_staff`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_staff` (
+CREATE TABLE IF NOT EXISTS `nuke_staff` (
   `id` int(3) NOT NULL DEFAULT '0',
   `sid` int(3) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL DEFAULT '',
@@ -4676,90 +4676,84 @@ CREATE TABLE `nuke_staff` (
   `photo` varchar(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`sid`),
   UNIQUE KEY `sid` (`sid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_staff_cat`
 --
 
 DROP TABLE IF EXISTS `nuke_staff_cat`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_staff_cat` (
+CREATE TABLE IF NOT EXISTS `nuke_staff_cat` (
   `id` int(3) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_stats_date`
 --
 
 DROP TABLE IF EXISTS `nuke_stats_date`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_stats_date` (
+CREATE TABLE IF NOT EXISTS `nuke_stats_date` (
   `year` smallint(6) NOT NULL DEFAULT '0',
   `month` tinyint(4) NOT NULL DEFAULT '0',
   `date` tinyint(4) NOT NULL DEFAULT '0',
   `hits` bigint(20) NOT NULL DEFAULT '0'
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_stats_hour`
 --
 
 DROP TABLE IF EXISTS `nuke_stats_hour`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_stats_hour` (
+CREATE TABLE IF NOT EXISTS `nuke_stats_hour` (
   `year` smallint(6) NOT NULL DEFAULT '0',
   `month` tinyint(4) NOT NULL DEFAULT '0',
   `date` tinyint(4) NOT NULL DEFAULT '0',
   `hour` tinyint(4) NOT NULL DEFAULT '0',
   `hits` int(11) NOT NULL DEFAULT '0'
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_stats_month`
 --
 
 DROP TABLE IF EXISTS `nuke_stats_month`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_stats_month` (
+CREATE TABLE IF NOT EXISTS `nuke_stats_month` (
   `year` smallint(6) NOT NULL DEFAULT '0',
   `month` tinyint(4) NOT NULL DEFAULT '0',
   `hits` bigint(20) NOT NULL DEFAULT '0'
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_stats_year`
 --
 
 DROP TABLE IF EXISTS `nuke_stats_year`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_stats_year` (
+CREATE TABLE IF NOT EXISTS `nuke_stats_year` (
   `year` smallint(6) NOT NULL DEFAULT '0',
   `hits` bigint(20) NOT NULL DEFAULT '0'
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_stories`
 --
 
 DROP TABLE IF EXISTS `nuke_stories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_stories` (
+CREATE TABLE IF NOT EXISTS `nuke_stories` (
   `sid` int(11) NOT NULL AUTO_INCREMENT,
   `approved` tinyint(1) NOT NULL DEFAULT '1',
   `catid` int(11) NOT NULL DEFAULT '0',
@@ -4806,33 +4800,31 @@ CREATE TABLE `nuke_stories` (
   KEY `time` (`time`),
   KEY `weeklycounter` (`weeklycounter`),
   KEY `informant` (`informant`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=16876 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_stories_cat`
 --
 
 DROP TABLE IF EXISTS `nuke_stories_cat`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_stories_cat` (
+CREATE TABLE IF NOT EXISTS `nuke_stories_cat` (
   `catid` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(20) NOT NULL DEFAULT '',
   `counter` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`catid`),
   KEY `catid` (`catid`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=5 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_topics`
 --
 
 DROP TABLE IF EXISTS `nuke_topics`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_topics` (
+CREATE TABLE IF NOT EXISTS `nuke_topics` (
   `topicid` int(3) NOT NULL AUTO_INCREMENT,
   `topicname` varchar(20) DEFAULT NULL,
   `topicimage` varchar(20) DEFAULT NULL,
@@ -4841,33 +4833,31 @@ CREATE TABLE `nuke_topics` (
   `desc` mediumtext NOT NULL,
   PRIMARY KEY (`topicid`),
   KEY `topicname` (`topicname`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=33 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_upermissions`
 --
 
 DROP TABLE IF EXISTS `nuke_upermissions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_upermissions` (
+CREATE TABLE IF NOT EXISTS `nuke_upermissions` (
   `pid` int(16) NOT NULL AUTO_INCREMENT,
   `uid` int(16) NOT NULL DEFAULT '0',
   `pmodule` varchar(255) NOT NULL DEFAULT '',
   KEY `pid` (`pid`),
   FULLTEXT KEY `pmodule` (`pmodule`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=11 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_users`
 --
 
 DROP TABLE IF EXISTS `nuke_users`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_users` (
+CREATE TABLE IF NOT EXISTS `nuke_users` (
   `user_id` int(10) NOT NULL AUTO_INCREMENT,
   `provider` enum('railpage','facebook','twitter','google') COLLATE utf8_unicode_ci NOT NULL DEFAULT 'railpage',
   `user_active` tinyint(1) DEFAULT '1',
@@ -4983,17 +4973,16 @@ CREATE TABLE `nuke_users` (
   KEY `reported_to_sfs` (`reported_to_sfs`),
   KEY `user_regdate_nice` (`user_regdate_nice`),
   KEY `provider` (`provider`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci PACK_KEYS=0;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci PACK_KEYS=0 AUTO_INCREMENT=73223 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_users_autologin`
 --
 
 DROP TABLE IF EXISTS `nuke_users_autologin`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_users_autologin` (
+CREATE TABLE IF NOT EXISTS `nuke_users_autologin` (
   `autologin_id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `autologin_token` varchar(128) NOT NULL,
@@ -5008,31 +4997,29 @@ CREATE TABLE `nuke_users_autologin` (
   KEY `autologin_expire` (`autologin_expire`),
   KEY `autologin_time` (`autologin_time`),
   KEY `autologin_token` (`autologin_token`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=44446 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_users_groups`
 --
 
 DROP TABLE IF EXISTS `nuke_users_groups`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_users_groups` (
+CREATE TABLE IF NOT EXISTS `nuke_users_groups` (
   `gid` int(11) NOT NULL AUTO_INCREMENT,
   `gname` varchar(32) NOT NULL DEFAULT '',
   PRIMARY KEY (`gid`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=9 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_users_groups_users`
 --
 
 DROP TABLE IF EXISTS `nuke_users_groups_users`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_users_groups_users` (
+CREATE TABLE IF NOT EXISTS `nuke_users_groups_users` (
   `gid` int(11) NOT NULL DEFAULT '0',
   `uid` int(11) NOT NULL DEFAULT '0',
   `mname` varchar(25) NOT NULL DEFAULT '',
@@ -5040,49 +5027,46 @@ CREATE TABLE `nuke_users_groups_users` (
   `sdate` date NOT NULL DEFAULT '0000-00-00',
   `edate` date NOT NULL DEFAULT '0000-00-00'
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_users_hash`
 --
 
 DROP TABLE IF EXISTS `nuke_users_hash`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_users_hash` (
+CREATE TABLE IF NOT EXISTS `nuke_users_hash` (
   `user_id` int(11) NOT NULL,
   `hash` varchar(512) COLLATE utf8_unicode_ci NOT NULL,
   `date` int(11) NOT NULL,
   `ip` varchar(128) COLLATE utf8_unicode_ci NOT NULL,
   KEY `user_id` (`user_id`,`hash`(255))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_users_notes`
 --
 
 DROP TABLE IF EXISTS `nuke_users_notes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_users_notes` (
+CREATE TABLE IF NOT EXISTS `nuke_users_notes` (
   `nid` int(11) NOT NULL AUTO_INCREMENT,
   `uid` int(11) NOT NULL DEFAULT '0',
   `aid` int(11) NOT NULL DEFAULT '0',
   `datetime` int(11) NOT NULL DEFAULT '0',
   `data` mediumtext COLLATE utf8_unicode_ci,
   PRIMARY KEY (`nid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=2342014 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `nuke_users_temp`
 --
 
 DROP TABLE IF EXISTS `nuke_users_temp`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `nuke_users_temp` (
+CREATE TABLE IF NOT EXISTS `nuke_users_temp` (
   `user_id` int(10) NOT NULL AUTO_INCREMENT,
   `username` varchar(25) NOT NULL DEFAULT '',
   `user_email` varchar(255) NOT NULL DEFAULT '',
@@ -5092,17 +5076,16 @@ CREATE TABLE `nuke_users_temp` (
   `time` varchar(14) NOT NULL DEFAULT '',
   `email_sent` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `oauth_consumer`
 --
 
 DROP TABLE IF EXISTS `oauth_consumer`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `oauth_consumer` (
+CREATE TABLE IF NOT EXISTS `oauth_consumer` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `consumer_key` varchar(250) NOT NULL,
   `consumer_secret` varchar(250) NOT NULL,
@@ -5112,33 +5095,31 @@ CREATE TABLE `oauth_consumer` (
   KEY `consumer_key` (`consumer_key`),
   KEY `consumer_secret` (`consumer_secret`),
   KEY `active` (`active`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1042 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `oauth_consumer_nonce`
 --
 
 DROP TABLE IF EXISTS `oauth_consumer_nonce`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `oauth_consumer_nonce` (
+CREATE TABLE IF NOT EXISTS `oauth_consumer_nonce` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `consumer_id` int(11) NOT NULL,
   `timestamp` bigint(20) NOT NULL,
   `nonce` varchar(250) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=39 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `oauth_token`
 --
 
 DROP TABLE IF EXISTS `oauth_token`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `oauth_token` (
+CREATE TABLE IF NOT EXISTS `oauth_token` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `type` int(11) NOT NULL,
   `consumer_id` int(11) NOT NULL,
@@ -5148,48 +5129,45 @@ CREATE TABLE `oauth_token` (
   `verifier` varchar(250) NOT NULL,
   `user_id` int(11) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=17 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `oauth_token_type`
 --
 
 DROP TABLE IF EXISTS `oauth_token_type`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `oauth_token_type` (
+CREATE TABLE IF NOT EXISTS `oauth_token_type` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `type` varchar(50) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `operators`
 --
 
 DROP TABLE IF EXISTS `operators`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `operators` (
+CREATE TABLE IF NOT EXISTS `operators` (
   `operator_id` int(11) NOT NULL AUTO_INCREMENT,
   `operator_name` varchar(128) NOT NULL,
   `operator_desc` text NOT NULL,
   `organisation_id` int(11) NOT NULL,
   PRIMARY KEY (`operator_id`),
   KEY `organisation_id` (`organisation_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=254 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `organisation`
 --
 
 DROP TABLE IF EXISTS `organisation`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `organisation` (
+CREATE TABLE IF NOT EXISTS `organisation` (
   `organisation_id` int(10) NOT NULL AUTO_INCREMENT,
   `organisation_name` text CHARACTER SET latin1 NOT NULL,
   `organisation_desc` text CHARACTER SET latin1,
@@ -5204,48 +5182,45 @@ CREATE TABLE `organisation` (
   `organisation_slug` varchar(128) NOT NULL,
   PRIMARY KEY (`organisation_id`),
   KEY `organisation_owner` (`organisation_owner`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=35 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `organisation_member`
 --
 
 DROP TABLE IF EXISTS `organisation_member`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `organisation_member` (
+CREATE TABLE IF NOT EXISTS `organisation_member` (
   `organisation_id` int(10) NOT NULL,
   `user_id` int(10) NOT NULL,
   KEY `organisation_id` (`organisation_id`,`user_id`),
   KEY `user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `organisation_roles`
 --
 
 DROP TABLE IF EXISTS `organisation_roles`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `organisation_roles` (
+CREATE TABLE IF NOT EXISTS `organisation_roles` (
   `role_id` int(11) NOT NULL AUTO_INCREMENT,
   `role_name` text NOT NULL,
   `organisation_id` int(11) NOT NULL,
   PRIMARY KEY (`role_id`),
   KEY `organisation_id` (`organisation_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=6 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `phpbb_reports_actions`
 --
 
 DROP TABLE IF EXISTS `phpbb_reports_actions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `phpbb_reports_actions` (
+CREATE TABLE IF NOT EXISTS `phpbb_reports_actions` (
   `action_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `report_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `action_user_id` mediumint(8) NOT NULL DEFAULT '0',
@@ -5257,31 +5232,29 @@ CREATE TABLE `phpbb_reports_actions` (
   KEY `report_id` (`report_id`),
   KEY `action_user_id` (`action_user_id`),
   KEY `action_status` (`action_status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=8588 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `phpbb_reports_config`
 --
 
 DROP TABLE IF EXISTS `phpbb_reports_config`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `phpbb_reports_config` (
+CREATE TABLE IF NOT EXISTS `phpbb_reports_config` (
   `config_name` varchar(255) CHARACTER SET latin1 NOT NULL DEFAULT '',
   `config_value` varchar(255) CHARACTER SET latin1 NOT NULL DEFAULT '',
   PRIMARY KEY (`config_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `phpbb_reports_data`
 --
 
 DROP TABLE IF EXISTS `phpbb_reports_data`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `phpbb_reports_data` (
+CREATE TABLE IF NOT EXISTS `phpbb_reports_data` (
   `data_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `data_name` varchar(30) CHARACTER SET latin1 NOT NULL DEFAULT '',
   `data_desc` varchar(255) CHARACTER SET latin1 NOT NULL DEFAULT '',
@@ -5290,17 +5263,16 @@ CREATE TABLE `phpbb_reports_data` (
   `data_code` tinyint(1) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`data_id`),
   KEY `data_code` (`data_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=22 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `phpbb_reports_posts`
 --
 
 DROP TABLE IF EXISTS `phpbb_reports_posts`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `phpbb_reports_posts` (
+CREATE TABLE IF NOT EXISTS `phpbb_reports_posts` (
   `report_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `post_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `poster_id` mediumint(8) NOT NULL DEFAULT '0',
@@ -5315,17 +5287,16 @@ CREATE TABLE `phpbb_reports_posts` (
   KEY `report_status` (`report_status`),
   KEY `post_id` (`post_id`),
   KEY `poster_id` (`poster_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=8549 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `phpbb_warnings`
 --
 
 DROP TABLE IF EXISTS `phpbb_warnings`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `phpbb_warnings` (
+CREATE TABLE IF NOT EXISTS `phpbb_warnings` (
   `warn_id` int(30) NOT NULL AUTO_INCREMENT,
   `user_id` int(30) NOT NULL DEFAULT '0',
   `warned_by` int(30) NOT NULL DEFAULT '0',
@@ -5342,17 +5313,16 @@ CREATE TABLE `phpbb_warnings` (
   KEY `warn_date` (`warn_date`),
   KEY `old_warning_level` (`old_warning_level`),
   KEY `new_warning_level` (`new_warning_level`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=7466 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `polls`
 --
 
 DROP TABLE IF EXISTS `polls`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `polls` (
+CREATE TABLE IF NOT EXISTS `polls` (
   `poll_id` int(11) NOT NULL AUTO_INCREMENT,
   `poll_name` varchar(32) NOT NULL,
   `poll_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -5360,47 +5330,44 @@ CREATE TABLE `polls` (
   `poll_options` text NOT NULL,
   PRIMARY KEY (`poll_id`),
   KEY `poll_votes` (`poll_votes`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `popover_viewed`
 --
 
 DROP TABLE IF EXISTS `popover_viewed`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `popover_viewed` (
+CREATE TABLE IF NOT EXISTS `popover_viewed` (
   `popover_id` int(11) NOT NULL,
   `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `user_id` int(11) NOT NULL,
   KEY `popover_id` (`popover_id`,`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `privmsgs_hidelist`
 --
 
 DROP TABLE IF EXISTS `privmsgs_hidelist`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `privmsgs_hidelist` (
+CREATE TABLE IF NOT EXISTS `privmsgs_hidelist` (
   `privmsgs_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
   `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY `privmsgs_id` (`privmsgs_id`,`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `railcams`
 --
 
 DROP TABLE IF EXISTS `railcams`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `railcams` (
+CREATE TABLE IF NOT EXISTS `railcams` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `type_id` int(11) NOT NULL,
   `permalink` varchar(128) NOT NULL,
@@ -5427,34 +5394,32 @@ CREATE TABLE `railcams` (
   KEY `nsid` (`nsid`),
   KEY `type_id` (`type_id`),
   KEY `provider` (`provider`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=11 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `railcams_type`
 --
 
 DROP TABLE IF EXISTS `railcams_type`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `railcams_type` (
+CREATE TABLE IF NOT EXISTS `railcams_type` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(32) NOT NULL,
   `slug` varchar(32) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `name` (`name`),
   KEY `slug` (`slug`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=9 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `rating_loco`
 --
 
 DROP TABLE IF EXISTS `rating_loco`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `rating_loco` (
+CREATE TABLE IF NOT EXISTS `rating_loco` (
   `rating_id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -5462,17 +5427,16 @@ CREATE TABLE `rating_loco` (
   `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`rating_id`),
   KEY `rating_id` (`rating_id`,`loco_id`,`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=40 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `reminders`
 --
 
 DROP TABLE IF EXISTS `reminders`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `reminders` (
+CREATE TABLE IF NOT EXISTS `reminders` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `module` varchar(16) NOT NULL,
   `namespace` varchar(32) NOT NULL,
@@ -5488,17 +5452,16 @@ CREATE TABLE `reminders` (
   KEY `module` (`module`,`object`,`object_id`,`user_id`,`reminder`),
   KEY `sent` (`sent`),
   KEY `dispatched` (`dispatched`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=26 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `route`
 --
 
 DROP TABLE IF EXISTS `route`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `route` (
+CREATE TABLE IF NOT EXISTS `route` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `country` varchar(12) NOT NULL DEFAULT 'AU',
   `region` varchar(12) NOT NULL DEFAULT 'QLD',
@@ -5515,17 +5478,16 @@ CREATE TABLE `route` (
   KEY `slug` (`slug`),
   KEY `active` (`active`),
   KEY `gtfs_route_id` (`gtfs_route_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=9596 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `route_markers`
 --
 
 DROP TABLE IF EXISTS `route_markers`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `route_markers` (
+CREATE TABLE IF NOT EXISTS `route_markers` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `weight` int(11) NOT NULL,
   `lat` varchar(256) NOT NULL,
@@ -5540,17 +5502,16 @@ CREATE TABLE `route_markers` (
   KEY `weight` (`weight`),
   KEY `lat` (`lat`(255)),
   KEY `lon` (`lon`(255))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=8161 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `route_markers_tmp`
 --
 
 DROP TABLE IF EXISTS `route_markers_tmp`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `route_markers_tmp` (
+CREATE TABLE IF NOT EXISTS `route_markers_tmp` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `weight` int(11) NOT NULL,
   `lat` varchar(256) NOT NULL,
@@ -5560,17 +5521,16 @@ CREATE TABLE `route_markers_tmp` (
   `route_id` int(11) NOT NULL,
   `path_id` int(11) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `sighting`
 --
 
 DROP TABLE IF EXISTS `sighting`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `sighting` (
+CREATE TABLE IF NOT EXISTS `sighting` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `timezone` varchar(64) NOT NULL DEFAULT 'Australia/Melbourne',
   `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -5582,78 +5542,73 @@ CREATE TABLE `sighting` (
   `user_id` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=5095 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `sighting_locos`
 --
 
 DROP TABLE IF EXISTS `sighting_locos`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `sighting_locos` (
+CREATE TABLE IF NOT EXISTS `sighting_locos` (
   `sighting_id` int(11) NOT NULL,
   `loco_id` int(11) NOT NULL,
   KEY `loco_id` (`loco_id`),
   KEY `sighting_id` (`sighting_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `source`
 --
 
 DROP TABLE IF EXISTS `source`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `source` (
+CREATE TABLE IF NOT EXISTS `source` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(256) NOT NULL,
   `desc` text NOT NULL,
   `url` varchar(512) NOT NULL,
   `image` varchar(512) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=3 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `sph_counter`
 --
 
 DROP TABLE IF EXISTS `sph_counter`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `sph_counter` (
+CREATE TABLE IF NOT EXISTS `sph_counter` (
   `counter_id` int(11) NOT NULL,
   `max_doc_id` int(11) NOT NULL,
   PRIMARY KEY (`counter_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `tag`
 --
 
 DROP TABLE IF EXISTS `tag`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `tag` (
+CREATE TABLE IF NOT EXISTS `tag` (
   `tag_id` int(11) NOT NULL AUTO_INCREMENT,
   `tag` varchar(128) NOT NULL,
   PRIMARY KEY (`tag_id`),
   UNIQUE KEY `tag` (`tag`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=4252 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `tag_link`
 --
 
 DROP TABLE IF EXISTS `tag_link`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `tag_link` (
+CREATE TABLE IF NOT EXISTS `tag_link` (
   `tag_link_id` int(11) NOT NULL AUTO_INCREMENT,
   `tag_id` int(11) NOT NULL,
   `story_id` int(11) NOT NULL,
@@ -5666,17 +5621,16 @@ CREATE TABLE `tag_link` (
   KEY `topic_id` (`topic_id`),
   KEY `post_id` (`post_id`),
   KEY `photo_id` (`photo_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=12546 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `timetable_entries`
 --
 
 DROP TABLE IF EXISTS `timetable_entries`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `timetable_entries` (
+CREATE TABLE IF NOT EXISTS `timetable_entries` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `point_id` int(11) NOT NULL,
   `expires` date NOT NULL DEFAULT '0000-00-00',
@@ -5689,17 +5643,16 @@ CREATE TABLE `timetable_entries` (
   KEY `point_id` (`point_id`),
   KEY `train_id` (`train_id`),
   KEY `day` (`day`,`time`,`going`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=19297 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `timetable_points`
 --
 
 DROP TABLE IF EXISTS `timetable_points`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `timetable_points` (
+CREATE TABLE IF NOT EXISTS `timetable_points` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
   `name` varchar(128) NOT NULL,
   `lat` double(16,13) NOT NULL,
@@ -5708,33 +5661,31 @@ CREATE TABLE `timetable_points` (
   `slug` text NOT NULL,
   PRIMARY KEY (`id`),
   KEY `route_id` (`route_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=202 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `timetable_regions`
 --
 
 DROP TABLE IF EXISTS `timetable_regions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `timetable_regions` (
+CREATE TABLE IF NOT EXISTS `timetable_regions` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
   `state` varchar(12) NOT NULL,
   `name` varchar(64) NOT NULL,
   `description` text NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=7 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `timetable_trains`
 --
 
 DROP TABLE IF EXISTS `timetable_trains`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `timetable_trains` (
+CREATE TABLE IF NOT EXISTS `timetable_trains` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
   `provider` enum('artc','pbr') NOT NULL DEFAULT 'artc',
   `train_number` varchar(128) NOT NULL,
@@ -5749,17 +5700,16 @@ CREATE TABLE `timetable_trains` (
   KEY `operator_id` (`operator_id`),
   KEY `provider` (`provider`),
   KEY `commodity` (`commodity`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=300 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `viewed_threads`
 --
 
 DROP TABLE IF EXISTS `viewed_threads`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `viewed_threads` (
+CREATE TABLE IF NOT EXISTS `viewed_threads` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `topic_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -5768,17 +5718,16 @@ CREATE TABLE `viewed_threads` (
   KEY `time` (`time`),
   KEY `user_id` (`user_id`),
   KEY `topic_id` (`topic_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=111519 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `waynet`
 --
 
 DROP TABLE IF EXISTS `waynet`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `waynet` (
+CREATE TABLE IF NOT EXISTS `waynet` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `trainnum` varchar(12) NOT NULL,
   `loco` varchar(12) NOT NULL,
@@ -5790,33 +5739,59 @@ CREATE TABLE `waynet` (
   `timestamp` datetime NOT NULL,
   PRIMARY KEY (`id`),
   KEY `trainnum` (`trainnum`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1403055 ;
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `wheel_arrangements`
 --
 
 DROP TABLE IF EXISTS `wheel_arrangements`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `wheel_arrangements` (
+CREATE TABLE IF NOT EXISTS `wheel_arrangements` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(256) NOT NULL,
   `arrangement` varchar(256) NOT NULL,
   `slug` varchar(32) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `slug` (`slug`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=41 ;
 
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+DELIMITER $$
+--
+-- Events
+--
+DROP EVENT `trim_log_pageactivity`$$
+CREATE DEFINER=`mgreenhill`@`%` EVENT `trim_log_pageactivity` ON SCHEDULE EVERY 1 DAY STARTS '2013-03-12 17:43:49' ON COMPLETION NOT PRESERVE ENABLE COMMENT 'Deleting page activity logs older then 30 days' DO BEGIN
+DELETE FROM log_pageactivity WHERE DATEDIFF (NOW(), time) >= 30;
+END$$
 
--- Dump completed on 2015-04-30 13:53:43
+DROP EVENT `rp_resetStoryReadCounts`$$
+CREATE DEFINER=`mgreenhill`@`%` EVENT `rp_resetStoryReadCounts` ON SCHEDULE EVERY 1 WEEK STARTS '2013-11-19 19:00:20' ON COMPLETION NOT PRESERVE ENABLE DO UPDATE sparta.nuke_stories SET weeklycounter = 0$$
+
+DROP EVENT `trim_log_api`$$
+CREATE DEFINER=`mgreenhill`@`%` EVENT `trim_log_api` ON SCHEDULE EVERY 1 DAY STARTS '2014-11-28 09:16:46' ON COMPLETION NOT PRESERVE ENABLE COMMENT 'Delete API logs older than 30 days' DO BEGIN
+DELETE FROM log_api WHERE DATEDIFF (NOW(), date) >= 30;
+END$$
+
+DROP EVENT `trim_nuke_bbsearch_results`$$
+CREATE DEFINER=`mgreenhill`@`%` EVENT `trim_nuke_bbsearch_results` ON SCHEDULE EVERY 1 DAY STARTS '2015-01-03 00:33:09' ON COMPLETION NOT PRESERVE ENABLE DO BEGIN
+DELETE FROM nuke_bbsearch_results WHERE DATEDIFF (NOW(), search_time) >= 30;
+END$$
+
+DROP EVENT `trim_log_logins`$$
+CREATE DEFINER=`mgreenhill`@`%` EVENT `trim_log_logins` ON SCHEDULE EVERY 1 DAY STARTS '2015-02-01 22:39:12' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM log_logins WHERE login_time < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 6 month))$$
+
+DROP EVENT `trim_log_errors`$$
+CREATE DEFINER=`mgreenhill`@`%` EVENT `trim_log_errors` ON SCHEDULE EVERY 1 DAY STARTS '2015-02-01 22:42:19' ON COMPLETION NOT PRESERVE ENABLE COMMENT 'Delete error logs older than 30 days' DO DELETE FROM log_errors WHERE error_time < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 30 day))$$
+
+DROP EVENT `trim_nuke_users_hash`$$
+CREATE DEFINER=`mgreenhill`@`%` EVENT `trim_nuke_users_hash` ON SCHEDULE EVERY 1 DAY STARTS '2015-02-01 22:47:00' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM nuke_users_hash WHERE date < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 6 month))$$
+
+DROP EVENT `photo_comp_enable`$$
+CREATE DEFINER=`mgreenhill`@`%` EVENT `photo_comp_enable` ON SCHEDULE EVERY 1 HOUR STARTS '2015-03-13 19:05:01' ON COMPLETION NOT PRESERVE ENABLE DO UPDATE image_competition SET status = 0 WHERE NOW() >= submissions_date_open AND voting_date_close >= NOW() AND status = 1$$
+
+DROP EVENT `photo_comp_disable`$$
+CREATE DEFINER=`mgreenhill`@`%` EVENT `photo_comp_disable` ON SCHEDULE EVERY 1 HOUR STARTS '2015-03-13 19:05:52' ON COMPLETION NOT PRESERVE ENABLE DO UPDATE image_competition SET status = 1 WHERE (submissions_date_open > NOW() OR NOW() > voting_date_close) AND status = 0$$
+
+DELIMITER ;
