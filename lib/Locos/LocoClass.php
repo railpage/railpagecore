@@ -21,6 +21,7 @@
 	use Railpage\Users\User;
 	use Railpage\ContentUtility;
 	use Railpage\Debug;
+	use Railpage\Registry;
 		
 	/**
 	 * Locomotive class (eg X class or 92 class) class
@@ -29,6 +30,22 @@
 	 */
 	
 	class LocoClass extends Locos {
+		
+		/**
+		 * Registry cache key
+		 * @since Version 3.9.1
+		 * @const string REGISTRY_KEY
+		 */
+		
+		const REGISTRY_KEY = "railpage.locos.class=%d";
+		
+		/**
+		 * Memcached/Redis cache key
+		 * @since Version 3.9.1
+		 * @const string CACHE_KEY
+		 */
+		
+		const CACHE_KEY = "railpage:locos.class_id=%s";
 		
 		/**
 		 * Loco class ID
@@ -290,15 +307,7 @@
 			}
 			
 			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
-				$slugkey = sprintf("railpage:locos.class.id;fromslug=%s", $this->id);
-				
-				if ($id = $this->Memcached->fetch($slugkey)) {
-					$this->id = $id;
-				} else {
-					$this->id = $this->db->fetchOne("SELECT id FROM loco_class WHERE slug = ?", $this->id);
-					
-					$this->Memcached->save($slugkey, $this->id, strtotime("+1 year"));
-				}
+				$this->id = Utility\LocomotiveUtility::getClassId($this->id); 
 			}
 			
 			$this->mckey = sprintf("railpage:locos.class_id=%d", $this->id); 
@@ -637,6 +646,7 @@
 				
 				$this->db->update("loco_class", $data, $where); 
 				$verb = "Update";
+				
 			} else {
 				$this->db->insert("loco_class", $data); 
 				$this->id = $this->db->lastInsertId(); 
@@ -650,6 +660,11 @@
 				
 				$verb = "Insert";
 			}
+			
+			// Update the registry
+			$Registry = Registry::getInstance(); 
+			$regkey = sprintf(self::REGISTRY_KEY, $this->id); 
+			$Registry->set($regkey, $this); 
 			
 			Debug::logEvent(__METHOD__ . " :: ID " . $this->id, $timer); 
 			
@@ -897,7 +912,7 @@
 					);
 				}
 				
-				$Loco = new Locomotive($row['id']);
+				$Loco = Factory::CreateLocomotive($row['id']); #new Locomotive($row['id']);
 				$row['url'] = $Loco->url;
 				
 				$return['status'][$row['status_id']]['num']++;
@@ -1093,12 +1108,16 @@
 		 */
 		
 		public function flushMemcached() {
+			
 			if (!empty($this->mckey)) {
-				removeMemcacheObject("railpage:locos.class_id=" . $this->id);
-				removeMemcacheObject("railpage:locos.class_id=" . $this->slug);
+				$this->Memcached->delete("railpage:locos.class_id=" . $this->id);
+				$this->Memcached->delete("railpage:locos.class_id=" . $this->slug);
+				$this->Redis->delete(sprintf(self::CACHE_KEY, $this->id));
+				$this->Redis->delete(sprintf(self::CACHE_KEY, $this->slug));
 			}
 			
 			return $this;
+			
 		}
 		
 		/**

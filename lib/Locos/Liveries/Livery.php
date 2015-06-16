@@ -159,7 +159,7 @@
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
 				$this->id = $id;
 				
-				$this->url = "/flickr?tag=railpage:livery=" . $this->id;
+				$this->url = new Url("/flickr?tag=railpage:livery=" . $this->id);
 				
 				$this->fetch();
 			}
@@ -196,7 +196,7 @@
 				$this->region		= $row['region'];
 				$this->country		= $row['country'];
 				$this->tag = sprintf("railpage:livery=%d", $this->id);
-				$this->url = "/flickr?tag=" . $this->tag;
+				$this->url = new Url("/flickr?tag=" . $this->tag);
 				
 				if (filter_var($this->photo_id, FILTER_VALIDATE_INT)) {
 					
@@ -301,6 +301,16 @@
 			}
 			
 			return true;
+		}
+		
+		/**
+		 * Print the name of this livery
+		 * @since Version 3.9.1
+		 * @return string
+		 */
+		
+		public function __toString() {
+			return $this->name;
 		}
 	}
 	

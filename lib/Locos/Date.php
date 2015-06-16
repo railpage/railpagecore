@@ -12,6 +12,8 @@
 	use Exception;
 	use Railpage\Url;
 	use Railpage\Debug;
+	use Railpage\Glossary\Glossary;
+	use Railpage\Glossary\Entry;
 	
 	/**
 	 * Date class
@@ -122,6 +124,9 @@
 			$this->meta = json_decode($row['meta'], true);
 			$this->action = $row['loco_date_text'];
 			$this->action_id = $row['loco_date_id'];
+			$this->loco_id = $row['loco_unit_id'];
+			
+			$this->loadLoco();
 			
 			if ($row['timestamp'] == "0000-00-00") {
 				$this->Date = new DateTime();
@@ -179,10 +184,6 @@
 				}
 			}
 			
-			$this->Loco = new Locomotive($row['loco_unit_id']);
-			
-			$this->url = new Url($this->Loco->url);
-			
 			/**
 			 * Update this object if required
 			 */
@@ -202,6 +203,11 @@
 		 */
 		
 		public function validate() {
+			
+			if (is_null($this->Loco) && filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$this->loadLoco(); 
+			}
+			
 			if (!$this->Date instanceof DateTime) {
 				throw new Exception("\$this->Date is not an instance of DateTime");
 			}
@@ -248,6 +254,7 @@
 		 */
 		
 		public function commit() {
+			
 			$this->validate();
 			
 			$data = array(
@@ -274,6 +281,34 @@
 			}
 			
 			return $this;
+		}
+		
+		/**
+		 * Find the glossary entry for this date
+		 * @since Version 3.9.1
+		 * @return null|\Railpage\Glossary\Entry
+		 */
+		
+		public function getGlossary() {
+			
+			return (new Glossary)->lookupText($this->action);
+			
+		}
+		
+		/**
+		 * Load the locomotive associated with this date
+		 * @since Version 3.9.1
+		 * @return \Railpage\Locos\Date
+		 */
+		
+		public function loadLoco() {
+			
+			$this->Loco = Factory::CreateLocomotive($this->loco_id);
+			
+			$this->url = new Url($this->Loco->url);
+			
+			return $this;
+			
 		}
 	}
 	

@@ -21,6 +21,7 @@
 	use stdClass;
 	use Railpage\Registry;
 	use Railpage\Users\Utility\AvatarUtility;
+	use Railpage\Users\Factory as UserFactory;
 		
 	/**
 	 * Loco object
@@ -29,6 +30,22 @@
 	 */
 	
 	class Locomotive extends Locos {
+		
+		/**
+		 * Registry cache key
+		 * @since Version 3.9.1
+		 * @const string REGISTRY_KEY
+		 */
+		
+		const REGISTRY_KEY = "railpage.locos.loco=%d";
+		
+		/**
+		 * Memcached/Redis cache key
+		 * @since Version 3.9.1
+		 * @const string CACHE_KEY
+		 */
+		
+		const CACHE_KEY = "railpage:locos.loco_id=%d";
 		
 		/**
 		 * Loco ID
@@ -312,7 +329,7 @@
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
 				$this->id = filter_var($id, FILTER_VALIDATE_INT);
 			} else {
-				$this->getLocoId($class_id_or_slug, $number); 
+				$this->id = Utility\LocomotiveUtility::getLocoId($class_id_or_slug, $number); 
 			}
 			
 			// Load the loco object
@@ -340,62 +357,6 @@
 			$this->Templates->view = "loco";
 			$this->Templates->edit = "loco.edit";
 			$this->Templates->sightings = "loco.sightings";
-		}
-		
-		/**
-		 * Get the ID of this locomotive from class and loco number
-		 * @since Version 3.9.1
-		 * @param string $class
-		 * @param string $number
-		 * @return void
-		 */
-		
-		private function getLocoId($class, $number) {
-			
-			$timer = Debug::getTimer();
-			
-			if (!filter_var($class, FILTER_VALIDATE_INT) && is_string($class)) {
-				// Assume Zend_DB
-				$slug_mckey = sprintf("railpage:loco.id;fromslug=%s;v2", $class);
-				
-				if ($mcresult = $this->Memcached->fetch($slug_mckey)) {
-					$class = $mcresult;
-				} else {
-					$class = $this->db->fetchOne("SELECT id FROM loco_class WHERE slug = ?", $class); 
-					
-					$this->Memcached->save($slug_mckey, $class, strtotime("+1 year"));
-				}
-			}
-			
-			// We are searching by loco number - we need to find it first
-			if (!$loco_id = $this->Memcached->fetch(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class, $number))) {
-				
-				$params = array(
-					$class,
-					$number
-				);
-				
-				$query = "SELECT loco_id FROM loco_unit WHERE class_id = ? AND loco_num = ?";
-				
-				if (preg_match("/_/", $number)) {
-					$params[1] = str_replace("_", " ", $number);
-				} else {
-					if (strlen($number) === 5 && preg_match("/([a-zA-Z]{1})([0-9]{4})/", $number)) {
-						$params[] = sprintf("%s %s", substr($number, 0, 2), substr($number, 2, 3));
-						$query = "SELECT loco_id FROM loco_unit WHERE class_id = ? AND (loco_num = ? OR loco_num = ?)";
-					}
-				}
-				
-				$loco_id = $this->db->fetchOne($query, $params);
-				
-				$this->Memcached->save(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class, $number), $loco_id, strtotime("+1 year"));
-			}
-			
-			if (filter_var($loco_id, FILTER_VALIDATE_INT)) {
-				$this->id = filter_var($loco_id, FILTER_VALIDATE_INT);
-			}
-			
-			Debug::logEvent(__METHOD__, $timer); 
 		}
 		
 		/**
@@ -447,7 +408,19 @@
 				$this->$int = filter_var($this->$int, FILTER_VALIDATE_INT); 
 			}
 			
-			$this->Class = new LocoClass($this->class_id);
+			/**
+			 * Attempt to load the locomotive from the registry, and fall back to a new instance
+			 */
+			
+			$Registry = Registry::getInstance(); 
+			$regkey = sprintf(LocoClass::REGISTRY_KEY, $this->class_id); 
+			
+			$this->Class = Factory::CreateLocoClass($this->class_id); 
+			
+			/**
+			 * Alias the class
+			 */
+			
 			$this->class = &$this->Class;
 			$this->flickr_tag = trim(str_replace(" ", "", $this->Class->flickr_tag . "-" . $this->number));
 			
@@ -495,7 +468,7 @@
 			
 			$timer = Debug::getTimer();
 			
-			$this->mckey = sprintf("railpage:locos.loco_id=%d", $this->id);
+			$this->mckey = sprintf(self::CACHE_KEY, $this->id);
 			
 			$row = $this->populate(); 
 				
@@ -525,6 +498,12 @@
 			}
 			
 			/**
+			 * Do we need to update the database and Memcached records?
+			 */
+			
+			$doUpdate = false;
+			
+			/**
 			 * Get all owners of this locomotive
 			 */
 			
@@ -543,7 +522,8 @@
 				if (isset($this->owners[0]['organisation_id']) && isset($this->owners[0]['organisation_name'])) {
 					$this->owner_id = $this->owners[0]['organisation_id']; 
 					$this->owner 	= $this->owners[0]['organisation_name']; 
-					#$this->commit(); 
+					Debug::LogEvent(__METHOD__ . "() : Latest owner ID requires updating");
+					$doUpdate = true;
 				} else {
 					$this->owner_id = 0;
 					$this->owner 	= "Unknown";
@@ -571,8 +551,9 @@
 				
 				if (isset($this->operators[0]['organisation_id']) && isset($this->operators[0]['organisation_name'])) {
 					$this->operator_id 	= $this->operators[0]['organisation_id']; 
-					$this->operator 	= $this->operators[0]['organisation_name'];  
-					#$this->commit(); 
+					$this->operator 	= $this->operators[0]['organisation_name']; 
+					Debug::LogEvent(__METHOD__ . "() : Latest operator ID requires updating"); 
+					$doUpdate = true;
 				} else {
 					$this->operator_id 	= 0;
 					$this->operator 	= "Unknown";
@@ -618,7 +599,7 @@
 				$this->owner = $owners[0]['organisation_name']; 
 				$this->owner_id = $owners[0]['operator_id']; 
 				
-				$this->commit(); 
+				$doUpdate = true;
 			}
 			
 			if (count($operators) && intval(trim($this->operator_id)) != intval(trim($operators[0]['operator_id']))) {
@@ -628,7 +609,7 @@
 				$this->operator = $operators[0]['organisation_name']; 
 				$this->operator_id = $operators[0]['operator_id']; 
 				
-				$this->commit();
+				$doUpdate = true;
 			}
 			
 			/**
@@ -637,6 +618,14 @@
 			
 			$this->StatsD->target->view = sprintf("%s.%d.view", $this->namespace, $this->id);
 			$this->StatsD->target->edit = sprintf("%s.%d.view", $this->namespace, $this->id);
+			
+			/**
+			 * Update the database and Memcached records if required
+			 */
+			
+			if ($doUpdate) {
+				$this->commit(); 
+			}
 			
 			Debug::logEvent(__METHOD__, $timer); 
 		}
@@ -722,7 +711,9 @@
 				
 				$verb = "Insert";
 			} else {
-				$this->deleteCache($this->mckey);
+				$this->Memcached->delete($this->mckey);
+				$this->Redis->delete($this->mckey); 
+				
 				$where = array(
 					"loco_id = ?" => $this->id
 				);
@@ -731,6 +722,11 @@
 				
 				$rs = $this->db->update("loco_unit", $data, $where); 
 			}
+			
+			// Update the registry
+			$Registry = Registry::getInstance(); 
+			$regkey = sprintf(self::REGISTRY_KEY, $this->id); 
+			$Registry->remove($regkey)->set($regkey, $this); 
 			
 			Debug::logEvent("Zend_DB: commit loco ID " . $this->id, $timer); 
 			
@@ -799,7 +795,7 @@
 			foreach ($this->db->fetchAll($query, $this->id) as $row) {
 				if (!empty($row['user_avatar'])) {
 					try {
-						$User = new User($row['user_id']);
+						$User = UserFactory::CreateUser($row['user_id']);
 						
 						$row['user_avatar'] = AvatarUtility::Format($row['user_avatar'], 50, 50);
 						$row['user_url'] = $User->url;
@@ -919,7 +915,7 @@
 			
 			$Correction = new Correction;
 			$Correction->text = $correction_text;
-			$Correction->setUser(new User($user_id)); 
+			$Correction->setUser(UserFactory::CreateUser($user_id)); 
 			$Correction->setObject($this);
 			$Correction->commit(); 
 			
@@ -1068,6 +1064,10 @@
 		 */
 		
 		public function getLiveries($f = false) {
+			
+			return Utility\LocomotiveUtility::getLiveriesForLocomotive($this->id); 
+			
+			/*
 			if (is_object($f)) {
 				$mckey = "railpage:locos.liveries.loco_id=" . $this->id; 
 				
@@ -1103,27 +1103,8 @@
 				} else {
 					return false;
 				}
-			} else {
-				$query = "SELECT l.livery_id AS id, l.livery AS name, l.photo_id FROM loco_livery AS l LEFT JOIN loco_unit_livery AS ul ON l.livery_id = ul.livery_id WHERE ul.ignored = ? AND ul.loco_id = ? GROUP BY l.livery_id ORDER BY l.livery";
-				$return = array();
-				
-				foreach ($this->db->fetchAll($query, array("0", $this->id)) as $row) {
-					$Livery = new Livery($row['id']);
-					
-					$row = array(
-						"id" => $Livery->id,
-						"name" => $Livery->name,
-						"photo" => array(
-							"id" => $Livery->photo_id,
-							"provider" => "flickr"
-						)
-					);
-					
-					$return[] = $row;
-				}
-				
-				return $return;
 			}
+			*/
 		}
 		
 		/**
@@ -1639,7 +1620,7 @@
 				"gauge" => $this->gauge,
 				"status" => array(
 					"id" => $this->status_id,
-					"text" => $this->status
+					"text" => strval(new Status($this->status_id))
 				),
 				"manufacturer" => array(
 					"id" => $this->manufacturer_id,
