@@ -17,9 +17,9 @@
 			
 		}
 		
-		public function test_break_add() {
+		public function test_add_again() {
 			
-			$this->setExpectedException("Exception", sprintf("There is already an entry for %s in the registry", self::KEY));
+			//$this->setExpectedException("Exception", sprintf("There is already an entry for %s in the registry", self::KEY));
 			
 			$Registry = Registry::getInstance(); 
 			$Registry->set(self::KEY, self::VAL); 

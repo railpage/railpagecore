@@ -47,14 +47,17 @@
 		 * @since Version 3.9.1
 		 * @param string $key Name of the object to set
 		 * @param mixed $value The object to set
+		 * @return \Railpage\Registry;
 		 */
 		
 		public function set($key, $value) {
-			if (isset($this->registry[strtolower($key)])) {
-				throw new Exception(sprintf("There is already an entry for %s in the registry", $key));
-			}
+			#if (isset($this->registry[strtolower($key)])) {
+			#	throw new Exception(sprintf("There is already an entry for %s in the registry", $key));
+			#}
 			
 			$this->registry[strtolower($key)] = $value;
+			
+			return $this;
 		}
 		
 		/**
@@ -76,13 +79,15 @@
 		 * Remove an object from the registry
 		 * @since Version 3.9.1
 		 * @param string $key Name of the object to remove
-		 * @return mixed
+		 * @return \Railpage\Registry;
 		 */
 		
 		public function remove($key) {
 			if (isset($this->registry[strtolower($key)])) {
 				unset($this->registry[strtolower($key)]);
 			}
+			
+			return $this;
 		}
 		
 		/**
