@@ -23,6 +23,7 @@
 	use Railpage\Forums\Forums;
 	use Railpage\Forums\Index;
 	use Railpage\Debug;
+	use Railpage\Registry;
 	
 	/**
 	 * User class
@@ -32,6 +33,14 @@
 	 */
 	
 	class User extends Base {
+		
+		/**
+		 * Registry cache key
+		 * @since Version 3.9.1
+		 * @const string REGISTRY_KEY
+		 */
+		
+		const REGISTRY_KEY = "railpage.users.user=%d";
 		
 		/**
 		 * Status: active
@@ -1379,6 +1388,11 @@
 				$this->createUrls();
 			}
 			
+			// Update the registry
+			$Registry = Registry::getInstance(); 
+			$regkey = sprintf(self::REGISTRY_KEY, $this->id); 
+			$Registry->remove($regkey)->set($regkey, $this); 
+			
 			return true;
 		}
 		
@@ -1709,7 +1723,7 @@
 			
 			$data = array(
 				"user_id" => $this->id,
-				"autologin_token" => get_random_string("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=<>[]{}|~", 16),
+				"autologin_token" => get_random_string("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", 16),
 				"autologin_expire" => $cookie_expire,
 				"autologin_ip" => $client_addr,
 				"autologin_hostname" => filter_input(INPUT_SERVER, "REMOTE_HOST", FILTER_SANITIZE_STRING),
@@ -1749,6 +1763,8 @@
 				return false;
 			} else {
 				$cookie = explode(":", base64_decode(filter_input(INPUT_COOKIE, "rp_autologin"))); 
+				
+				#printArray($cookie);die;
 				
 				if (count($cookie) < 2) {
 					return false;
