@@ -9,7 +9,9 @@
 	namespace Railpage\Locations;
 	
 	use Railpage\Place;
+	use Railpage\PlaceUtility;
 	use Exception;
+	use InvalidArgumentException;
 	use DateTime;
 	use Railpage\Images\Images;
 	use Railpage\Images\Image;
@@ -258,6 +260,14 @@
 		public $Region;
 		
 		/**
+		 * Geoplace ID
+		 * @since Version 3.9.1
+		 * @var int $geoplace_id
+		 */
+		
+		private $geoplace_id;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.0.1
 		 * @version 3.7.5
@@ -321,6 +331,7 @@
 			$this->directions_pt	= $row['directions_pt'];
 			$this->directions_driving	= $row['directions_driving'];
 			$this->directions_parking	= $row['directions_parking'];
+			$this->geoplace_id = isset($row['geoplace_id']) ? $row['geoplace_id'] : 0;
 		
 			/**
 			 * If the URL slug is empty, let's create one now
@@ -341,6 +352,11 @@
 			}
 			
 			$this->url = new Url(sprintf("%s/%s", $this->makeRegionPermalink(), $this->slug));
+			
+			if ($this->geoplace_id == 0) {
+				$this->updateGeoplace();
+			}
+			
 		}
 		
 		/**
@@ -440,6 +456,18 @@
 				return;
 			}
 			
+			$woe = PlaceUtility::LatLonWoELookup($this->lat, $this->lon);
+			$woe = PlaceUtility::formatWoE($woe);
+			
+			$this->country = $woe['country_code'];
+			$this->region = $woe['region_code'];
+			$this->locality = $woe['neighbourhood'];
+			$this->neighbourhood = null; // $this->neighbourhood is ignored
+			
+			return;
+			
+			/*
+			
 			// Fetch geodata and populate the vars
 			//$url	= "http://maps.google.com/maps/geo?q=".$this->lat.",".$this->lon."&output=json&sensor=false";
 			$url = "http://maps.googleapis.com/maps/api/geocode/json?latlng=" . $this->lat . "," . $this->lon . "&sensor=false";
@@ -501,6 +529,7 @@
 			}
 			
 			return;
+			*/
 			
 		}
 		
@@ -518,7 +547,7 @@
 			 */
 			
 			if (empty($this->region) || empty($this->country)) {
-				$Place = new Place($this->lat, $this->lon); 
+				$Place = Place::Factory($this->lat, $this->lon); 
 				
 				if (!empty($Place->Country->code)) {
 					$this->country = $Place->Country->code;
@@ -604,7 +633,32 @@
 				$this->id = $this->db->lastInsertId();
 				
 				$this->Memcached->delete("railpage:locations.newest");
+				$this->mckey = sprintf("railpage:locations.location=%d", $this->id); 
 			}
+			
+			$this->updateGeoplace(); 
+		}
+		
+		/**
+		 * Update the geoplace linked to this location
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		 
+		private function updateGeoplace() {
+			
+			$id = PlaceUtility::findGeoPlaceID($this->lat, $this->lon); 
+			
+			if ($id != $this->geoplace_id) {
+				$data = [ "geoplace" => $id ];
+				$where = [ "id = ?" => $this->id ];
+				
+				$this->db->update("location", $data, $where); 
+				$this->Memcached->delete($this->mckey); 
+			}
+			
+			return;
+			
 		}
 		
 		/**
@@ -618,8 +672,19 @@
 		 */
 		 
 		public function getPhotosForSite($num = 10, $start = 0) {
+			
+			$Place = new Place($this->lat, $this->lon); 
+			
+			return $Place->getPhotosFromSphinx($num); 
+			
 			if (!$this->id || !$this->db) {
 				return false;
+			}
+			
+			$cachekey = sprintf("%s;photos;num=%s;start=%s", $this->mckey, intval($num), intval($start)); 
+			
+			if ($result = $this->Memcached->fetch($cachekey)) {
+				return $result;
 			}
 			
 			$return = array(); 
@@ -707,6 +772,8 @@
 				$return[$key] = $data;
 			}
 			
+			$this->Memcached->save($cachekey, $return, strtotime("+1 day")); 
+			
 			return $return;
 		}
 		
@@ -719,8 +786,12 @@
 		
 		public function doesUserLike($user_id = false) {
 			
-			if (!$user_id) {
-				return false;
+			if ($user_id instanceof User) {
+				$user_id = $user_id->id;
+			}
+			
+			if (!filter_var($user_id, FILTER_VALIDATE_INT)) { 
+				throw new InvalidArgumentException("No user ID provided"); 
 			}
 			
 			$query = "SELECT * FROM locations_like WHERE location_id = ? AND user_id = ?";
@@ -730,6 +801,7 @@
 			}
 			
 			return false;
+			
 		}
 		
 		/**
@@ -739,8 +811,17 @@
 		 * @return boolean
 		 */
 		 
-		public function recommend($user_id) {
-			if (!$this->id || !$user_id || !$this->db || $this->doesUserLike($user_id)) {
+		public function recommend($user_id = false) {
+			
+			if ($user_id instanceof User) {
+				$user_id = $user_id->id;
+			}
+			
+			if (!filter_var($user_id, FILTER_VALIDATE_INT)) { 
+				throw new InvalidArgumentException("No user ID provided"); 
+			}
+			
+			if ($this->doesUserLike($user_id)) {
 				return false;
 			}
 			
@@ -751,6 +832,7 @@
 			
 			$this->db->insert("locations_like", $data);
 			return true;
+			
 		}
 		
 		/**

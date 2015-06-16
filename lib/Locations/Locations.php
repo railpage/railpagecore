@@ -11,6 +11,7 @@
 	use Exception;
 	use Railpage\AppCore;
 	use Railpage\Module;
+	use Railpage\Place;
 	use Railpage\Users\User;
 	
 	/**
@@ -62,7 +63,7 @@
 			
 			$mckey = "railpage:locations.countries";
 			
-			if ($return = getMemcacheObject($mckey)) {
+			if ($return = $this->Memcached->fetch($mckey)) {
 				// Do nothing
 			} else {
 				$return = array(); 
@@ -71,7 +72,7 @@
 					$return[] = $row['country']; 
 				} 
 					
-				setMemcacheObject($mckey, $return, strtotime("+1 day"));
+				$this->Memcached->save($mckey, $return, strtotime("+1 day"));
 			}
 			
 			if (RP_DEBUG) {
@@ -100,7 +101,7 @@
 			
 			#deleteMemcacheObject($mckey);
 			
-			if ($return = getMemcacheObject($mckey)) {
+			if ($return = $this->Memcached->fetch($mckey)) {
 				// Do nothing
 			} else {
 				$return = array(); 
@@ -108,7 +109,7 @@
 				if ($country) {
 					foreach ($this->db->fetchAll("SELECT DISTINCT region FROM location WHERE country = ? AND active = 1 ORDER BY region ASC", $country) as $row) {
 								
-						$woe = getWOEData($country);
+						$woe = Place::getWOEData($country);
 						if (isset($woe['places']['place'][0])) {
 							$return[$country]['woe'] = $woe['places']['place'][0];
 						}
@@ -119,7 +120,7 @@
 							"count" => $this->db->fetchOne("SELECT COUNT(id) FROM location WHERE country = ? AND region = ?", array($country, $row['region'])),
 						);
 						
-						$woe = getWOEData($row['region'] . "," . $country); 
+						$woe = Place::getWOEData($row['region'] . "," . $country); 
 						if (isset($woe['places']['place'][0])) {
 							$datarow['woe'] = $woe['places']['place'][0];
 						}
@@ -130,7 +131,7 @@
 					foreach ($this->db->fetchAll("SELECT DISTINCT region, country FROM location WHERE country IN (SELECT DISTINCT country FROM location ORDER BY country) AND active = 1 ORDER BY region desc") as $row) {
 						if (!empty($row['country'])) {
 								
-							$woe = getWOEData(strtoupper($row['region']));
+							$woe = Place::getWOEData(strtoupper($row['region']));
 							if (isset($woe['places']['place'][0])) {
 								$return[$row['country']]['woe'] = $woe['places']['place'][0];
 							}
@@ -141,7 +142,7 @@
 				}
 				
 				// Cache it
-				setMemcacheObject($mckey, $return, strtotime("+1 day"));
+				$this->Memcached->save($mckey, $return, strtotime("+1 day"));
 			}
 			
 			if (RP_DEBUG) {
@@ -176,7 +177,7 @@
 			} else {
 				$return = $this->db->fetchAll("SELECT * FROM location WHERE country = ? AND region = ? AND active = 1 ORDER BY locality, neighbourhood", array($country, $region));
 				
-				setMemcacheObject($mckey, $return, strtotime("+1 hour"));
+				$this->Memcached->save($mckey, $return, strtotime("+1 hour"));
 				
 				return $return; 
 			}
@@ -483,7 +484,7 @@
 		public function makePermalink($id = false) {
 			$mckey = $id ? "railpage:locations.permalink.id=" . $id : "railpage:locations.permalink.id=" . $this->id;
 			
-			if ($string = getMemcacheObject($mckey)) {
+			if ($string = $this->Memcached->fetch($mckey)) {
 				return $string; 
 			} else {
 				if ((!isset($this->country) || !isset($this->region) || !isset($this->slug)) && $id) {
@@ -505,7 +506,7 @@
 				#$string = "/locations/" . strtolower(str_replace(" ", "-", $data['country'])) . "/" . strtolower(str_replace(" ", "-", $data['region'])) . "/" . $data['slug'];
 				$string = strtolower(sprintf("%s/%s/%s/%s", $this->Module->url, str_replace(" ", "-", $data['country']), str_replace(" ", "-", $data['region']), $data['slug']));
 				
-				setMemcacheObject($mckey, $string, strtotime("+1 year"));
+				$this->Memcached->save($mckey, $string, strtotime("+1 year"));
 			}
 			
 			return $string;

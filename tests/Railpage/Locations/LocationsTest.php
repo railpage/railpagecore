@@ -88,6 +88,68 @@
 		 * @depends test_addUser
 		 */
 		
+		public function test_like($Location, $User) {
+			
+			$this->assertFalse($Location->doesUserLike($User->id));
+			$this->assertFalse($Location->doesUserLike($User));
+			
+			$this->assertTrue($Location->recommend($User->id)); 
+			
+			$this->assertTrue($Location->doesUserLike($User->id));
+			
+			$this->assertFalse($Location->recommend($User)); 
+			
+		}
+		
+		/**
+		 * @depends test_duplicate
+		 * @depends test_addUser
+		 */
+		
+		public function test_like_break_lookup($Location, $User) {
+			
+			$this->setExpectedException("InvalidArgumentException", "No user ID provided"); 
+			$Location->doesUserLike(); 
+			
+		}
+		
+		/**
+		 * @depends test_duplicate
+		 * @depends test_addUser
+		 */
+		
+		public function test_like_break_recommend($Location, $User) {
+			
+			$this->setExpectedException("InvalidArgumentException", "No user ID provided"); 
+			$Location->recommend(); 
+			
+		}
+		
+		/**
+		 * @depends test_duplicate
+		 */
+		
+		public function test_getArray($Location) {
+			
+			$this->assertTrue(is_array($Location->getArray()));
+			
+		}
+		
+		/**
+		 * @depends test_duplicate
+		 */
+		
+		public function test_getDates($Location) {
+			
+			$Location->getDates();
+			
+		}
+		
+		/**
+		 * @depends test_duplicate
+		 * @depends test_addUser
+		 */
+		
 		public function test_addCorrection($Location, $User) {
 			
 			$Correction = new Correction;
@@ -180,6 +242,16 @@
 			
 			$Correction = new Correction($Correction->id);
 			
+		}
+		
+		/**
+		 * @depends test_duplicate
+		 * @depends test_addUser
+		 * @depends test_addCorrection
+		 */
+		
+		public function test_getContributors($Location, $User, $Correction) {
+			$Location->getContributors(); 
 		}
 		
 		/**
@@ -284,15 +356,64 @@
 			$Location = new Location($id); 
 			$Location = clone $Location;
 			$Location->id = NULL; 
+			$Location->desc = "asdfasdfaf";
 			$Location->commit();
 			$Location->reject(); 
 			
-			$this->setExpectedException("Exception", "Cannot validate location - no description specified"); 
+			$this->setExpectedException("Exception", "Cannot reject location - no location created yet"); 
 			
 			$Location = new Location($id); 
 			$Location = clone $Location;
 			$Location->id = NULL; 
 			$Location->reject();
+			
+		}
+		
+		/**
+		 * @depends test_duplicate
+		 */
+		
+		public function test_getPhotos($Location) {
+			
+			$Location->getPhotosForSite(); 
+			
+		}
+		
+		/**
+		 * @depends test_duplicate
+		 */
+		
+		public function test_newCountry($Location) {
+			
+			$Country = clone $Location->Region->Country;
+			
+			$Country->getRegions(); 
+			$Country->getLocations(); 
+			
+			$Region = clone $Location->Region;
+			
+			$Region->getLocations(); 
+			
+		}
+		
+		public function test_break_region() {
+			
+			$this->setExpectedException("InvalidArgumentException", "No country was specified"); 
+			
+			$Region = new Region;
+			
+		}
+		
+		public function test_locations() {
+			
+			$Locations = new Locations;
+			$Locations->getCountries(); 
+			$Locations->getRegions();
+			$Locations->getLocations(); 
+			$Locations->getPending(); 
+			$Locations->getDateTypes(); 
+			$Locations->getRandomLocation(); 
+			$Locations->getOpenCorrections();
 			
 		}
 		

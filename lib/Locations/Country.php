@@ -149,7 +149,8 @@
 				 * Get WOE data for this region
 				 */
 				
-				$woe = getWOEData($row['name'] . "," . $this->code); 
+				#$woe = getWOEData($row['name'] . "," . $this->code); 
+				$woe = Place::getWOEData($row['name'] . "," . $this->code); 
 				$shortname = $row['name'];
 				
 				if (isset($woe['places']['place'][0]['name'])) {

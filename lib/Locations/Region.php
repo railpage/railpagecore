@@ -89,7 +89,7 @@
 			Debug::RecordInstance(); 
 			$timer = Debug::GetTimer(); 
 			
-			if (is_null(filter_var($country, FILTER_SANITIZE_STRING))) {
+			if (is_null($country)) {
 				throw new InvalidArgumentException("No country was specified"); 
 			}
 			
