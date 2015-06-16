@@ -151,6 +151,14 @@
 		public $url;
 		
 		/**
+		 * Memcached key
+		 * @since Version 3.9.1
+		 * @var string $mckey
+		 */
+		
+		public $mckey;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.2
 		 * @version 3.7.5
@@ -245,9 +253,9 @@
 		 * @return boolean
 		 */
 		
-		public function verify() {
+		private function validate() {
 			if (empty($this->slug)) {
-				$this->slug = "";
+				$this->slug = parent::createSlug();
 			}
 			
 			if (empty($this->name)) {
@@ -281,9 +289,7 @@
 		 */
 		
 		public function commit() {
-			if (!$this->verify()) {
-				return false;
-			}
+			$this->validate();
 			
 			$data = array(
 				"organisation_name"			=> $this->name,

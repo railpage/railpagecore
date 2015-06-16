@@ -26,12 +26,13 @@
 		 */
 		
 		public function __construct($slug = false) {
-			global $ZendDB; 
+			
+			$Database = (new AppCore)->getDatabaseConnection(); 
 			
 			if ($slug) {
 				$query = "SELECT organisation_id FROM organisation WHERE organisation_slug = ?";
 				
-				if ($id = $ZendDB->fetchOne($query, $slug)) {
+				if ($id = $Database->fetchOne($query, $slug)) {
 					parent::__construct($id); 
 				}
 			}

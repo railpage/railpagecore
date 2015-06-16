@@ -11,7 +11,11 @@
 	namespace Railpage\Organisations;
 	use Railpage\AppCore;
 	use Railpage\Module;
+	use Railpage\Url;
+	use Railpage\Debug;
+	use Railpage\ContentUtility;
 	use Exception;
+	use InvalidArgumentException;
 	use DateTime;
 	
 	/**
@@ -43,36 +47,19 @@
 		 */
 		
 		public function search($name) {
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT organisation_id, organisation_name, organisation_desc FROM organisation WHERE organisation_name LIKE '%".$this->db->real_escape_string($name)."%' ORDER BY organisation_name DESC";
-				
-				if ($rs = $this->db->query($query)) {
-					$return = array(); 
-					
-					while ($row = $rs->fetch_assoc()) {
-						$row['organisation_desc_short'] = substr($row['organisation_desc'], 0, 100)."...";
-						$return[$row['organisation_id']] = $row; 
-					} 
-					
-					return $return; 
-				} else {
-					throw new \Exception($this->db->error."\n".$query); 
-				}
-			} else {
-				$query = "SELECT organisation_id, organisation_name, organisation_desc FROM organisation WHERE organisation_name LIKE ? ORDER BY organisation_name DESC";
-				
-				$name = "%" . $name . "%";
-				
-				$result = $this->db->fetchAll($query, $name);
-				$return = array(); 
-				
-				foreach ($result as $row) {
-					$row['organisation_desc_short'] = substr($row['organisation_desc'], 0, 100)."...";
-					$return[$row['organisation_id']] = $row; 
-				}
-				
-				return $return;
+			$query = "SELECT organisation_id, organisation_name, organisation_desc FROM organisation WHERE organisation_name LIKE ? ORDER BY organisation_name DESC";
+			
+			$name = "%" . $name . "%";
+			
+			$result = $this->db->fetchAll($query, $name);
+			$return = array(); 
+			
+			foreach ($result as $row) {
+				$row['organisation_desc_short'] = substr($row['organisation_desc'], 0, 100)."...";
+				$return[$row['organisation_id']] = $row; 
 			}
+			
+			return $return;
 		}
 		
 		/** 
@@ -94,37 +81,20 @@
 			
 			$query = "SELECT o.* FROM organisation AS o " . $starter  . " ORDER BY o.organisation_name ASC";
 			
-			if ($this->db instanceof \sql_db) {
-				$return = array();
+			$return = array();
+			
+			if ($result = $this->db->fetchAll($query)) {
+				$return['stat'] = "ok";
 				
-				if ($rs = $this->db->query($query)) {
-					$return['stat'] = "ok";
-					while ($row = $rs->fetch_assoc()) {
-						$row['organisation_url'] = "/orgs/" . $row['organisation_slug'];
-						$return['orgs'][$row['organisation_id']] = $row;
-					}
-				} else {
-					$return['stat'] = "error";
-					$return['error'] = $this->db->error;
+				foreach ($result as $row) {
+					$row['organisation_url'] = "/orgs/" . $row['organisation_slug'];
+					$return['orgs'][$row['organisation_id']] = $row;
 				}
-				
-				return $return;
 			} else {
-				$return = array();
-				
-				if ($result = $this->db->fetchAll($query)) {
-					$return['stat'] = "ok";
-					
-					foreach ($result as $row) {
-						$row['organisation_url'] = "/orgs/" . $row['organisation_slug'];
-						$return['orgs'][$row['organisation_id']] = $row;
-					}
-				} else {
-					$return['stat'] = "error";
-				}
-				
-				return $return;
+				$return['stat'] = "error";
 			}
+			
+			return $return;
 		}
 		
 		/**
@@ -145,23 +115,8 @@
 		 */
 		
 		public function createSlug($id = false, $name = false) {
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
-				
-			// Assume ZendDB
-			$find = array(
-				"(",
-				")",
-				"-"
-			);
 			
-			$replace = array(); 
-			
-			foreach ($find as $item) {
-				$replace[] = "";
-			}
+			$timer = Debug::GetTimer(); 
 			
 			if (filter_var($id, FILTER_VALIDATE_INT) && !$name) {
 				$name = $this->db->fetchOne("SELECT organisation_name FROM organisation WHERE organisation_id = ?", $id); 
@@ -174,16 +129,7 @@
 				return false;
 			}
 			
-			$name = str_replace($find, $replace, $name);
-			$proposal = create_slug($name);
-			
-			/**
-			 * Trim it if the slug is too long
-			 */
-			
-			if (strlen($proposal) >= 256) {
-				$proposal = substr($poposal, 0, 200); 
-			}
+			$proposal = ContentUtility::generateUrlSlug($name, 200);
 			
 			/**
 			 * Check that we haven't used this slug already
@@ -195,7 +141,7 @@
 				$proposal .= count($result);
 			}
 			
-			if (isset($this->slug)) {
+			if (isset($this->slug) || empty($this->slug)) {
 				$this->slug = $proposal;
 			}
 			
@@ -213,13 +159,7 @@
 			
 			$rs = $this->db->update("organisation", $data, $where); 
 			
-			if (RP_DEBUG) {
-				if ($rs === false) {
-					$site_debug[] = "Zend_DB: FAILED create url slug for organisation ID " . $id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-				} else {
-					$site_debug[] = "Zend_DB: SUCCESS create url slug for organisation ID " . $id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-				}
-			}
+			Debug::LogEvent(__METHOD__, $timer); 
 			
 			/**
 			 * Return it
