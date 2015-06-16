@@ -15,7 +15,8 @@
 	use Railpage\Locations\Location;
 	use Railpage\Debug;
 	use Railpage\GTFS\GTFS;
-	
+	use Railpage\Registry;
+	use Railpage\Images\Images;
 	use Exception;
 	use stdClass;
 	use flickr_railpage;
@@ -85,7 +86,7 @@
 		 * @param float $radius
 		 */
 		
-		public function __construct($lat, $lon, $radius = 0.1) {
+		public function __construct($lat = false, $lon = false, $radius = 0.1) {
 			parent::__construct(); 
 			
 			$timer = Debug::getTimer(); 
@@ -93,12 +94,14 @@
 			
 			$this->GuzzleClient = new Client;
 			
-			$this->lat = $lat;
-			$this->lon = $lon;
-			$this->radius = $radius;
-			$this->url = sprintf("/place?lat=%s&lon=%s", $this->lat, $this->lon);
-			
-			$this->load(); 
+			if (filter_var($lat, FILTER_VALIDATE_FLOAT) && filter_var($lon, FILTER_VALIDATE_FLOAT)) {
+				$this->lat = $lat;
+				$this->lon = $lon;
+				$this->radius = $radius;
+				$this->url = sprintf("/place?lat=%s&lon=%s", $this->lat, $this->lon);
+				
+				$this->load(); 
+			}
 			
 			Debug::logEvent(__METHOD__, $timer); 
 		}
@@ -169,6 +172,60 @@
 			$Locations = new Locations;
 			
 			return $Locations->nearby($this->lat, $this->lon, $this->radius);
+		}
+		
+		/**
+		 * Get photos from the Sphinx search API within or adjacent to this place
+		 * @since Version 3.9.1
+		 * @param int $num
+		 * @return array
+		 */
+		
+		public function getPhotosFromSphinx($num = 10) {
+			
+			$Sphinx = AppCore::getSphinxAPI(); 
+			
+			$Sphinx->SetGeoAnchor("lat", "lon", deg2rad($this->lat), deg2rad($this->lon)); 
+			$Sphinx->SetFilterRange("@geodist", 0, 1000); // 1km radius
+			$Sphinx->SetSortMode(SPH_SORT_EXTENDED, '@geodist ASC');
+			
+			$result = $Sphinx->query("", "idx_images"); 
+			
+			$return = array(
+				"stat" => "ok"
+			);
+			
+			if (!$result) {
+				$return['stat'] = "err";
+				$return['message'] = $Sphinx->getLastError();
+				return $return;
+			}
+			
+			if (empty($result['matches'])) {
+				return $return;
+			}
+			
+			foreach ($result['matches'] as $row) {
+				$meta = json_decode($row['attrs']['meta'], true); 
+				
+				$return['photos'][] = array(
+					"id" => $row['attrs']['image_id'],
+					"provider" => $row['attrs']['provider'],
+					"photo_id" => $row['attrs']['photo_id'],
+					"url" => $row['attrs']['url'],
+					"distance" => round($row['attrs']['@geodist']),
+					"lat" => rad2deg($row['attrs']['lat']),
+					"lon" => rad2deg($row['attrs']['lon']),
+					"title" => empty(trim($row['attrs']['title'])) ? "Untitled" : $row['attrs']['title'],
+					"description" => $row['attrs']['description'],
+					"sizes" => Images::normaliseSizes($meta['sizes'])
+				);
+			}
+			
+			$return['photos'] = array_slice($return['photos'], 0, $num);
+			
+			return $return;
+			
 		}
 		
 		/**
@@ -425,10 +482,11 @@
 		 * Ported from [master]/includes/functions.php
 		 * @since Version 3.8.7
 		 * @param string $lookup
+		 * @param array $types Yahoo Woe types to lookup
 		 * @return array
 		 */
 		
-		public static function getWOEData($lookup = false) {
+		public static function getWOEData($lookup = false, $types = false) {
 			if ($lookup === false) {
 				return false;
 			}
@@ -437,10 +495,19 @@
 			
 			$mckey = "railpage:woe=" . $lookup;
 			
-			$Redis = AppCore::getRedis(); 
+			if ($types) {
+				$mckey .= ";types=" . implode(",", $types); 
+			}
+			
+			$Redis = AppCore::getRedis();
+			
+			#$nocache = true; 
 			
 			if (!$return = $Redis->fetch($mckey)) {
-				global $RailpageConfig;
+				
+				$Config = AppCore::getConfig(); 
+				
+				$latlng = $lookup;
 				
 				if (preg_match("@[a-zA-Z]+@", $lookup) || strpos($lookup, ",")) {
 					$lookup = sprintf("places.q('%s')", $lookup);
@@ -448,7 +515,11 @@
 					$lookup = sprintf("place/%s", $lookup);
 				}
 				
-				$url = sprintf("http://where.yahooapis.com/v1/%s?lang=en&appid=%s&format=json", $lookup, $RailpageConfig->Yahoo->ApplicationID);
+				if ($types === false) {
+					$url = sprintf("http://where.yahooapis.com/v1/%s?lang=en&appid=%s&format=json", $lookup, $Config->Yahoo->ApplicationID);
+				} else {
+					$url = sprintf("http://where.yahooapis.com/v1/places\$and(.q('%s'),.type(%s))?lang=en&appid=%s&format=json", $latlng, implode(",", $types), $Config->Yahoo->ApplicationID);
+				}
 				
 				$GuzzleClient = new Client;
 				$response = $GuzzleClient->get($url);
@@ -488,5 +559,30 @@
 			
 			return $return;
 		}
-
+		
+		/**
+		 * Return an instance of this object from the cache or whateverzz
+		 * @since Version 3.9.1
+		 * @return \Railpage\Place
+		 */
+		
+		public static function Factory($lat = false, $lon = false) {
+			
+			$Memcached = AppCore::getMemcached(); 
+			$Redis = AppCore::getRedis(); 
+			$Registry = Registry::getInstance(); 
+			
+			$regkey = sprintf("railpage.place;lat=%s;lon=%s", $lat, $lon); 
+			
+			try {
+				$Place = $Registry->get($regkey); 
+			} catch (Exception $e) {
+				$Place = new Place($lat, $lon); 
+				
+				$Registry->set($regkey, $Place); 
+			} 
+				
+			return $Place; 
+			
+		}
 	}
