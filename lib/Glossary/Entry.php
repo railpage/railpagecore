@@ -12,6 +12,7 @@
 	use Railpage\Module;
 	use Railpage\Users\User;
 	use Railpage\Url;
+	use Railpage\ContentUtility;
 	use Exception;
 	use DateTime;
 	use stdClass;
@@ -23,9 +24,17 @@
 	class Entry extends AppCore {
 		
 		/**
+		 * The maximum length allowed for the title/short name
+		 * @since Version 3.9.1
+		 * @const int SHORT_MAX_CHARS
+		 */
+		
+		const SHORT_MAX_CHARS = 32;
+		
+		/**
 		 * Status: approved
 		 * @since Version 3.9
-		 * @const STATUS_APPROVED
+		 * @const int STATUS_APPROVED
 		 */
 		
 		const STATUS_APPROVED = 1;
@@ -33,7 +42,7 @@
 		/**
 		 * Status: unapproved / pending
 		 * @since Version 3.9
-		 * @const STATUS_UNAPPROVED
+		 * @const int STATUS_UNAPPROVED
 		 */
 		
 		const STATUS_UNAPPROVED = 0;
@@ -105,16 +114,23 @@
 		/**
 		 * Constructor
 		 * @since Version 3.8.7
-		 * @param int $id
+		 * @param int|string $id
+		 * @param string $type
 		 */
 		
-		public function __construct($id = false) {
+		public function __construct($id = false, $type = false) {
 			parent::__construct();
 			
 			$this->Module = new Module("glossary");
 			
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
 				$this->id = $id;
+			} else {
+				$query = "SELECT id FROM glossary WHERE slug = ? AND type = ?";
+				$this->id = $this->db->fetchOne($query, array($id, $type)); 
+			}
+			
+			if ($this->id = filter_var($this->id, FILTER_VALIDATE_INT)) {
 				$this->mckey = sprintf("%s.entry=%d", $this->Module->namespace, $this->id);
 				
 				$this->populate();
@@ -130,7 +146,7 @@
 		private function populate() {
 				
 			if (!$row = $this->Memcached->fetch($this->mckey)) {
-				$query = "SELECT type, short, full, example, date, author, status FROM glossary WHERE id = ?";
+				$query = "SELECT * FROM glossary WHERE id = ?";
 				
 				$row = $this->db->fetchRow($query, $this->id);
 				
@@ -143,6 +159,7 @@
 				$this->example = $row['example'];
 				$this->Type = new Type($row['type']);
 				$this->status = isset($row['status']) ? $row['status'] : self::STATUS_APPROVED;
+				$this->slug = $row['slug'];
 				
 				if ($row['date'] == "0000-00-00 00:00:00") {
 					$this->Date = new DateTime;
@@ -155,6 +172,37 @@
 				
 				$this->makeURLs(); 
 			}
+			
+			if (empty($this->slug)) {
+				$this->makeSlug(); 
+			}
+		}
+		
+		/**
+		 * Make a URL slug
+		 * @since Version 3.9.1
+		 * @package Railpage
+		 * @author Michael Greenhill
+		 * @return void
+		 */
+		
+		private function makeSlug() {
+			$proposal = ContentUtility::generateUrlSlug($this->name, 20);
+			
+			$query = "SELECT COUNT(id) FROM glossary WHERE slug = ?"; 
+			$num = $this->db->fetchOne($query, $proposal); 
+			
+			if ($num) {
+				$proposal .= $num; 
+			}
+			
+			$this->slug = $proposal; 
+			
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$this->commit(); 
+			}
+			
+			return;
 		}
 		
 		/**
@@ -166,6 +214,11 @@
 		private function makeURLs() {
 			
 			$this->url = new Url(sprintf("%s?mode=entry&id=%d", $this->Module->url, $this->id));
+			
+			if (!empty($this->slug)) {
+				$this->url = new Url(sprintf("%s/%s/%s", $this->Module->url, $this->Type->id, $this->slug)); 
+			}
+			
 			$this->url->edit = sprintf("%s?mode=add&id=%d", $this->Module->url, $this->id);
 			$this->url->publish = sprintf("%s?mode=entry.publish&id=%d", $this->Module->url, $this->id);
 			$this->url->reject = sprintf("%s?mode=entry.reject&id=%d", $this->Module->url, $this->id);
@@ -211,6 +264,14 @@
 				$this->status = self::STATUS_UNAPPROVED;
 			}
 			
+			if (strlen($this->name) > self::SHORT_MAX_CHARS) {
+				throw new Exception(sprintf("The title of this entry is too long: the maximum allowed is %d", self::SHORT_MAX_CHARS));
+			}
+			
+			if (empty($this->slug)) {
+				$this->makeSlug();
+			}
+			
 			/**
 			 * Check if an entry by this title exists elsewhere
 			 */
@@ -250,7 +311,8 @@
 				"example" => $this->example,
 				"date" => $this->Date->format("Y-m-d H:i:s"),
 				"author" => filter_var($this->Author->id, FILTER_VALIDATE_INT),
-				"status" => $this->status
+				"status" => $this->status,
+				"slug" => $this->slug
 			);
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
@@ -301,6 +363,23 @@
 			$this->db->delete("glossary", $where);
 			
 			return true;
+		}
+		
+		/**
+		 * Get this as an associative array
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			return array(
+				"id" => $this->id,
+				"name" => $this->name,
+				"text" => $this->text,
+				"example" => $this->example,
+				"type" => $this->Type->getArray(),
+				"url" => $this->url->getURLs()
+			);
 		}
 	}
 	

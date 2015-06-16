@@ -10,6 +10,7 @@
 	
 	use Railpage\AppCore;
 	use Railpage\Module;
+	use Railpage\Url;
 	use Exception;
 	use DateTime;
 	use stdClass;
@@ -74,6 +75,47 @@
 				yield new Entry($row['id']);
 			}
 			
+		}
+		
+		/**
+		 * Lookup something in the glossary
+		 * @since Version 3.9.1
+		 * @return \Railpage\Glossary\Entry
+		 */
+		
+		public function lookupText($text) {
+			
+			$cachekey = sprintf("railpage:glossary.lookup.text=%s", md5($text)); 
+			
+			if (!$id = $this->Memcached->fetch($cachekey)) {
+				$Sphinx = AppCore::getSphinx(); 
+				
+				$query = $Sphinx->select("*")
+						->from("idx_glossary")
+						->match("short", $text);
+				
+				$matches = $query->execute();
+				
+				if (count($matches) === 0 && strpos($text, "-") !== false) {
+					$query = $Sphinx->select("*")
+							->from("idx_glossary")
+							->match("short", str_replace("-", "", $text));
+					
+					$matches = $query->execute();
+					
+				}
+			
+				if (count($matches) === 1) {
+					$id = $matches[0]['entry_id']; 
+					$this->Memcached->save($cachekey, $id, strtotime("+1 year")); 
+				}
+			}
+			
+			if (isset($id) && filter_var($id, FILTER_VALIDATE_INT)) {
+				return new Entry($id); 
+			}
+			
+			return;
 		}
 	}
 	

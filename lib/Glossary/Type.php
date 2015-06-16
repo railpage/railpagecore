@@ -10,6 +10,7 @@
 	
 	use Railpage\AppCore;
 	use Railpage\Module;
+	use Railpage\Url;
 	use Exception;
 	use DateTime;
 	use stdClass;
@@ -53,7 +54,7 @@
 			$this->Module = new Module("glossary");
 			
 			if ($type) {
-				$this->url = sprintf("%s?mode=type&type=%s", $this->Module->url, $type);
+				$this->url = new Url(sprintf("%s?mode=type&type=%s", $this->Module->url, $type));
 				$this->id = $type;
 				
 				switch ($type) {
@@ -93,6 +94,20 @@
 				
 				yield new Entry($id);
 			}
+		}
+		
+		/**
+		 * Get this an an associative array
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			return array(
+				"id" => $this->id,
+				"name" => $this->name,
+				"url" => $this->url->getURLs()
+			);
 		}
 	}
 	
