@@ -105,7 +105,7 @@
 		
 		private function populate() {
 			
-			$this->mckey = sprintf("railpage.locos.date=%d", $this->id) ;
+			$this->mckey = sprintf("railpage.locos.date=%d", $this->id);
 			$update = false;
 			
 			if (!$row = $this->Redis->fetch($this->mckey)) {
@@ -141,48 +141,7 @@
 			 * Create the rich text entry
 			 */
 			
-			if (count($this->meta)) {
-				
-				foreach ($this->meta as $key => $data) {
-					$this->rich_text .= "\n<strong>" . ucfirst($key) . ": </strong>";
-					
-					switch ($key) {
-						
-						case "livery" : 
-							
-							#$this->rich_text .= "[url=/flickr?tag=railpage:livery=" . $data['id'] . "]" . $data['name'] . "[/url]";
-							$this->rich_text .= "<a data-livery-id=\"" . $data['id'] . "\" data-livery-name=\"" . $data['name'] . "\" href='#' class='rp-modal-livery'>" . $data['name'] . "</a>";
-						
-						break;
-						
-						case "owner" : 
-							
-							$Operator = new Operator($data['id']);
-							
-							$this->rich_text .= "[url=" . $Operator->url_owner . "]" . $Operator->name . "[/url]";
-						
-						break;
-						
-						case "operator" :
-							
-							$Operator = new Operator($data['id']);
-							
-							$this->rich_text .= "[url=" . $Operator->url_operator . "]" . $Operator->name . "[/url]";
-							
-						break;
-						
-						case "position" : 
-						
-							if (!isset($data['title']) || empty($data['title'])) {
-								$data['title'] = "Location";
-							}
-							
-							$this->rich_text .= "<a data-lat=\"" . $data['lat'] . "\" data-lon=\"" . $data['lon'] . "\" data-zoom=\"" . $data['zoom'] . "\" data-title=\"" . $data['title'] . "\" data-toggle='modal' href='#' class='rp-modal-map'>Click to view</a>";
-							
-						break;
-					}
-				}
-			}
+			$this->createRichText(); 
 			
 			/**
 			 * Update this object if required
@@ -191,6 +150,52 @@
 			if ($update) {
 				$this->commit(); 
 			}
+		}
+		
+		/**
+		 * Create the rich text entry
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function createRichText() {
+			
+			if (!is_array($this->meta) || count($this->meta) === 0) {
+				return;
+			}
+				
+			foreach ($this->meta as $key => $data) {
+				$this->rich_text .= "\n<strong>" . ucfirst($key) . ": </strong>";
+				
+				switch ($key) {
+					
+					case "livery" : 
+						#$this->rich_text .= "[url=/flickr?tag=railpage:livery=" . $data['id'] . "]" . $data['name'] . "[/url]";
+						$this->rich_text .= "<a data-livery-id=\"" . $data['id'] . "\" data-livery-name=\"" . $data['name'] . "\" href='#' class='rp-modal-livery'>" . $data['name'] . "</a>";
+						break;
+					
+					case "owner" : 
+						$Operator = new Operator($data['id']);
+						$this->rich_text .= "[url=" . $Operator->url_owner . "]" . $Operator->name . "[/url]";
+						break;
+					
+					case "operator" :
+						$Operator = new Operator($data['id']);
+						$this->rich_text .= "[url=" . $Operator->url_operator . "]" . $Operator->name . "[/url]";
+						break;
+					
+					case "position" : 
+						if (!isset($data['title']) || empty($data['title'])) {
+							$data['title'] = "Location";
+						}
+						
+						$this->rich_text .= "<a data-lat=\"" . $data['lat'] . "\" data-lon=\"" . $data['lon'] . "\" data-zoom=\"" . $data['zoom'] . "\" data-title=\"" . $data['title'] . "\" data-toggle='modal' href='#' class='rp-modal-map'>Click to view</a>";
+						break;
+				}
+			}
+			
+			return;
+
 		}
 		
 		
@@ -222,6 +227,9 @@
 			
 			if (!empty($this->meta)) {
 				foreach ($this->meta as $k => $v) {
+					$this->meta[$k] = $this->stripEmptyMeta($v);
+					
+					/*
 					if (is_array($v)) {
 						foreach ($v as $l1k => $l1v) {
 							if (is_array($l1v)) {
@@ -237,6 +245,7 @@
 							}
 						}
 					}
+					*/
 					
 					if (empty($this->meta[$k])) {
 						unset($this->meta[$k]); 
@@ -245,6 +254,34 @@
 			}
 			
 			return true;
+		}
+		
+		/**
+		 * Filter the meta data
+		 * @since Version 3.9.1
+		 * @param array $array
+		 * @return array
+		 */
+		
+		private function stripEmptyMeta($array) {
+			
+			if (!is_array($array)) {
+				return $array;
+			}
+			
+			foreach ($array as $key => $val) {
+				if (is_array($val)) {
+					$array[$key] = $this->stripEmptyMeta($val); 
+				}
+				
+				if (empty($array[$key])) {
+					unset($array[$key]);
+					continue;
+				}
+			}
+			
+			return $array;
+			
 		}
 		
 		/**

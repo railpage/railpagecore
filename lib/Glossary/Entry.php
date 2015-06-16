@@ -153,29 +153,28 @@
 				$this->Memcached->save($this->mckey, $row);
 			}
 			
-			if (isset($row) && is_array($row)) {
-				$this->name = $row['short'];
-				$this->text = $row['full'];
-				$this->example = $row['example'];
-				$this->Type = new Type($row['type']);
-				$this->status = isset($row['status']) ? $row['status'] : self::STATUS_APPROVED;
-				$this->slug = $row['slug'];
-				
-				if ($row['date'] == "0000-00-00 00:00:00") {
-					$this->Date = new DateTime;
-					$this->commit();
-				} else {
-					$this->Date = new DateTime($row['date']);
-				}
-				
-				$this->setAuthor(new User($row['author']));
-				
-				$this->makeURLs(); 
+			if (!isset($row) || !is_array($row)) {
+				return;
 			}
 			
-			if (empty($this->slug)) {
-				$this->makeSlug(); 
+			$this->name = $row['short'];
+			$this->text = $row['full'];
+			$this->example = $row['example'];
+			$this->Type = new Type($row['type']);
+			$this->status = isset($row['status']) ? $row['status'] : self::STATUS_APPROVED;
+			$this->slug = $row['slug'];
+			
+			if ($row['date'] == "0000-00-00 00:00:00") {
+				$this->Date = new DateTime;
+				$this->commit();
+			} else {
+				$this->Date = new DateTime($row['date']);
 			}
+			
+			$this->setAuthor(new User($row['author']));
+			$this->makeURLs(); 
+			$this->makeSlug(); 
+			
 		}
 		
 		/**
@@ -187,6 +186,11 @@
 		 */
 		
 		private function makeSlug() {
+			
+			if (!empty($this->slug)) {
+				return;
+			}
+			
 			$proposal = ContentUtility::generateUrlSlug($this->name, 20);
 			
 			$query = "SELECT COUNT(id) FROM glossary WHERE slug = ?"; 
@@ -203,6 +207,7 @@
 			}
 			
 			return;
+			
 		}
 		
 		/**
@@ -268,9 +273,7 @@
 				throw new Exception(sprintf("The title of this entry is too long: the maximum allowed is %d", self::SHORT_MAX_CHARS));
 			}
 			
-			if (empty($this->slug)) {
-				$this->makeSlug();
-			}
+			$this->makeSlug();
 			
 			/**
 			 * Check if an entry by this title exists elsewhere

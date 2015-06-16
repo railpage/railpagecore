@@ -126,6 +126,34 @@
 		}
 		
 		/**
+		 * Get the difference between two dates, expressed as years, months, days
+		 * @since Version 3.9.1
+		 * @param \DateTime $Start
+		 * @param \DateTime $End
+		 * @return string
+		 */
+		
+		public static function getDateDifference($Start, $End) {
+			
+			$age = $Start->diff($End)->format("%Y year");
+			
+			if ($Start->diff($End)->format("%Y") > 1) {
+				$age .= "s";
+			}
+			
+			if ($Start->diff($End)->format("%M") > 0) {
+				$age .= $Start->diff($End)->format(" and %m month");
+			
+				if ($Start->diff($End)->format("%m") > 1) {
+					$age .= "s";
+				}
+			}
+			
+			return $age;
+			
+		}
+		
+		/**
 		 * Check if a URL exists
 		 * @since Version 3.9.1
 		 * @param string $url

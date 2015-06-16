@@ -176,7 +176,9 @@
 				$this->id = $this->db->fetchOne("SELECT organisation_id FROM organisation WHERE organisation_slug = ?", $id); 
 			}
 			
-			$this->populate(); 
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$this->populate(); 
+			}
 			
 		}
 		
@@ -187,13 +189,10 @@
 		 */
 		
 		private function populate() {
-			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
-				return;
-			}
-			
-			$this->mckey = sprintf("railpage:organisations.organisation=%d", $this->id); 
 			
 			$timer = Debug::getTimer(); 
+			
+			$this->mckey = sprintf("railpage:organisations.organisation=%d", $this->id); 
 			
 			if (!$row = $this->Memcached->fetch($this->mckey)) {
 				$query = "SELECT o.* FROM organisation AS o WHERE organisation_id = ?";
@@ -202,6 +201,25 @@
 				$this->Memcached->save($this->mckey, $row);
 			}
 			
+			$lookup = [
+				"name" => "organisation_name",
+				"desc" => "organisation_desc",
+				"created" => "organisation_dateadded",
+				"owner" => "organisation_owner",
+				"contact_website" => "organisation_website",
+				"contact_phone" => "organisation_phone",
+				"contact_fax" => "organisation_fax",
+				"contact_email" => "organisation_email",
+				"loco" => "organisation_logo",
+				"flickr_photo_id" => "flickr_photo_id",
+				"slug" => "organisation_slug"
+			];
+			
+			foreach ($lookup as $var => $val) {
+				$this->$var = $row[$val];
+			}
+			
+			/*
 			$this->name 	= $row['organisation_name'];
 			$this->desc 	= $row['organisation_desc'];
 			$this->created 	= $row['organisation_dateadded'];
@@ -215,12 +233,27 @@
 			$this->flickr_photo_id = $row['flickr_photo_id'];
 			
 			$this->slug = $row['organisation_slug']; 
+			*/
 			
 			if (empty($this->slug)) {
 				$this->slug = parent::createSlug();
 			}
 			
 			$this->url = parent::makePermaLink($this->slug); 
+			
+			$this->loadRoles(); 
+			
+			Debug::logEvent(__METHOD__, $timer);
+			
+		}
+		
+		/**
+		 * Load the roles associated with this organisation
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function loadRoles() {
 			
 			// Get the roles for this organisation
 			$query = "SELECT * FROM organisation_roles WHERE organisation_id = ?";
@@ -231,7 +264,8 @@
 				}
 			}
 			
-			Debug::logEvent(__METHOD__, $timer);
+			return;
+			
 		}
 		
 		/**
