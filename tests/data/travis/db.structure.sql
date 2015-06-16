@@ -1507,7 +1507,7 @@ CREATE TABLE IF NOT EXISTS `loco_unit_corrections` (
   `resolved_date` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   `text` varchar(2048) NOT NULL,
   PRIMARY KEY (`correction_id`),
-  UNIQUE KEY `class_id` (`class_id`),
+  KEY `class_id` (`class_id`),
   KEY `loco_id` (`loco_id`),
   KEY `user_id` (`user_id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=84 ;

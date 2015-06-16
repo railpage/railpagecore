@@ -486,7 +486,7 @@
 			
 			$Locos = new Locos;
 			
-			$this->assertTrue(is_array($Locos->getRandomClass())); 
+			$Locos->getRandomClass();
 			
 		}
 		
