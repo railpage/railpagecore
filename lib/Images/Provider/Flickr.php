@@ -453,6 +453,12 @@
 		 */
 		
 		private function configureOAuth() {
+			
+			#printArray($this->oauth_consumer_key); 
+			#printArray($this->oauth_consumer_secret); 
+			#printArray($this->oauth_secret);
+			#printArray($this->oauth_token);die;
+			
 			if (!is_null($this->oauth_token) && !is_null($this->oauth_secret) && !is_null($this->oauth_consumer_key) && !is_null($this->oauth_consumer_secret)) {
 				$oauth = new Oauth1(array(
 					"consumer_key" => $this->oauth_consumer_key,

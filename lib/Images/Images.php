@@ -15,6 +15,8 @@
 	use Exception;
 	use InvalidArgumentException;
 	use DateTime;
+	use DateTimeZone;
+	
 	
 	/**
 	 * Images class
@@ -100,7 +102,9 @@
 			
 			$mckey = sprintf("railpage:image;provider=%s;id=%s", $provider, $photo_id);
 			
-			if ($option != self::OPT_REFRESH && !$id = $this->Redis->fetch($mckey)) {
+			if ((defined("NOREDIS") && NOREDIS == true)  || ($option != self::OPT_REFRESH && !$id = $this->Redis->fetch($mckey))) {
+				Debug::LogCLI("Found photo ID " . $photo_id . " in database"); 
+				
 				$id = $this->db->fetchOne("SELECT id FROM image WHERE provider = ? AND photo_id = ?", array($provider, $photo_id));
 				$this->Redis->save($mckey, $id, strtotime("+1 month"));
 			}
@@ -108,6 +112,8 @@
 			if (isset($id) && filter_var($id, FILTER_VALIDATE_INT)) {
 				return new Image($id, $option);
 			}
+			
+			Debug::LogCLI("Photo ID " . $photo_id . " not found in local cache"); 
 			
 			$Image = new Image;
 			$Image->provider = $provider;
@@ -287,6 +293,10 @@
 				return;
 			}
 			
+			if (!is_array(self::$sizes)) {
+				return;
+			}
+			
 			foreach (self::$sizes as $size) {
 				if ($size['width'] >= $min_width && $size['height'] >= $min_height) {
 					self::$sizes[$missing_size] = $size;
@@ -337,6 +347,109 @@
 			}
 			
 			return;
+			
+		}
+		
+		/**
+		 * Find untagged photos
+		 * @since Version 3.9.1
+		 * @return array
+		 * @param int $page
+		 * @param int $items_per_page
+		 */
+		
+		public function findUntagged($page = 1, $items_per_page = 25) {
+			$query = "SELECT SQL_CALC_FOUND_ROWS * FROM image WHERE id NOT IN (SELECT DISTINCT image_id FROM image_link) LIMIT ?, ?";
+			
+			$params = array(
+				($page - 1) * $items_per_page,
+				$items_per_page
+			);
+			
+			$result = $this->db->fetchAll($query, $params); 
+			
+			$return = [ 
+				"stat" => "ok",
+				"page" => $page, 
+				"perpage" => $items_per_page,
+				"total" => 0,
+				"photos" => array()
+			];
+			
+			$return['total'] = $this->db->fetchOne("SELECT FOUND_ROWS() AS total"); 
+			
+			foreach ($result as $k => $v) {
+				$result[$k]['meta'] = json_decode($v['meta'], true);
+				$result[$k]['meta']['sizes'] = self::normaliseSizes($result[$k]['meta']['sizes']);
+			}
+			
+			$return['photos'] = $result;
+			
+			return $return;
+			
+		}
+		
+		/**
+		 * Get the most recent additions to our gallery
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getRecentAdditions($limit = 10) {
+			
+			$cachekey = sprintf("railpage:photos.latest.num=%d", $limit); 
+			
+			#if (!$result = $this->Redis->fetch($cachekey)) {
+			
+				$query = "SELECT * FROM image ORDER BY id DESC LIMIT 0, ?";
+				
+				$return = array(); 
+				
+				foreach ($this->db->fetchAll($query, $limit) as $row) {
+					$row['meta'] = json_decode($row['meta'], true); 
+					$row['meta']['sizes'] = self::normaliseSizes($row['meta']['sizes']); 
+					
+					$return[] = $row;
+				}
+				
+				#$this->Redis->save($cachekey, $return, strtotime("+1 hour"));
+			#}
+			
+			return $return;
+		}
+		
+		/**
+		 * Get the image of the week
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getImageOfTheWeek($week = false) {
+			if (!$week) {
+				$week = new DateTime;
+			}
+			
+			if (filter_var($week, FILTER_VALIDATE_INT)) {
+				$week = new DateTime("@" . $week);
+			}
+			
+			if (!$week instanceof DateTime) {
+				$week = new DateTime($week);
+			}
+			
+			$ts = strtotime('sunday last week', $week->getTimestamp()); 
+			
+			$Date = new DateTime("@" . $ts);
+			$Date->setTimezone(new DateTimeZone("Australia/Melbourne")); 
+			
+			$query = "SELECT i.*, u.username, iw.added_by AS user_id FROM image_weekly AS iw
+						LEFT JOIN image AS i ON iw.image_id = i.id
+						LEFT JOIN nuke_users AS u ON u.user_id = iw.added_by
+						WHERE iw.datefrom = ? LIMIT 1";
+			
+			$result = $this->db->fetchRow($query, $Date->format("Y-m-d")); 
+			
+			return $result;
 			
 		}
 	}

@@ -12,11 +12,14 @@
 	use Railpage\API;
 	use Railpage\AppCore;
 	use Railpage\Place;
+	use Railpage\PlaceUtility;
+	use Railpage\Locos\Factory as LocosFactory;
 	use Railpage\Locos\Locomotive;
 	use Railpage\Locos\LocoClass;
 	use Railpage\Locos\Liveries\Livery;
 	use Railpage\Module;
 	use Railpage\Url;
+	use Railpage\Debug;
 	use Exception;
 	use DateTime;
 	use DateTimeZone;
@@ -24,6 +27,7 @@
 	use stdClass;
 	use DomDocument;
 	use GuzzleHttp\Client;
+	use Zend_Db_Expr;
 	
 	/**
 	 * Store and fetch data of Flickr, Weston Langford, etc images in our local database
@@ -85,6 +89,14 @@
 		 */
 		
 		public $Place;
+		
+		/**
+		 * Nearest geoplace to this photo
+		 * @since Version 3.9.1
+		 * @var \Railpage\Place $GeoPlace
+		 */
+		
+		public $GeoPlace;
 		
 		/**
 		 * Object of image sizes and their source URLs
@@ -175,6 +187,22 @@
 		private $ImageProvider;
 		
 		/**
+		 * Latitude
+		 * @since Version 3.9.1
+		 * @var float $lat
+		 */
+		
+		private $lat;
+		
+		/**
+		 * Longitude
+		 * @since Version 3.9.1
+		 * @var float $lon
+		 */
+		
+		private $lon;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.8.7
 		 * @param int $id
@@ -185,131 +213,144 @@
 			
 			parent::__construct();
 			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$zzdebug_timer_start = microtime(true);
-			}
+			$timer = Debug::getTimer();
 			
 			$this->GuzzleClient = new Client;
 			
 			$this->Module = new Module("images");
 			
-			if (filter_var($id, FILTER_VALIDATE_INT)) {
-			
-				/**
-				 * Record this in the debug log
-				 */
-				
-				if (function_exists("debug_recordInstance")) {
-					debug_recordInstance(__CLASS__);
-				}
-				
-				$this->mckey = sprintf("railpage:image=%d", $id);
-				
-				if (!$row = $this->Redis->fetch($this->mckey)) {
-				
-					$query = "SELECT i.title, i.description, i.id, i.provider, i.photo_id, i.modified, i.meta, i.lat, i.lon FROM image AS i WHERE i.id = ?";
-				
-					$row = $this->db->fetchRow($query, $id);
-					$row['meta'] = json_decode($row['meta'], true);
-					
-					$this->Redis->save($this->mckey, $row, strtotime("+24 hours"));
-				} 
-				
-				$this->id = $id;
-				$this->provider = $row['provider'];
-				$this->photo_id = $row['photo_id'];
-				$this->Date = new DateTime($row['modified']);
-				
-				$this->title = !empty($row['meta']['title']) ? (function_exists("format_topictitle") ? format_topictitle($row['meta']['title']) : $row['meta']['title']) : "Untitled";
-				$this->description = $row['meta']['description'];
-				$this->sizes = $row['meta']['sizes'];
-				$this->links = $row['meta']['links'];
-				$this->meta = $row['meta']['data'];
-				$this->url = new Url("/image?id=" . $this->id);
-				
-				if ($this->provider == "rpoldgallery") {
-					$GalleryImage = new \Railpage\Gallery\Image($this->photo_id);
-					$this->url->source = $GalleryImage->url->url;
-					
-					if (empty($this->meta['source'])) {
-						$this->meta['source'] = $this->url->source; 
-					}
-				}
-				
-				/**
-				 * Update the database row
-				 */
-				
-				if (((!isset($row['title']) || empty($row['title']) || is_null($row['title'])) && !empty($this->title)) || 
-					((!isset($row['description']) || empty($row['description']) || is_null($row['description'])) && !empty($this->description))) {
-					$row['title'] = $this->title;
-					$row['description'] = $this->description;
-					
-					$this->Redis->save($this->mckey, $row, strtotime("+24 hours"));
-					
-					$this->commit();
-				}
-				
-				/**
-				 * Load the author. If we don't know who it is, attempt to re-populate the data
-				 */
-				
-				if (isset($row['meta']['author'])) {
-					$this->author = json_decode(json_encode($row['meta']['author']));
-					
-					if (isset($this->author->railpage_id)) {
-						$this->author->User = new User($this->author->railpage_id);
-					}
-				} else {
-					$this->populate(true, $option);
-				}
-				
-				/**
-				 * Unless otherwise instructed load the places object if lat/lng are present
-				 */
-				
-				if ($option != Images::OPT_NOPLACE && round($row['lat'], 3) != "0.000" && round($row['lon'], 3) != "0.000") {
-					try {
-						$this->Place = new Place($row['lat'], $row['lon']);
-					} catch (Exception $e) {
-						// Throw it away. Don't care.
-					}
-				}
-				
-				/**
-				 * Set the source URL
-				 */
-				
-				if (isset($this->meta['source'])) {
-					$this->source = $this->meta['source'];
-				} else {
-					switch ($this->provider) {
-						case "flickr" :
-							if (function_exists("base58_encode")) {
-								$this->source = "https://flic.kr/p/" . base58_encode($this->photo_id);
-							}
-					}
-				}
-				
-				/**
-				 * Normalize some sizes
-				 */
-				
-				if (count($this->sizes)) {
-					$this->sizes = Images::normaliseSizes($this->sizes);
-				}
-				
-				/**
-				 * Create an array/JSON object
-				 */
-			
-				$this->getJSON();
+			if ($this->id = filter_var($id, FILTER_VALIDATE_INT)) {
+				$this->load($option); 
 			}
 			
-			if (RP_DEBUG) {
-				$site_debug[] = "Railpage: " . __CLASS__ . "(" . $this->id . ") instantiated in " . round(microtime(true) - $zzdebug_timer_start, 5) . "s";
+			Debug::logEvent(__METHOD__, $timer); 
+			
+		}
+		
+		/**
+		 * Populate this image object
+		 * @since Version 3.9.1
+		 * @return void
+		 * @param int $option
+		 */
+		
+		private function load($option = NULL) {
+			
+			Debug::RecordInstance(); 
+			
+			$this->mckey = sprintf("railpage:image=%d", $this->id);
+			
+			if ((defined("NOREDIS") && NOREDIS == true) || !$row = $this->Redis->fetch($this->mckey)) {
+			
+				Debug::LogCLI("Fetching data for " . $this->id . " from database");
+				
+				$query = "SELECT i.title, i.description, i.id, i.provider, i.photo_id, i.modified, i.meta, i.lat, i.lon FROM image AS i WHERE i.id = ?";
+			
+				$row = $this->db->fetchRow($query, $this->id);
+				$row['meta'] = json_decode($row['meta'], true);
+				
+				$this->Redis->save($this->mckey, $row, strtotime("+24 hours"));
+			} 
+			
+			$this->provider = $row['provider'];
+			$this->photo_id = $row['photo_id'];
+			$this->Date = new DateTime($row['modified']);
+			
+			$this->title = !empty($row['meta']['title']) ? (function_exists("format_topictitle") ? format_topictitle($row['meta']['title']) : $row['meta']['title']) : "Untitled";
+			$this->description = $row['meta']['description'];
+			$this->sizes = $row['meta']['sizes'];
+			$this->links = $row['meta']['links'];
+			$this->meta = $row['meta']['data'];
+			$this->url = new Url("/image?id=" . $this->id);
+			$this->lat = $row['lat'];
+			$this->lon = $row['lon'];
+			
+			if ($this->provider == "rpoldgallery") {
+				$GalleryImage = new \Railpage\Gallery\Image($this->photo_id);
+				$this->url->source = $GalleryImage->url->url;
+				
+				if (empty($this->meta['source'])) {
+					$this->meta['source'] = $this->url->source; 
+				}
 			}
+			
+			/**
+			 * "Hit"
+			 */
+			
+			$this->hit(); 
+			
+			/**
+			 * Update the database row
+			 */
+			
+			if (((!isset($row['title']) || empty($row['title']) || is_null($row['title'])) && !empty($this->title)) || 
+				((!isset($row['description']) || empty($row['description']) || is_null($row['description'])) && !empty($this->description))) {
+				$row['title'] = $this->title;
+				$row['description'] = $this->description;
+				
+				$this->Redis->save($this->mckey, $row, strtotime("+24 hours"));
+				
+				$this->commit();
+			}
+			
+			/**
+			 * Load the author. If we don't know who it is, attempt to re-populate the data
+			 */
+			
+			if (isset($row['meta']['author'])) {
+				$this->author = json_decode(json_encode($row['meta']['author']));
+				
+				if (isset($this->author->railpage_id)) {
+					$this->author->User = new User($this->author->railpage_id);
+				}
+			} else {
+				Debug::LogCLI("No author found in local cache - refreshing from " . $this->provider);
+				Debug::LogEvent("No author found in local cache - refreshing from " . $this->provider);
+				$this->populate(true, $option);
+			}
+			
+			/**
+			 * Unless otherwise instructed load the places object if lat/lng are present
+			 */
+			
+			if ($option != Images::OPT_NOPLACE && round($row['lat'], 3) != "0.000" && round($row['lon'], 3) != "0.000") {
+				try {
+					$this->Place = Place::Factory($row['lat'], $row['lon']);
+				} catch (Exception $e) {
+					// Throw it away. Don't care.
+				}
+			}
+			
+			/**
+			 * Set the source URL
+			 */
+			
+			if (isset($this->meta['source'])) {
+				$this->source = $this->meta['source'];
+			} else {
+				switch ($this->provider) {
+					case "flickr" :
+						if (function_exists("base58_encode")) {
+							$this->source = "https://flic.kr/p/" . base58_encode($this->photo_id);
+						}
+				}
+			}
+			
+			/**
+			 * Normalize some sizes
+			 */
+			
+			if (count($this->sizes)) {
+				$this->sizes = Images::normaliseSizes($this->sizes);
+			}
+			
+			/**
+			 * Create an array/JSON object
+			 */
+		
+			$this->getJSON();
+			
 		}
 		
 		/**
@@ -365,7 +406,8 @@
 			}
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
-				removeMemcacheObject($this->mckey);
+				$this->Memcached->delete($this->mckey);
+				$this->Redis->delete($this->mckey); 
 				
 				$where = array(
 					"id = ?" => $this->id
@@ -402,6 +444,9 @@
 			
 			if ($Diff->d >= self::MAXAGE) {
 				$this->Memcached->delete($this->mckey);
+			
+				Debug::LogCLI("Image ID " . $this->id . " (photo ID " . $this->photo_id . ") is stale"); 
+				
 				return true;
 			}
 			
@@ -419,6 +464,8 @@
 			if (!is_null($this->ImageProvider)) {
 				return $this->ImageProvider; 
 			}
+			
+			#printArray($this->provider);die;
 			
 			$imageprovider = __NAMESPACE__ . "\\Provider\\" . ucfirst($this->provider);
 			$params = array();
@@ -482,6 +529,8 @@
 				return $this;
 			}
 			
+			Debug::LogCLI("Fetching data from " . $this->provider . " for image ID " . $this->id . " (photo ID " . $this->photo_id . ")"); 
+			
 			/**
 			 * Start the debug timer
 			 */
@@ -534,7 +583,7 @@
 				
 				if ($option != Images::OPT_NOPLACE && isset($data['location'])) {
 					try {
-						$this->Place = new Place($data['location']['latitude'], $data['location']['longitude']);
+						$this->Place = Place::Factory($data['location']['latitude'], $data['location']['longitude']);
 					} catch (Exception $e) {
 						// Throw it away. Don't care.
 					}
@@ -638,7 +687,7 @@
 						
 						if ($option != Images::OPT_NOPLACE && isset($json['feed']['georss$where']['gml$Point']) && is_array($json['feed']['georss$where']['gml$Point'])) {
 							$pos = explode(" ", $json['feed']['georss$where']['gml$Point']['gml$pos']['$t']);
-							$this->Place = new Place($pos[0], $pos[1]);
+							$this->Place = Place::Factory($pos[0], $pos[1]);
 						}
 						
 						$this->title = $this->meta['title'];
@@ -881,21 +930,29 @@
 		 * Find Railpage objects (loco, class, livery) in this image
 		 * @since Version 3.8.7
 		 * @param string $namespace
+		 * @param boolean $force
+		 * @return \Railpage\Images\Image;
 		 */
 		
-		public function findObjects($namespace = NULL) {
+		public function findObjects($namespace = NULL, $force = false) {
+			
 			if (is_null($namespace)) {
 				throw new Exception("Parameter 1 (namespace) cannot be empty");
+			}
+			
+			$key = sprintf("railpage:images.image=%d;objects.namespace=%s;lastupdate", $this->id, $namespace); 
+			
+			$lastupdate = $this->Memcached->fetch($key);
+			
+			if (!$force && $lastupdate && $lastupdate > strtotime("1 day ago")) {
+				return $this;
 			}
 			
 			/**
 			 * Start the debug timer
 			 */
 			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
+			$timer = Debug::GetTimer(); 
 			
 			switch ($namespace) {
 				
@@ -904,13 +961,15 @@
 						
 						foreach ($this->meta['tags'] as $tag) {
 							if (preg_match("@railpage:class=([0-9]+)@", $tag, $matches)) {
-								$LocoClass = new LocoClass($matches[1]); 
+								Debug::LogEvent(__METHOD__ . " :: #1 Instantating new LocoClass object with ID " . $matches[1] . "  "); 
+								$LocoClass = LocosFactory::CreateLocoClass($matches[1]); 
 							}
 						}
 						
 						foreach ($this->meta['tags'] as $tag) {
 							if (isset($LocoClass) && $LocoClass instanceof LocoClass && preg_match("@railpage:loco=([a-zA-Z0-9]+)@", $tag, $matches)) {
-								$Loco = new Locomotive(false, $LocoClass->id, $matches[1]); 
+								Debug::LogEvent(__METHOD__ . " :: #2 Instantating new LocoClass object with class ID " . $LocoClass->id . " and loco number " . $matches[1] . "  "); 
+								$Loco = LocosFactory::CreateLocomotive(false, $LocoClass->id, $matches[1]); 
 								
 								if (filter_var($Loco->id, FILTER_VALIDATE_INT)) {
 									$this->addLink($Loco->namespace, $Loco->id);
@@ -922,7 +981,8 @@
 							foreach ($this->meta['tags'] as $tag) {
 								if (stristr($tag, $row['class_tag']) && strlen(str_replace($row['class_tag'] . "-", "", $tag) > 0)) {
 									$loco_num = str_replace($row['class_tag'] . "-", "", $tag);
-									$Loco = new Locomotive(false, $row['class_id'], $loco_num);
+									Debug::LogEvent(__METHOD__ . " :: #3 Instantating new LocoClass object with class ID " . $row['class_id'] . " and loco number " . $loco_num . "  "); 
+									$Loco = LocosFactory::CreateLocomotive(false, $row['class_id'], $loco_num);
 									
 									if (filter_var($Loco->id, FILTER_VALIDATE_INT)) {
 										$this->addLink($Loco->namespace, $Loco->id);
@@ -947,7 +1007,7 @@
 						foreach ($this->db->fetchAll("SELECT id AS class_id, flickr_tag AS class_tag FROM loco_class") as $row) {
 							foreach ($this->meta['tags'] as $tag) {
 								if ($tag == $row['class_tag']) {
-									$LocoClass = new LocoClass($row['class_id']);
+									$LocoClass = LocosFactory::CreateLocoClass($row['class_id']);
 									
 									if (filter_var($LocoClass->id, FILTER_VALIDATE_INT)) {
 										$this->addLink($LocoClass->namespace, $LocoClass->id);
@@ -958,7 +1018,7 @@
 						
 						foreach ($this->meta['tags'] as $tag) {
 							if (preg_match("@railpage:class=([0-9]+)@", $tag, $matches)) {
-								$LocoClass = new LocoClass($matches[1]); 
+								$LocoClass = LocosFactory::CreateLocoClass($matches[1]); 
 								
 								if (filter_var($LocoClass->id, FILTER_VALIDATE_INT)) {
 									$this->addLink($LocoClass->namespace, $LocoClass->id);
@@ -989,13 +1049,9 @@
 					break;
 			}
 			
-			/**
-			 * End the debug timer
-			 */
-				
-			if (RP_DEBUG) {
-				$site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : completed lookup of " . $namespace . " in for image id " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-			}
+			Debug::LogEvent(__METHOD__ . "(\"" . $namespace . "\")", $timer);
+			
+			$this->Memcached->save($key, time());
 			
 			return $this;
 		}
@@ -1078,7 +1134,7 @@
 			
 			$regexes = array(
 				"[a-zA-Z0-9\w+]{4,6}",
-				"[0-9\w+]{3,4}",
+				"[0-9\w+]{3,5}",
 				"[a-zA-Z0-9\w+]{2}",
 				"[a-zA-Z0-9\s\w+]{4,6}"
 			);
@@ -1163,6 +1219,15 @@
 					
 					if (isset($matches[3])) {
 						$prop = sprintf("%s%s", $matches[1], $matches[3]); 
+						if (!in_array($prop, $locolookup)) {
+							$locolookup[] = $prop; 
+						}
+					}
+				} elseif (strlen($num) == 5) {
+					preg_match("/([a-zA-Z0-9]{2})([0-9]{3})/", $num, $matches);
+					
+					if (isset($matches[2])) {
+						$prop = sprintf("%s %s", $matches[1], $matches[2]); 
 						if (!in_array($prop, $locolookup)) {
 							$locolookup[] = $prop; 
 						}
@@ -1355,6 +1420,58 @@
 			$result = $cn->query($query); 
 			
 			return $this;
+			
+		}
+		
+		/**
+		 * Bump the hit counter
+		 * @since Version 3.9.1
+		 * @return \Railpage\Images\Image
+		 */
+		
+		public function hit() {
+			
+			$data = [
+				"hits_today" => new Zend_Db_Expr('hits_today + 1'),
+				"hits_weekly" => new Zend_Db_Expr('hits_weekly + 1'),
+				"hits_overall" => new Zend_Db_Expr('hits_overall + 1')
+			];
+			
+			$where = [
+				"id = ?" => $this->id
+			];
+			
+			$this->db->update("image", $data, $where);
+			
+			return $this;
+			
+		}
+		
+		/**
+		 * Update the geoplace reference for this image
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		public function updateGeoPlace() {
+			
+			if (!filter_var($this->lat, FILTER_VALIDATE_FLOAT) || !filter_var($this->lat, FILTER_VALIDATE_FLOAT)) {
+				return;
+			}
+			
+			$GeoPlaceID = PlaceUtility::findGeoPlaceID($this->lat, $this->lon); 
+			
+			#var_dump($GeoPlaceID);die;
+			
+			$data = [ "geoplace" => $GeoPlaceID	];
+			
+			$where = [ "id = ?" => $this->id ];
+			$this->db->update("image", $data, $where); 
+			
+			$this->Memcached->delete($this->mckey);
+			$this->Redis->delete($this->mckey); 
+			
+			return;
 			
 		}
 	}

@@ -135,5 +135,15 @@
 				}
 			}
 		}
+		
+		/**
+		 * Echo the "default" map image
+		 * @since Version 3.9.1
+		 * @return string
+		 */
+		
+		public function __toString() {
+			return $this->sizes['largest']['source'];
+		}
 	}
 	
