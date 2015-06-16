@@ -14,6 +14,7 @@
 	use Railpage\Notifications\Notification;
 	use Railpage\Notifications\Transport\Email;
 	use Railpage\Users\User;
+	use Railpage\Debug;
 	use Exception;
 	use DateTime;
 	
@@ -88,9 +89,9 @@
 				if ($this->Memcached->contains(self::CACHE_KEY_ALL) && $array = json_decode(gzuncompress($this->Memcached->Fetch(self::CACHE_KEY_ALL)), true)) {
 					$this->users = $array['users'];
 					$this->ip_addresses = $array['ips'];
-					
-					return true;
 				} 
+				
+				return $this;
 			}
 			
 			$this->loadUsers(); 
@@ -511,7 +512,11 @@
 				} catch (Exception $e) {
 					global $Error;
 					
-					$Error->save($e, $_SESSION['user_id']);
+					if (isset($Error)) {
+						$Error->save($e, $_SESSION['user_id']);
+					}
+					
+					Debug::logException($e);
 				}
 			} 
 			
@@ -640,17 +645,23 @@
 			
 			foreach ($this->db->fetchAll($query, $ip) as $row) {
 				if ($activeOnly === false || ($activeOnly === true && $row['ban_active'] == 1)) {
-					$row['ban_time']->setTimestamp($row['ban_time']);
+					if (!$row['ban_time'] instanceof DateTime) {
+						$row['ban_time'] = new DateTime("@" . $row['ban_time']); 
+					}
+					
 					$row['ban_time_nice'] = $row['ban_time']->format("F j, Y");
 					
-					if ($ban_expire > 0) {
-						$row['ban_expire']->setTimestamp($row['ban_expire']); 
+					if ($row['ban_expire'] > 0) {
+						if (!$row['ban_expire'] instanceof DateTime) {
+							$row['ban_expire'] = new DateTime("@" . $row['ban_expire']); 
+						}
+						
 						$row['ban_expire_nice'] = $row['ban_expire']->format("F j, Y");
 					} else {
 						$row['ban_expire'] = 0; 
 					}
 					
-					$return[$row['ban_id']] = $row; 
+					$return[$row['id']] = $row; 
 				}
 			}
 			
@@ -676,17 +687,23 @@
 			
 			foreach ($this->db->fetchAll($query, $user_id) as $row) {
 				if ($activeOnly === false || ($activeOnly === true && $row['ban_active'] == 1)) {
-					$row['ban_time']->setTimestamp($row['ban_time']);
+					if (!$row['ban_time'] instanceof DateTime) {
+						$row['ban_time'] = new DateTime("@" . $row['ban_time']); 
+					}
+					
 					$row['ban_time_nice'] = $row['ban_time']->format("F j, Y");
 					
-					if ($ban_expire > 0) {
-						$row['ban_expire']->setTimestamp($row['ban_expire']); 
+					if ($row['ban_expire'] > 0) {
+						if (!$row['ban_expire'] instanceof DateTime) {
+							$row['ban_expire'] = new DateTime("@" . $row['ban_expire']); 
+						}
+						
 						$row['ban_expire_nice'] = $row['ban_expire']->format("F j, Y");
 					} else {
 						$row['ban_expire'] = 0; 
 					}
 					
-					$return[$row['ban_id']] = $row; 
+					$return[$row['id']] = $row; 
 				}
 			}
 			
@@ -756,11 +773,11 @@
 			$mcresult_user = $Memcached->fetch($cachekey_user); 
 			$mcresult_addr = $Memcached->fetch($cachekey_addr); 
 			
-			if ($mcresult_user || $mcresult_addr) {
+			if ($mcresult_user === 1 || $mcresult_addr === 1) {
 				return true;
 			}
 			
-			if ($mcresult_user === false && $mcresult_addr === false) {
+			if ($mcresult_user === 0 && $mcresult_addr === 0) {
 				return false;
 			}
 			
@@ -768,21 +785,25 @@
 				$Redis = AppCore::getRedis();
 				$BanControl = $Redis->fetch("railpage:bancontrol");
 			} catch (Exception $e) {
+				
+			}
+			
+			if (!$BanControl instanceof BanControl) {
 				$BanControl = new BanControl;
 			}
 			
 			if ($BanControl->isUserBanned($user_id)) {
-				$Memcached->save($cachekey_user, true, strtotime("+5 weeks")); 
+				$Memcached->save($cachekey_user, 1, strtotime("+5 weeks")); 
 				return true;
 			}
 			
 			if ($BanControl->isIPBanned($remote_addr)) {
-				$Memcached->save($cachekey_user, false, strtotime("+5 weeks")); 
-				$Memcached->save($cachekey_addr, true, strtotime("+5 weeks")); 
+				$Memcached->save($cachekey_user, 0, strtotime("+5 weeks")); 
+				$Memcached->save($cachekey_addr, 1, strtotime("+5 weeks")); 
 				return true;
 			}
 			
-			$Memcached->save($cachekey_addr, false, strtotime("+5 weeks")); 
+			$Memcached->save($cachekey_addr, 0, strtotime("+5 weeks")); 
 			
 			return false;
 		}
