@@ -27,6 +27,22 @@
 	class Event extends AppCore {
 		
 		/**
+		 * Registry key
+		 * @since Version 3.9.1
+		 * @const string REGISTRY_KEY
+		 */
+		
+		const REGISTRY_KEY = "railpage:events.event=%d";
+		
+		/**
+		 * Memcached/Redis cache key
+		 * @since Version 3.9.1
+		 * @const string CACHE_KEY
+		 */
+		
+		const CACHE_KEY = "railpage:events.event=%d";
+		
+		/**
 		 * Event ID
 		 * @var int $id
 		 * @since Version 3.8.7
@@ -116,6 +132,7 @@
 		 */
 		
 		public function __construct($id = false) {
+			
 			parent::__construct();
 			
 			Debug::RecordInstance(); 
@@ -186,7 +203,7 @@
 				}
 				
 				if (!empty($row['lat']) && round($row['lat'], 3) != "0.000" && !empty($row['lon']) && round($row['lon'], 3) != "0.000") {
-					$this->Place = new Place($row['lat'], $row['lon']);
+					$this->Place = Place::Factory($row['lat'], $row['lon']);
 				}
 				
 				$this->createUrls();
@@ -276,6 +293,8 @@
 				);
 				
 				$this->db->update("event", $data, $where); 
+			
+				$this->Redis->delete(sprintf(self::CACHE_KEY, $this->id)); 
 			} else {
 				$this->db->insert("event", $data);
 				$this->id = $this->db->lastInsertId(); 

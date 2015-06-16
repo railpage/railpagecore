@@ -140,7 +140,7 @@
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
 				if ($row = $this->db->fetchRow("SELECT * FROM event_dates WHERE id = ?", $id)) {
 					$this->id = $id;
-					$this->Event = new Event($row['event_id']);
+					$this->Event = Factory::CreateEvent($row['event_id']);
 					$this->Date = new DateTime($row['date']);
 					$this->meta = json_decode($row['meta'], true);
 					$this->status = $row['status'];
@@ -169,7 +169,7 @@
 					}
 					
 					if (isset($this->meta['lat']) && isset($this->meta['lon'])) {
-						$this->Place = new Place($this->meta['lat'], $this->meta['lon']);
+						$this->Place = Place::Factory($this->meta['lat'], $this->meta['lon']);
 					}
 					
 					try {
