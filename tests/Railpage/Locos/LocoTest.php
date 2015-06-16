@@ -10,8 +10,10 @@
 	use Railpage\Locos\Type;
 	use Railpage\Locos\WheelArrangement;
 	use Railpage\Locos\Gauge;
+	use Railpage\Locos\Status;
 	use Railpage\Locos\Liveries\Base as Liveries;
 	use Railpage\Locos\Liveries\Livery;
+	use Railpage\Locos\Factory as LocosFactory;
 	use Railpage\Users\User;
 	use Railpage\Images\Images;
 	use Railpage\Images\Image;
@@ -121,6 +123,15 @@
 			$statuses = $Locos->listStatus();
 			
 			$last = array_pop($statuses['status']); 
+			
+			$Status = new Status; 
+			$Status->name = "Scrapped";
+			$Status->commit(); 
+			
+			$Status = new Status($Status->id); 
+			$Status->name = "Unscrapped";
+			$Status->commit(); 
+			
 			return $last['id'];
 			
 		}
@@ -131,6 +142,15 @@
 			
 			$Locos = new Locos;
 			$Locos->addStatus(); 
+			
+		}
+		
+		public function test_break_status_again() {
+			
+			$this->setExpectedException("Exception", "Name cannot be empty");
+			
+			$Status = new Status;
+			$Status->commit(); 
 			
 		}
 		
@@ -192,6 +212,8 @@
 			$Class = new LocoClass($class_id);
 			$Gauge = new Gauge($gauge_id);
 			
+			$TestClass = LocosFactory::CreateLocoClass($Class->slug);
+			
 			$Loco = new Locomotive;
 			
 			$Loco->number = self::LOCO_NUM;
@@ -222,6 +244,9 @@
 			
 			$tags = $Loco->getTags(); 
 			$this->assertTrue(is_array($tags)); 
+			
+			$TestLoco = LocosFactory::CreateLocoClass($Loco->id);
+			$TestLoco = LocosFactory::CreateLocoClass(false, $Class->slug, $Loco->number);
 			
 			return $id;
 		}
