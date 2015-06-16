@@ -10,7 +10,6 @@
 	 
 	namespace Railpage\News;
 	
-	use SphinxClient;
 	use Railpage\AppCore;
 	use Railpage\Module;
 	use Exception;
@@ -222,11 +221,8 @@
 		
 		static public function findCorrectArticle($lookup = false, $num = 5) {
 			
-			$Config = AppCore::getConfig();
+			$Sphinx = AppCore::getSphinxAPI(); 
 			
-			$Sphinx = new SphinxClient;
-			$Sphinx->setServer($Config->Sphinx->Host, 9306);
-			$Sphinx->setMatchMode(SPH_MATCH_ANY);
 			$Sphinx->setLimits(0, $num);
 			
 			$results = $Sphinx->query($Sphinx->escapeString($lookup), "idx_news_article");

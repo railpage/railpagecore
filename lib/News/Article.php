@@ -10,7 +10,6 @@
 	 
 	namespace Railpage\News;
 	
-	use SphinxClient;
 	use DateTime;
 	use DateTimeZone;
 	use DateInterval;
@@ -851,9 +850,9 @@
 		 */
 		
 		public function getRelatedArticles($num = 5) {
-			$Sphinx = new SphinxClient;
-			$Sphinx->setServer($this->Config->Sphinx->Host, 9306);
-			$Sphinx->setMatchMode(SPH_MATCH_ANY);
+			
+			$Sphinx = AppCore::getSphinxAPI(); 
+			
 			$Sphinx->setFilter("topic_id", array($this->Topic->id));
 			$Sphinx->setFilter("story_id", array($this->id), true);
 			$Sphinx->setFilterRange("story_time_unix", strtotime("1 year ago"), time());
