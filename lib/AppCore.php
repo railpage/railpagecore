@@ -15,6 +15,8 @@
 	use Railpage\Users\User;
 	use Foolz\SphinxQL\SphinxQL;
 	use Foolz\SphinxQL\Connection;
+	use SphinxClient;
+	use NilPortugues\Sphinx\SphinxClient as NilPortuguesSphinxClient;
 	
 	use Monolog\Logger;
 	use Monolog\Handler\SwiftMailerHandler;
@@ -458,10 +460,12 @@
 		}
 		
 		/**
-		 * Create and connect to Sphinx
+		 * Create and connect to SphinxQL instance
+		 * @since Version 3.9.0
+		 * @return \Foolz\SphinxQL\SphinxQL
 		 */
 		
-		static public function getSphinx() {
+		public static function getSphinx() {
 			
 			$Config = self::getConfig(); 
 			
@@ -469,6 +473,33 @@
 			$conn->setParams(array("host" => $Config->Sphinx->Host, "port" => $Config->Sphinx->Port));
 			
 			return SphinxQL::create($conn);
+			
+		}
+		
+		/**
+		 * Create and connect to the Sphinx API
+		 * @since Version 3.9.1
+		 * @return \NilPortugues\Sphinx\SphinxClient
+		 */
+		
+		public static function getSphinxAPI() {
+			
+			#require_once(RP_SITE_ROOT . DS . "vendor" . DS . "nilportugues" . DS . "sphinx-search" . DS . "src" . DS . "NilPortugues" . DS . "Sphinx" . DS . "SphinxClient.php"); 
+			
+			$Config = self::getConfig(); 
+			
+			if (class_exists("SphinxClient")) {
+				$Sphinx = new SphinxClient;
+			} else {
+				$Sphinx = new NilPortuguesSphinxClient;
+			}
+			
+			$Sphinx->setServer($Config->Sphinx->Host, 9306);
+			$Sphinx->setMatchMode(SPH_MATCH_ALL);
+			$Sphinx->setMaxQueryTime(300);
+			
+			return $Sphinx;
+			
 		}
 		
 		/**
@@ -477,7 +508,7 @@
 		 * @return \stdClass
 		 */
 		
-		static public function getConfig() {
+		public static function getConfig() {
 			$Registry = Registry::getInstance();
 			
 			try {
@@ -518,8 +549,8 @@
 		 * @return \Doctrine\Common\Cache\RedisCache
 		 */
 		
-		static public function getRedis() {
-			if (!extension_loaded("redis")) {
+		public static function getRedis() {
+			if (!extension_loaded("redis") || (defined("NOREDIS") && NOREDIS == true)) {
 				return new NullCacheDriver;
 			}
 			
@@ -548,7 +579,7 @@
 		 * @return \Doctrine\Common\Cache\MemcachedCache
 		 */
 		
-		static public function getMemcached() {
+		public static function getMemcached() {
 			if (!extension_loaded("memcached")) {
 				return new NullCacheDriver;
 			}
@@ -579,7 +610,7 @@
 		 * @return string
 		 */
 		
-		static public function create_slug($string) {
+		public static function create_slug($string) {
 			
 			if (function_exists("create_slug")) {
 				return create_slug($string); 
@@ -641,7 +672,7 @@
 		 * @return \Monolog\Logger
 		 */
 		
-		static public function getLogger() {
+		public static function getLogger() {
 			
 			$Registry = Registry::getInstance();
 			
@@ -695,7 +726,7 @@
 		 * @return \Monolog\Logger
 		 */
 		
-		static public function getAlerter() {
+		public static function getAlerter() {
 			
 			$Registry = Registry::getInstance();
 			
@@ -717,7 +748,7 @@
 		 * @return \Railpage\Template
 		 */
 		
-		static public function getSmarty() {
+		public static function getSmarty() {
 			
 			$Registry = Registry::getInstance(); 
 			

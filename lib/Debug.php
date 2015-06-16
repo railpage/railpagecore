@@ -25,6 +25,14 @@
 		private static $log;
 		
 		/**
+		 * Our error log array
+		 * @since Version 3.9.1
+		 * @var array $errors
+		 */
+		
+		private static $errors;
+		
+		/**
 		 * Start a debug timer
 		 * @since Version 3.9.1
 		 * @return float
@@ -64,6 +72,21 @@
 			$site_debug[] = $text;
 			
 			return;
+		}
+		
+		/**
+		 * Record an exception
+		 * @since Version 3.9.1
+		 * @param \Exception $e
+		 * @return void
+		 */
+		
+		public static function logException(Exception $e) {
+			
+			self::$errors[] = $e->__toString();
+			
+			return;
+			
 		}
 		
 		/**
@@ -129,4 +152,24 @@
 			self::logEvent($message);
 
 		}
+		
+		/**
+		 * Log a command line event
+		 * @since Version 3.9.1
+		 * @param string $text
+		 * @return void
+		 */
+		
+		public static function LogCLI($text) {
+			
+			if (php_sapi_name() != "cli" || class_exists("PHPUnit_Framework_TestCase")) {
+				return;
+			}
+			
+			print $text . "\n";
+			
+			return;
+			
+		}
+		 
 	}

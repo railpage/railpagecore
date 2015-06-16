@@ -9,7 +9,7 @@
 	namespace Railpage\SiteEvent;
 	
 	use Railpage\AppCore;
-	
+	use Railpage\Users\Factory as UserFactory;
 	use Exception;
 	use Railpage\Debug;
 	use DateTime;
@@ -39,69 +39,24 @@
 			
 			$start = ($page - 1) * $limit;
 			
-			if ($this->db instanceof sql_db) {
-				$query = "SELECT SQL_CALC_FOUND_ROWS e.id, e.module, e.user_id, u.username, u.user_avatar, e.timestamp, e.title, e.args, e.key, e.value FROM log_general AS e INNER JOIN nuke_users AS u ON u.user_id = e.user_id ".$sql_keys." ORDER BY id DESC LIMIT ?, ?"; 
+			$query = "SELECT SQL_CALC_FOUND_ROWS e.id, e.module, e.user_id, u.username, u.user_avatar, e.timestamp, e.title, e.args, e.key, e.value FROM log_general AS e INNER JOIN nuke_users AS u ON u.user_id = e.user_id ".$sql_keys." ORDER BY id DESC LIMIT ?, ?"; 
+			
+			if ($result = $this->db->fetchAll($query, array($start, $limit))) {
+				$return = array(); 
 				
-				if ($stmt = $this->db->prepare($query)) {
-					$stmt->bind_param("ii", $start, $limit);
+				foreach ($result as $key => $row) {
+					$row['timestamp'] = new DateTime($row['timestamp']);
+					$row['args'] = json_decode($row['args'], true);
 					
-					$stmt->execute();
-					
-					$return = array(); 
-					
-					$stmt->bind_result($id, $module_name, $user_id, $username, $user_avatar, $timestamp, $title, $args, $key, $value);
-					
-					while ($stmt->fetch()) {
-						$row['id'] = $id; 
-						$row['module'] = $module_name;
-						$row['user_id'] = $user_id; 
-						$row['username'] = $username;
-						$row['user_avatar'] = $user_avatar;
-						$row['timestamp'] = new \DateTime($timestamp); 
-						$row['title'] = $title; 
-						$row['args'] = json_decode($args, true); 
-						$row['key'] = $key; 
-						$row['value'] = $value; 
-						
-						$return['events'][$id] = $row;
-					}
-					
-					$stmt = $this->db->prepare("SELECT FOUND_ROWS() AS total"); 
-					$stmt->execute(); 
-					$stmt->bind_result($return['total_events']); 
-					$stmt->fetch(); 
-					
-					$return['page'] = $page;
-					$return['items_per_page'] = $limit;
-					$return['total_pages'] = ceil($return['total_events'] / $limit);
-					
-					$stmt->close();
-					
-					return $return;
-				} else {
-					throw new \Exception($this->db->error."\n\n".$query); 
-					return false;
+					$return['events'][$row['id']] = $row;
 				}
-			} else {
-				$query = "SELECT SQL_CALC_FOUND_ROWS e.id, e.module, e.user_id, u.username, u.user_avatar, e.timestamp, e.title, e.args, e.key, e.value FROM log_general AS e INNER JOIN nuke_users AS u ON u.user_id = e.user_id ".$sql_keys." ORDER BY id DESC LIMIT ?, ?"; 
 				
-				if ($result = $this->db->fetchAll($query, array($start, $limit))) {
-					$return = array(); 
-					
-					foreach ($result as $key => $row) {
-						$row['timestamp'] = new DateTime($row['timestamp']);
-						$row['args'] = json_decode($row['args'], true);
-						
-						$return['events'][$row['id']] = $row;
-					}
-					
-					$return['total_events'] = $this->db_readonly->fetchOne("SELECT FOUND_ROWS() AS total"); 
-					$return['page'] = $page;
-					$return['items_per_page'] = $limit;
-					$return['total_pages'] = ceil($return['total_events'] / $limit);
-					
-					return $return;
-				}
+				$return['total_events'] = $this->db_readonly->fetchOne("SELECT FOUND_ROWS() AS total"); 
+				$return['page'] = $page;
+				$return['items_per_page'] = $limit;
+				$return['total_pages'] = ceil($return['total_events'] / $limit);
+				
+				return $return;
 			}
 		}
 		

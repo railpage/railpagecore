@@ -225,5 +225,22 @@
 			
 			return false;
 		}
+		
+		/**
+		 * Add arbitrary HTML to the submenu
+		 * @since Version 3.9.1
+		 * @param string $html
+		 * @return void
+		 */
+		
+		public function AddHTML($html) {
+			
+			if (isset($this->section) && !empty($this->section)) {
+				$this->menu[$this->section]['html'][] = $html;
+			} else {
+				$this->menu['html'][] = $html;
+			}
+			
+		}
 	}
 	
