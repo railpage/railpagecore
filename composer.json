@@ -65,6 +65,7 @@
 			"Railpage\\Images\\Utility\\" : "lib/Images/Utility/",
 			"Railpage\\Images\\Provider\\" : "lib/Images/Provider/",
 			"Railpage\\Jobs\\" : "lib/Jobs/",
+			"Railpage\\Jobs\\Utility\\" : "lib/Jobs/Utility/",
 			"Railpage\\Links\\" : "lib/Links/",
 			"Railpage\\Locations\\" : "lib/Locations/",
 			"Railpage\\Locos\\" : "lib/Locos/",

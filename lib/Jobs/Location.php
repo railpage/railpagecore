@@ -58,12 +58,7 @@
 				
 				$this->fetch(); 
 			} elseif (is_string($location_id)) {
-				$query = "SELECT jn_location_id FROM jn_locations WHERE jn_location_name = ?";
-				
-				if ($id = $this->db->fetchOne($query, $location_id)) {
-					$this->id = $id;
-					$this->fetch();
-				} else {
+				if (!$this->id = Utility\SlugUtility::getID("location", $location_id)) {
 					$this->name = $location_id;
 					$this->parent_id = 0;
 					$this->commit();

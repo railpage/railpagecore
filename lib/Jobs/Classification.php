@@ -54,12 +54,7 @@
 				
 				$this->fetch(); 
 			} elseif (is_string($classification_id)) {
-				$query = "SELECT jn_classification_id FROM jn_classifications WHERE jn_classification_name = ?";
-				
-				if ($id = $this->db->fetchOne($query, $classification_id)) {
-					$this->id = $id;
-					$this->fetch(); 
-				} else {
+				if (!$this->id = Utility\SlugUtility::getID("classification", $classification_id)) {
 					$this->name = $classification_id;
 					$this->parent_id = 0;
 					$this->commit();
