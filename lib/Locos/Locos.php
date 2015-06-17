@@ -780,66 +780,6 @@
 		}
 		
 		/**
-		 * Add a builder
-		 * @since Version 3.2
-		 * @version 3.2
-		 * @param string $builder_name
-		 * @param string $builder_desc
-		 * @return boolean
-		 */
-		
-		/*
-		public function addBuilder($builder_name = false, $builder_desc = false) {
-			if (!$builder_name) {
-				throw new Exception("Cannot add builder - name required");
-				return false;
-			}
-			
-			$this->Memcached->delete("railpage:loco.manufacturers"); 
-			
-			$data = array(
-				"manufacturer_name" => $builder_name
-			);
-			
-			if ($builder_desc) {
-				$data['manufacturer_desc'] = $builder_desc;
-			}
-			
-			$this->db->insert("loco_manufacturer", $data); 
-			return true;
-		}
-		*/
-		
-		/**
-		 * Add an operator
-		 * @since Version 3.2
-		 * @version 3.2
-		 * @param string $operator_name
-		 * @param string $operator_desc
-		 * @return boolean
-		 */
-		
-		/*
-		public function addOperator($operator_name = false, $operator_desc = false) {
-			if (!$operator_name) {
-				throw new Exception("Cannot add operator - name required");
-				return false;
-			} 
-			
-			$data = array(
-				"operator_name" => $operator_name
-			);
-			
-			if (!empty($operator_desc)) {
-				$data['operator_desc'] = $operator_desc;
-			}
-			
-			$this->db->insert("operators", $data); 
-			return true;
-		}
-		*/
-		
-		/**
 		 * Edit note
 		 * @since Version 3.2
 		 * @version 3.2
@@ -922,43 +862,6 @@
 			
 			return $this->db->fetchRow($query, $date_id);
 		}
-		
-		/**
-		 * Edit a date
-		 * @since Version 3.2
-		 * @version 3.2
-		 * @param int $date_id
-		 * @param int $date_type_id
-		 * @param int $date
-		 * @param string $text
-		 * @return boolean
-		 */
-		
-		/*
-		public function editDate($date_id = false, $date_type_id = false, $date = false, $text) {
-			if (!$date_id || !$date_type_id || !$date) {
-				throw new Exception("Cannot edit date - missing required fields"); 
-				return false;
-			}
-			
-			$data = array(
-				"loco_date_id" => $date_type_id,
-				"date" => $date
-			);
-			
-			if (!empty($text)) {
-				$data['text'] = $text;
-			}
-			
-			$where = array(
-				"date_id = ?" => $date_id
-			);
-			
-			$this->db->update("loco_unit_date", $data, $where); 
-			
-			return true;
-		}
-		*/
 		
 		/**
 		 * Delete a date
@@ -1193,76 +1096,6 @@
 		}
 		
 		/**
-		 * Close a suggested correction
-		 * @since Version 3.3
-		 * @param int $id
-		 * @param int $user_id
-		 * @return boolean
-		 */
-		
-		/*
-		public function closeCorrection($id = false, $user_id = false) {
-			if (!$id) {
-				throw new Exception("Cannot close correction - no ID given"); 
-				return false;
-			} 
-			
-			if (!$user_id) {
-				throw new Exception("Cannot close correction - no user ID given"); 
-				return false;
-			}
-			
-			$data = array(
-				"status" => 1,
-				"resolved_by" => $user_id,
-				"resolved_date" => new Zend_Db_Expr('NOW()')
-			);
-			
-			$where = array(
-				"correction_id = ?" => $id
-			);
-			
-			$this->db->update("loco_unit_corrections", $data, $where);
-			return true;
-		}
-		*/
-		
-		/**
-		 * Ignore a suggested correction
-		 * @since Version 3.3
-		 * @param int $id
-		 * @param int $user_id
-		 * @return boolean
-		 */
-		
-		/*
-		public function ignoreCorrection($id = false, $user_id = false) {
-			if (!$id) {
-				throw new Exception("Cannot ignore correction - no ID given"); 
-				return false;
-			} 
-			
-			if (!$user_id) {
-				throw new Exception("Cannot ignore correction - no user ID given"); 
-				return false;
-			}
-			
-			$data = array(
-				"status" => 2,
-				"resolved_by" => $user_id,
-				"resolved_date" => new Zend_Db_Expr('NOW()')
-			);
-			
-			$where = array(
-				"correction_id = ?" => $id
-			);
-			
-			$this->db->update("loco_unit_corrections", $data, $where);
-			return true;
-		}
-		*/
-		
-		/**
 		 * Get latest owner of a locomotive
 		 * @since Version 3.4
 		 * @param int $loco_id
@@ -1322,28 +1155,6 @@
 			
 			return $return;
 		}
-		
-		/**
-		 * Add wheel arrangement
-		 * @since Version 3.4
-		 * @return boolean
-		 * @param string $title
-		 * @param string $arrangement
-		 */
-		
-		/*
-		public function addWheelArrangement($title = "", $arrangement = false) {
-			$this->Memcached->delete("railpage:loco.wheelarrangements");
-
-			$data = array(
-				"title" => $title, 
-				"arrangement" => $arrangement
-			);
-			
-			$this->db->insert("wheel_arrangements", $data);
-			return true;
-		}
-		*/
 		
 		/**
 		 * Add a new locomotive group

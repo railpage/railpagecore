@@ -492,8 +492,7 @@
 				try {
 					$this->Asset = new Asset($row['asset_id']);
 				} catch (Exception $e) {
-					global $Error; 
-					$Error->save($e); 
+					// throw it away
 				}
 			}
 			
@@ -507,61 +506,8 @@
 			 * Get all owners of this locomotive
 			 */
 			
-			try {
-				$this->owners = $this->getOrganisations(1); 
-				
-				if (!empty($this->owner_id) && empty($this->owners)) {
-					$this->addOrganisation($this->owner_id, 1); 
-					
-					// Re-fetch the owners
-					$this->owners = $this->getOrganisations(1); 
-				}
-					
-				reset($this->owners);
-				
-				if (isset($this->owners[0]['organisation_id']) && isset($this->owners[0]['organisation_name'])) {
-					$this->owner_id = $this->owners[0]['organisation_id']; 
-					$this->owner 	= $this->owners[0]['organisation_name']; 
-					Debug::LogEvent(__METHOD__ . "() : Latest owner ID requires updating");
-					$doUpdate = true;
-				} else {
-					$this->owner_id = 0;
-					$this->owner 	= "Unknown";
-				}
-			} catch (Exception $e) {
-				global $Error; 
-				$Error->save($e); 
-			}
-			
-			/**
-			 * Get all operators of this locomotive
-			 */
-			
-			try {
-				$this->operators = $this->getOrganisations(2);
-				
-				if (!empty($this->operator_id) && empty($this->operators)) {
-					$this->addOrganisation($this->operator_id, 2); 
-					
-					// Re-fetch the operators
-					$this->operators = $this->getOrganisations(2);
-				} 
-					
-				reset($this->operators);
-				
-				if (isset($this->operators[0]['organisation_id']) && isset($this->operators[0]['organisation_name'])) {
-					$this->operator_id 	= $this->operators[0]['organisation_id']; 
-					$this->operator 	= $this->operators[0]['organisation_name']; 
-					Debug::LogEvent(__METHOD__ . "() : Latest operator ID requires updating"); 
-					$doUpdate = true;
-				} else {
-					$this->operator_id 	= 0;
-					$this->operator 	= "Unknown";
-				}
-			} catch (Exception $e) {
-				global $Error; 
-				$Error->save($e); 
-			}
+			$this->updateOrganisations("owners"); 
+			$this->updateOrganisations("operators"); 
 			
 			/**
 			 * Get the manufacturer
@@ -578,10 +524,7 @@
 						$this->manufacturer = $builders['manufacturers'][$this->manufacturer_id]['manufacturer_name'];
 					}
 				} catch (Exception $e) {
-					// I hate globals, but I don't want to throw an exception here...
-					global $Error; 
-					
-					$Error->save($e);
+					// throw it away
 				}
 			}
 			
@@ -589,6 +532,7 @@
 			 * Update the latest owner/operator stored in this row
 			 */
 			
+			/*
 			$owners 	= $this->getOrganisations(1, 1); 
 			$operators 	= $this->getOrganisations(2, 1); 
 			
@@ -611,6 +555,7 @@
 				
 				$doUpdate = true;
 			}
+			*/
 			
 			/**
 			 * Set the StatsD namespaces
@@ -628,6 +573,66 @@
 			}
 			
 			Debug::logEvent(__METHOD__, $timer); 
+		}
+		
+		/**
+		 * Update the owners/operators
+		 * @since Version 3.9.1
+		 * @param string $type
+		 * @return void
+		 */
+		
+		private function updateOrganisations($type) {
+			
+			if (substr($type, -1) !== "s") {
+				$type .= "s";
+			}
+			
+			$allowed = [ "owners", "operators" ];
+			
+			if (!in_array($type, $allowed)) {
+				throw new InvalidArgumentException("Cannot update owners/operators/organisations: " . $type . " is an invalid organisation type"); 
+			}
+			
+			$lookup = [
+				"owners" => 1,
+				"operators" => 2
+			];
+			
+			$type_id = $lookup[$type];
+			
+			$var_name = substr($type, 0, -1);
+			$var_name_id = substr($type, 0, -1) . "_id";
+			
+			try {
+				$this->$type = $this->getOrganisations($type_id); 
+				
+				if (!empty($this->$var_name_id) && empty($this->$type)) {
+					$this->addOrganisation($this->$var_name_id, $type_id); 
+					
+					// Re-fetch the owners
+					$this->$type = $this->getOrganisations($type_id); 
+				}
+					
+				reset($this->$type);
+				$array = $this->$type;
+				
+				if (isset($array[0]['organisation_id']) && isset($array[0]['organisation_name'])) {
+					$this->$var_name_id = $array[0]['organisation_id']; 
+					$this->$var_name 	= $array[0]['organisation_name']; 
+					Debug::LogEvent(__METHOD__ . "() : Latest " . $var_name . " ID requires updating");
+					$doUpdate = true;
+				} else {
+					$this->$var_name_id = 0;
+					$this->$var_name 	= "Unknown";
+				}
+			} catch (Exception $e) {
+				global $Error; 
+				$Error->save($e); 
+			}
+			
+			return;
+
 		}
 		
 		/**
@@ -886,19 +891,22 @@
 			$return = array();
 			
 			foreach ($this->db->fetchAll($query, array($this->id, $this->id)) as $row) {
-				if ($row['loco_id_a'] === $this->id) {
+				$article = $row['loco_id_a'] === $this->id ? "to" : "from";
+				$key = $row['loco_id_a'] === $this->id ? "loco_id_b" : "loco_id_a";
+				
+				#if ($row['loco_id_a'] === $this->id) {
 					if ($row['link_type_id'] === RP_LOCO_RENUMBERED) {
-						$return[$row['link_id']][$row['loco_id_b']] = "Renumbered to";
+						$return[$row['link_id']][$row[$key]] = "Renumbered " . $article;
 					} elseif ($row['link_type_id'] === RP_LOCO_REBUILT) {
-						$return[$row['link_id']][$row['loco_id_b']] = "Rebuilt to";
+						$return[$row['link_id']][$row[$key]] = "Rebuilt to" . $article;
 					}
-				} else {
-					if ($row['link_type_id'] === RP_LOCO_RENUMBERED) {
-						$return[$row['link_id']][$row['loco_id_a']] = "Renumbered from";
-					} elseif ($row['link_type_id'] === RP_LOCO_REBUILT) {
-						$return[$row['link_id']][$row['loco_id_a']] = "Rebuilt from";
-					}
-				}
+				#} else {
+				#	if ($row['link_type_id'] === RP_LOCO_RENUMBERED) {
+				#		$return[$row['link_id']][$row['loco_id_a']] = "Renumbered from";
+				#	} elseif ($row['link_type_id'] === RP_LOCO_REBUILT) {
+				#		$return[$row['link_id']][$row['loco_id_a']] = "Rebuilt from";
+				#	}
+				#}
 			}
 			
 			return $return;
@@ -965,12 +973,12 @@
 			if ($detailed) {
 				$query = "SELECT AVG(rating) as dec_avg, COUNT(rating) AS number_votes, SUM(rating) AS total_points FROM rating_loco WHERE loco_id = ?"; 
 				
-				$row = array();
-				
-				$row['dec_avg'] = 0;
-				$row['whole_avg'] = 0;
-				$row['total_points'] = 0;
-				$row['number_votes'] = 0;
+				$row = array(
+					"dec_avg" => 0,
+					"whole_avg" => 0,
+					"total_points" => 0,
+					"number_votes" => 0
+				);
 				
 				$row = $this->db->fetchRow($query, $this->id); 
 				
@@ -1481,10 +1489,64 @@
 		
 		public function getCoverImage() {
 			
+			if (isset($this->meta['coverimage'])) {
+				$Image = new Image($this->meta['coverimage']['id']);
+			} elseif ($this->Asset instanceof Asset) {
+				$Image = $this->Asset;
+			} elseif (filter_var($this->photo_id, FILTER_VALIDATE_INT) && $this->photo_id > 0) {
+				$Image = (new Images)->findImage("flickr", $this->photo_id);
+			}
+			
+			$return = array(
+				"type" => "image",
+				"provider" => $Image instanceof Image ? $Image->provider : "",
+				"title" => $Image instanceof Image ? $Image->title : $Asset->meta['title'],
+				"author" => array(
+					"id" => "",
+					"username" => "",
+					"realname" => "",
+					"url" => ""
+				)
+			);
+			
+			if ($Image instanceof Image) {
+				$return = array_merge($return, array(
+					"author" => array(
+						"id" => $Image->author->id,
+						"username" => $Image->author->username,
+						"realname" => isset($Image->author->realname) ? $Image->author->realname : $Image->author->username,
+						"url" => $Image->author->url
+					),
+					"image" => array(
+						"id" => $Image->id,
+					),
+					"sizes" => $Image->sizes,
+					"url" => $Image->url->getURLs()
+				));
+			} elseif ($this->Asset instanceof Asset) {
+				$return = array_merge($return, array(
+					"sizes" => array(
+						"large" => array(
+							"source" => $Asset->meta['image'],
+						),
+						"original" => array(
+							"source" => $Asset->meta['original'],
+						)
+					),
+					"url" => array(
+						"url" => $Asset['meta']['image'],
+					)
+				));
+			}
+			
+			if (isset($Image)) {
+				return $return;
+			}
+			
 			/**
 			 * Image stored in meta data
 			 */
-			
+			/*
 			if (isset($this->meta['coverimage'])) {
 				$Image = new Image($this->meta['coverimage']['id']);
 				return array(
@@ -1508,7 +1570,7 @@
 			/**
 			 * Asset
 			 */
-			
+			/*
 			if ($this->Asset instanceof Asset) {
 				return array(
 					"type" => "asset",
@@ -1537,7 +1599,7 @@
 			/**
 			 * Ordinary Flickr image
 			 */
-			
+			/*
 			if (filter_var($this->photo_id, FILTER_VALIDATE_INT) && $this->photo_id > 0) {
 				$Images = new Images;
 				$Image = $Images->findImage("flickr", $this->photo_id);
