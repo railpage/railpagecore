@@ -528,15 +528,8 @@
 			$mckey = "railpage:loco.wheelarrangements"; 
 			
 			if ($force || !$return = $this->Memcached->fetch($mckey)) {
-				$return['stat'] = "ok"; 
-				$return['count'] = 0;
-				
-				foreach ($this->db->fetchAll($query) as $row) {
-					$return['count']++;
-					$return['wheels'][$row['id']] = $row;
-				}
-				
-				$this->Memcached->save($mckey, $return, strtotime("+1 month")); 
+				$return = Utility\LocosUtility::getLocosComponents($query, "wheels"); 
+				$this->Memcached->save($mckey, $return, strtotime("+1 month"));
 			}
 				
 			return $return;
@@ -551,22 +544,13 @@
 		 */
 		
 		public function listManufacturers($force = false) {
-			$query = "SELECT * FROM loco_manufacturer ORDER BY manufacturer_name";
-			$return = array();
-			
+			$query = "SELECT *, manufacturer_id AS id FROM loco_manufacturer ORDER BY manufacturer_name";
 			$mckey = Manufacturer::MEMCACHED_KEY_ALL;
 			
 			if ($force || !$return = $this->Memcached->fetch($mckey)) {
-				$return['stat'] = "ok"; 
-				$return['count'] = 0;
-				
-				foreach ($this->db->fetchAll($query) as $row) {
-					$return['count']++;
-					$return['manufacturers'][$row['manufacturer_id']] = $row;
-				}
-				
+				$return = Utility\LocosUtility::getLocosComponents($query, "manufacturers"); 
 				$this->Memcached->save($mckey, $return, strtotime("+1 month"));
-			} 
+			}
 				
 			return $return;
 		}
@@ -580,17 +564,9 @@
 		
 		public function listTypes() {
 			$query = "SELECT * FROM loco_type ORDER BY title";
-			$return = array(); 
 			
-			$return['stat'] = "ok"; 
-			$return['count'] = 0; 
+			return Utility\LocosUtility::getLocosComponents($query, "types"); 
 			
-			foreach ($this->db->fetchAll($query) as $row) {
-				$return['types'][$row['id']] = $row; 
-				$return['count']++; 
-			}
-			
-			return $return;
 		}
 		
 		/**
@@ -602,17 +578,9 @@
 		
 		public function listStatus() {
 			$query = "SELECT * FROM loco_status ORDER BY name";
-			$return = array(); 
 			
-			$return['stat'] = "ok"; 
-			$return['count'] = 0; 
+			return Utility\LocosUtility::getLocosComponents($query, "status"); 
 			
-			foreach ($this->db->fetchAll($query) as $row) {
-				$return['status'][$row['id']] = $row; 
-				$return['count']++; 
-			}
-			
-			return $return;
 		}
 		
 		/**

@@ -186,16 +186,12 @@
 		}
 		
 		/**
-		 * Validate changes to this idea
-		 * @since Version 3.8.7
-		 * @return boolean
-		 * @throws \Exception if $this->title is empty
-		 * @throws \Exception if $this->description is empty
-		 * @throws \Exception if $this->Author is not an instance of \Railpage\Users\User
-		 * @throws \Exception if $this->Category is not an instance of \Railpage\Ideas\Category
+		 * Fire off some exceptions
+		 * @since Version 3.9.1
+		 * @return void
 		 */
 		
-		private function validate() {
+		private function checkExceptions() {
 			
 			if (empty($this->title)) {
 				throw new Exception("Title of the idea cannot be empty");
@@ -217,16 +213,24 @@
 				throw new Exception("Each idea must belong to a valid category");
 			}
 			
+			return;
+			
+		}
+		
+		/**
+		 * Set some default values
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function setDefaults() {
+			
 			if (!$this->Date instanceof DateTime) {
 				$this->Date = new DateTime;
 			}
 			
 			if (empty($this->votes)) {
 				$this->votes = 0;
-			}
-			
-			if (is_array($this->votes)) {
-				$this->votes = count($this->votes); 
 			}
 			
 			if (empty($this->slug)) {
@@ -245,7 +249,51 @@
 				$this->redmine_id = 0;
 			}
 			
+			return;
+			
+		}
+		
+		/**
+		 * Validate changes to this idea
+		 * @since Version 3.8.7
+		 * @return boolean
+		 * @throws \Exception if $this->title is empty
+		 * @throws \Exception if $this->description is empty
+		 * @throws \Exception if $this->Author is not an instance of \Railpage\Users\User
+		 * @throws \Exception if $this->Category is not an instance of \Railpage\Ideas\Category
+		 */
+		
+		private function validate() {
+			
+			$this->checkExceptions(); 
+			$this->setDefaults(); 
+						
 			return true;
+			
+		}
+		
+		/**
+		 * Prepare the submit data
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		private function prepareSubmitData() {
+			
+			$data = array(
+				"title" => $this->title,
+				"description" => $this->description,
+				"slug" => $this->slug,
+				"votes" => is_array($this->votes) ? count($this->votes) : $this->votes,
+				"author" => $this->Author->id,
+				"category_id" => $this->Category->id,
+				"date" => $this->Date->format("Y-m-d H:i:s"),
+				"status" => $this->status,
+				"forum_thread_id" => $this->forum_thread_id,
+				"redmine_id" => $this->redmine_id
+			);
+			
+			return $data;
 			
 		}
 		
@@ -277,19 +325,7 @@
 		public function commit() {
 			
 			$this->validate();
-			
-			$data = array(
-				"title" => $this->title,
-				"description" => $this->description,
-				"slug" => $this->slug,
-				"votes" => $this->votes,
-				"author" => $this->Author->id,
-				"category_id" => $this->Category->id,
-				"date" => $this->Date->format("Y-m-d H:i:s"),
-				"status" => $this->status,
-				"forum_thread_id" => $this->forum_thread_id,
-				"redmine_id" => $this->redmine_id
-			);
+			$data = $this->prepareSubmitData(); 
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
 				$where = array(
@@ -303,22 +339,7 @@
 			
 				$this->Author->wheat(10);
 				
-				/**
-				 * Log the creation of this idea
-				 */
-				
-				try {
-					$Event = new SiteEvent;
-					$Event->title = "Suggested an idea";
-					$Event->user_id = $this->Author->id;
-					$Event->module_name = strtolower($this->Module->name);
-					$Event->key = "idea_id";
-					$Event->value = $this->id;
-					
-					$Event->commit();
-				} catch (Exception $e) {
-					//die($e->getMessage());
-				}
+				$this->logEvent(); 
 				
 			}
 			
@@ -326,6 +347,31 @@
 			
 			return $this;
 			
+		}
+		
+		/**
+		 * Log an event
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function logEvent() {
+			
+			try {
+				$Event = new SiteEvent;
+				$Event->title = "Suggested an idea";
+				$Event->user_id = $this->Author->id;
+				$Event->module_name = strtolower($this->Module->name);
+				$Event->key = "idea_id";
+				$Event->value = $this->id;
+				
+				$Event->commit();
+			} catch (Exception $e) {
+				//die($e->getMessage());
+			}
+			
+			return;
+
 		}
 		
 		/**

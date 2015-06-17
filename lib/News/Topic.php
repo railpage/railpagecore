@@ -11,8 +11,13 @@
 	namespace Railpage\News;
 	
 	use Exception;
+	use InvalidArgumentException;
+	use DateTime;
+	use DateTimeZone;
 	use Railpage\Url;
 	use Railpage\Module;
+	use Railpage\Debug;
+	use Railpage\ContentUtility;
 	
 	// Make sure the parent class is loaded
 		
@@ -125,13 +130,37 @@
 				$this->Memcached->save($this->mckey, $row, strtotime("+6 months"));
 			}
 			
+			$this->populate($row); 
+			$this->makeURLs(); 
+			
+		}
+		
+		/**
+		 * Make our URLs
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function makeURLs() {
+			
+			$this->url = new Url(sprintf("%s/t/%s", $this->Module->url, $this->alias));
+			
+		}
+		
+		/**
+		 * Populate this object
+		 * @since Version 3.9.1
+		 * @return void
+		 * @param array $row
+		 */
+		
+		private function populate($row) {
+			
 			$this->id 		= $row['topicid']; 
 			$this->alias	= $row['topicname']; 
 			$this->title 	= $row['topictext'];
 			$this->image	= $row['topicimage']; 
 			$this->desc		= isset($row['desc']) ? $row['desc'] : "";
-			
-			$this->url = new Url(sprintf("%s/t/%s", $this->Module->url, $this->alias));
 			
 		}
 		
@@ -180,34 +209,38 @@
 			
 			$query = "SELECT SQL_CALC_FOUND_ROWS s.*, t.topicname, t.topicimage, t.topictext, u.user_id AS informant_id FROM nuke_stories AS s LEFT JOIN nuke_topics AS t ON s.topic = t.topicid LEFT JOIN nuke_users AS u ON s.informant = u.username WHERE s.topic = ? AND s.approved = ? ORDER BY s.time DESC LIMIT ?, ?"; 
 			
-			$return = array(); 
-			$return['total'] 	= 0;
-			$return['children'] = array(); 
-			$return['page'] 	= $page; 
-			$return['perpage'] 	= $limit; 
-			$return['topic_id'] = $this->id;
+			$return = array(
+				"total" => 0,
+				"children" => array(),
+				"page" => $page,
+				"limit" => $limit,
+				"topic_id" => $this->id
+			);
 			
-			if ($result = $this->db_readonly->fetchAll($query, array($this->id, "1", $page * $limit, $limit))) {
-				$return['total'] = $this->db_readonly->fetchOne("SELECT FOUND_ROWS() AS total"); 
+			$params = array($this->id, "1", $page * $limit, $limit);
+			
+			if (!$result = $this->db_readonly->fetchAll($query, $params)) {
+				return $return;
+			}
+			
+			$return['total'] = $this->db_readonly->fetchOne("SELECT FOUND_ROWS() AS total"); 
+			
+			foreach ($result as $row) {
+				$row['time_relative'] = ContentUtility::relativeTime(strtotime($row['time']));
+				$row['title'] = ContentUtility::FormatTitle($row['title']);
 				
-				foreach ($result as $row) {
-					$row['time_relative'] = function_exists("relative_date") ? relative_date(strtotime($row['time'])) : $row['time'];
+				// Match the first sentence
+				$line = explode("\n", $row['hometext']); 
+				$row['firstline'] 	= preg_replace('/([^?!.]*.).*/', '\\1', strip_tags($line[0]));
 					
-					$row['title'] = format_topictitle($row['title']);
-					
-					// Match the first sentence
-					$line = explode("\n", $row['hometext']); 
-					$row['firstline'] 	= preg_replace('/([^?!.]*.).*/', '\\1', strip_tags($line[0]));
-						
-					if (empty($row['slug'])) {
-						$row['slug'] = $this->createSlug($row['sid']); 
-					}
-					
-					$row['url'] = $this->makePermaLink($row['slug']); 
-					$row['story_id'] = $row['sid'];
-					
-					$return['children'][] = $row; 
+				if (empty($row['slug'])) {
+					$row['slug'] = $this->createSlug($row['sid']); 
 				}
+				
+				$row['url'] = $this->makePermaLink($row['slug']); 
+				$row['story_id'] = $row['sid'];
+				
+				$return['children'][] = $row; 
 			}
 			
 			$this->Memcached->save($mckey, $return, $mcexp);
@@ -252,9 +285,9 @@
 				
 				foreach ($matches as $id => $row) {
 					
-					$row['time_relative'] = time2str($row['story_time_unix']);
+					$row['time_relative'] = ContentUtility::relativeTime($row['story_time_unix']);
 					$row['time'] = $row['story_time'];
-					$row['title'] = format_topictitle($row['story_title']);
+					$row['title'] = ContentUtility::FormatTitle($row['story_title']);
 					
 					// Match the first sentence
 					$line = explode("\n", !empty($row['story_lead']) ? $row['story_lead'] : $row['story_blurb']); 

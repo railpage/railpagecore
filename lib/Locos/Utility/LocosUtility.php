@@ -61,4 +61,28 @@
 			
 		}
 		
+		/**
+		 * Get loco components from the database
+		 * @since Version 3.9.1
+		 * @return array
+		 * @param $query
+		 * @param $key
+		 */
+		
+		public static function getLocosComponents($query, $key) {
+			
+			$Database = (new AppCore)->getDatabaseConnection(); 
+			
+			$return['stat'] = "ok"; 
+			$return['count'] = 0;
+			
+			foreach ($Database->fetchAll($query) as $row) {
+				$return['count']++;
+				$return[$key][$row['id']] = $row;
+			}
+			
+			return $return;
+			
+		}
+		
 	}
