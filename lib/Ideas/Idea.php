@@ -138,23 +138,25 @@
 		
 		private function populate($column, $value) {
 			
-			$query = $column == "id" ? "SELECT * FROM idea_ideas WHERE id = ?" : "SELECT * FROM idea_ideas WHERE slug = ?";
+			$query = sprintf("SELECT * FROM idea_ideas WHERE %s = ?", $column);
 			
-			if ($row = $this->db->fetchRow($query, $value)) {
-				$this->title = $row['title'];
-				$this->id = $row['id'];
-				$this->slug = $row['slug'];
-				$this->description = $row['description'];
-				$this->Author = new User($row['author']);
-				$this->Date = new DateTime($row['date']);
-				$this->Category = new Category($row['category_id']);
-				$this->status = $row['status'];
-				$this->forum_thread_id = $row['forum_thread_id'];
-				$this->redmine_id = $row['redmine_id'];
-			
-				$this->fetchVotes();
-				$this->makeURLs(); 
+			if (!$row = $this->db->fetchRow($query, $value)) {
+				return;
 			}
+			
+			$this->title = $row['title'];
+			$this->id = $row['id'];
+			$this->slug = $row['slug'];
+			$this->description = $row['description'];
+			$this->Date = new DateTime($row['date']);
+			$this->Category = new Category($row['category_id']);
+			$this->status = $row['status'];
+			$this->forum_thread_id = $row['forum_thread_id'];
+			$this->redmine_id = $row['redmine_id'];
+			
+			$this->setAuthor(new User($row['author']));
+			$this->fetchVotes();
+			$this->makeURLs(); 
 			
 		}
 		
@@ -168,12 +170,18 @@
 			
 			$this->url = new Url(sprintf("%s/%s", $this->Category->url, $this->slug));
 			
-			$this->url->implemented = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_IMPLEMENTED);
-			$this->url->declined = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_NO);
-			$this->url->inprogress = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_INPROGRESS);
-			$this->url->active = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_ACTIVE);
-			$this->url->underconsideration = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_UNDERCONSIDERATION);
-			$this->url->active = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, Ideas::STATUS_ACTIVE);
+			$status = [
+				"implemented" => Ideas::STATUS_IMPLEMENTED,
+				"declined" => Ideas::STATUS_NO,
+				"inprogress" => Ideas::STATUS_INPROGRESS,
+				"active" => Ideas::STATUS_ACTIVE,
+				"underconsideration" => Ideas::STATUS_UNDERCONSIDERATION,
+				"active" => Ideas::STATUS_ACTIVE
+			];
+			
+			foreach ($status as $key => $val) {
+				$this->url->$key = sprintf("%s?id=%d&mode=idea.setstatus&status_id=%d", $this->Module->url, $this->id, $val); 
+			}
 			
 			$this->url->vote = sprintf("%s?mode=idea.vote&id=%d", $this->Module->url, $this->id);
 			$this->url->creatediscussion = sprintf("%s?mode=idea.discuss&id=%d", $this->Module->url, $this->id);
