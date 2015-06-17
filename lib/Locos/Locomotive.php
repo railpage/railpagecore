@@ -376,25 +376,7 @@
 				throw new Exception("Data for this locomotive could not be retrieved") ;
 			}
 			
-			$lookup = array(
-				"loco_num" => "number",
-				"loco_name" => "name",
-				"loco_gauge_id" => "gauge_id",
-				"loco_status_id" => "status_id",
-				"loco_status" => "status",
-				"class_id" => "class_id",
-				"owner_id" => "owner_id",
-				"owner_name" => "owner",
-				"operator_id" => "operator_id",
-				"operator_name" => "operator",
-				"entered_service" => "entered_service",
-				"withdrawn" => "withdrawal_date",
-				"date_added" => "date_added",
-				"date_modified" => "date_modified",
-				"builders_number" => "builders_num",
-				"photo_id" => "photo_id",
-				"manufacturer_id" => "manufacturer_id"
-			);
+			$lookup = Utility\DataUtility::getLocoColumnMapping(); 
 			
 			foreach ($row as $key => $val) {
 				if (isset($lookup[$key])) {
@@ -409,24 +391,11 @@
 				$this->$int = filter_var($this->$int, FILTER_VALIDATE_INT); 
 			}
 			
-			/**
-			 * Attempt to load the locomotive from the registry, and fall back to a new instance
-			 */
-			
-			$Registry = Registry::getInstance(); 
-			$regkey = sprintf(LocoClass::REGISTRY_KEY, $this->class_id); 
-			
 			$this->Class = Factory::CreateLocoClass($this->class_id); 
-			
-			/**
-			 * Alias the class
-			 */
-			
 			$this->class = &$this->Class;
+			
 			$this->flickr_tag = trim(str_replace(" ", "", $this->Class->flickr_tag . "-" . $this->number));
-			
 			$this->gauge_formatted = format_gauge($this->gauge);
-			
 			$this->makeLinks();
 			
 			Debug::logEvent(__METHOD__, $timer); 
@@ -623,7 +592,7 @@
 		 * @return boolean
 		 */
 		
-		public function validate() {
+		private function validate() {
 			
 			if ($this->class instanceof LocoClass && !$this->Class instanceof LocoClass) {
 				$this->Class = &$this->class;
@@ -1246,24 +1215,8 @@
 				return false;
 			}
 			
-			$data['date'] = new \Zend_Db_Expr("NOW()");
-			$data['namespace'] = "railpage.locos.loco";
-			$data['namespace_key'] = $this->id;
+			return Utility\LocosUtility::addAsset($this->namespace, $this->id, $data); 
 			
-			$meta = json_encode($data['meta']);
-			
-			/**
-			 * Handle UTF8 errors
-			 */
-			
-			if (!$meta && json_last_error() === JSON_ERROR_UTF8) {
-				$data['meta'] = ContentUtility::FixJSONEncode_UTF8($data['meta']); 
-			} else {
-				$data['meta'] = $meta;
-			}
-			
-			$this->db->insert("asset", $data);
-			return true;
 		}
 		
 		/**
@@ -1407,7 +1360,7 @@
 			);
 			
 			if ($Image instanceof Image) {
-				$return = array_merge($return, array(
+				return array_merge($return, array(
 					"author" => array(
 						"id" => $Image->author->id,
 						"username" => $Image->author->username,
@@ -1420,8 +1373,10 @@
 					"sizes" => $Image->sizes,
 					"url" => $Image->url->getURLs()
 				));
-			} elseif ($this->Asset instanceof Asset) {
-				$return = array_merge($return, array(
+			}
+			
+			if ($this->Asset instanceof Asset) {
+				return array_merge($return, array(
 					"sizes" => array(
 						"large" => array(
 							"source" => $Asset->meta['image'],
@@ -1434,10 +1389,6 @@
 						"url" => $Asset['meta']['image'],
 					)
 				));
-			}
-			
-			if (isset($Image)) {
-				return $return;
 			}
 			
 			/**

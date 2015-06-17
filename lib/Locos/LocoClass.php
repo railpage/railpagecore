@@ -852,24 +852,8 @@
 				return false;
 			}
 			
-			$data['date'] = new \Zend_Db_Expr("NOW()");
-			$data['namespace'] = "railpage.locos.class";
-			$data['namespace_key'] = $this->id;
+			return Utility\LocosUtility::addAsset($this->namespace, $this->id, $data); 
 			
-			$meta = json_encode($data['meta']);
-			
-			/**
-			 * Handle UTF8 errors
-			 */
-			
-			if (!$meta && json_last_error() === JSON_ERROR_UTF8) {
-				$data['meta'] = ContentUtility::FixJSONEncode_UTF8($data['meta']); 
-			} else {
-				$data['meta'] = $meta;
-			}
-			
-			$this->db->insert("asset", $data);
-			return true;
 		}
 		
 		/**
