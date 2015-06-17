@@ -31,6 +31,11 @@
 		
 		public static function addAsset($namespace, $id, $data) {
 			
+			if (!is_array($data)) {
+				throw new Exception("Cannot add asset - \$data must be an array"); 
+				return false;
+			}
+			
 			$Database = (new AppCore)->getDatabaseConnection(); 
 			
 			$data = array_merge($data, array(

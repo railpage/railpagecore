@@ -274,14 +274,7 @@
 				
 			Debug::RecordInstance();
 			
-			$this->Templates = new stdClass;
-			$this->Templates->view = "class";
-			$this->Templates->sightings = "loco.sightings";
-			$this->Templates->bulkedit = "class.bulkedit";
-			$this->Templates->bulkedit_operators = "class.bulkedit.operators";
-			$this->Templates->bulkedit_buildersnumbers = "class.bulkedit.buildersnumbers";
-			$this->Templates->bulkedit_status = "class.bulkedit.status";
-			$this->Templates->bulkedit_gauge = "class.bulkedit.gauge";
+			$this->getTemplates(); 
 			
 			$this->namespace = sprintf("%s.%s", $this->Module->namespace, "class");
 			
@@ -295,16 +288,31 @@
 		}
 		
 		/**
+		 * Load the templates
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function getTemplates() {
+			
+			$this->Templates = new stdClass;
+			$this->Templates->view = "class";
+			$this->Templates->sightings = "loco.sightings";
+			$this->Templates->bulkedit = "class.bulkedit";
+			$this->Templates->bulkedit_operators = "class.bulkedit.operators";
+			$this->Templates->bulkedit_buildersnumbers = "class.bulkedit.buildersnumbers";
+			$this->Templates->bulkedit_status = "class.bulkedit.status";
+			$this->Templates->bulkedit_gauge = "class.bulkedit.gauge";
+			
+		}
+		
+		/**
 		 * Load / fetch a class
 		 * @since Version 3.2
 		 * @param boolean $recurse
 		 */
 		
-		public function fetch($recurse) {
-			if (!$this->id) {
-				throw new Exception("Cannot fetch loco class - no class ID given");
-				return false;
-			}
+		private function fetch($recurse) {
 			
 			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				$this->id = Utility\LocomotiveUtility::getClassId($this->id); 
@@ -519,28 +527,6 @@
 				$row['manufacturer'] 				= $builders['manufacturers'][$row['manufacturer_id']]['manufacturer_name'];
 				$row['loco_gauge']['gauge_name']	= $row['gauge_name']."<span style='display:block;margin-top:-8px;margin-bottom:-4px;' class='gensmall'>".$row['gauge_metric']."</span>";
 				$row['loco_gauge_formatted'] 		= $row['gauge_name']." ".$row['gauge_imperial']." (".$row['gauge_metric'].")";
-				
-				/*
-				try {
-					if ($owner = $this->getLastOwner($row['loco_id'])) {
-						$row['owner_id'] = $owner['operator_id']; 
-						$row['owner_name'] = $owner['operator_name']; 
-					}
-				} catch (Exception $e) {
-					global $Error; 
-					$Error->save($e); 
-				}
-				
-				try {
-					if ($operator = $this->getLastOperator($row['loco_id'])) {
-						$row['operator_id'] = $operator['operator_id']; 
-						$row['operator_name'] = $operator['operator_name']; 
-					}
-				} catch (Exception $e) {
-					global $Error; 
-					$Error->save($e); 
-				}
-				*/
 					
 				$row['url'] = strtolower($this->url . "/" . $row['loco_num']);
 				$row['url_edit'] = sprintf("%s?mode=loco.edit&id=%d", $this->Module->url, $row['loco_id']);
@@ -682,51 +668,9 @@
 		 */
 		
 		public function getLiveries($f = false) {
-			if (is_object($f)) {
-				// Get photos of this loco, including tags
-				$result = $f->groups_pools_getPhotos(RP_FLICKR_GROUPID, $this->flickr_tag, NULL, NULL, "tags");
-				$tags = array();
-				
-				if (isset($result['photos']['photo'])) {
-					foreach ($result['photos']['photo'] as $photo) {
-						$rawtags = explode(" ", $photo['tags']); 
-						
-						foreach ($rawtags as $tag) {
-							if (preg_match("@railpage:livery=([0-9]+)@", $tag, $matches)) {
-								if (!in_array($matches[1], $tags)) {
-									$tags[] = $matches[1];
-								}
-							}
-						}
-					}
-				}
-				
-				if (count($tags)) {
-					return $tags;
-				} else {
-					return false;
-				}
-			} else {
-				$query = "SELECT l.livery_id AS id, l.livery AS name, l.photo_id FROM loco_livery AS l LEFT JOIN loco_unit_livery AS ul ON l.livery_id = ul.livery_id WHERE ul.ignored = ? AND ul.loco_id IN (SELECT loco_id FROM loco_unit WHERE class_id = ?) GROUP BY l.livery_id ORDER BY l.livery";
-				$return = array();
-				
-				foreach ($this->db->fetchAll($query, array("0", $this->id)) as $row) {
-					$Livery = new Liveries\Livery($row['id']);
-					
-					$row = array(
-						"id" => $Livery->id,
-						"name" => $Livery->name,
-						"photo" => array(
-							"id" => $Livery->photo_id,
-							"provider" => "flickr"
-						)
-					);
-					
-					$return[] = $row;
-				}
-				
-				return $return;
-			}
+			
+			return Utility\LocomotiveUtility::getLiveriesForLocomotiveClass($this->id); 
+			
 		}
 		
 		/** 
@@ -847,10 +791,6 @@
 		 */
 		
 		public function addAsset($data = false) {
-			if (!is_array($data)) {
-				throw new Exception("Cannot add asset - \$data must be an array"); 
-				return false;
-			}
 			
 			return Utility\LocosUtility::addAsset($this->namespace, $this->id, $data); 
 			
@@ -1123,109 +1063,8 @@
 		
 		public function getCoverImage() {
 			
-			$mckey = sprintf("railpage:locos.class.coverimage;id=%d", $this->id);
+			return Utility\CoverImageUtility::getCoverImageOfObject($this);
 			
-			if ($result = $this->Memcached->fetch($mckey)) {
-				return $result;
-			}
-			
-			/**
-			 * Image stored in meta data
-			 */
-			
-			if (isset($this->meta['coverimage'])) {
-				$Image = new Image($this->meta['coverimage']['id']);
-				
-				$return = array(
-					"type" => "image",
-					"provider" => $Image->provider,
-					"title" => $Image->title,
-					"author" => array(
-						"id" => $Image->author->id,
-						"username" => $Image->author->username,
-						"realname" => isset($Image->author->realname) ? $Image->author->realname : $Image->author->username,
-						"url" => $Image->author->url
-					),
-					"image" => array(
-						"id" => $Image->id,
-					),
-					"sizes" => $Image->sizes,
-					"url" => $Image->url->getURLs()
-				);
-				
-				$this->Memcached->save($mckey, $return, strtotime("+1 year"));
-				
-				return $return;
-			}
-			
-			/**
-			 * Asset
-			 */
-			
-			if ($this->Asset instanceof Asset) {
-				$return = array(
-					"type" => "asset",
-					"provider" => "", // Set this to AssetProvider soon
-					"title" => $Asset->meta['title'],
-					"author" => array(
-						"id" => "",
-						"username" => "",
-						"realname" => "",
-						"url" => ""
-					),
-					"sizes" => array(
-						"large" => array(
-							"source" => $Asset->meta['image'],
-						),
-						"original" => array(
-							"source" => $Asset->meta['original'],
-						)
-					),
-					"url" => array(
-						"url" => $Asset['meta']['image'],
-					)
-				);
-				
-				$this->Memcached->save($mckey, $return, strtotime("+1 year"));
-				
-				return $return;
-			}
-			
-			/**
-			 * Ordinary Flickr image
-			 */
-			
-			if (filter_var($this->flickr_image_id, FILTER_VALIDATE_INT) && $this->flickr_image_id > 0) {
-				$Images = new Images;
-				$Image = $Images->findImage("flickr", $this->flickr_image_id);
-				
-				$return = array(
-					"type" => "image",
-					"provider" => $Image->provider,
-					"title" => $Image->title,
-					"author" => array(
-						"id" => $Image->author->id,
-						"username" => $Image->author->username,
-						"realname" => isset($Image->author->realname) ? $Image->author->realname : $Image->author->username,
-						"url" => $Image->author->url
-					),
-					"image" => array(
-						"id" => $Image->id,
-					),
-					"sizes" => $Image->sizes,
-					"url" => $Image->url->getURLs()
-				);
-				
-				$this->Memcached->save($mckey, $return, strtotime("+1 year"));
-				
-				return $return;
-			}
-			
-			/**
-			 * No cover image!
-			 */
-			
-			return false;
 		}
 		
 		/**

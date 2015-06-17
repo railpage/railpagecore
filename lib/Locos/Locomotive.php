@@ -1210,10 +1210,6 @@
 		 */
 		
 		public function addAsset($data = false) {
-			if (!is_array($data)) {
-				throw new Exception("Cannot add asset - \$data must be an array"); 
-				return false;
-			}
 			
 			return Utility\LocosUtility::addAsset($this->namespace, $this->id, $data); 
 			
@@ -1339,63 +1335,8 @@
 		
 		public function getCoverImage() {
 			
-			if (isset($this->meta['coverimage'])) {
-				$Image = new Image($this->meta['coverimage']['id']);
-			} elseif ($this->Asset instanceof Asset) {
-				$Image = $this->Asset;
-			} elseif (filter_var($this->photo_id, FILTER_VALIDATE_INT) && $this->photo_id > 0) {
-				$Image = (new Images)->findImage("flickr", $this->photo_id);
-			}
+			return Utility\CoverImageUtility::getCoverImageOfObject($this);
 			
-			$return = array(
-				"type" => "image",
-				"provider" => $Image instanceof Image ? $Image->provider : "",
-				"title" => $Image instanceof Image ? $Image->title : $Asset->meta['title'],
-				"author" => array(
-					"id" => "",
-					"username" => "",
-					"realname" => "",
-					"url" => ""
-				)
-			);
-			
-			if ($Image instanceof Image) {
-				return array_merge($return, array(
-					"author" => array(
-						"id" => $Image->author->id,
-						"username" => $Image->author->username,
-						"realname" => isset($Image->author->realname) ? $Image->author->realname : $Image->author->username,
-						"url" => $Image->author->url
-					),
-					"image" => array(
-						"id" => $Image->id,
-					),
-					"sizes" => $Image->sizes,
-					"url" => $Image->url->getURLs()
-				));
-			}
-			
-			if ($this->Asset instanceof Asset) {
-				return array_merge($return, array(
-					"sizes" => array(
-						"large" => array(
-							"source" => $Asset->meta['image'],
-						),
-						"original" => array(
-							"source" => $Asset->meta['original'],
-						)
-					),
-					"url" => array(
-						"url" => $Asset['meta']['image'],
-					)
-				));
-			}
-			
-			/**
-			 * No cover image!
-			 */
-			
-			return false;
 		}
 		
 		/**
