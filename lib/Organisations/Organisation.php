@@ -414,5 +414,19 @@
 				yield new Job($row['job_id']);
 			}
 		}
+		
+		/**
+		 * Get this as an associative array
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			return array(
+				"id" => $this->id,
+				"name" => $this->name,
+				"url" => $this->url instanceof Url ? $this->url->getURLs() : array("url" => $this->url)
+			);
+		}
 	}
 	

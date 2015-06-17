@@ -142,23 +142,22 @@
 			$this->Module = new Module("events");
 			$this->namespace = $this->Module->namespace;
 			
-			$this->populate($id); 
+			if ($id !== false) {
+				$this->populate($id); 
+			}
 			
 			Debug::logEvent(__METHOD__, $timer); 
 			
 		}
 		
 		/**
-		 * Populate this object
+		 * Load this object
 		 * @since Version 3.9.1
-		 * @return void
+		 * @return array
+		 * @param int|string $id
 		 */
 		
-		private function populate($id) {
-			
-			if ($id === false) {
-				return;
-			}
+		private function load($id) {
 			
 			if (!filter_var($id, FILTER_VALIDATE_INT)) {
 				$id = $this->db->fetchOne("SELECT id FROM event WHERE slug = ?", $id); 
@@ -179,38 +178,54 @@
 				$this->Memcached->save($this->mckey, $row);
 			}
 			
-			if (isset($row) && is_array($row)) {
-				$this->title = $row['title'];
-				$this->desc = $row['description']; 
-				$this->meta = json_decode($row['meta'], true);
-				$this->slug = $row['slug'];
-				$this->status = isset($row['status']) ? $row['status'] : Events::STATUS_APPROVED;
-				
-				if (!isset($row['user_id'])) {
-					$row['user_id'] = 45;
-				}
-				
-				$this->setAuthor(new User($row['user_id']));
-				
-				$this->flickr_tag = "railpage:event=" . $this->id;
-				
-				if (filter_var($row['category_id'], FILTER_VALIDATE_INT)) {
-					$this->Category = new EventCategory($row['category_id']);
-				}
-				
-				if (filter_var($row['organisation_id'], FILTER_VALIDATE_INT)) {
-					$this->Organisation = new Organisation($row['organisation_id']);
-				}
-				
-				if (!empty($row['lat']) && round($row['lat'], 3) != "0.000" && !empty($row['lon']) && round($row['lon'], 3) != "0.000") {
-					$this->Place = Place::Factory($row['lat'], $row['lon']);
-				}
-				
-				$this->createUrls();
-				
-				$this->Templates = new stdClass();
-				$this->Templates->view = sprintf("%s/event.tpl", $this->Module->Paths->html);
+			return $row;
+
+		}
+		
+		/**
+		 * Populate this object
+		 * @since Version 3.9.1
+		 * @return void
+		 * @param int|string $id
+		 */
+		
+		private function populate($id) {
+			
+			$row = $this->load($id); 
+			
+			if (!isset($row) || !is_array($row)) {
+				return;
 			}
+			
+			$this->title = $row['title'];
+			$this->desc = $row['description']; 
+			$this->meta = json_decode($row['meta'], true);
+			$this->slug = $row['slug'];
+			$this->status = isset($row['status']) ? $row['status'] : Events::STATUS_APPROVED;
+			
+			if (!isset($row['user_id'])) {
+				$row['user_id'] = 45;
+			}
+			
+			$this->setAuthor(new User($row['user_id']));
+			
+			$this->flickr_tag = "railpage:event=" . $this->id;
+			
+			if (filter_var($row['category_id'], FILTER_VALIDATE_INT)) {
+				$this->Category = new EventCategory($row['category_id']);
+			}
+			
+			if (filter_var($row['organisation_id'], FILTER_VALIDATE_INT)) {
+				$this->Organisation = new Organisation($row['organisation_id']);
+			}
+			
+			if (!empty($row['lat']) && round($row['lat'], 3) != "0.000" && !empty($row['lon']) && round($row['lon'], 3) != "0.000") {
+				$this->Place = Place::Factory($row['lat'], $row['lon']);
+			}
+			
+			$this->createUrls();
+			$this->Templates = new stdClass();
+			$this->Templates->view = sprintf("%s/event.tpl", $this->Module->Paths->html);
 		}
 		
 		/**
@@ -259,10 +274,6 @@
 		public function commit() {
 			$this->validate(); 
 			
-			if (isset($this->mckey) && !empty($this->mckey)) {
-				$this->Memcached->delete($this->mckey);
-			}
-			
 			$data = array(
 				"title" => $this->title,
 				"description" => $this->desc,
@@ -270,21 +281,19 @@
 				"category_id" => $this->Category->id,
 				"slug" => $this->slug,
 				"status" => $this->status,
-				"user_id" => $this->Author->id
+				"user_id" => $this->Author->id,
+				"lat" => "",
+				"lon" => "",
+				"organisation_id" => 0
 			);
 			
 			if ($this->Organisation instanceof Organisation) {
 				$data['organisation_id'] = $this->Organisation->id;
-			} else {
-				$data['organisation_id'] = 0;
 			}
 			
 			if ($this->Place instanceof Place) {
 				$data['lat'] = $this->Place->lat;
 				$data['lon'] = $this->Place->lon;
-			} else {
-				$data['lat'] = "";
-				$data['lon'] = "";
 			}
 			
 			if (filter_var($this->id)) {
@@ -295,6 +304,8 @@
 				$this->db->update("event", $data, $where); 
 			
 				$this->Redis->delete(sprintf(self::CACHE_KEY, $this->id)); 
+				$this->Memcached->delete($this->mckey);
+
 			} else {
 				$this->db->insert("event", $data);
 				$this->id = $this->db->lastInsertId(); 
@@ -496,11 +507,7 @@
 			);
 			
 			if ($this->Organisation instanceof Organisation) {
-				$array['organisation'] = array(
-					"id" => $this->Organisation->id,
-					"name" => $this->Organisation->name,
-					"url" => $this->Organisation->url instanceof Url ? $this->Organisation->url->getURLs() : array("url" => $this->Organisation->url)
-				);
+				$array['organisation'] = $this->Organisation->getArray();
 			}
 			
 			if ($this->Place instanceof Place) {
