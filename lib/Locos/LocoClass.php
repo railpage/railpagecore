@@ -862,22 +862,8 @@
 			 * Handle UTF8 errors
 			 */
 			
-			if (!$meta && json_last_error() == JSON_ERROR_UTF8) {
-				// Loop through meta and re-encode
-				
-				foreach ($data['meta'] as $key => $val) {
-					if (!is_array($val)) {
-						$data['meta'][$key] = iconv('UTF-8', 'UTF-8//IGNORE', utf8_encode($val));
-					} else {
-						foreach ($data['meta'][$key][$val] as $k => $v) {
-							if (!is_array($v)) {
-								$data['meta'][$key][$val][$k] = iconv('UTF-8', 'UTF-8//IGNORE', utf8_encode($v));
-							}
-						}
-					}
-				}
-				
-				$data['meta'] = json_encode($data['meta']);
+			if (!$meta && json_last_error() === JSON_ERROR_UTF8) {
+				$data['meta'] = ContentUtility::FixJSONEncode_UTF8($data['meta']); 
 			} else {
 				$data['meta'] = $meta;
 			}
@@ -1140,35 +1126,8 @@
 		
 		public function hasCoverImage() {
 			
-			/**
-			 * Image stored in meta data
-			 */
+			return Utility\CoverImageUtility::hasCoverImage($this); 
 			
-			if (isset($this->meta['coverimage']) && isset($this->meta['coverimage']['id']) && !empty($this->meta['coverimage']['id'])) {
-				return true;
-			}
-			
-			/**
-			 * Asset
-			 */
-			
-			if ($this->Asset instanceof Asset) {
-				return true;
-			}
-			
-			/**
-			 * Ordinary Flickr image
-			 */
-			
-			if (filter_var($this->flickr_image_id, FILTER_VALIDATE_INT) && $this->flickr_image_id > 0) {
-				return true;
-			}
-			
-			/**
-			 * No cover image!
-			 */
-			
-			return false;
 		}
 		
 		/**

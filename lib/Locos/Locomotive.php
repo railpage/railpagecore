@@ -14,6 +14,7 @@
 	use Railpage\Images\Images;
 	use Railpage\Images\Image;
 	use Railpage\Assets\Asset;
+	use Railpage\ContentUtility;
 	use Railpage\Url;
 	use Railpage\Debug;
 	use DateTime;
@@ -506,27 +507,14 @@
 			 * Get all owners of this locomotive
 			 */
 			
-			$this->updateOrganisations("owners"); 
-			$this->updateOrganisations("operators"); 
+			$this->reloadOrganisations("owners"); 
+			$this->reloadOrganisations("operators"); 
 			
 			/**
 			 * Get the manufacturer
 			 */
 			
-			if (empty($this->manufacturer_id)) {
-				$this->manufacturer_id 	= $this->Class->manufacturer_id;
-				$this->manufacturer 	= $this->Class->manufacturer;
-			} else {
-				try {
-					$builders = $this->listManufacturers(); 
-					
-					if (count($builders['manufacturers'])) {
-						$this->manufacturer = $builders['manufacturers'][$this->manufacturer_id]['manufacturer_name'];
-					}
-				} catch (Exception $e) {
-					// throw it away
-				}
-			}
+			$this->loadManufacturer(); 
 			
 			/**
 			 * Set the StatsD namespaces
@@ -547,13 +535,42 @@
 		}
 		
 		/**
+		 * Load the manufacturer for this locomotive
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		private function loadManufacturer() {
+			
+			if (empty($this->manufacturer_id)) {
+				$this->manufacturer_id 	= $this->Class->manufacturer_id;
+				$this->manufacturer 	= $this->Class->manufacturer;
+				
+				return;
+			}
+			
+			try {
+				$builders = $this->listManufacturers(); 
+				
+				if (count($builders['manufacturers'])) {
+					$this->manufacturer = $builders['manufacturers'][$this->manufacturer_id]['manufacturer_name'];
+				}
+			} catch (Exception $e) {
+				// throw it away
+			}
+			
+			return;
+			
+		}
+		
+		/**
 		 * Update the owners/operators
 		 * @since Version 3.9.1
 		 * @param string $type
 		 * @return void
 		 */
 		
-		private function updateOrganisations($type) {
+		private function reloadOrganisations($type) {
 			
 			if (substr($type, -1) !== "s") {
 				$type .= "s";
@@ -575,32 +592,25 @@
 			$var_name = substr($type, 0, -1);
 			$var_name_id = substr($type, 0, -1) . "_id";
 			
-			try {
-				$this->$type = $this->getOrganisations($type_id); 
-				
-				if (!empty($this->$var_name_id) && empty($this->$type)) {
-					$this->addOrganisation($this->$var_name_id, $type_id); 
-					
-					// Re-fetch the owners
-					$this->$type = $this->getOrganisations($type_id); 
-				}
-					
-				reset($this->$type);
-				$array = $this->$type;
-				
-				if (isset($array[0]['organisation_id']) && isset($array[0]['organisation_name'])) {
-					$this->$var_name_id = $array[0]['organisation_id']; 
-					$this->$var_name 	= $array[0]['organisation_name']; 
-					Debug::LogEvent(__METHOD__ . "() : Latest " . $var_name . " ID requires updating");
-					$doUpdate = true;
-				} else {
-					$this->$var_name_id = 0;
-					$this->$var_name 	= "Unknown";
-				}
-			} catch (Exception $e) {
-				global $Error; 
-				$Error->save($e); 
+			if (!empty($this->$var_name_id) && empty($this->$type)) {
+				$this->addOrganisation($this->$var_name_id, $type_id); 
 			}
+			
+			$this->$type = $this->getOrganisations($type_id); 
+				
+			reset($this->$type);
+			$array = $this->$type;
+			
+			if (isset($array[0]['organisation_id']) && isset($array[0]['organisation_name'])) {
+				$this->$var_name_id = $array[0]['organisation_id']; 
+				$this->$var_name 	= $array[0]['organisation_name']; 
+				Debug::LogEvent(__METHOD__ . "() : Latest " . $var_name . " ID requires updating");
+				
+				return;
+			}
+			
+			$this->$var_name_id = 0;
+			$this->$var_name 	= "Unknown";
 			
 			return;
 
@@ -1247,21 +1257,7 @@
 			 */
 			
 			if (!$meta && json_last_error() === JSON_ERROR_UTF8) {
-				// Loop through meta and re-encode
-				
-				foreach ($data['meta'] as $key => $val) {
-					if (!is_array($val)) {
-						$data['meta'][$key] = iconv('UTF-8', 'UTF-8//IGNORE', utf8_encode($val));
-					} else {
-						foreach ($data['meta'][$key][$val] as $k => $v) {
-							if (!is_array($v)) {
-								$data['meta'][$key][$val][$k] = iconv('UTF-8', 'UTF-8//IGNORE', utf8_encode($v));
-							}
-						}
-					}
-				}
-				
-				$data['meta'] = json_encode($data['meta']);
+				$data['meta'] = ContentUtility::FixJSONEncode_UTF8($data['meta']); 
 			} else {
 				$data['meta'] = $meta;
 			}
@@ -1459,35 +1455,8 @@
 		
 		public function hasCoverImage() {
 			
-			/**
-			 * Image stored in meta data
-			 */
+			return Utility\CoverImageUtility::hasCoverImage($this); 
 			
-			if (isset($this->meta['coverimage']) && isset($this->meta['coverimage']['id']) && !empty($this->meta['coverimage']['id'])) {
-				return true;
-			}
-			
-			/**
-			 * Asset
-			 */
-			
-			if ($this->Asset instanceof Asset) {
-				return true;
-			}
-			
-			/**
-			 * Ordinary Flickr image
-			 */
-			
-			if (filter_var($this->photo_id, FILTER_VALIDATE_INT) && $this->photo_id > 0) {
-				return true;
-			}
-			
-			/**
-			 * No cover image!
-			 */
-			
-			return false;
 		}
 		
 		/**

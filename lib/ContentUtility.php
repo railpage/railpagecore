@@ -224,5 +224,32 @@
 			return $text;
 			
 		}
+		
+		/**
+		 * Fix JSON formatting
+		 * @since Version 3.9.1
+		 * @param string $json
+		 * @return array
+		 */
+		
+		public static function FixJSONEncode_UTF8($json) {
+			
+			foreach ($json as $key => $val) {
+				if (!is_array($val)) {
+					$json[$key] = iconv('UTF-8', 'UTF-8//IGNORE', utf8_encode($val));
+				} else {
+					foreach ($json[$key][$val] as $k => $v) {
+						if (!is_array($v)) {
+							$json[$key][$val][$k] = iconv('UTF-8', 'UTF-8//IGNORE', utf8_encode($v));
+						}
+					}
+				}
+			}
+			
+			$json = json_encode($json);
+			
+			return $json;
+			
+		}
 
 	}
