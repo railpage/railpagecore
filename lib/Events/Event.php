@@ -304,7 +304,10 @@
 				$this->db->update("event", $data, $where); 
 			
 				$this->Redis->delete(sprintf(self::CACHE_KEY, $this->id)); 
-				$this->Memcached->delete($this->mckey);
+				
+				if (isset($this->mckey)) {
+					$this->Memcached->delete($this->mckey);
+				}
 
 			} else {
 				$this->db->insert("event", $data);
