@@ -278,52 +278,11 @@
 		 */
 		
 		public function close($reason = NULL) {
-			if (!isset($this->Resolution->User) || !$this->Resolution->User instanceof User) {
-				throw new Exception("Cannot close correction - User resolving this correction not specified");
-			}
 			
-			$this->Resolution->Date = new DateTime;
-			
-			$data = array(
-				"status" => self::STATUS_CLOSED,
-				"resolved_by" => $this->Resolution->User->id,
-				"resolved_date" => $this->Resolution->Date->format("Y-m-d H:i:s")
-			);
-			
-			$where = array(
-				"correction_id = ?" => $this->id
-			);
-			
-			$this->db->update("loco_unit_corrections", $data, $where);
-			
-			/**
-			 * Send a PM to the author of the correction
-			 */
-			
-			$Message = new Message;
-			$Message->setAuthor($this->Resolution->User);
-			$Message->setRecipient($this->User);
-			$Message->subject = "Your Locomotives database correction has been accepted";
-			
-			if ($this->Object instanceof Locomotive) {
-				$Message->body = "Your suggested correction for [url=" . $this->Object->url->url . "]" . strval($this->Object) . "[/url] in [url=" . $this->Object->Class->url->url . "]" . $this->Object->Class->name . "[/url] has been accepted by " . $this->Resolution->User->username . ".";
-			} else {
-				$Message->body = "Your suggested correction for [url=" . $this->Object->url . "]" . strval($this->Object) . "[/url] has been accepted by " . $this->Resolution->User->username . ".";
-			}
-			
-			if (!empty($this->text)) {
-				$Message->body .= "\n\n[quote=Your suggestion]" . $this->text . "[/quote]";
-			}
-			
-			if (!is_null($reason)) {
-				$Message->body .= "\n\n" . $reason;
-			}
-			
-			$Message->body .= "\n\nThis is an automated message - there is no need to reply.";
-			
-			$Message->send();
+			$this->closeCorrection("accept", $reason); 
 			
 			return $this;
+			
 		}
 		
 		/**
@@ -335,14 +294,31 @@
 		 */
 		
 		public function ignore($reason = NULL) {
+			
+			$this->closeCorrection("ignore", $reason); 
+			
+			return $this;
+			
+		}
+		
+		/**
+		 * close the correction
+		 * @since Version 3.9.1
+		 * @param string $type
+		 * @param string $reason
+		 * @return void
+		 */
+		
+		private function closeCorrection($type, $reason) {
+			
 			if (!isset($this->Resolution->User) || !$this->Resolution->User instanceof User) {
-				throw new Exception("Cannot ignore correction - User resolving this correction not specified");
+				throw new Exception("Cannot close correction - User resolving this correction not specified");
 			}
 			
 			$this->Resolution->Date = new DateTime;
 			
 			$data = array(
-				"status" => self::STATUS_IGNORED,
+				"status" => $type == "accept" ? self::STATUS_CLOSED : self::STATUS_IGNORED,
 				"resolved_by" => $this->Resolution->User->id,
 				"resolved_date" => $this->Resolution->Date->format("Y-m-d H:i:s")
 			);
@@ -360,12 +336,14 @@
 			$Message = new Message;
 			$Message->setAuthor($this->Resolution->User);
 			$Message->setRecipient($this->User);
-			$Message->subject = "Your Locomotives database correction was not accepted";
+			$Message->subject = $type == "accept" ? "Your Locomotives database correction has been accepted" : "Your Locomotives database correction was not accepted";
+			
+			$action = $type == "accept" ? "has been accepted" : "was not accepted";
 			
 			if ($this->Object instanceof Locomotive) {
-				$Message->body = "Your suggested correction for [url=" . $this->Object->url->url . "]" . strval($this->Object) . "[/url] in [url=" . $this->Object->Class->url->url . "]" . $this->Object->Class->name . "[/url] was not accepted by " . $this->Resolution->User->username . ".";
+				$Message->body = "Your suggested correction for [url=" . $this->Object->url->url . "]" . strval($this->Object) . "[/url] in [url=" . $this->Object->Class->url->url . "]" . $this->Object->Class->name . "[/url] " . $action . " by " . $this->Resolution->User->username . ".";
 			} else {
-				$Message->body = "Your suggested correction for [url=" . $this->Object->url . "]" . strval($this->Object) . "[/url] was not accepted by " . $this->Resolution->User->username . ".";
+				$Message->body = "Your suggested correction for [url=" . $this->Object->url . "]" . strval($this->Object) . "[/url] " . $action . " by " . $this->Resolution->User->username . ".";
 			}
 			
 			if (!empty($this->text)) {
@@ -380,7 +358,6 @@
 			
 			$Message->send();
 			
-			return $this;
 		}
 		
 		/**
@@ -391,7 +368,7 @@
 		 * @param string $reason
 		 */
 		
-		public function reject($reason) {
+		public function reject($reason = NULL) {
 			
 			return $this->ignore($reason); 
 			
@@ -405,7 +382,7 @@
 		 * @param string $reason
 		 */
 		
-		public function approve($reason) {
+		public function approve($reason = NULL) {
 			
 			return $this->close($reason); 
 			

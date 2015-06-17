@@ -589,7 +589,7 @@
 		
 		public function test_break_rejectCorrection($Correction) {
 			
-			$this->setExpectedException("Exception", "Cannot ignore correction - User resolving this correction not specified");
+			$this->setExpectedException("Exception", "Cannot close correction - User resolving this correction not specified");
 			
 			$Correction->ignore(); 
 			
