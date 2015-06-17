@@ -562,7 +562,7 @@
 			$var_name_id = substr($type, 0, -1) . "_id";
 			
 			if (!empty($this->$var_name_id) && empty($this->$type)) {
-				$this->addOrganisation($this->$var_name_id, $type_id); 
+				#$this->addOrganisation($this->$var_name_id, $type_id); 
 			}
 			
 			$this->$type = $this->getOrganisations($type_id); 
