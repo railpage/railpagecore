@@ -529,35 +529,6 @@
 			}
 			
 			/**
-			 * Update the latest owner/operator stored in this row
-			 */
-			
-			/*
-			$owners 	= $this->getOrganisations(1, 1); 
-			$operators 	= $this->getOrganisations(2, 1); 
-			
-			if (count($owners) && intval(trim($this->owner_id)) != intval(trim($owners[0]['operator_id']))) {
-				Debug::logEvent(__METHOD__ . "() : committing changes to owner for loco ID " . $this->id);
-				Debug::logEvent(__METHOD__ . "() : Current owner_id: " . $this->owner_id . ", Proposed owner_id: " . $owners[0]['operator_id']); 
-				
-				$this->owner = $owners[0]['organisation_name']; 
-				$this->owner_id = $owners[0]['operator_id']; 
-				
-				$doUpdate = true;
-			}
-			
-			if (count($operators) && intval(trim($this->operator_id)) != intval(trim($operators[0]['operator_id']))) {
-				Debug::logEvent(__METHOD__ . "() : committing changes to operator for loco ID " . $this->id);
-				Debug::logEvent(__METHOD__ . "() : Current operator_id: " . $this->operator_id . ", Proposed operator_id: " . $owners[0]['operator_id']); 
-				
-				$this->operator = $operators[0]['organisation_name']; 
-				$this->operator_id = $operators[0]['operator_id']; 
-				
-				$doUpdate = true;
-			}
-			*/
-			
-			/**
 			 * Set the StatsD namespaces
 			 */
 			
@@ -854,30 +825,6 @@
 			
 			return true;
 			
-			/*
-			if (!$loco_date_id) {
-				throw new Exception("Cannot add date - no date type given");
-				return false;
-			}
-			
-			if (!$date) {
-				throw new Exception("Cannot add date - no date given");
-				return false;
-			}
-			
-			$data = array(
-				"loco_unit_id" => $this->id,
-				"loco_date_id" => $loco_date_id,
-				"date" => $date
-			);
-			
-			if (!empty($text) && $text != false) {
-				$data['text'] = filter_input(INPUT_POST, "loco_date_text", FILTER_SANITIZE_STRING);
-			}
-			
-			$this->db->insert("loco_unit_date", $data);
-			return true;
-			*/
 		}
 		
 		/**
@@ -894,19 +841,11 @@
 				$article = $row['loco_id_a'] === $this->id ? "to" : "from";
 				$key = $row['loco_id_a'] === $this->id ? "loco_id_b" : "loco_id_a";
 				
-				#if ($row['loco_id_a'] === $this->id) {
-					if ($row['link_type_id'] === RP_LOCO_RENUMBERED) {
-						$return[$row['link_id']][$row[$key]] = "Renumbered " . $article;
-					} elseif ($row['link_type_id'] === RP_LOCO_REBUILT) {
-						$return[$row['link_id']][$row[$key]] = "Rebuilt to" . $article;
-					}
-				#} else {
-				#	if ($row['link_type_id'] === RP_LOCO_RENUMBERED) {
-				#		$return[$row['link_id']][$row['loco_id_a']] = "Renumbered from";
-				#	} elseif ($row['link_type_id'] === RP_LOCO_REBUILT) {
-				#		$return[$row['link_id']][$row['loco_id_a']] = "Rebuilt from";
-				#	}
-				#}
+				if ($row['link_type_id'] === RP_LOCO_RENUMBERED) {
+					$return[$row['link_id']][$row[$key]] = "Renumbered " . $article;
+				} elseif ($row['link_type_id'] === RP_LOCO_REBUILT) {
+					$return[$row['link_id']][$row[$key]] = "Rebuilt to" . $article;
+				}
 			}
 			
 			return $return;
@@ -1075,44 +1014,6 @@
 			
 			return Utility\LocomotiveUtility::getLiveriesForLocomotive($this->id); 
 			
-			/*
-			if (is_object($f)) {
-				$mckey = "railpage:locos.liveries.loco_id=" . $this->id; 
-				
-				if ($result = $this->Memcached->fetch($mckey)) {
-					return $result;
-				} else {
-					// Get photos of this loco, including tags
-					$result = $f->groups_pools_getPhotos(RP_FLICKR_GROUPID, $this->flickr_tag, NULL, NULL, "tags");
-					$tags = array();
-					
-					if (isset($result['photos']['photo'])) {
-						foreach ($result['photos']['photo'] as $photo) {
-							$rawtags = explode(" ", $photo['tags']); 
-							
-							foreach ($rawtags as $tag) {
-								if (preg_match("@railpage:livery=([0-9]+)@", $tag, $matches)) {
-									if (!in_array($matches[1], $tags)) {
-										$tags[] = $matches[1];
-									}
-								}
-							}
-						}
-					}
-					
-					if ($memcache) {
-						$memcache->delete($mckey);
-						$memcache->set($mckey, $tags, strtotime("+1 day")); // Expire in one day
-					}
-				}
-				
-				if (count($tags)) {
-					return $tags;
-				} else {
-					return false;
-				}
-			}
-			*/
 		}
 		
 		/**
@@ -1541,85 +1442,6 @@
 			
 			if (isset($Image)) {
 				return $return;
-			}
-			
-			/**
-			 * Image stored in meta data
-			 */
-			/*
-			if (isset($this->meta['coverimage'])) {
-				$Image = new Image($this->meta['coverimage']['id']);
-				return array(
-					"type" => "image",
-					"provider" => $Image->provider,
-					"title" => $Image->title,
-					"author" => array(
-						"id" => $Image->author->id,
-						"username" => $Image->author->username,
-						"realname" => isset($Image->author->realname) ? $Image->author->realname : $Image->author->username,
-						"url" => $Image->author->url
-					),
-					"image" => array(
-						"id" => $Image->id,
-					),
-					"sizes" => $Image->sizes,
-					"url" => $Image->url->getURLs()
-				);
-			}
-			
-			/**
-			 * Asset
-			 */
-			/*
-			if ($this->Asset instanceof Asset) {
-				return array(
-					"type" => "asset",
-					"provider" => "", // Set this to AssetProvider soon
-					"title" => $Asset->meta['title'],
-					"author" => array(
-						"id" => "",
-						"username" => "",
-						"realname" => "",
-						"url" => ""
-					),
-					"sizes" => array(
-						"large" => array(
-							"source" => $Asset->meta['image'],
-						),
-						"original" => array(
-							"source" => $Asset->meta['original'],
-						)
-					),
-					"url" => array(
-						"url" => $Asset['meta']['image'],
-					)
-				);
-			}
-			
-			/**
-			 * Ordinary Flickr image
-			 */
-			/*
-			if (filter_var($this->photo_id, FILTER_VALIDATE_INT) && $this->photo_id > 0) {
-				$Images = new Images;
-				$Image = $Images->findImage("flickr", $this->photo_id);
-				
-				return array(
-					"type" => "image",
-					"provider" => $Image->provider,
-					"title" => $Image->title,
-					"author" => array(
-						"id" => $Image->author->id,
-						"username" => $Image->author->username,
-						"realname" => isset($Image->author->realname) ? $Image->author->realname : $Image->author->username,
-						"url" => $Image->author->url
-					),
-					"image" => array(
-						"id" => $Image->id,
-					),
-					"sizes" => $Image->sizes,
-					"url" => $Image->url->getURLs()
-				);
 			}
 			
 			/**
