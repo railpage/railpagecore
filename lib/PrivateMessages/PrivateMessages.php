@@ -13,6 +13,7 @@
 	use DateTime;
 	use Exception;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	 
 	define("PM_INBOX", "inbox"); 
 	define("PM_OUTBOX", "outbox"); 

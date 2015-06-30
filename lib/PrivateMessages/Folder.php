@@ -11,6 +11,7 @@
 	use DateTime;
 	use Exception;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Url;
 	
 	/** 

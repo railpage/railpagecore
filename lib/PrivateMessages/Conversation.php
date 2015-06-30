@@ -12,6 +12,7 @@
 	use InvalidArgumentException;
 	use DateTime;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Users\Url;
 
 	/**

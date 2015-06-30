@@ -11,6 +11,7 @@
 	use Exception;
 	use DateTime;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Notifications\Notifications;
 	use Railpage\Notifications\Notification;
 	
@@ -247,37 +248,17 @@
 			
 			$this->mckey = "railpage:messsages.message_id=" . $this->id;
 			
-			if (!$row = getMemcacheObject($this->mckey)) {
-				if ($this->db instanceof \sql_db) {
-					$query = "SELECT pm.*, pmt.*, ufrom.user_id AS user_id_from, ufrom.username AS username_from, ufrom.user_avatar AS from_user_avatar, ufrom.user_allow_viewonline AS from_user_viewonline, uto.user_id AS user_id_to, uto.username AS username_to, uto.user_allow_viewonline AS to_user_viewonline
-								FROM nuke_bbprivmsgs AS pm
-								LEFT JOIN nuke_bbprivmsgs_text AS pmt ON pm.privmsgs_id = pmt.privmsgs_text_id
-								LEFT JOIN nuke_users AS ufrom ON pm.privmsgs_from_userid = ufrom.user_id
-								LEFT JOIN nuke_users AS uto ON pm.privmsgs_to_userid = uto.user_id
-								WHERE pm.privmsgs_id = ".$this->db->real_escape_string($this->id); 
+			if (!$row = $this->Memcached->fetch($this->mckey)) {
+				$query = "SELECT pm.*, pmt.*, ufrom.user_id AS user_id_from, ufrom.username AS username_from, ufrom.user_avatar AS from_user_avatar, ufrom.user_allow_viewonline AS from_user_viewonline, uto.user_id AS user_id_to, uto.username AS username_to, uto.user_allow_viewonline AS to_user_viewonline
+							FROM nuke_bbprivmsgs AS pm
+							LEFT JOIN nuke_bbprivmsgs_text AS pmt ON pm.privmsgs_id = pmt.privmsgs_text_id
+							LEFT JOIN nuke_users AS ufrom ON pm.privmsgs_from_userid = ufrom.user_id
+							LEFT JOIN nuke_users AS uto ON pm.privmsgs_to_userid = uto.user_id
+							WHERE pm.privmsgs_id = ?";
+				
+				$row = $this->db->fetchRow($query, $this->id); 
 					
-					if ($rs = $this->db->query($query)) {
-						if ($rs->num_rows != 1) {
-							throw new Exception("Cannot fetch PM - no PM found!"); 
-							return false;
-						} 
-						
-						$row = $rs->fetch_assoc();
-						
-						$this->setCache($this->mckey, $row);
-					}
-				} else {
-					$query = "SELECT pm.*, pmt.*, ufrom.user_id AS user_id_from, ufrom.username AS username_from, ufrom.user_avatar AS from_user_avatar, ufrom.user_allow_viewonline AS from_user_viewonline, uto.user_id AS user_id_to, uto.username AS username_to, uto.user_allow_viewonline AS to_user_viewonline
-								FROM nuke_bbprivmsgs AS pm
-								LEFT JOIN nuke_bbprivmsgs_text AS pmt ON pm.privmsgs_id = pmt.privmsgs_text_id
-								LEFT JOIN nuke_users AS ufrom ON pm.privmsgs_from_userid = ufrom.user_id
-								LEFT JOIN nuke_users AS uto ON pm.privmsgs_to_userid = uto.user_id
-								WHERE pm.privmsgs_id = ?";
-					
-					$row = $this->db->fetchRow($query, $this->id); 
-						
-					$this->setCache($this->mckey, $row);
-				}
+				$this->Memcached->save($this->mckey, $row);
 			}
 			
 			if (isset($row) && count($row)) {
@@ -303,15 +284,15 @@
 				$this->hide_from		= $row['hide_from'];
 				$this->hide_to			= $row['hide_to'];
 				
-				$this->setRecipient(new User($row['privmsgs_to_userid']));
-				$this->setAuthor(new User($row['privmsgs_from_userid']));
+				$this->setRecipient(UserFactory::CreateUser($row['privmsgs_to_userid']));
+				$this->setAuthor(UserFactory::CreateUser($row['privmsgs_from_userid']));
 				
-				#$this->Author = new User($row['privmsgs_from_userid']);
+				#$this->Author = UserFactory::CreateUser($row['privmsgs_from_userid']);
 				#$this->from_user_id		= $row['privmsgs_from_userid']; 
 				#$this->from_username	= $row['username_from']; 
 				#$this->from_user_avatar	= $row['from_user_avatar']; 
 				#$this->from_user_viewonline	= $row['from_user_viewonline']; 
-				#$this->Recipient = new User($row['privmsgs_to_userid']);
+				#$this->Recipient = UserFactory::CreateUser($row['privmsgs_to_userid']);
 				#$this->to_user_id		= $row['privmsgs_to_userid']; 
 				#$this->to_username		= $row['username_to']; 
 				#$this->to_user_viewonline	= $row['to_user_viewonline']; 
@@ -549,26 +530,12 @@
 				throw new Exception("Cannot delete message - no user ID given"); 
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$dataArray = array(); 
-				$dataArray['privmsgs_id'] 	= $this->db->real_escape_string($this->id); 
-				$dataArray['user_id']		= $this->db->real_escape_string($user_id); 
-				
-				$query = $this->db->buildQuery($dataArray, "privmsgs_hidelist"); 
-				
-				if ($rs = $this->db->query($query)) {
-					return true; 
-				} else {
-					throw new Exception($this->db->error."\n\n".$query); 
-				}
-			} else {
-				$data = array(
-					"privmsgs_id" => $this->id,
-					"user_id" => $user_id
-				);
-				
-				return $this->db->insert("privmsgs_hidelist", $data); 
-			}
+			$data = array(
+				"privmsgs_id" => $this->id,
+				"user_id" => $user_id
+			);
+			
+			return $this->db->insert("privmsgs_hidelist", $data); 
 		}
 		
 		/**
