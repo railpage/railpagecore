@@ -15,7 +15,10 @@
 	use DateInterval;
 	use Exception;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Url;
+	use Railpage\AppCore;
+	use Railpage\ContentUtility;
 		
 	/**
 	 * News article display and management
@@ -371,7 +374,7 @@
 				 * Instantiate the author
 				 */
 				
-				$this->setAuthor(new User($this->user_id));
+				$this->setAuthor(UserFactory::CreateUser($this->user_id));
 				$this->username = $this->Author->username;
 				
 				/** 
@@ -382,7 +385,7 @@
 					$this->staff_user_id = 72587;
 				}
 				
-				$this->setStaff(new User($this->staff_user_id));
+				$this->setStaff(UserFactory::CreateUser($this->staff_user_id));
 				$this->staff_username = $this->Staff->username;
 				
 				/**
@@ -539,7 +542,7 @@
 			} else {
 				$this->approved = 1; 
 				$this->staff_user_id = $user_id;
-				$this->setStaff(new User($this->staff_user_id));
+				$this->setStaff(UserFactory::CreateUser($this->staff_user_id));
 				$this->date = new DateTime;
 				
 				$this->commit();
@@ -684,7 +687,7 @@
 			}
 			
 			if (!isset($this->Author) || !$this->Author instanceof User) {
-				$this->Author = new User($this->user_id);
+				$this->Author = UserFactory::CreateUser($this->user_id);
 			}
 			
 			if (!$this->date instanceof DateTime) {
