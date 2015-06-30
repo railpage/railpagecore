@@ -13,6 +13,7 @@
 	use Railpage\Module;
 	use Railpage\Place;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UsersFactory;
 	
 	/**
 	 * Base Locations class
@@ -599,7 +600,7 @@
 			foreach ($this->db->fetchAll($query, Correction::STATUS_NEW) as $row) {
 				$return[] = array(
 					"location" => (new Location($row['location_id']))->getArray(),
-					"author" => (new User($row['user_id']))->getArray(),
+					"author" => UsersFactory::CreateUser($row['user_id'])->getArray(),
 					"correction" => array(
 						"comments" => $row['comments'],
 						"date" => array(

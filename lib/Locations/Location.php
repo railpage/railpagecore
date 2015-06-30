@@ -18,6 +18,7 @@
 	use Railpage\Images\MapImage;
 	use Railpage\ContentUtility;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Url;
 	
 	/**

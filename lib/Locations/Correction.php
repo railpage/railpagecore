@@ -10,6 +10,7 @@
 	namespace Railpage\Locations;
 	
 	use Railpage\Users\User; 
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\AppCore;
 	use Exception;
 	use InvalidArgumentException;
@@ -140,7 +141,7 @@
 			$this->DateAdded = new DateTime($row['date_added']); 
 			$this->Location = new Location($row['location_id']);
 			
-			$this->setAuthor(new User($row['user_id'])); 
+			$this->setAuthor(UserFactory::CreateUser($row['user_id'])); 
 			
 			if (!is_null($row['date_closed'])) {
 				$this->DateClosed = new DateTime($row['date_closed']); 
