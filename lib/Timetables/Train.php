@@ -18,6 +18,7 @@
 	use Railpage\Locations\Location;
 	use Railpage\Locos\LocoClass;
 	use Railpage\Locos\Locomotive;
+	use Railpage\Organisations\Factory as OrganisationsFactory;
 	use Railpage\Organisations\Organisation;
 	
 	/**
@@ -175,7 +176,7 @@
 				$this->commodity = $row['commodity'];
 				
 				if ($row['operator_id'] > 0) {
-					$this->Organisation = new Organisation($row['operator_id']);
+					$this->Organisation = OrganisationsFactory::CreateOrganisation($row['operator_id']);
 				}
 				
 				$this->url = new Url(sprintf("%s/t/%s/%s", $this->Module->url, $this->provider, strtolower($this->number)));

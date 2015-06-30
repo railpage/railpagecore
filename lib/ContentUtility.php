@@ -13,6 +13,8 @@
 	use DateTime;
 	use Exception;
 	use InvalidArgumentException;
+	use GuzzleHttp\Client;
+	use phpQuery;
 	
 	class ContentUtility {
 		
@@ -249,6 +251,65 @@
 			$json = json_encode($json);
 			
 			return $json;
+			
+		}
+		
+		/**
+		 * Currency converter
+		 * @since Version 3.9.1
+		 * @param int $amount
+		 * @param \DateTime $Date
+		 * @return int
+		 */
+		
+		public static function convertCurrency($amount, $Date = false) {
+			
+			if (!$Date instanceof DateTime) {
+				return;
+			}
+			
+			$Client = new Client;
+			
+			if ($Date->format("Y") <= 1966) {
+			
+				$lookup = "#calculatedAnnualDollarValue";
+				
+				$url = "http://www.rba.gov.au/calculator/annualPreDecimal.html";
+				$data = [
+					"body" => [ 
+						"annualPound" => $amount,
+						"annualStartYear" => $Date->format("Y"),
+						"annualEndYear" => (date("Y") - 1)
+					]
+				];
+			} else {
+				$url = "http://www.rba.gov.au/calculator/annualDecimal.html";
+				
+				$data = [
+					"body" => [
+						"annualDollar" => $amount,
+						"annualStartYear" => $Date->format("Y"),
+						"annualEndYear" => (date("Y") - 1)
+					]
+				];
+			}
+			
+			$response = $Client->post($url, $data); 
+			$html = $response->getBody();
+			
+			$doc = phpQuery::newDocumentHTML($html);
+			
+			phpQuery::selectDocument($doc);
+			
+			foreach (pq($lookup) as $e) {
+				$cost = pq($e)->attr("value"); 
+				
+				if (!empty($cost)) {
+					return str_replace(",", "", $cost);
+				}
+			}
+			
+			return false;
 			
 		}
 

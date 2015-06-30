@@ -177,4 +177,45 @@
 			
 		}
 		
+		/**
+		 * Find the geoplace country name from a country code
+		 * @since Version 3.9.1
+		 * @param string $code
+		 * @return string
+		 */
+		
+		public static function getCountryNameFromCode($code) {
+			
+			$Database = (new AppCore)->getDatabaseConnection();
+			
+			$query = "SELECT country_name FROM geoplace WHERE country_code = ?";
+			
+			return $Database->fetchOne($query, $code); 
+			
+		}
+		
+		/**
+		 * Find the geoplace country name from a country code
+		 * @since Version 3.9.1
+		 * @param string $region_code
+		 * @param string|boolean $region_code
+		 * @return string
+		 */
+		
+		public static function getRegionNameFromCode($region_code, $country_code = false) {
+			
+			$Database = (new AppCore)->getDatabaseConnection();
+			
+			$query = "SELECT region_name FROM geoplace WHERE region_code = ?";
+			$params = [ $region_code ];
+			
+			if ($country_code) {
+				$query .= " AND country_code = ?";
+				$params[] = $country_code;
+			}
+			
+			return $Database->fetchOne($query, $params); 
+			
+		}
+		
 	}

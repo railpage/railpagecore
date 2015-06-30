@@ -14,6 +14,7 @@
 	use Railpage\Notifications\Notification;
 	use Railpage\Notifications\Transport\Email;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Debug;
 	use Exception;
 	use DateTime;
@@ -291,7 +292,7 @@
 			 * Tell the world that they've been naughty
 			 */
 			
-			$ThisUser = new User($user_id);
+			$ThisUser = UserFactory::CreateUser($user_id);
 			$ThisUser->active 		= 0;
 			$ThisUser->location 	= "Banned"; 
 			$ThisUser->signature 	= "Banned";
@@ -338,7 +339,7 @@
 			$Notification = new Notification;
 			
 			if ($admin_user_id !== false) {
-				$Notification->setAuthor(new User($admin_user_id));
+				$Notification->setAuthor(UserFactory::CreateUser($admin_user_id));
 			}
 			
 			#print_r($Notification->getArray());
@@ -473,7 +474,7 @@
 			
 			if ($success) {
 				// Tell the world that they've been unbanned
-				$ThisUser = new User($user_id);
+				$ThisUser = UserFactory::CreateUser($user_id);
 				$ThisUser->active 		= 1;
 				$ThisUser->location 	= ""; 
 				$ThisUser->signature 	= "";
@@ -710,10 +711,24 @@
 		 * @since Version 3.9.1
 		 * @param int $user_id
 		 * @param string $remote_addr
+		 * @param boolean $force
 		 * @return boolean
 		 */
 		
-		public static function isClientBanned($user_id, $remote_addr) {
+		public static function isClientBanned($user_id, $remote_addr, $force = false) {
+			
+			if (!$force && isset($_SESSION['isClientBanned'])) {
+				$sess = $_SESSION['isClientBanned'];
+				
+				if ($sess['expire'] > time()) {
+					return $sess['banned'];
+				}
+			}
+				
+			$_SESSION['isClientBanned'] = array(
+				"expire" => strtotime("+5 minutes"),
+				"banned" => false
+			);
 			
 			$cachekey_user = sprintf(self::CACHE_KEY_USER, $user_id);
 			$cachekey_addr = sprintf(self::CACHE_KEY_IP, $remote_addr); 
@@ -723,11 +738,11 @@
 			$mcresult_user = $Memcached->fetch($cachekey_user); 
 			$mcresult_addr = $Memcached->fetch($cachekey_addr); 
 			
-			if ($mcresult_user === 1 || $mcresult_addr === 1) {
+			if (!$force && ($mcresult_user === 1 || $mcresult_addr === 1)) {
 				return true;
 			}
 			
-			if ($mcresult_user === 0 && $mcresult_addr === 0) {
+			if (!$force && ($mcresult_user === 0 && $mcresult_addr === 0)) {
 				return false;
 			}
 			
@@ -738,18 +753,24 @@
 				
 			}
 			
-			if (!$BanControl instanceof BanControl) {
+			if ($force || !$BanControl instanceof BanControl) {
 				$BanControl = new BanControl;
 			}
 			
 			if ($BanControl->isUserBanned($user_id)) {
-				$Memcached->save($cachekey_user, 1, strtotime("+5 weeks")); 
+				$Memcached->save($cachekey_user, 1, strtotime("+5 weeks"));
+				 
+				$_SESSION['isClientBanned']['banned'] = true;
+				
 				return true;
 			}
 			
 			if ($BanControl->isIPBanned($remote_addr)) {
 				$Memcached->save($cachekey_user, 0, strtotime("+5 weeks")); 
 				$Memcached->save($cachekey_addr, 1, strtotime("+5 weeks")); 
+				 
+				$_SESSION['isClientBanned']['banned'] = true;
+				
 				return true;
 			}
 			

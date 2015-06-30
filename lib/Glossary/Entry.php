@@ -11,6 +11,7 @@
 	use Railpage\AppCore;
 	use Railpage\Module;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Url;
 	use Railpage\ContentUtility;
 	use Exception;
@@ -171,7 +172,7 @@
 				$this->Date = new DateTime($row['date']);
 			}
 			
-			$this->setAuthor(new User($row['author']));
+			$this->setAuthor(UserFactory::CreateUser($row['author']));
 			$this->makeURLs(); 
 			$this->makeSlug(); 
 			

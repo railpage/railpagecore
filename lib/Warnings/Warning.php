@@ -10,6 +10,7 @@
 	
 	use Railpage\PrivateMessages\Message;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\AppCore;
 	use Exception;
 	use DateTime;
@@ -115,8 +116,8 @@
 					$this->comments = $row['mod_comments'];
 					
 					$this->Date = new DateTime("@" . $row['warn_date']);
-					$this->Recipient = new User($row['user_id']);
-					$this->Issuer = new User($row['warned_by']);
+					$this->Recipient = UserFactory::CreateUser($row['user_id']);
+					$this->Issuer = UserFactory::CreateUser($row['warned_by']);
 				}
 			}
 		}

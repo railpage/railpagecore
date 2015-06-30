@@ -29,6 +29,11 @@
 	$PHPUnitTest = false;
 	
 	if (class_exists("PHPUnit_Framework_TestCase")) {
+		
+		if (file_exists("/srv/php/xhgui/external/header.php")) {
+			require_once("/srv/php/xhgui/external/header.php"); 
+		}
+		
 		$PHPUnitTest = true;
 		
 		require_once(dirname(__DIR__) . DS . "tests" . DS . "inc.functions.php");

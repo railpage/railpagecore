@@ -186,7 +186,7 @@
 			$Sphinx = AppCore::getSphinxAPI(); 
 			
 			$Sphinx->SetGeoAnchor("lat", "lon", deg2rad($this->lat), deg2rad($this->lon)); 
-			$Sphinx->SetFilterRange("@geodist", 0, 1000); // 1km radius
+			$Sphinx->SetFilterRange("@geodist", 0, 5000); // 1km radius
 			$Sphinx->SetSortMode(SPH_SORT_EXTENDED, '@geodist ASC');
 			
 			$result = $Sphinx->query("", "idx_images"); 

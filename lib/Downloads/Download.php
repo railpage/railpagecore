@@ -10,6 +10,7 @@
 	namespace Railpage\Downloads;
 	
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Url;
 	use DateTime;
 	use DateTimeZone;
@@ -256,7 +257,7 @@
 			 * Load the author
 			 */
 			
-			$this->Author = new User($this->user_id);
+			$this->Author = UserFactory::CreateUser($this->user_id);
 		}
 		
 		/**

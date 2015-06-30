@@ -31,6 +31,7 @@
 	
 	use Doctrine\Common\Cache\MemcachedCache;
 	use Doctrine\Common\Cache\RedisCache;
+	use Railpage\Debug;
 	
 	
 	if (!defined("RP_SITE_ROOT")) {
@@ -198,16 +199,20 @@
 					if (isset($ZendDB)) {
 						$this->db = $ZendDB; 
 					} elseif (file_exists("db" . DS . "zend_db.php")) {
+						Debug::logEvent(__METHOD__ . " -- Looking for db " . DS . "zend_db.php");
 						require("db" . DS . "zend_db.php"); 
 						$this->db = $ZendDB;
 						$this->destroy = true;
 					} elseif (file_exists(".." . DS . "db" . DS . "zend_db.php")) {
+						Debug::logEvent(__METHOD__ . " -- Looking for .." . DS . "db " . DS . "zend_db.php");
 						require(".." . DS . "db" . DS . "zend_db.php"); 
 						$this->db = $ZendDB;
 						$this->destroy = true;
 					} else {
 						
 						// Attempt to resolve the DB connection to a stream path. If it can't be resolved, assume this is a CI environment and load a test DB connector
+						
+						Debug::logEvent(__METHOD__ . " -- Looking for db " . DS . "connect.php");
 						
 						if (stream_resolve_include_path("db" . DS . "connect.php")) {
 							require("db" . DS . "connect.php"); 
@@ -247,11 +252,7 @@
 			 * Create Memcache object
 			 */
 			
-			if (file_exists(__DIR__ . DIRECTORY_SEPARATOR . "memcache.php")) {
-				require(__DIR__ . DIRECTORY_SEPARATOR . "memcache.php"); 
-				
-				$this->memcache = $memcache;
-			}
+			$this->memcache = self::getMemcache(); 
 			
 			/**
 			 * Build the StatsD object
@@ -515,12 +516,16 @@
 				$Config = $Registry->get("config");
 			} catch (Exception $e) {
 				if (function_exists("getRailpageConfig")) {
+					Debug::logEvent(__METHOD__ . " -- found getRailpageConfig()");
 					$Config = getRailpageConfig();
 				} elseif (defined("RP_SITE_ROOT") && file_exists(RP_SITE_ROOT . DS . "config" . DS . "config.railpage.json")) {
+					Debug::logEvent(__METHOD__ . " -- Loading " . RP_SITE_ROOT . DS . "config" . DS . "config.railpage.json");
 					$Config = json_decode(file_get_contents(RP_SITE_ROOT . DS . "config" . DS . "config.railpage.json")); 
 				} elseif (file_exists(dirname(__DIR__) . DS . "config.railpage.json")) {
+					Debug::logEvent(__METHOD__ . " -- Loading " . dirname(__DIR__) . DS . "config.railpage.json");
 					$Config = json_decode(file_get_contents(dirname(__DIR__) . DS . "config.railpage.json"));
 				} elseif (file_exists(dirname(__DIR__) . DS . "config" . DS . "dist.config.railpage.php")) {
+					Debug::logEvent(__METHOD__ . " -- Loading " . dirname(__DIR__) . DS . "config" . DS . "dist.config.railpage.php");
 					require_once(dirname(__DIR__) . DS . "config" . DS . "dist.config.railpage.php");
 					$Config = $RailpageConfig;
 				}
@@ -574,12 +579,47 @@
 		}
 		
 		/**
+		 * Get an instance of Memcache for legacy code
+		 * @since Version 3.9.1
+		 * @return object
+		 */
+		
+		public static function getMemcache() {
+			
+			if (!extension_loaded("memcache")) {
+				return new NullCacheDriver;
+			}
+			
+			$Registry = Registry::getInstance();
+			
+			try {
+				$cacheDriver = $Registry->get("memcache");
+			} catch (Exception $e) {
+
+				Debug::logEvent(__METHOD__ . " -- Looking for memcache.php");
+				
+				if (file_exists(__DIR__ . DIRECTORY_SEPARATOR . "memcache.php")) {
+					require(__DIR__ . DIRECTORY_SEPARATOR . "memcache.php"); 
+				
+					$Registry->set("memcache", $memcache);
+					
+					return $memcache;
+				} 
+				
+				$Registry->set("memcache", false); 
+				return false;
+			}
+			
+		}
+		
+		/**
 		 * Get our Memcached instance
 		 * @since Version 3.9.1
 		 * @return \Doctrine\Common\Cache\MemcachedCache
 		 */
 		
 		public static function getMemcached() {
+			
 			if (!extension_loaded("memcached")) {
 				return new NullCacheDriver;
 			}

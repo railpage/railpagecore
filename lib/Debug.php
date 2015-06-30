@@ -157,13 +157,18 @@
 		 * Log a command line event
 		 * @since Version 3.9.1
 		 * @param string $text
+		 * @param int|boolean $timer
 		 * @return void
 		 */
 		
-		public static function LogCLI($text) {
+		public static function LogCLI($text, $timer = false) {
 			
 			if (php_sapi_name() != "cli" || class_exists("PHPUnit_Framework_TestCase")) {
 				return;
+			}
+			
+			if (filter_var($timer, FILTER_VALIDATE_FLOAT)) {
+				$text = sprintf("%s - completed in %ss", $text, round(microtime(true) - $timer, 5));
 			}
 			
 			print $text . "\n";

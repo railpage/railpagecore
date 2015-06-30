@@ -10,6 +10,7 @@
 	namespace Railpage;
 	
 	use Exception;
+	use Railpage\Debug;
 	
 	class Registry {
 		
@@ -57,6 +58,8 @@
 			
 			$this->registry[strtolower($key)] = $value;
 			
+			Debug::logEvent(__METHOD__ . "(" . $key . ")");
+			
 			return $this;
 		}
 		
@@ -72,6 +75,8 @@
 				throw new Exception(sprintf("The requested key '%s' does not exist in the registry", $key)); 
 			}
 			
+			Debug::logEvent(__METHOD__ . "(" . $key . ")");
+			
 			return $this->registry[strtolower($key)];
 		}
 		
@@ -86,6 +91,8 @@
 			if (isset($this->registry[strtolower($key)])) {
 				unset($this->registry[strtolower($key)]);
 			}
+			
+			Debug::logEvent(__METHOD__ . "(" . $key . ")");
 			
 			return $this;
 		}
