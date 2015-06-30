@@ -24,6 +24,22 @@
 	class EventCategory extends AppCore {
 		
 		/**
+		 * Registry key
+		 * @since Version 3.9.1
+		 * @const string REGISTRY_KEY
+		 */
+		
+		const REGISTRY_KEY = "railpage:events.category=%d";
+		
+		/**
+		 * Memcached/Redis cache key
+		 * @since Version 3.9.1
+		 * @const string CACHE_KEY
+		 */
+		
+		const CACHE_KEY = "railpage:events.category=%d";
+		
+		/**
 		 * Category ID
 		 * @since Version 3.8.7
 		 * @var int $id

@@ -9,6 +9,7 @@
 	namespace Railpage\Events;
 	
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Events\Event;
 	use DateTime;
 	use DateTimeZone;
@@ -150,7 +151,7 @@
 					$this->url->reject = sprintf("/events?mode=event.date.setstatus&date_id=%d&status=%d", $this->id, self::STATUS_REJECTED);
 					$this->url->cancel = sprintf("/events?mode=event.date.setstatus&date_id=%d&status=%d", $this->id, self::STATUS_CANCELLED);
 					
-					$this->setAuthor(new User($row['user_id']));
+					$this->setAuthor(UserFactory::CreateUser($row['user_id']));
 					
 					if ($row['start'] != "00:00:00") {
 						$this->Start = new DateTime($row['date'] . " " . $row['start']);

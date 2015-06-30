@@ -9,7 +9,9 @@
 	namespace Railpage\Events;
 	
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\AppCore;
+	use Railpage\Organisations\Factory as OrganisationsFactory;
 	use Railpage\Organisations\Organisation;
 	use Railpage\Place;
 	use Railpage\Module;
@@ -207,16 +209,16 @@
 				$row['user_id'] = 45;
 			}
 			
-			$this->setAuthor(new User($row['user_id']));
+			$this->setAuthor(UserFactory::CreateUser($row['user_id']));
 			
 			$this->flickr_tag = "railpage:event=" . $this->id;
 			
 			if (filter_var($row['category_id'], FILTER_VALIDATE_INT)) {
-				$this->Category = new EventCategory($row['category_id']);
+				$this->Category = Factory::CreateEventCategory($row['category_id']);
 			}
 			
 			if (filter_var($row['organisation_id'], FILTER_VALIDATE_INT)) {
-				$this->Organisation = new Organisation($row['organisation_id']);
+				$this->Organisation = OrganisationsFactory::CreateOrganisation($row['organisation_id']);
 			}
 			
 			if (!empty($row['lat']) && round($row['lat'], 3) != "0.000" && !empty($row['lon']) && round($row['lon'], 3) != "0.000") {

@@ -25,9 +25,9 @@
 		const USE_REDIS = false;
 		
 		/**
-		 * Return a locomotive class
+		 * Return an event
 		 * @since Version 3.9.1
-		 * @return \Railpage\Locos\LocoClass
+		 * @return \Railpage\Events\Event
 		 * @param int|string $id
 		 */
 		
@@ -38,23 +38,29 @@
 			$Registry = Registry::getInstance(); 
 			
 			if (!filter_var($id, FILTER_VALIDATE_INT)) {
-				$Database = (new AppCore)->getDatabaseConnection(); 
-				$id = $Database->fetchOne("SELECT id FROM event WHERE slug = ?", $id); 
+				$slugkey = sprintf(Event::REGISTRY_KEY, $id); 
+				
+				try {
+					$id = $Registry->get($slugkey);
+				} catch (Exception $e) {
+					$Database = (new AppCore)->getDatabaseConnection(); 
+					$id = $Database->fetchOne("SELECT id FROM event WHERE slug = ?", $id); 
+					
+					$Registry->set($slugkey, $id);
+				}
 			}
 			
 			$regkey = sprintf(Event::REGISTRY_KEY, $id); 
-			
-			$use_redis = false; // cannot seralize closure bullshit
 			
 			try {
 				$Event = $Registry->get($regkey); 
 			} catch (Exception $e) {
 				$cachekey = sprintf(Event::CACHE_KEY, $id); 
 				
-				if (!$use_redis || !$Event = $Redis->fetch($cachekey)) {
+				if (!self::USE_REDIS || !$Event = $Redis->fetch($cachekey)) {
 					$Event = new Event($id); 
 					
-					if ($use_redis) {
+					if (self::USE_REDIS) {
 						$Redis->save($cachekey, $Event); 
 					}
 				}
@@ -64,5 +70,40 @@
 				
 			return $Event; 
 			
+		}
+		
+		/**
+		 * Return an instance of EventCategory
+		 * @since Version 3.9.1
+		 * @return \Railpage\Events\EventCategory
+		 * @param int|string $id
+		 */
+		
+		public static function CreateEventCategory($id = false) {
+			
+			$Memcached = AppCore::getMemcached(); 
+			$Redis = AppCore::getRedis(); 
+			$Registry = Registry::getInstance(); 
+			
+			$regkey = sprintf(Event::REGISTRY_KEY, $id); 
+			
+			try {
+				$EventCategory = $Registry->get($regkey); 
+			} catch (Exception $e) {
+				$cachekey = sprintf(EventCategory::CACHE_KEY, $id); 
+				
+				if (!self::USE_REDIS || !$Event = $Redis->fetch($cachekey)) {
+					$EventCategory = new EventCategory($id); 
+					
+					if (self::USE_REDIS) {
+						$Redis->save($cachekey, $EventCategory); 
+					}
+				}
+				
+				$Registry->set($regkey, $EventCategory); 
+			} 
+				
+			return $EventCategory; 
+
 		}
 	}
