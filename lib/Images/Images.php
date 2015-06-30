@@ -401,7 +401,7 @@
 			
 			#if (!$result = $this->Redis->fetch($cachekey)) {
 			
-				$query = "SELECT * FROM image ORDER BY id DESC LIMIT 0, ?";
+				$query = "SELECT * FROM image WHERE hidden = 0 ORDER BY id DESC LIMIT 0, ?";
 				
 				$return = array(); 
 				
@@ -416,41 +416,6 @@
 			#}
 			
 			return $return;
-		}
-		
-		/**
-		 * Get the image of the week
-		 * @since Version 3.9.1
-		 * @return array
-		 */
-		
-		public function getImageOfTheWeek($week = false) {
-			if (!$week) {
-				$week = new DateTime;
-			}
-			
-			if (filter_var($week, FILTER_VALIDATE_INT)) {
-				$week = new DateTime("@" . $week);
-			}
-			
-			if (!$week instanceof DateTime) {
-				$week = new DateTime($week);
-			}
-			
-			$ts = strtotime('sunday last week', $week->getTimestamp()); 
-			
-			$Date = new DateTime("@" . $ts);
-			$Date->setTimezone(new DateTimeZone("Australia/Melbourne")); 
-			
-			$query = "SELECT i.*, u.username, iw.added_by AS user_id FROM image_weekly AS iw
-						LEFT JOIN image AS i ON iw.image_id = i.id
-						LEFT JOIN nuke_users AS u ON u.user_id = iw.added_by
-						WHERE iw.datefrom = ? LIMIT 1";
-			
-			$result = $this->db->fetchRow($query, $Date->format("Y-m-d")); 
-			
-			return $result;
-			
 		}
 	}
 	

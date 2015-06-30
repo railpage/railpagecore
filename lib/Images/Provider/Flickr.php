@@ -220,7 +220,7 @@
 					$return['photo']['sizes'] = $this->execute("flickr.photos.getSizes", array("photo_id" => $id));
 				}
 				
-				if (empty($return)) {
+				if (empty($return) || !$return) {
 					throw new Exception(sprintf("Unable to fetch data from %s: %s (%d)", self::PROVIDER_NAME, $this->getErrorMessage(), $this->getErrorCode()));
 				}
 				

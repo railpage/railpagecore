@@ -9,6 +9,7 @@
 	namespace Railpage\Images;
 	
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Config\Base as Config;
 	use Railpage\AppCore;
 	use Railpage\Module;

@@ -107,10 +107,12 @@
 		public function __construct($lat = NULL, $lon = NULL) {
 			parent::__construct();
 			
+			$Config = AppCore::GetConfig(); 
+			
 			if ($lat != NULL && $lon != NULL) {
 				$this->Place = new Place($lat, $lon);
 				
-				$urlstring = "http://maps.googleapis.com/maps/api/staticmap?center=%s,%s&zoom=%d&size=%dx%d&maptype=roadmap&markers=color:red%%7C%s,%s";
+				$urlstring = "http://maps.googleapis.com/maps/api/staticmap?key=%s&center=%s,%s&zoom=%d&size=%dx%d&maptype=roadmap&markers=color:red%%7C%s,%s";
 				
 				$this->sizes = array(
 					"thumb" => array(
@@ -131,7 +133,7 @@
 				);
 				
 				foreach ($this->sizes as $size => $row) {
-					$this->sizes[$size]['source'] = sprintf($urlstring, $this->Place->lat, $this->Place->lon, $row['zoom'], $row['width'], $row['height'], $this->Place->lat, $this->Place->lon);
+					$this->sizes[$size]['source'] = sprintf($urlstring, $Config->Google->API_Key, $this->Place->lat, $this->Place->lon, $row['zoom'], $row['width'], $row['height'], $this->Place->lat, $this->Place->lon);
 				}
 			}
 		}

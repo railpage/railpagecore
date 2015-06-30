@@ -9,6 +9,7 @@
 	namespace Railpage\Images;
 	
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\API;
 	use Railpage\AppCore;
 	use Railpage\Place;
@@ -28,6 +29,7 @@
 	use DomDocument;
 	use GuzzleHttp\Client;
 	use Zend_Db_Expr;
+	use Railpage\ContentUtility;
 	
 	/**
 	 * Store and fetch data of Flickr, Weston Langford, etc images in our local database
@@ -155,6 +157,14 @@
 		public $Date;
 		
 		/**
+		 * Date the photo was taken
+		 * @since Version 3.9.1
+		 * @var \DateTime $DateCaptured
+		 */
+		
+		public $DateCaptured;
+		
+		/**
 		 * Memcached identifier key
 		 * @since Version 3.8.7
 		 * @var string $mckey
@@ -228,6 +238,51 @@
 		}
 		
 		/**
+		 * Populate this object from an array
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		public function populateFromArray($row) {
+			
+			$this->provider = $row['provider'];
+			$this->photo_id = $row['photo_id'];
+			$this->Date = new DateTime($row['modified']);
+			$this->DateCaptured = !isset($row['captured']) || is_null($row['captured']) ? NULL : new DateTime($row['captured']);
+			
+			$this->title = !empty($row['meta']['title']) ? ContentUtility::FormatTitle($row['meta']['title']) : "Untitled";
+			$this->description = $row['meta']['description'];
+			$this->sizes = $row['meta']['sizes'];
+			$this->links = $row['meta']['links'];
+			$this->meta = $row['meta']['data'];
+			$this->lat = $row['lat'];
+			$this->lon = $row['lon'];
+			
+			#printArray($row['meta']);die;
+			
+			if (!$this->DateCaptured instanceof DateTime) {
+				if (isset($row['meta']['data']['dates']['taken'])) {
+					$this->DateCaptured = new DateTime($row['meta']['data']['dates']['taken']);
+				}
+			}
+			
+			/**
+			 * Normalize some sizes
+			 */
+			
+			if (count($this->sizes)) {
+				$this->sizes = Images::normaliseSizes($this->sizes);
+			}
+			
+			$this->url = Utility\Url::CreateFromImageID($this->id); 
+			
+			if (empty($this->mckey)) {
+				$this->mckey = sprintf("railpage:image=%d", $this->id);
+			}
+			
+		}
+		
+		/**
 		 * Populate this image object
 		 * @since Version 3.9.1
 		 * @return void
@@ -244,26 +299,15 @@
 			
 				Debug::LogCLI("Fetching data for " . $this->id . " from database");
 				
-				$query = "SELECT i.title, i.description, i.id, i.provider, i.photo_id, i.modified, i.meta, i.lat, i.lon FROM image AS i WHERE i.id = ?";
+				$query = "SELECT i.title, i.description, i.id, i.provider, i.photo_id, i.modified, i.meta, i.lat, i.lon, i.user_id, i.geoplace, i.captured FROM image AS i WHERE i.id = ?";
 			
 				$row = $this->db->fetchRow($query, $this->id);
 				$row['meta'] = json_decode($row['meta'], true);
 				
 				$this->Redis->save($this->mckey, $row, strtotime("+24 hours"));
-			} 
+			}
 			
-			$this->provider = $row['provider'];
-			$this->photo_id = $row['photo_id'];
-			$this->Date = new DateTime($row['modified']);
-			
-			$this->title = !empty($row['meta']['title']) ? (function_exists("format_topictitle") ? format_topictitle($row['meta']['title']) : $row['meta']['title']) : "Untitled";
-			$this->description = $row['meta']['description'];
-			$this->sizes = $row['meta']['sizes'];
-			$this->links = $row['meta']['links'];
-			$this->meta = $row['meta']['data'];
-			$this->url = new Url("/image?id=" . $this->id);
-			$this->lat = $row['lat'];
-			$this->lon = $row['lon'];
+			$this->populateFromArray($row);
 			
 			if ($this->provider == "rpoldgallery") {
 				$GalleryImage = new \Railpage\Gallery\Image($this->photo_id);
@@ -274,8 +318,13 @@
 				}
 			}
 			
+			if (!isset($row['user_id'])) {
+				$row['user_id'] = 0;
+			}
+			
 			/**
 			 * "Hit"
+			 * Such detail, many description
 			 */
 			
 			$this->hit(); 
@@ -302,7 +351,11 @@
 				$this->author = json_decode(json_encode($row['meta']['author']));
 				
 				if (isset($this->author->railpage_id)) {
-					$this->author->User = new User($this->author->railpage_id);
+					$this->author->User = UserFactory::CreateUser($this->author->railpage_id);
+					
+					if ($this->author->User instanceof User && $this->author->User->id != $row['user_id']) {
+						$this->commit(); 
+					}
 				}
 			} else {
 				Debug::LogCLI("No author found in local cache - refreshing from " . $this->provider);
@@ -335,14 +388,6 @@
 							$this->source = "https://flic.kr/p/" . base58_encode($this->photo_id);
 						}
 				}
-			}
-			
-			/**
-			 * Normalize some sizes
-			 */
-			
-			if (count($this->sizes)) {
-				$this->sizes = Images::normaliseSizes($this->sizes);
 			}
 			
 			/**
@@ -382,14 +427,18 @@
 		public function commit() {
 			$this->validate();
 			
+			$user_id = isset($this->author->User) && $this->author->User instanceof User ? $this->author->User->id : 0;
+			
 			$author = $this->author;
 			unset($author->User);
 			
 			$data = array(
 				"title" => $this->title,
 				"description" => $this->description,
+				"captured" => $this->DateCaptured instanceof DateTime ? $this->DateCaptured->format("Y-m-d H:i:s") : NULL,
 				"provider" => $this->provider,
 				"photo_id" => $this->photo_id,
+				"user_id" => $user_id,
 				"meta" => json_encode(array(
 					"title" => $this->title,
 					"description" => $this->description,
@@ -420,7 +469,7 @@
 			} else {
 				$this->db->insert("image", $data);
 				$this->id = $this->db->lastInsertId();
-				$this->url = "/image?id=" . $this->id;
+				$this->url = Utility\Url::CreateFromImageID($this->id); 
 			}
 			
 			$this->getJSON();
@@ -544,11 +593,31 @@
 			 * New and improved populator using image providers
 			 */
 			
-			$Provider = $this->getProvider(); 
+			$Provider = $this->getProvider();
 			
-			if ($data = $Provider->getImage($this->photo_id, $force)) {
+			try {
+				$data = $Provider->getImage($this->photo_id, $force); 
+			} catch (Exception $e) {
+				$expected = array(
+					sprintf("Unable to fetch data from Flickr: Photo \"%s\" not found (invalid ID) (1)", $this->photo_id),
+					"Unable to fetch data from Flickr: Photo not found (1)"
+				);
+				
+				if (in_array($e->getMessage(), $expected)) {
+					
+					$where = [ "image_id = ?" => $this->id ];
+					$this->db->delete("image_link", $where); 
+					
+					$where = [ "id = ?" => $this->id ];
+					$this->db->delete("image", $where); 
+					
+					throw new Exception("Photo no longer available from " . $this->provider);
+				}
+			}
+			
+			if ($data) {
 				$this->sizes = $data['sizes'];
-				$this->title = $data['title'];
+				$this->title = empty($data['title']) ? "Untitled" : $data['title'];
 				$this->description = $data['description'];
 				$this->meta = array(
 					"dates" => array(
@@ -564,7 +633,7 @@
 				$this->author->url = "https://www.flickr.com/photos/" . $this->author->id;
 				
 				if (isset($data['author']['railpage_id']) && filter_var($data['author']['railpage_id'], FILTER_VALIDATE_INT)) {
-					$this->author->User = new User($data['author']['railpage_id']); 
+					$this->author->User = UserFactory::CreateUser($data['author']['railpage_id']); 
 				}
 				
 				/**
@@ -886,8 +955,26 @@
 				),
 				"sizes" => $this->sizes,
 				"author" => isset($author) ? $author : false,
-				"url" => $this->url instanceof Url ? $this->url->getURLs() : array()
+				"url" => $this->url instanceof Url ? $this->url->getURLs() : array(),
+				"dates" => array()
 			);
+			
+			$times = [ "posted", "taken" ]; 
+			
+			
+			#printArray($this->meta['dates']);die;
+			
+			foreach ($times as $time) {
+				if (isset($this->meta['dates'][$time])) {
+					$Date = filter_var($this->meta['dates'][$time], FILTER_VALIDATE_INT) ? new DateTime("@" . $this->meta['dates'][$time]) : new DateTime($this->meta['dates'][$time]);
+					
+					$data['dates'][$time] = array(
+						"absolute" => $Date->format("Y-m-d H:i:s"),
+						"nice" => $Date->format("F j, Y, g:i a"),
+						"relative" => ContentUtility::RelativeTime($Date)
+					);
+				}
+			}
 			
 			if ($this->Place instanceof Place) {
 				$data['place'] = array(
@@ -1459,6 +1546,8 @@
 				return;
 			}
 			
+			$timer = microtime(true);
+			
 			$GeoPlaceID = PlaceUtility::findGeoPlaceID($this->lat, $this->lon); 
 			
 			#var_dump($GeoPlaceID);die;
@@ -1471,7 +1560,27 @@
 			$this->Memcached->delete($this->mckey);
 			$this->Redis->delete($this->mckey); 
 			
+			Debug::logEvent(__METHOD__, $timer);
+			Debug::LogCLI(__METHOD__, $timer);
+			
 			return;
+			
+		}
+		
+		/**
+		 * Hide this photo from the pool and searches
+		 * @since Version 3.9.1
+		 * @return \Railpage\Images\Image
+		 */
+		
+		public function hide() {
+			
+			$data = [ "hidden" => 1 ];
+			$where = [ "id = ?" => $this->id ];
+			
+			$this->db->update("image", $data, $where); 
+			
+			return $this;
 			
 		}
 	}

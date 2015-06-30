@@ -9,6 +9,7 @@
 	namespace Railpage\Images\Utility;
 	
 	use Railpage\Images\Competition;
+	use Railpage\Images\Competitions;
 	use Railpage\Images\Image;
 	use Railpage\Images\Images;
 	use Railpage\ContentUtility;
@@ -202,14 +203,14 @@
 				 * Add recipients and decoration
 				 */
 				
-				$Notification = self::notificationDoRecipients(); 
+				$Notification = self::notificationDoRecipients($Notification); 
 								
 				/**
 				 * Set our email body
 				 */
 				
 				if (function_exists("wpautop") && function_exists("format_post")) {
-					$notificationOptions['body'] = wpautop(format_post($body));
+					$notificationOptions['body'] = wpautop(format_post($notificationOptions['body']));
 				}
 				
 				/**
@@ -239,5 +240,32 @@
 				
 			}
 
+		}
+		
+		/**
+		 * Get the competition ID
+		 * @since Version 3.9.1
+		 * @return int
+		 * @param string $slug
+		 */
+		
+		public static function getIDFromSlug($slug) {
+			
+			$Database = (new AppCore)->getDatabaseConnection(); 
+			
+			if (filter_var($slug, FILTER_VALIDATE_INT)) {
+				return $slug; 
+			}
+			
+			$query = "SELECT id FROM image_competition WHERE slug = ?";
+			$tempid = $Database->fetchOne($query, $slug);
+			
+			if (filter_var($tempid, FILTER_VALIDATE_INT)) {
+				return $tempid;
+			}
+			
+			$query = "SELECT ID from image_competition WHERE title = ?";
+			return $Database->fetchOne($query, $slug);
+			
 		}
 	}

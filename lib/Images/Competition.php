@@ -15,6 +15,7 @@
 	use Railpage\Url;
 	use Railpage\Module;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Exception;
 	use DateTime;
 	use DateInterval;
@@ -139,17 +140,7 @@
 			$this->Module = new Module("images.competitions"); 
 			$this->Module->namespace = sprintf("%s.competition", $this->Module->namespace); 
 			
-			if (is_string($id) && !filter_var($id, FILTER_VALIDATE_INT)) {
-				$query = "SELECT id FROM image_competition WHERE slug = ?";
-				$tempid = $this->db->fetchOne($query, $id);
-				
-				if (filter_var($tempid, FILTER_VALIDATE_INT)) {
-					$id = $tempid;
-				} else {
-					$query = "SELECT ID from image_competition WHERE title = ?";
-					$id = $this->db->fetchOne($query, $id);
-				}
-			}
+			$id = Utility\CompetitionUtility::getIDFromSlug($id); 
 			
 			if ($id = filter_var($id, FILTER_VALIDATE_INT)) {
 				$this->cachekey = sprintf("railpage:photo.comp=%d", $id);
@@ -200,7 +191,7 @@
 				$this->SubmissionsDateClose = new DateTime($this->SubmissionsDateClose->format("Y-m-d 23:59:59"));
 			}
 			
-			$this->setAuthor(new User($row['author']));
+			$this->setAuthor(UserFactory::CreateUser($row['author']));
 			
 			$this->makeURLs(); 
 			
@@ -405,9 +396,9 @@
 		 */
 		
 		public function getPhoto($image) {
-			$image_id = $image instanceof Image ? $image->id : $image['id'];
+			#$image_id = $image instanceof Image ? $image->id : $image['id'];
 			
-			$key = sprintf("railpage:comp=%d;image=%d", $this->id, $image_id);
+			#$key = sprintf("railpage:comp=%d;image=%d", $this->id, $image_id);
 			
 			if ($image instanceof Image) {
 				$query = "SELECT * FROM image_competition_submissions WHERE competition_id = ? AND image_id = ? ORDER BY date_added DESC";
@@ -416,21 +407,21 @@
 					$image->id
 				);
 				
-				$row = $this->db->fetchRow($query, $params);
-			} else {
-				$row = $image;
+				$image = $this->db->fetchRow($query, $params);
 			}
 			
 			$Photo = new stdClass;
-			$Photo->id = $row['id'];
-			$Photo->Author = new User($row['user_id']);
-			$Photo->Image = new Image($row['image_id']);
-			$Photo->DateAdded = new DateTime($row['date_added']);
-			$Photo->Meta = json_decode($row['meta'], true);
+			$Photo->id = $image['id'];
+			$Photo->Author = UserFactory::CreateUser($image['user_id']);
+			$Photo->Image = new Image($image['image_id']);
+			$Photo->DateAdded = new DateTime($image['date_added']);
+			$Photo->Meta = json_decode($image['meta'], true);
+			
 			$Photo->url = new Url(sprintf("%s/%d", $this->url->url, $Photo->Image->id));
 			$Photo->url->vote = sprintf("%s/vote", $Photo->url);
 			
 			return $Photo;
+			
 		}
 		
 		/**
@@ -736,7 +727,7 @@
 			);
 			
 			foreach ($this->db->fetchAll($query, $where) as $row) {
-				$Author = new User($row['user_id']);
+				$Author = UserFactory::CreateUser($row['user_id']);
 				$Image = new Image($row['image_id']);
 				$Date = new DateTime($row['date_added']); 
 				
@@ -916,7 +907,7 @@
 			
 			$user_id = $this->db->fetchOne($query, $params);
 			
-			return new User($user_id);
+			return UserFactory::CreateUser($user_id);
 		}
 		
 		/**
