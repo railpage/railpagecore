@@ -9,6 +9,7 @@
 	namespace Railpage\Jobs;
 	
 	use Railpage\Url;
+	use Railpage\Organisations\Factory as OrganisationsFactory;
 	use Railpage\Organisations\Organisation;
 	use Exception;
 	use DateTime;
@@ -186,7 +187,7 @@
 				$this->Open = new DateTime($result['job_added']);
 			}
 			
-			$this->Organisation = new Organisation($result['organisation_id']);
+			$this->Organisation = OrganisationsFactory::CreateOrganisation($result['organisation_id']);
 			$this->Location = new Location($result['job_location_id']);
 			$this->Classification = new Classification($result['job_classification_id']);
 			

@@ -42,24 +42,20 @@
 		
 		/**
 		 * Constructor
-		 * @param $location_id
+		 * @param int|string $id
 		 */
 		
-		public function __construct($location_id = false) {
+		public function __construct($id = false) {
 			
-			try {
-				parent::__construct();
-			} catch (Exception $e) {
-				throw new Exception($e->getMessage()); 
-			}
+			parent::__construct();
 			
-			if (filter_var($location_id, FILTER_VALIDATE_INT)) {
-				$this->id = $location_id; 
+			if (filter_var($id, FILTER_VALIDATE_INT)) {
+				$this->id = $id; 
 				
 				$this->fetch(); 
-			} elseif (is_string($location_id)) {
-				if (!$this->id = Utility\SlugUtility::getID("location", $location_id)) {
-					$this->name = $location_id;
+			} elseif (is_string($id)) {
+				if (!$this->id = Utility\SlugUtility::getID("location", $id)) {
+					$this->name = $id;
 					$this->parent_id = 0;
 					$this->commit();
 				}

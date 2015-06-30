@@ -10,6 +10,7 @@
 	
 	use Railpage\AppCore;
 	use Railpage\Module;
+	use Railpage\Organisations\Factory as OrganisationsFactory;
 	use Railpage\Organisations\Organisation;
 	use Exception;
 	use DateTime;
@@ -169,7 +170,7 @@
 			$query = "SELECT jn.organisation_id FROM jn_jobs AS jn LEFT JOIN organisation AS o ON o.organisation_id = jn.organisation_id GROUP BY jn.organisation_id ORDER BY organisation_name";
 			
 			foreach ($this->db->fetchAll($query) as $row) {
-				yield new Organisation($row['organisation_id']);
+				yield OrganisationsFactory::CreateOrganisation($row['organisation_id']);
 			}
 		}
 		

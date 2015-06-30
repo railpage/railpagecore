@@ -42,20 +42,20 @@
 		
 		/**
 		 * Constructor
-		 * @param $classification_id
+		 * @param int|string $id
 		 */
 		
-		public function __construct($classification_id = false) {
+		public function __construct($id = false) {
 			
 			parent::__construct();
 			
-			if (filter_var($classification_id, FILTER_VALIDATE_INT)) {
-				$this->id = $classification_id; 
+			if (filter_var($id, FILTER_VALIDATE_INT)) {
+				$this->id = $id; 
 				
 				$this->fetch(); 
-			} elseif (is_string($classification_id)) {
-				if (!$this->id = Utility\SlugUtility::getID("classification", $classification_id)) {
-					$this->name = $classification_id;
+			} elseif (is_string($id)) {
+				if (!$this->id = Utility\SlugUtility::getID("classification", $id)) {
+					$this->name = $id;
 					$this->parent_id = 0;
 					$this->commit();
 				}
