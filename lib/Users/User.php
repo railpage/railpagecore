@@ -979,7 +979,7 @@
 				}
 			}
 			
-			Debug::LogEvent(__METHOD__, $timer); 
+			Debug::LogEvent(__METHOD__ . "(" . $this->id  .")", $timer); 
 		}
 		
 		/**
@@ -1451,6 +1451,14 @@
 		
 		public function inGroup($group_id = false) {
 			
+			#$key = sprintf("railpage;user=%d;group=%d;ismember", $this->id, $group_id); 
+			
+			#$result = $this->Memcached->fetch($key); 
+			
+			#if ($result !== NULL) {
+			#	return $result;
+			#}
+			
 			if (!defined("RP_GROUP_ADMINS")) {
 				define("RP_GROUP_ADMINS", "michaelisawesome"); 
 			}
@@ -1461,7 +1469,11 @@
 			
 			$Group = new Group($group_id); 
 			
-			return $Group->userInGroup($this); 
+			$return = $Group->userInGroup($this); 
+			
+			#$this->Memcached->save($key, $return);
+			
+			return $return;
 			
 			/*
 			if ($this->groups === false) {
@@ -1596,7 +1608,8 @@
 				return false;
 			}
 			
-			$lastupdate = isset($_SESSION['sessiontime_lastupdate']) ? filter_var($_SESSION['sessiontime_lastupdate'], FILTER_SANITIZE_STRING) : NULL;
+			$lastupdate = isset($_SESSION['LAST_ACTIVITY']) ? $_SESSION['LAST_ACTIVITY'] : NULL;
+			#printArray(is_null($lastupdate) || $lastupdate <= time() - 300);die;
 			
 			if (is_null($lastupdate) || $lastupdate <= time() - 300) {
 				
@@ -2043,7 +2056,13 @@
 		
 		public function timeline($date_start, $date_end) {
 			
-			return (new Timeline)->setUser($this)->generateTimeline($date_start, $date_end);
+			$timer = Debug::GetTimer(); 
+			
+			$timezzz = (new Timeline)->setUser($this)->generateTimeline($date_start, $date_end);
+			
+			Debug::LogEvent(__METHOD__, $timer); 
+			
+			return $timezzz;
 			
 			#return Timeline::GenerateTimeline($this, $date_start, $date_end); 
 			

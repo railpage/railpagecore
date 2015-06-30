@@ -35,9 +35,10 @@
 			} catch (Exception $e) {
 				if (!$User = $Redis->fetch(sprintf("railpage:users.user=%d", $id))) {
 					$User = new User($id); 
-					$Registry->set($regkey, $User); 
 					$Redis->save(sprintf("railpage:users.user=%d", $id), $User);
 				}
+				
+				$Registry->set($regkey, $User); 
 			}
 			
 			return $User;

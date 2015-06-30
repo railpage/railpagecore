@@ -10,6 +10,7 @@
 	
 	use Exception;
 	use DateTime;
+	use Railpage\Organisations\Factory as OrganisationsFactory;
 	use Railpage\Organisations\Organisation;
 	use Railpage\Url;
 	use Railpage\Module;
@@ -156,7 +157,7 @@
 				if ($row['organisation_id'] !== 0) {
 					$this->organisation_id = $row['organisation_id']; 
 					try {
-						$Organisation = new Organisation(false, $this->organisation_id); 
+						$Organisation = OrganisationsFactory::CreateOrganisation(false, $this->organisation_id); 
 						$this->organisation = $Organisation->name; 
 					} catch (Exception $e) {
 						throw new Exception($e->getMessage()); 

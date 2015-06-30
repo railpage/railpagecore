@@ -12,7 +12,7 @@
 	use Exception;
 	use DateTime;
 	use DateTimeZone;
-	
+	use Railpage\Debug;
 	use Railpage\AppCore;
 	use Railpage\BanControl\BanControl;
 	use Railpage\Module;
@@ -103,6 +103,7 @@
 			
 			if (isset($timeline['timeline'])) {
 				foreach ($timeline['timeline'] as $key => $row) {
+					
 					// Set their timezone
 					$row['timestamp']->setTimezone(new DateTimeZone($this->User->timezone));
 					
@@ -192,44 +193,52 @@
 		 */
 		
 		private function getFilteredForums() {
+			
+			$timer = Debug::GetTimer(); 
+			
 			if (!isset($this->User->Guest) || !$this->User->Guest instanceof User) {
 				return "";
 			}
 			
 			$mckey = sprintf("forum.post.filter.user:%d", $this->User->Guest->id);
 			
-			if (!$forum_post_filter = $this->Memcached->fetch($mckey)) {
-				$Forums = new Forums;
-				$Index = new Index;
-				
-				$acl = $Forums->setUser($this->User->Guest)->getACL();
-				
-				$allowed_forums = array(); 
-				
-				foreach ($Index->forums() as $row) {
-					$Forum = new Forum($row['forum_id']);
-					
-					if ($Forum->setUser($this->User->Guest)->isAllowed(Forums::AUTH_READ)) {
-						$allowed_forums[] = $Forum->id;
-					}
-				}
-				
-				$forum_filter = "AND p.forum_id IN (" . implode(",", $allowed_forums) . ")";
-				
-				if (count($allowed_forums) === 0) {
-					return "";
-				}
-				
-				$forum_post_filter = "AND id NOT IN (SELECT l.id AS log_id
-					FROM log_general AS l 
-					LEFT JOIN nuke_bbposts AS p ON p.post_id = l.value
-					WHERE l.key = 'post_id' 
-					" . $forum_filter . ")";
-				
-				$this->Memcached->save($mckey, $forum_post_filter, strtotime("+1 week"));
-				
+			if ($forum_post_filter = $this->Redis->fetch($mckey)) {
 				return $forum_post_filter;
 			}
+			
+			$Forums = new Forums;
+			$Index = new Index;
+			
+			$acl = $Forums->setUser($this->User->Guest)->getACL();
+			
+			$allowed_forums = array(); 
+			
+			foreach ($Index->forums() as $row) {
+				$Forum = new Forum($row['forum_id']);
+				
+				if ($Forum->setUser($this->User->Guest)->isAllowed(Forums::AUTH_READ)) {
+					$allowed_forums[] = $Forum->id;
+				}
+			}
+			
+			$forum_filter = "AND p.forum_id IN (" . implode(",", $allowed_forums) . ")";
+			
+			if (count($allowed_forums) === 0) {
+				$this->Redis->save($mckey, "", strtotime("+1 week"));
+				return "";
+			}
+			
+			$forum_post_filter = "AND id NOT IN (SELECT l.id AS log_id
+				FROM log_general AS l 
+				LEFT JOIN nuke_bbposts AS p ON p.post_id = l.value
+				WHERE l.key = 'post_id' 
+				" . $forum_filter . ")";
+			
+			$this->Redis->save($mckey, $forum_post_filter, strtotime("+1 week"));
+			
+			Debug::LogEvent(__METHOD__, $timer);
+			
+			return $forum_post_filter;
 		}
 		
 		/**
@@ -264,6 +273,8 @@
 		
 		private function processGrammarAction($row) {
 			
+			$timer = Debug::GetTimer(); 
+			
 			$row['event']['action'] = Grammar::getAction($row);
 			$row['event']['object'] = Grammar::getObject($row);
 			
@@ -273,6 +284,8 @@
 				$row['event']['article'] = "a";
 				$row['event']['preposition'] = "from";
 			}
+			
+			Debug::LogEvent(__METHOD__, $timer);
 			
 			return $row;
 			
@@ -287,10 +300,14 @@
 		
 		private function processGrammarPreposition($row) {
 			
+			$timer = Debug::GetTimer(); 
+			
 			$row['event']['preposition'] = Grammar::getPrepositionTo($row);
 			$row['event']['preposition'] = Grammar::getPrepositionFrom($row);
 			$row['event']['preposition'] = Grammar::getPrepositionOf($row);
 			$row['event']['preposition'] = Grammar::getPrepositionIn($row);
+			
+			Debug::LogEvent(__METHOD__, $timer);
 			
 			return $row;
 			
@@ -305,6 +322,8 @@
 		
 		private function processGrammarArticle($row) {
 			
+			$timer = Debug::GetTimer(); 
+			
 			$row['event']['article'] = Grammar::getArticle_OfIn($row); 
 			$row['event']['article'] = Grammar::getArticle_AnA($row);
 			
@@ -315,6 +334,11 @@
 			
 			$row = Grammar::getArticle_The($row); 
 			
+			
+			Debug::LogEvent(__METHOD__, $timer);
+			
 			return $row;
 		}
 	}
+	
+	

@@ -9,6 +9,7 @@
 	namespace Railpage\Users\Timeline\Utility;
 	
 	use Railpage\Forums\Post;
+	use Railpage\Locos\Factory as LocosFactory;
 	use Railpage\Locos\Locomotive;
 	use Railpage\Locos\LocoClass;
 	use Railpage\Locations\Location;
@@ -118,7 +119,11 @@
 		 */
 		
 		private static function processLocomotive() {
-			$Loco = new Locomotive(self::$row['value']); 
+			$Loco = LocosFactory::CreateLocomotive(self::$row['value']); 
+			
+			if (!$Loco instanceof Locomotive) {
+				return;
+			}
 			
 			self::$row['meta']['namespace'] = $Loco->namespace;
 			self::$row['meta']['id'] = $Loco->id;
@@ -138,7 +143,12 @@
 		 */
 		
 		private static function processLocomotiveClass() {
-			$LocoClass = new LocoClass(self::$row['value']); 
+			$LocoClass = LocosFactory::CreateLocoClass(self::$row['value']); 
+			
+			if (!$LocoClass instanceof LocoClass) {
+				return;
+			}
+			
 			self::$row['meta']['object']['title'] = $LocoClass->name;
 			
 			self::$row['meta']['namespace'] = $LocoClass->namespace;

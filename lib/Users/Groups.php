@@ -12,6 +12,7 @@
 	
 	namespace Railpage\Users; 
 	
+	use Railpage\Organisations\Factory as OrganisationsFactory;
 	use Railpage\Organisations\Organisation;
 	use Railpage\AppCore;
 	use Exception;
@@ -65,7 +66,7 @@
 				$row['group_attrs'] = !empty($row['group_attrs']) ? json_decode($row['group_attrs'], true) : array();
 				
 				if (filter_var($row['organisation_id'], FILTER_VALIDATE_INT)) {
-					$Organisation = new Organisation($row['organisation_id']); 
+					$Organisation = OrganisationsFactory::CreateOrganisation($row['organisation_id']); 
 					$row['organisation_name'] = $Organisation->name;
 				}
 				

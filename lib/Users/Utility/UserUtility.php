@@ -267,4 +267,21 @@
 			return $data;
 			
 		}
+		
+		/**
+		 * Find a user ID from a Flickr NSID
+		 * @since Version 3.9.1
+		 * @param string $nsid
+		 * @return int
+		 */
+		
+		public static function findFromFlickrNSID($nsid) {
+			
+			$Database = (new AppCore)->getDatabaseConnection(); 
+			
+			$query = "SELECT user_id FROM nuke_users WHERE flickr_nsid = ?"; 
+			
+			return $Database->fetchOne($query, $nsid); 
+			
+		}
 	}
