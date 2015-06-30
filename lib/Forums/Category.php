@@ -116,7 +116,7 @@
 			}
 			
 			$userdata = $this->User->generateUserData();
-			$Index = new Index;
+			$Index = ForumsFactory::CreateIndex(); #new Index;
 			
 			if (!isset($prefix)) {
 				$prefix = "nuke";

@@ -13,6 +13,7 @@
 	use Railpage\Module;
 	use Railpage\Url;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\News\Article;
 	use DateTime;
 	use DateTimeZone;
@@ -763,7 +764,7 @@
 			$return = array(); 
 			
 			foreach ($this->db->fetchAll($query, $this->id) as $row) {
-				$ThisUser = new User($row['user_id']);
+				$ThisUser = UserFactory::CreateUser($row['user_id']);
 				
 				$row = array(
 					"id" => $ThisUser->id,

@@ -11,6 +11,7 @@
 	namespace Railpage\Forums;
 	
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Module;
 	use Railpage\Url;
 	use Railpage\AppCore;
@@ -328,7 +329,7 @@
 				
 				$this->Date = new DateTime;
 				$this->Date->setTimestamp($row['post_time']);
-				$this->Author = new User($row['poster_id']);
+				$this->Author = UserFactory::CreateUser($row['poster_id']);
 				
 				$this->makeLinks(); 
 			}
@@ -568,7 +569,7 @@
 		 */
 		
 		public function loadAuthor() {
-			$this->Author = new User($this->uid);
+			$this->Author = UserFactory::CreateUser($this->uid);
 			
 			return $this;
 		}

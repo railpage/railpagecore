@@ -14,6 +14,7 @@
 	use Railpage\Forums\Post;
 	use Railpage\Forums\Forums;
 	use Railpage\AppCore;
+	use Railpage\Debug;
 	use Railpage\Module;
 	use Exception;
 	use DateTime;
@@ -24,6 +25,7 @@
 	use Zend_Acl_Resource;
 	use Zend_Acl_Role;
 	use ReflectionClass;
+	use Railpage\Registry;
 
 	define("RP_THREAD_LOCKED", 1);
 	define("RP_THREAD_UNLOCKED", 0);
@@ -267,7 +269,7 @@
 			
 			$exclude_forums = array();
 			
-			for ($i = 0; $i < count($forum_list); $i++) {
+			for ($i = 0, $c = count($forum_list); $i < $c; $i++) {
 				if ($is_auth_ary[$forum_list[$i]['forum_id']]['auth_view']) {
 					if (!in_array($forum_list[$i]['forum_id'], array("37"))) {
 						$exclude_forums[] = $forum_list[$i]['forum_id'];
@@ -511,11 +513,21 @@
 		
 		public function buildACL($force = false) {
 			
-			/**
-			 * I hate using Globals...
-			 */
+			$Registry = Registry::getInstance(); 
 			
-			global $acl;
+			try {
+				$ForumsACL = $Registry->get("forumsacl"); 
+				$this->ZendACL = $ForumsACL;
+				return;
+				
+			} catch (Exception $e) {
+				// Fook it
+			}
+			
+			Debug::RecordInstance(__METHOD__); 
+			$timer = Debug::getTimer(); 
+			
+			$acl = $Registry->get("acl"); 
 			
 			if (!$this->User instanceof User) {
 				throw new Exception("A valid user must be set before the ACL can be built");
@@ -523,12 +535,12 @@
 			
 			$mckey = "railpage.forums.list";
 			
-			if ($force || !$forums = getMemcacheObject($mckey)) {
+			if ($force || !$forums = $this->Memcached->fetch($mckey)) {
 				$query = "SELECT forum_id FROM nuke_bbforums";
 				
 				$forums = $this->db->fetchAll($query);
 				
-				setMemcacheObject($mckey, $forums);
+				$this->Memcached->save($mckey, $forums);
 			}
 			
 			$acl_forums = array();
@@ -581,26 +593,67 @@
 			}
 			
 			/**
+			 * Guest details
+			 */
+			
+			$guestfucknamingthis = [
+				self::AUTH_MOD => $this->User->inGroup(RP_GROUP_MODERATORS),
+				self::AUTH_ADMIN => $this->User->inGroup(RP_GROUP_ADMINS)
+			];
+			
+			/**
 			 * Add the forum permissions to Zend_ACL
 			 */
 			
 			foreach ($db_acl as $forum_id => $permissions) {
 				$allowed = array(); 
-				$denied = array(); 
+				$denied = array();
 				
+				unset($permissions['forum_id']);
+				
+				$allowed = array_merge($allowed, array_keys($permissions, self::AUTH_ALL)); 
+				
+				if (!$this->User->guest) {
+					$allowed = array_merge($allowed, array_keys($permissions, self::AUTH_REG)); 
+				}
+				
+				if ($guestfucknamingthis[self::AUTH_MOD]) {
+					$allowed = array_merge($allowed, array_keys($permissions, self::AUTH_MOD)); 
+				}
+				
+				if ($guestfucknamingthis[self::AUTH_ADMIN]) {
+					$allowed = array_merge($allowed, array_keys($permissions, self::AUTH_ADMIN)); 
+				}
+				
+				$perms_acl = array_keys($permissions, self::AUTH_ACL);
+				
+				if (count($perms_acl)) {
+					if (isset($gperms[$forum_id])) {
+						foreach ($gperms[$forum_id] as $group) {
+							foreach ($group as $gitem => $gval) {
+								$allowed = array_merge($allowed, array_keys($permissions, self::AUTH_REG)); 
+								
+								if ($guestfucknamingthis[self::AUTH_MOD]) {
+									$allowed = array_merge($allowed, array_keys($permissions, self::AUTH_MOD)); 
+								}
+								
+								if ($guestfucknamingthis[self::AUTH_ADMIN]) {
+									$allowed = array_merge($allowed, array_keys($permissions, self::AUTH_ADMIN)); 
+								}
+							}
+						}
+					}
+				}
+				
+				$allowed = array_unique($allowed);
+				
+				#continue;
+				
+				/*
 				foreach ($permissions as $item => $value) {
 					switch ($value) {
-						case self::AUTH_ALL :
-							$allowed[] = $item;
-							break;
 						
-						case self::AUTH_REG :
-							if (!$this->User->guest) {
-								$allowed[] = $item;
-							}
-							break;
-						
-						case self::AUTH_ACL :
+						case self::AUTH_ACL . "zzz" :
 							if (isset($gperms[$forum_id])) {
 								foreach ($gperms[$forum_id] as $group) {
 									foreach ($group as $gitem => $gval) {
@@ -631,19 +684,20 @@
 							}
 							break;
 						
-						case self::AUTH_MOD : 
+						case self::AUTH_MOD  . "zzz": 
 							if ($this->User->inGroup(RP_GROUP_MODERATORS)) {
 								$allowed[] = $item;
 							}
 							break;
 						
-						case self::AUTH_ADMIN :
+						case self::AUTH_ADMIN . "zzz" :
 							if ($this->User->inGroup(RP_GROUP_ADMINS)) {
 								$allowed[] = $item;
 							}
 							break;
 					}
 				}
+				*/
 				
 				foreach ($permissions as $item => $value) {
 					if (!in_array($item, $allowed)) {
@@ -651,14 +705,21 @@
 					}
 				}
 				
-				$allowed = array_unique($allowed);
-				$denied = array_unique($denied);
+				#$allowed = array_unique($allowed);
+				#$denied = array_unique($denied);
 				
 				$acl->allow("forums_viewer", sprintf("railpage.forums.forum:%d", $forum_id), $allowed);
 				$acl->deny("forums_viewer", sprintf("railpage.forums.forum:%d", $forum_id), $denied);
 			}
 			
+			$Registry->set("acl", $acl); 
+			$Registry->set("forumsacl", $acl); 
 			$this->ZendACL = $acl;
+			
+			Debug::LogEvent(__METHOD__, $timer); 
+			
+			return;
+			
 		}
 		
 		/**
@@ -986,7 +1047,7 @@
 			$array = array();
 			$list = explode('|', $str);
 			
-			for ($i=0; $i<count($list); $i++) {
+			for ($i = 0, $c = count($list); $i < $c; $i++) {
 				$row = explode('=', $list[$i], 2);
 				
 				if (count($row) == 2) {

@@ -13,6 +13,7 @@
 	use Railpage\Module;
 	use Railpage\Url;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Zend_Acl;
 	
 	use DateTime;
@@ -230,7 +231,7 @@
 				$this->acl_resource = sprintf("railpage.forums.forum:%d", $this->id);
 				
 				if ($getParent) {
-					$this->category = new Category($this->catid);
+					$this->category = ForumsFactory::CreateCategory($this->catid);
 				}
 				
 				if (filter_var($row['forum_parent'], FILTER_VALIDATE_INT) && $row['forum_parent'] > 0) {
