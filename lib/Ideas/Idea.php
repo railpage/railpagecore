@@ -9,6 +9,7 @@
 	namespace Railpage\Ideas;
 	
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\AppCore;
 	use Railpage\Module;
 	use Railpage\SiteEvent;
@@ -154,7 +155,7 @@
 			$this->forum_thread_id = $row['forum_thread_id'];
 			$this->redmine_id = $row['redmine_id'];
 			
-			$this->setAuthor(new User($row['author']));
+			$this->setAuthor(UserFactory::CreateUser($row['author']));
 			$this->fetchVotes();
 			$this->makeURLs(); 
 			
