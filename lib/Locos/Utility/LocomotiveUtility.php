@@ -31,8 +31,10 @@
 		
 		public static function fetchLocomotive(Locomotive $Loco) {
 			
+			$AppCore = new AppCore;
+			
 			$Memcached = AppCore::getMemcached();
-			$Database = (new AppCore)->getDatabaseConnection();
+			$Database = $AppCore->getDatabaseConnection();
 			
 			if (!$row = $Memcached->fetch($Loco->mckey)) {
 				
@@ -449,6 +451,28 @@
 			}
 			
 			return $return;
+		}
+		
+		/**
+		 * Get construction or in service date
+		 * @since Version 3.9.1
+		 * @param \Railpage\Locos\Locomotive $Loco
+		 * @return \DateTime
+		 */
+		
+		public static function getConstructionDate(Locomotive $Loco) {
+			
+			$dates = $Loco->loadDates(); 
+			$dates = array_reverse($dates, true); 
+			
+			$types = [ 1, 17 ];
+			
+			foreach ($dates as $row) {
+				if (in_array($row['date_type_id'], $types)) {
+					return new DateTime("@" . $row['date']); 
+				}
+			}
+			
 		}
 
 	}

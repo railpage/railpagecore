@@ -10,6 +10,7 @@
 	
 	use Railpage\AppCore;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\PrivateMessages\Message;
 	use Exception;
 	use DateTime;
@@ -132,13 +133,13 @@
 			if (count($row)) {
 				$this->id = $id;
 				$this->text = $row['text'];
-				$this->User = new User($row['user_id']);
+				$this->User = UserFactory::CreateUser($row['user_id']);
 				$this->Date = new DateTime($row['date']);
 				$this->status = $row['status'];
 				$this->Resolution = new stdClass;
 				
 				if (filter_var($row['resolved_by'], FILTER_VALIDATE_INT)) {
-					$this->Resolution->User = new User($row['resolved_by']);
+					$this->Resolution->User = UserFactory::CreateUser($row['resolved_by']);
 					$this->Resolution->Date = new DateTime($row['resolved_date']);
 				}
 				

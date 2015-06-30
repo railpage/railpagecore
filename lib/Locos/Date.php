@@ -14,6 +14,7 @@
 	use Railpage\Debug;
 	use Railpage\Glossary\Glossary;
 	use Railpage\Glossary\Entry;
+	use Railpage\ContentUtility;
 	
 	/**
 	 * Date class
@@ -30,10 +31,18 @@
 		
 		/**
 		 * Date
-		 * @var DateTime $Date
+		 * @var \DateTime $Date
 		 */
 		
 		public $Date;
+		
+		/**
+		 * Optional end date for this event
+		 * @since Version 3.9.1
+		 * @var \DateTime $DateEnd
+		 */
+		
+		public $DateEnd;
 		
 		/**
 		 * Date type
@@ -135,6 +144,10 @@
 				$update = true;
 			} else {
 				$this->Date = new DateTime($row['timestamp']); 
+			}
+			
+			if (isset($row['date_end']) && !is_null($row['date_end'])) {
+				$this->DateEnd = new DateTime($row['date_end']);
 			}
 			
 			/**
@@ -298,6 +311,7 @@
 				"loco_unit_id" => $this->Loco->id,
 				"loco_date_id" => $this->action_id,
 				"date" => $this->Date->getTimestamp(),
+				"date_end" => $this->DateEnd instanceof DateTime ? $this->DateEnd->format("Y-m-d") : NULL,
 				"timestamp" => $this->Date->format("Y-m-d"),
 				"text" => $this->text,
 				"meta" => json_encode($this->meta)
@@ -315,6 +329,11 @@
 			} else {
 				$this->db->insert("loco_unit_date", $data); 
 				$this->id = $this->db->lastInsertId(); 
+			}
+			
+			if (isset($this->Loco->meta['construction_cost'])) {
+				$this->Loco->meta['construction_cost_inflated'] = ContentUtility::convertCurrency($this->Loco->meta['construction_cost'], Utility\LocomotiveUtility::getConstructionDate($this->Loco));
+				$this->Loco->commit(); 
 			}
 			
 			return $this;
@@ -345,6 +364,38 @@
 			$this->url = new Url($this->Loco->url);
 			
 			return $this;
+			
+		}
+		
+		/**
+		 * Get this as an array
+		 * @since Version 3.9.1
+		 * @return array
+		 */
+		
+		public function getArray() {
+			
+			if (!$this->Loco instanceof Locomotive) {
+				$this->loadLoco(); 
+			}
+			
+			$return = array(
+				"id" => $this->id,
+				"loco" => array(
+					"id" => $this->Loco->id,
+					"number" => $this->Loco->number,
+					"class" => array(
+						"id" => $this->Loco->Class->id,
+						"name" => $this->Loco->Class->name
+					),
+				),
+				"date" => $this->Date->format("Y-m-d"),
+				"date_end" => $this->DateEnd instanceof DateTime ? $this->DateEnd->format("Y-m-d") : NULL,
+				"text" => $this->text,
+				"meta" => $this->meta
+			);
+			
+			return $return;
 			
 		}
 	}

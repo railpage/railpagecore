@@ -19,9 +19,11 @@
 	use Railpage\Assets\Asset;
 	use Railpage\Locos\Liveries\Livery;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\ContentUtility;
 	use Railpage\Debug;
 	use Railpage\Registry;
+	use Railpage\AppCore;
 		
 	/**
 	 * Locomotive class (eg X class or 92 class) class
@@ -399,6 +401,7 @@
 				}
 				
 				$this->url = new Url($this->makeClassURL($this->slug));
+				$this->url->photos = sprintf("/photos/search?class_id=%d", $this->id);
 				$this->url->view = $this->url->url;
 				$this->url->edit = sprintf("%s?mode=class.edit&id=%d", $this->Module->url, $this->id);
 				$this->url->addLoco = sprintf("%s?mode=loco.edit&class_id=%d", $this->Module->url, $this->id);
@@ -528,7 +531,7 @@
 				$row['loco_gauge']['gauge_name']	= $row['gauge_name']."<span style='display:block;margin-top:-8px;margin-bottom:-4px;' class='gensmall'>".$row['gauge_metric']."</span>";
 				$row['loco_gauge_formatted'] 		= $row['gauge_name']." ".$row['gauge_imperial']." (".$row['gauge_metric'].")";
 					
-				$row['url'] = strtolower($this->url . "/" . $row['loco_num']);
+				$row['url'] = Utility\LocosUtility::CreateUrl("loco", array($this->slug, $row['loco_num']));
 				$row['url_edit'] = sprintf("%s?mode=loco.edit&id=%d", $this->Module->url, $row['loco_id']);
 				
 				$return['locos'][$row['loco_id']] = $row;
@@ -741,8 +744,27 @@
 		 */
 		
 		public function getContributors() {
+			
 			$return = array(); 
 			
+			$Sphinx = AppCore::getSphinx();
+			
+			$query = $Sphinx->select("user_id", "username")
+							->from("idx_logs")
+							->match("module", "locos")
+							->where("key", "=", "class_id")
+							->where("value", "=", $this->id)
+							->groupBy("user_id");
+			
+			$result = $query->execute();
+			
+			foreach ($result as $row) {
+				$return[$row['user_id']] = $row['username'];
+			}
+			
+			return $return;
+			
+			/*			
 			$query = "SELECT DISTINCT l.user_id, u.username FROM log_general AS l LEFT JOIN nuke_users AS u ON u.user_id = l.user_id WHERE l.module = ? AND l.key = ? AND l.value = ?";
 			
 			foreach ($this->db->fetchAll($query, array("locos", "class_id", $this->id)) as $row) {
@@ -750,6 +772,8 @@
 			}
 			
 			return $return;
+			*/
+			
 		}
 		
 		/**
@@ -822,8 +846,9 @@
 					);
 				}
 				
-				$Loco = Factory::CreateLocomotive($row['id']); #new Locomotive($row['id']);
-				$row['url'] = $Loco->url;
+				#$Loco = Factory::CreateLocomotive($row['id']); #new Locomotive($row['id']);
+				#$row['url'] = $Loco->url;
+				$row['url'] = Utility\LocosUtility::CreateUrl("loco", array($this->slug, $row['number'])); 
 				
 				$return['status'][$row['status_id']]['num']++;
 				$return['status'][$row['status_id']]['units'][] = $row;
@@ -1136,9 +1161,9 @@
 		 */
 		
 		public function getArray() {
-			$Manufacturer = new Manufacturer($this->manufacturer_id); 
-			$Arrangement = new WheelArrangement($this->wheel_arrangement_id); 
-			$Type = new Type($this->type_id);
+			$Manufacturer = Factory::Create("Manufacturer", $this->manufacturer_id);
+			$Arrangement = Factory::Create("WheelArrangement", $this->wheel_arrangement_id); #new WheelArrangement($this->wheel_arrangement_id); 
+			$Type = Factory::Create("Type", $this->type_id); #new Type($this->type_id);
 			
 			return array(
 				"id" => $this->id,
@@ -1203,7 +1228,7 @@
 		 */
 		
 		public function getType() {
-			return filter_var($this->type_id, FILTER_VALIDATE_INT) ? new Type($this->type_id) : false;
+			return filter_var($this->type_id, FILTER_VALIDATE_INT) ? Factory::Create("Type", $this->type_id) : false;
 		}
 		
 		/**
@@ -1213,7 +1238,7 @@
 		 */
 		
 		public function getManufacturer() {
-			return new Manufacturer($this->manufacturer_id); 
+			return Factory::Create("Manufacturer", $this->manufacturer_id); #new Manufacturer($this->manufacturer_id); 
 		}
 		
 		/**

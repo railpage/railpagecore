@@ -22,7 +22,7 @@
 		 * @const boolean USE_REDIS
 		 */
 		
-		const USE_REDIS = false;
+		const USE_REDIS = false; // causing errors
 		
 		/**
 		 * Return a locomotive class
@@ -49,13 +49,13 @@
 				} catch (Exception $e) {
 					$cachekey = sprintf(LocoClass::CACHE_KEY, $id); 
 					
-					#if (self::USE_REDIS && !$LocoClass = $Redis->fetch($cachekey)) {
+					if (!self::USE_REDIS || !$LocoClass = $Redis->fetch($cachekey)) {
 						$LocoClass = new LocoClass($id); 
 						
 						if (self::USE_REDIS) {
 							$Redis->save($cachekey, $LocoClass);
 						}
-					#}
+					}
 					
 					$Registry->set($regkey, $LocoClass); 
 				} 
@@ -94,13 +94,13 @@
 				} catch (Exception $e) {
 					$cachekey = sprintf(Locomotive::CACHE_KEY, $id); 
 					
-					#if (!self::USE_REDIS || !$Loco = $Redis->fetch($cachekey)) {
+					if (!self::USE_REDIS || !$Loco = $Redis->fetch($cachekey)) {
 						$Loco = new Locomotive($id); 
 						
 						if (self::USE_REDIS) {
 							$Redis->save($cachekey, $Loco);
 						}
-					#}
+					}
 					
 					$Registry->set($regkey, $Loco); 
 				} 
@@ -109,6 +109,36 @@
 			}
 			
 			return false;
+			
+		}
+		
+		/**
+		 * Return a thing
+		 * @since Version 3.9.1
+		 * @return mixed
+		 * @param string $Object
+		 * @param int|string $id
+		 */
+		
+		public static function Create($Object = false, $id = false) {
+			
+			$class = sprintf("\Railpage\Locos\%s", $Object); 
+			$regkey = sprintf("railpage:locos.%s=%d", strtolower($Object), $id); 
+			
+			$Memcached = AppCore::getMemcached(); 
+			$Redis = AppCore::getRedis(); 
+			$Registry = Registry::getInstance(); 
+				
+			try {
+				$Object = $Registry->get($regkey); 
+			} catch (Exception $e) {
+				
+				$Object = new $class($id); 
+				
+				$Registry->set($regkey, $Object); 
+			} 
+				
+			return $Object; 
 			
 		}
 		

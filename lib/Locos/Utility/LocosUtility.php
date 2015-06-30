@@ -13,6 +13,7 @@
 	use Railpage\ContentUtility; 
 	use Railpage\Asset;
 	use Railpage\AppCore;
+	use Railpage\Module;
 	use Exception;
 	use Railpage\Debug;
 	use Zend_Db_Expr;
@@ -82,6 +83,26 @@
 			}
 			
 			return $return;
+			
+		}
+		
+		/**
+		 * Create a base URL from the given parameters
+		 * @since Version 3.9.1
+		 * @param string $type
+		 * @param array $parts
+		 */
+		
+		public static function CreateUrl($type, $parts) {
+			
+			$Module = new Module("locos"); 
+			
+			$base = array($Module->url);
+			
+			$base = array_merge($base, $parts); 
+			$url = strtolower(implode("/", $base)); 
+			
+			return $url;
 			
 		}
 		

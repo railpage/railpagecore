@@ -11,18 +11,19 @@
 	
 	use Railpage\Locos\Liveries\Livery;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Images\Images;
 	use Railpage\Images\Image;
 	use Railpage\Assets\Asset;
 	use Railpage\ContentUtility;
 	use Railpage\Url;
 	use Railpage\Debug;
+	use Railpage\AppCore;
 	use DateTime;
 	use Exception;
 	use stdClass;
 	use Railpage\Registry;
 	use Railpage\Users\Utility\AvatarUtility;
-	use Railpage\Users\Factory as UserFactory;
 		
 	/**
 	 * Loco object
@@ -823,7 +824,7 @@
 				if ($row['link_type_id'] === RP_LOCO_RENUMBERED) {
 					$return[$row['link_id']][$row[$key]] = "Renumbered " . $article;
 				} elseif ($row['link_type_id'] === RP_LOCO_REBUILT) {
-					$return[$row['link_id']][$row[$key]] = "Rebuilt to" . $article;
+					$return[$row['link_id']][$row[$key]] = "Rebuilt " . $article;
 				}
 			}
 			
@@ -1174,8 +1175,27 @@
 		 */
 		
 		public function getContributors() {
+			
 			$return = array(); 
 			
+			$Sphinx = AppCore::getSphinx();
+			
+			$query = $Sphinx->select("user_id", "username")
+							->from("idx_logs")
+							->match("module", "locos")
+							->where("key", "=", "loco_id")
+							->where("value", "=", $this->id)
+							->groupBy("user_id");
+			
+			$result = $query->execute();
+			
+			foreach ($result as $row) {
+				$return[$row['user_id']] = $row['username'];
+			}
+			
+			return $return;
+			
+			/*
 			$query = "SELECT DISTINCT l.user_id, u.username FROM log_general AS l LEFT JOIN nuke_users AS u ON u.user_id = l.user_id WHERE l.module = ? AND l.key = ? AND l.value = ?";
 			
 			foreach ($this->db->fetchAll($query, array("locos", "loco_id", $this->id)) as $row) {
@@ -1183,6 +1203,8 @@
 			}
 			
 			return $return;
+			*/
+			
 		}
 		
 		/**
@@ -1438,7 +1460,8 @@
 		
 		public function getManufacturer() {
 			#if (filter_var($this->manufacturer_id, FILTER_VALIDATE_INT)) {
-				return new Manufacturer($this->manufacturer_id); 
+				return Factory::Create("Manufacturer", $this->manufacturer_id);
+				#return new Manufacturer($this->manufacturer_id); 
 			#}
 			
 			#return $this->Class->getManufacturer(); 
