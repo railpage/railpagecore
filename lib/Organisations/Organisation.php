@@ -10,6 +10,7 @@
 	
 	namespace Railpage\Organisations;
 	
+	use Railpage\Events\Factory as EventsFactory;
 	use Railpage\Events\Events;
 	use Railpage\Events\Event;
 	use Railpage\Events\EventDate;
@@ -29,6 +30,22 @@
 	 */
 	
 	class Organisation extends Base {
+		
+		/**
+		 * Registry key
+		 * @since Version 3.9.1
+		 * @const string REGISTRY_KEY
+		 */
+		
+		const REGISTRY_KEY = "railpage:organisations.organisation=%d";
+		
+		/**
+		 * Memcached/Redis cache key
+		 * @since Version 3.9.1
+		 * @const string CACHE_KEY
+		 */
+		
+		const CACHE_KEY = "railpage:organisations.organisation=%d";
 		
 		/**
 		 * ID
