@@ -11,6 +11,7 @@
 	use Exception;
 	use DateTime;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Module;
 	use Railpage\Url;
 	use Railpage\AppCore;

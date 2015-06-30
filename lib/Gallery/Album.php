@@ -11,6 +11,7 @@
 	use Exception;
 	use DateTime;
 	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Module;
 	use Railpage\Url;
 	use Railpage\AppCore;
@@ -250,7 +251,7 @@
 		public function getOwner() {
 			if (filter_var($this->owner, FILTER_VALIDATE_INT)) {
 				try {
-					return new User($this->owner);
+					return UserFactory::CreateUser($this->owner);
 				} catch (Exception $e) {
 					// Don't care
 				}
