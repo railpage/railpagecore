@@ -154,15 +154,12 @@
 				$this->owner_username = $row['owner_username']; 
 				$this->attributes = json_decode($row['group_attrs'], true);
 				
-				if ($row['organisation_id'] !== 0) {
+				if (filter_var($row['organisation_id'], FILTER_VALIDATE_INT) && $row['organisation_id'] !== 0) {
+					
+					$Organisation = OrganisationsFactory::CreateOrganisation(false, $this->organisation_id); 
+					
 					$this->organisation_id = $row['organisation_id']; 
-					try {
-						$Organisation = OrganisationsFactory::CreateOrganisation(false, $this->organisation_id); 
-						$this->organisation = $Organisation->name; 
-					} catch (Exception $e) {
-						throw new Exception($e->getMessage()); 
-						return false;
-					}
+					$this->organisation = $Organisation->name; 
 				}
 				
 				$this->makeURLs(); 
@@ -177,6 +174,7 @@
 		 */
 		
 		public function setOwner(User $User) {
+			
 			$this->owner_user_id = $User->id;
 			$this->owner_username = $User->username;
 			
@@ -191,6 +189,7 @@
 		 */
 		
 		public function setOrganisation(Organisation $Org) {
+			
 			$this->organisation_id = $Org->id;
 			$this->organisation = $Org->name;
 			

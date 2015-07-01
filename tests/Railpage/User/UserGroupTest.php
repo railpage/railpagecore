@@ -109,14 +109,21 @@
 			$Org->name = "Test org";
 			$Org->desc = "User group org";
 			$Org->commit(); 
+			$this->assertFalse(!filter_var($Org->id, FILTER_VALIDATE_INT)); 
 			
 			$Group = new Group;
 			$Group->name = "Test org group 2";
 			$Group->desc = "Description blah";
 			$Group->type = Group::TYPE_OPEN;
-			$Group->setOwner($User)->setOrganisation($Org)->commit(); 
+			$Group->setOwner($User)->setOrganisation($Org);
+			
+			$this->assertEquals($Org->id, $Group->organisation_id);
+			
+			$Group->commit(); 
 			
 			$NewGroup = new Group($Group->id);
+			
+			$this->assertEquals($Org->id, $Group->organisation_id);
 			
 		}
 		

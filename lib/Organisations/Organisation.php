@@ -194,6 +194,7 @@
 			}
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$this->id = intval($this->id);
 				$this->populate(); 
 			}
 			
@@ -340,6 +341,7 @@
 		 */
 		
 		public function commit() {
+			
 			$this->validate();
 			
 			$data = array(
@@ -360,18 +362,17 @@
 				$this->Memcached->delete($this->mckey); 
 				
 				// Update
-				if ($this->db->update("organisation", $data, "organisation_id = " . $this->id)) {
-					return true;
-				}
+				$this->db->update("organisation", $data, "organisation_id = " . $this->id);
 			} else {
 				// Insert
-				if ($this->db->insert("organisation", $data)) {
-					$this->id = $this->db->lastInsertId();
-					
-					$this->slug = $this->createSlug();
-					return true;
-				}
+				
+				$this->db->insert("organisation", $data); 
+				$this->id = intval($this->db->lastInsertId());
+				$this->slug = $this->createSlug();
+				
 			}
+			
+			return true;
 		}
 		
 		/** 

@@ -318,31 +318,12 @@
 			$email_body = $Smarty->Fetch($Smarty->ResolveTemplate("email.ban"));
 			
 			// Send the confirmation email
-			/*
-			require_once("Mail.php");
-			require_once("Mail/mime.php");
-			
-			$crlf = "\n";
-			$hdrs = array("To" => $ThisUser->contact_email, "From" => "banned@railpage.com.au", "Subject" => "Railpage account suspension");
-			
-			$mime = new \Mail_Mime(array("eol" => $crlf)); 
-			
-			$mime->setHTMLBody($email_body);
-			
-			$body = $mime->get();
-			$hdrs = $mime->headers($hdrs);
-			
-			$mail =& \Mail::factory("mail");
-			$send = $mail->send($ThisUser->contact_email, $hdrs, $body);
-			*/
 			
 			$Notification = new Notification;
 			
 			if ($admin_user_id !== false) {
 				$Notification->setAuthor(UserFactory::CreateUser($admin_user_id));
 			}
-			
-			#print_r($Notification->getArray());
 			
 			$Notification->addRecipient($ThisUser->id, $ThisUser->username, $ThisUser->contact_email);
 			$Notification->body = $Smarty->Fetch($Smarty->ResolveTemplate("email.ban"));
@@ -352,7 +333,6 @@
 			
 			return true;
 			
-			return false;
 		}
 		
 		/**
@@ -493,23 +473,17 @@
 					$email_body = $Smarty->Fetch($Smarty->ResolveTemplate("email_unban"));
 					
 					// Send the confirmation email
-					require_once("Mail.php");
-					require_once("Mail/mime.php");
 					
-					$crlf = "\n";
-					$hdrs = array("To" => $ThisUser->contact_email, "From" => "banned@railpage.com.au", "Subject" => "Railpage account re-activation");
+					$Notification = new Notification;
 					
-					$mime = new \Mail_Mime(array("eol" => $crlf)); 
-					
-					$mime->setHTMLBody($email_body);
-					
-					$body = $mime->get();
-					$hdrs = $mime->headers($hdrs);
-					
-					$mail =& \Mail::factory("mail");
-					$send = $mail->send($ThisUser->contact_email, $hdrs, $body);
+					$Notification->addRecipient($ThisUser->id, $ThisUser->username, $ThisUser->contact_email);
+					$Notification->body = $Smarty->Fetch($Smarty->ResolveTemplate("email_unban"));
+					$Notification->subject = "Railpage account re-activation";
+					$Notification->transport = Notifications::TRANSPORT_EMAIL;
+					$Notification->commit()->dispatch(); 
 					
 					return true;
+					
 				} catch (Exception $e) {
 					global $Error;
 					

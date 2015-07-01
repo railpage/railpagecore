@@ -120,6 +120,7 @@
 		"mibe/feedwriter": "~1.0",
 		"jakeasmith/http_build_url": "^1",
 		"smarty/smarty": "~3.1",
+        "foolz/sphinxql-query-builder": "dev-master",
 		"nilportugues/sphinx-search": "dev-master"
 	},
 	"require-dev" : {
