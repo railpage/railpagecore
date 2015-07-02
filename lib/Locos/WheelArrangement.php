@@ -45,6 +45,14 @@
 		public $arrangement;
 		
 		/**
+		 * Wheel arrangement image
+		 * @since Version 3.10.0
+		 * @var string $image
+		 */
+		
+		public $image;
+		
+		/**
 		 * URL Slug
 		 * @since Version 3.8.7
 		 * @var string $slug
@@ -92,7 +100,12 @@
 			$this->id = $row['id']; 
 			$this->name = $row['title'];
 			$this->arrangement = $row['arrangement'];
+			$this->image = $row['image'];
 			$this->slug = $row['slug'];
+			
+			if (empty($this->image) && !preg_match("/([a-zA-Z])/", $this->arrangement)) {
+				$this->image = "https://static.railpage.com.au/i/locos/whyte/" . $this->arrangement . ".png";
+			}
 			
 			if (empty($this->slug)) {
 				$this->generateSlug(); 
@@ -110,7 +123,7 @@
 		
 		private function makeURLs() {
 			
-			$this->url = new Url(sprintf("/locos/wheelset/%s", $this->slug));
+			$this->url = new Url(sprintf("/locos/wheelset/%s", urlencode($this->slug)));
 			
 		}
 		
@@ -122,7 +135,8 @@
 		
 		private function generateSlug() {
 			
-			$proposal = ContentUtility::generateUrlSlug(sprintf("%s-%s", $this->name, $this->arrangement), 30);
+			//$proposal = ContentUtility::generateUrlSlug(sprintf("%s-%s", $this->name, $this->arrangement), 30);
+			$proposal = $this->arrangement;
 			
 			$query = "SELECT id FROM wheel_arrangements WHERE slug = ?";
 			$result = $this->db->fetchAll($query, $proposal);
@@ -164,11 +178,13 @@
 		 */
 		
 		public function commit() {
+			
 			$this->validate();
 			
 			$data = array(
 				"title" => $this->name,
 				"arrangement" => $this->arrangement,
+				"image" => $this->image,
 				"slug" => $this->slug
 			);
 			
@@ -197,7 +213,7 @@
 			$return = array();
 			
 			foreach ($this->db->fetchAll($query, $this->id) as $row) {
-				$LocoClass = new LocoClass($row['id']);
+				$LocoClass = Factory::CreateLocoClass($row['id']);
 				
 				$return[] = $LocoClass->getArray();
 			}
@@ -214,7 +230,9 @@
 		public function getArray() {
 			return array(
 				"id" => $this->id,
+				"name" => $this->name,
 				"arrangement" => $this->arrangement,
+				"image" => $this->image,
 				"url" => $this->url->getURLs()
 			);
 		}

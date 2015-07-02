@@ -1175,7 +1175,8 @@
 				"axle_load" => $this->axle_load,
 				"tractive_effort" => $this->tractive_effort,
 				"wheel_arrangement" => $Arrangement->getArray(),
-				"manufacturer" => $Manufacturer->getArray()
+				"manufacturer" => $Manufacturer->getArray(),
+				"url" => $this->url->getURLs()
 			);
 		}
 		
