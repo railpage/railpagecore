@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Generation Time: Jun 30, 2015 at 11:27 PM
+-- Generation Time: Jul 02, 2015 at 04:29 PM
 -- Server version: 5.5.39-MariaDB-1~saucy-log
 -- PHP Version: 5.5.3-1ubuntu2.6
 
@@ -502,7 +502,7 @@ CREATE TABLE IF NOT EXISTS `feedback` (
   `status` int(11) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`,`area`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=155 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=156 ;
 
 -- --------------------------------------------------------
 
@@ -633,7 +633,7 @@ CREATE TABLE IF NOT EXISTS `fwlink` (
   `title` text NOT NULL,
   PRIMARY KEY (`id`),
   KEY `url` (`url`(255))
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=24542 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=24558 ;
 
 -- --------------------------------------------------------
 
@@ -815,7 +815,7 @@ CREATE TABLE IF NOT EXISTS `image` (
   KEY `user_id` (`user_id`),
   KEY `hidden` (`hidden`),
   KEY `captured` (`captured`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=68426 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=68441 ;
 
 -- --------------------------------------------------------
 
@@ -913,7 +913,7 @@ CREATE TABLE IF NOT EXISTS `image_link` (
   KEY `namespace` (`namespace`,`namespace_key`,`ignored`),
   KEY `image_id` (`image_id`),
   KEY `added` (`added`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=61463 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=61478 ;
 
 -- --------------------------------------------------------
 
@@ -931,7 +931,7 @@ CREATE TABLE IF NOT EXISTS `image_position` (
   `position_y` varchar(8) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `image_id` (`image_id`,`image_type`,`namespace`,`namespace_key`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='Define an offset position for an image. Useful for loco cover photos.' AUTO_INCREMENT=435 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='Define an offset position for an image. Useful for loco cover photos.' AUTO_INCREMENT=442 ;
 
 -- --------------------------------------------------------
 
@@ -1189,7 +1189,7 @@ CREATE TABLE IF NOT EXISTS `loco_class` (
   KEY `Model` (`Model`(255)),
   KEY `asset_id` (`asset_id`),
   KEY `country` (`country`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=383 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=384 ;
 
 -- --------------------------------------------------------
 
@@ -1330,7 +1330,7 @@ CREATE TABLE IF NOT EXISTS `loco_manufacturer` (
   `slug` varchar(32) NOT NULL,
   PRIMARY KEY (`manufacturer_id`),
   KEY `slug` (`slug`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=99 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=101 ;
 
 -- --------------------------------------------------------
 
@@ -1346,7 +1346,7 @@ CREATE TABLE IF NOT EXISTS `loco_notes` (
   `note_text` text NOT NULL,
   PRIMARY KEY (`note_id`),
   KEY `loco_id` (`loco_id`,`user_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=394 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=395 ;
 
 -- --------------------------------------------------------
 
@@ -1366,7 +1366,7 @@ CREATE TABLE IF NOT EXISTS `loco_org_link` (
   KEY `operator_id` (`operator_id`),
   KEY `link_type` (`link_type`),
   KEY `link_weight` (`link_weight`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=26054 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=26062 ;
 
 -- --------------------------------------------------------
 
@@ -1438,7 +1438,7 @@ CREATE TABLE IF NOT EXISTS `loco_unit` (
   KEY `manufacturer_id` (`manufacturer_id`),
   KEY `class_id` (`class_id`),
   KEY `asset_id` (`asset_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=7450 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=7476 ;
 
 -- --------------------------------------------------------
 
@@ -1552,7 +1552,7 @@ CREATE TABLE IF NOT EXISTS `log_downloads` (
   `username` varchar(128) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `download_id` (`download_id`,`date`,`ip`,`user_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=0 AUTO_INCREMENT=32830 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=0 AUTO_INCREMENT=33047 ;
 
 -- --------------------------------------------------------
 
@@ -1570,7 +1570,7 @@ CREATE TABLE IF NOT EXISTS `log_errors` (
   `error_acknowledged` tinyint(1) NOT NULL DEFAULT '0',
   `trace` mediumtext NOT NULL,
   PRIMARY KEY (`error_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=358960 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=359344 ;
 
 -- --------------------------------------------------------
 
@@ -1590,7 +1590,7 @@ CREATE TABLE IF NOT EXISTS `log_general` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`,`timestamp`),
   KEY `key` (`key`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=117881 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=118028 ;
 
 -- --------------------------------------------------------
 
@@ -1605,7 +1605,7 @@ CREATE TABLE IF NOT EXISTS `log_herrings` (
   `post_id` int(11) NOT NULL,
   `poster_id` int(11) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=3540 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=3541 ;
 
 -- --------------------------------------------------------
 
@@ -1637,14 +1637,13 @@ CREATE TABLE IF NOT EXISTS `log_logins` (
   `login_time` int(11) NOT NULL,
   `login_ip` varchar(256) NOT NULL,
   `login_hostname` varchar(512) NOT NULL,
-
   `user_id` int(11) NOT NULL,
   `server` varchar(32) NOT NULL,
   `device_hash` varchar(128) NOT NULL,
   PRIMARY KEY (`login_id`),
   KEY `user_id` (`user_id`),
   KEY `login_time` (`login_time`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=1585709 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=1586844 ;
 
 -- --------------------------------------------------------
 
@@ -1681,7 +1680,7 @@ CREATE TABLE IF NOT EXISTS `log_staff` (
   KEY `timestamp` (`timestamp`),
   KEY `title` (`title`),
   KEY `key` (`key`,`key_val`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=6632 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=6648 ;
 
 -- --------------------------------------------------------
 
@@ -1701,7 +1700,7 @@ CREATE TABLE IF NOT EXISTS `log_useractivity` (
   KEY `user_id` (`user_id`),
   KEY `ip` (`ip`),
   KEY `module_id` (`module_id`,`date`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=923902 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=933178 ;
 
 -- --------------------------------------------------------
 
@@ -1725,7 +1724,7 @@ CREATE TABLE IF NOT EXISTS `messages` (
   KEY `date_start` (`date_start`,`date_end`),
   KEY `object_ns` (`object_ns`,`object_id`),
   KEY `target_user` (`target_user`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=28 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=29 ;
 
 -- --------------------------------------------------------
 
@@ -1767,6 +1766,7 @@ CREATE TABLE IF NOT EXISTS `newsletter` (
 --
 
 CREATE TABLE IF NOT EXISTS `newsletter_templates` (
+
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` text NOT NULL,
   `html` text NOT NULL,
@@ -1808,7 +1808,7 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   `meta` longtext NOT NULL,
   PRIMARY KEY (`id`),
   KEY `recipient` (`author`,`transport`,`status`,`date_queued`,`date_sent`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='Notifications queue, to prevent page blocking when sending emails etc' AUTO_INCREMENT=380 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='Notifications queue, to prevent page blocking when sending emails etc' AUTO_INCREMENT=389 ;
 
 -- --------------------------------------------------------
 
@@ -1826,7 +1826,7 @@ CREATE TABLE IF NOT EXISTS `notifications_recipients` (
   `status` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `notification_id` (`notification_id`,`user_id`,`date_sent`,`status`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=507 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=521 ;
 
 -- --------------------------------------------------------
 
@@ -1993,7 +1993,6 @@ CREATE TABLE IF NOT EXISTS `nuke_bbarcade_comments` (
 -- Table structure for table `nuke_bbarcade_fav`
 --
 
-
 CREATE TABLE IF NOT EXISTS `nuke_bbarcade_fav` (
   `order` mediumint(8) NOT NULL DEFAULT '0',
   `user_id` mediumint(8) NOT NULL DEFAULT '0',
@@ -2109,7 +2108,6 @@ CREATE TABLE IF NOT EXISTS `nuke_bbdisallow` (
 --
 -- Table structure for table `nuke_bbforums`
 --
-
 
 CREATE TABLE IF NOT EXISTS `nuke_bbforums` (
   `forum_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
@@ -2258,7 +2256,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbposts` (
   KEY `poster_id` (`poster_id`),
   KEY `post_time` (`post_time`),
   KEY `pinned` (`pinned`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=1980873 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=1981059 ;
 
 -- --------------------------------------------------------
 
@@ -2280,7 +2278,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbposts_edit` (
   KEY `thread_id` (`thread_id`),
   KEY `poster_id` (`poster_id`),
   KEY `editor_id` (`editor_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=62661 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=62726 ;
 
 -- --------------------------------------------------------
 
@@ -2297,7 +2295,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbposts_reputation` (
   PRIMARY KEY (`id`),
   KEY `post_id` (`post_id`,`type`,`date`),
   KEY `user_id` (`user_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=6857 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=6966 ;
 
 -- --------------------------------------------------------
 
@@ -2340,7 +2338,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbprivmsgs` (
   PRIMARY KEY (`privmsgs_id`),
   KEY `idx_from` (`privmsgs_from_userid`),
   KEY `idx_to` (`privmsgs_to_userid`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=331322 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=331335 ;
 
 -- --------------------------------------------------------
 
@@ -2625,7 +2623,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbtopics` (
   KEY `topic_type` (`topic_type`),
   KEY `topic_poster` (`topic_poster`),
   KEY `url_slug` (`url_slug`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=11381937 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=11381948 ;
 
 -- --------------------------------------------------------
 
@@ -2970,6 +2968,7 @@ CREATE TABLE IF NOT EXISTS `nuke_downloads_modrequest` (
 -- Table structure for table `nuke_downloads_newdownload`
 --
 
+
 CREATE TABLE IF NOT EXISTS `nuke_downloads_newdownload` (
   `lid` int(11) NOT NULL AUTO_INCREMENT,
   `cid` int(11) NOT NULL DEFAULT '0',
@@ -3218,6 +3217,7 @@ CREATE TABLE IF NOT EXISTS `nuke_journal_comments` (
 
 --
 -- Table structure for table `nuke_journal_stats`
+
 --
 
 CREATE TABLE IF NOT EXISTS `nuke_journal_stats` (
@@ -4593,7 +4593,7 @@ CREATE TABLE IF NOT EXISTS `nuke_stories` (
   KEY `time` (`time`),
   KEY `weeklycounter` (`weeklycounter`),
   KEY `informant` (`informant`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=17005 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=17021 ;
 
 -- --------------------------------------------------------
 
@@ -4762,7 +4762,7 @@ CREATE TABLE IF NOT EXISTS `nuke_users` (
   KEY `reported_to_sfs` (`reported_to_sfs`),
   KEY `user_regdate_nice` (`user_regdate_nice`),
   KEY `provider` (`provider`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci PACK_KEYS=0 AUTO_INCREMENT=73265 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci PACK_KEYS=0 AUTO_INCREMENT=73268 ;
 
 -- --------------------------------------------------------
 
@@ -4785,7 +4785,7 @@ CREATE TABLE IF NOT EXISTS `nuke_users_autologin` (
   KEY `autologin_expire` (`autologin_expire`),
   KEY `autologin_time` (`autologin_time`),
   KEY `autologin_token` (`autologin_token`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=44960 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=45139 ;
 
 -- --------------------------------------------------------
 
@@ -4841,7 +4841,7 @@ CREATE TABLE IF NOT EXISTS `nuke_users_notes` (
   `datetime` int(11) NOT NULL DEFAULT '0',
   `data` mediumtext COLLATE utf8_unicode_ci,
   PRIMARY KEY (`nid`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=2582759 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=2609809 ;
 
 -- --------------------------------------------------------
 
@@ -4936,7 +4936,7 @@ CREATE TABLE IF NOT EXISTS `operators` (
   `organisation_id` int(11) NOT NULL,
   PRIMARY KEY (`operator_id`),
   KEY `organisation_id` (`organisation_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=262 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=263 ;
 
 -- --------------------------------------------------------
 
@@ -4975,6 +4975,7 @@ CREATE TABLE IF NOT EXISTS `organisation_member` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- --------------------------------------------------------
+
 
 --
 -- Table structure for table `organisation_roles`
@@ -5215,7 +5216,7 @@ CREATE TABLE IF NOT EXISTS `reminders` (
   KEY `module` (`module`,`object`,`object_id`,`user_id`,`reminder`),
   KEY `sent` (`sent`),
   KEY `dispatched` (`dispatched`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=27 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=28 ;
 
 -- --------------------------------------------------------
 
@@ -5349,6 +5350,7 @@ CREATE TABLE IF NOT EXISTS `sph_counter` (
 -- Table structure for table `tag`
 --
 
+
 CREATE TABLE IF NOT EXISTS `tag` (
   `tag_id` int(11) NOT NULL AUTO_INCREMENT,
   `tag` varchar(128) NOT NULL,
@@ -5467,7 +5469,7 @@ CREATE TABLE IF NOT EXISTS `viewed_threads` (
   KEY `time` (`time`),
   KEY `user_id` (`user_id`),
   KEY `topic_id` (`topic_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=118091 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=118762 ;
 
 -- --------------------------------------------------------
 
@@ -5500,9 +5502,10 @@ CREATE TABLE IF NOT EXISTS `wheel_arrangements` (
   `title` varchar(256) NOT NULL,
   `arrangement` varchar(256) NOT NULL,
   `slug` varchar(32) NOT NULL,
+  `image` text NOT NULL,
   PRIMARY KEY (`id`),
   KEY `slug` (`slug`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=41 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=43 ;
 
 DELIMITER $$
 --

@@ -166,6 +166,10 @@
 				$this->generateSlug(); 
 			}
 			
+			if (is_null($this->image)) {
+				$this->image = "";
+			}
+			
 			$this->makeURLs();
 			
 			return true;

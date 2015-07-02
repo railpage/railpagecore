@@ -970,7 +970,7 @@
 					
 					$data['dates'][$time] = array(
 						"absolute" => $Date->format("Y-m-d H:i:s"),
-						"nice" => $Date->format("F j, Y, g:i a"),
+						"nice" => $Date->Format("d H:i:s") == "01 00:00:00" ? $Date->Format("F Y") : $Date->format("F j, Y, g:i a"),
 						"relative" => ContentUtility::RelativeTime($Date)
 					);
 				}
