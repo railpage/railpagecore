@@ -823,10 +823,10 @@
 			$mckey = sprintf("railpage:forums.post;id=%d;getreputationmarkers", $this->id);
 			
 			if ($force) {
-				deleteMemcacheObject($mckey); 
+				$this->Memcached->delete($mckey); 
 			}
 			
-			if ($force || !$types = getMemcacheObject($mckey)) {
+			if ($force || !$types = $this->Memcached->fetch($mckey)) {
 				$query = "SELECT r.*, u.username FROM nuke_bbposts_reputation AS r LEFT JOIN nuke_users AS u ON r.user_id = u.user_id WHERE r.post_id = ?";
 				
 				$types = $this->getReputationTypes(); 
@@ -836,7 +836,7 @@
 					$types[$row['type']]['count'] = count($types[$row['type']]['votes']);
 				}
 				
-				setMemcacheObject($mckey, $types);
+				$this->Memcached->save($mckey, $types);
 			}
 			
 			return $types;
