@@ -1129,7 +1129,7 @@
 		 * @todo Check recipient preferences for email notifications
 		 */
 		
-		private function notifySubmissionsOpen() {
+		public function notifySubmissionsOpen() {
 			
 			/**
 			 * Return if we're not within the submissions bounds
@@ -1137,6 +1137,21 @@
 			
 			if (!Utility\CompetitionUtility::isSubmissionWindowOpen($this)) {
 				return $this;
+			}
+			
+			/**
+			 * If we've recently sent a reminder, exit. No sense in nagging
+			 */
+			
+			$datekey = sprintf("%sDate", __FUNCTION__);
+			
+			if (isset($this->meta[$datekey])) {
+				if (strtotime($this->meta[$datekey]) >= strtotime("5 days ago")) {
+					return $this;
+				}
+				
+				$this->meta[__FUNCTION__] = false;
+				
 			}
 			
 			/**
@@ -1149,10 +1164,22 @@
 			$notificationOptions = array(
 				"flag" => __FUNCTION__, 
 				"subject" => sprintf("Submissions open: %s", $this->title),
-				"body" => $body
+				"body" => $body,
+				"excludeCurrentContestants" => true
 			);
 			
+			/**
+			 * Dispatch
+			 */
+			
 			Utility\CompetitionUtility::sendNotification($this, $notificationOptions); 
+			
+			/** 
+			 * Update our reminder date sent
+			 */
+			
+			$this->meta[$datekey] = date(DateTime::ISO8601); 
+			$this->commit(); 
 			
 			return $this;
 			
