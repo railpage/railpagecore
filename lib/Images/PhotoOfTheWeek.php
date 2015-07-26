@@ -18,6 +18,8 @@
 	use Railpage\Url;
 	use Railpage\Users\User;
 	use Railpage\Users\Factory as UserFactory;
+	use Railpage\PrivateMessages\Message;
+	
 	
 	class PhotoOfTheWeek extends AppCore {
 		
@@ -36,6 +38,14 @@
 			
 			if ($this->db->fetchOne($query, $Week->format("Y-m-d"))) {
 				$Week->add(new DateInterval("P7D"));
+				
+				if ($this->db->fetchOne($query, $Week->format("Y-m-d"))) {
+					$Week->add(new DateInterval("P7D"));
+				}
+				
+				if ($this->db->fetchOne($query, $Week->format("Y-m-d"))) {
+					$Week->add(new DateInterval("P7D"));
+				}
 			}
 			
 			if ($this->db->fetchOne($query, $Week->format("Y-m-d"))) {
@@ -53,6 +63,20 @@
 			];
 			
 			$this->db->insert("image_weekly", $data); 
+			
+			try {
+				if (isset($Image->author->User) && $Image->author->User instanceof User) {
+					$Message = new Message;
+					$Message->setAuthor($User);
+					$Message->setRecipient($Image->author->User);
+					$Message->subject = "Photo of the Week";
+					$Message->body = sprintf("Your [url=%s]photo[/url] has been nominated for Photo of the Week. \n\nRegards,\n%s\n\nThis is an automated message.", $Image->url, $User->username);
+					
+					$Message->send();
+				}
+			} catch (Exception $e) {
+				// throw it away
+			}
 			
 			return true;
 			
@@ -131,4 +155,50 @@
 			return $result;
 			
 		}
+		
+		/**
+		 * Get previous photos
+		 * @since Version 3.10.0
+		 * @return array
+		 * @param int $page
+		 * @param int $items_per_page
+		 */
+		
+		public function getPreviousPhotos($page = 1, $items_per_page = 25) {
+			
+			$Date = self::getStartOfWeek(new DateTime);
+			
+			$query = "SELECT SQL_CALC_FOUND_ROWS i.*, u.username, iw.added_by AS user_id FROM image_weekly AS iw
+						LEFT JOIN image AS i ON iw.image_id = i.id
+						LEFT JOIN nuke_users AS u ON u.user_id = iw.added_by
+						WHERE iw.datefrom < ? LIMIT ?, ?";
+			
+			$params = [ 
+				$Date->format("Y-m-d"),
+				($page - 1) * $items_per_page, 
+				$items_per_page
+			];
+			
+			$result = $this->db->fetchAll($query, $params); 
+			$return = [
+				"total" => 0,
+				"page" => $page, 
+				"items_per_page" => $items_per_page,
+				"photos" => []
+			];
+			
+			$return['total'] = $this->db->fetchOne("SELECT FOUND_ROWS() AS total"); 
+			
+			foreach ($result as $row) {
+				$row['meta'] = json_decode($row['meta'], true); 
+				$row['meta']['sizes'] = Images::normaliseSizes($row['meta']['sizes']);
+				$row['url'] = Utility\Url::CreateFromImageID($row['id'])->getURLs();
+				
+				$return['photos'][] = $row;
+			}
+			
+			return $return;
+			
+		}
+		
 	}
