@@ -524,5 +524,32 @@
 			
 			return $array;
 		}
+		
+		/**
+		 * Get the street address of this event if applicable
+		 * @since Version 3.10.0
+		 * @return string
+		 */
+		
+		public function getAddress() {
+			
+			if (!empty($this->meta['address'])) {
+				return $this->meta['address'];
+			}
+			
+			if (!$this->Place instanceof Place) {
+				return;
+			}
+			
+			if ($this->Place instanceof Place) {
+				
+				$this->meta['address'] = $this->Place->getAddress(); 
+				$this->commit(); 
+				
+				return $this->meta['address'];
+				
+			}
+			
+		}
 	}
 	

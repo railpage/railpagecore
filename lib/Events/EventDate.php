@@ -173,6 +173,9 @@
 						$this->Place = Place::Factory($this->meta['lat'], $this->meta['lon']);
 					}
 					
+					#var_dump(get_class(Factory::CreateEvent($row['event_id'])));
+					#var_dump($this->id);
+					
 					try {
 						if ($this->Event->Place instanceof Place && !empty($this->Event->Place->Region->timezone)) {
 							$this->Date->setTimezone(new DateTimeZone($this->Event->Place->Region->timezone));
@@ -344,7 +347,7 @@
 			}
 			
 			if (isset($this->Event->meta['coverphoto']) && !empty($this->Event->meta['coverphoto'])) {
-				if ($CoverPhoto = (new Images)->getImageFromUrl($this->Event->meta['coverphoto'])) {
+				if ($CoverPhoto = (new Images)->getImageFromUrl($this->Event->meta['coverphoto'], Images::OPT_NOPLACE)) {
 					$array['event']['coverphoto'] = $CoverPhoto->getArray();
 				}
 			}
@@ -383,6 +386,46 @@
 			}
 			
 			return $this;
+		}
+		
+		/**
+		 * Get the street address of this event if applicable
+		 * @since Version 3.10.0
+		 * @return string
+		 */
+		
+		public function getAddress() {
+			
+			if (!empty($this->meta['address'])) {
+				return $this->meta['address'];
+			}
+			
+			if (!empty($this->Event->meta['address'])) {
+				return $this->Event->meta['address'];
+			}
+			
+			if (!$this->Place instanceof Place || $this->Event->Place instanceof Place) {
+				return;
+			}
+			
+			if ($this->Place instanceof Place) {
+				
+				$this->meta['address'] = $this->Place->getAddress(); 
+				$this->commit(); 
+				
+				return $this->meta['address'];
+				
+			}
+			
+			if ($this->Event->Place instanceof Place) {
+				
+				$this->Event->meta['address'] = $this->Event->Place->getAddress(); 
+				$this->Event->commit(); 
+				
+				return $this->Event->meta['address'];
+				
+			}
+			
 		}
 	}
 	
