@@ -23,6 +23,7 @@
 	use Railpage\Users\Factory as UsersFactory;
 	use Exception;
 	use InvalidArgumentException;
+	use DateTime;
 	
 	class Finder {
 		
@@ -65,6 +66,22 @@
 		 */
 		
 		public static $pagenum = 1;
+		
+		/**
+		 * Sort by
+		 * @since Version 3.9.1
+		 * @var string $sortby
+		 */
+		
+		public static $sortby = "image.id";
+		
+		/**
+		 * Sort direction
+		 * @since Version 3.9.1
+		 * @var string $sortdir
+		 */
+		
+		public static $sortdir = "DESC";
 		
 		/**
 		 * Find photos that fit within the given object(s)
@@ -222,10 +239,12 @@
 			
 			$basequery = "SELECT SQL_CALC_FOUND_ROWS image.*, g.country_code, g.country_name, g.region_code, g.region_name, g.neighbourhood, g.timezone, X(g.point) AS geoplace_lat, Y(g.point) AS geoplace_lon
 				FROM image
-				LEFT JOIN geoplace AS g ON g.id = image.geoplace";
+				LEFT JOIN geoplace AS g ON g.id = image.geoplace
+				LEFT JOIN image_flags AS f ON f.image_id = image.id";
 			
 			$where = array(
-				"image.hidden = 0"
+				"image.hidden = 0",
+				"COALESCE(f.rejected, 0) = 0"
 			); 
 			$params = array();
 			
@@ -275,7 +294,7 @@
 				}
 			}
 			
-			$basequery .= " WHERE " . implode(" AND ", $where); 
+			$basequery .= " WHERE " . implode(" AND ", $where);
 			
 			return array("query" => $basequery, "params" => $params);
 			
@@ -302,6 +321,12 @@
 			$prep = self::makeQuery(); 
 			$query = $prep['query'];
 			$params = $prep['params'];
+			
+			/**
+			 * Sort it
+			 */
+			
+			$query .= sprintf(" ORDER BY %s %s", self::$sortby, self::$sortdir);
 			
 			/**
 			 * Apply limits
@@ -394,7 +419,9 @@
 			$query = "SELECT SQL_CALC_FOUND_ROWS image.*, g.country_code, g.country_name, g.region_code, g.region_name, g.neighbourhood, g.timezone, X(g.point) AS geoplace_lat, Y(g.point) AS geoplace_lon
 				FROM image
 				LEFT JOIN geoplace AS g ON g.id = image.geoplace
+				LEFT JOIN image_flags AS f ON f.image_id = image.id
 				WHERE image.hidden = ?
+				AND COALESCE(f.rejected, 0) = 0
 				ORDER BY image.id DESC
 				LIMIT ?, ?";
 			
@@ -467,9 +494,137 @@
 			
 			$Database = (new AppCore)->getDatabaseConnection();
 			
-			$query = "SELECT FLOOR(YEAR(captured) / 10) * 10 AS decade, COUNT(*) AS num FROM image WHERE captured <= NOW() GROUP BY FLOOR(YEAR(captured) / 10) * 10";
+			$query = "SELECT FLOOR(YEAR(image.captured) / 10) * 10 AS decade, COUNT(*) AS num 
+				FROM image 
+				LEFT JOIN image_flags AS f ON f.image_id = image.id
+				WHERE image.captured <= NOW() 
+				AND COALESCE(f.rejected, 0) = 0
+				GROUP BY FLOOR(YEAR(image.captured) / 10) * 10";
 			
 			return $Database->fetchAll($query); 
+			
+		}
+		
+		/**
+		 * Get the screener's choice photos
+		 * @since Version 3.10.0
+		 * @return array
+		 */
+		
+		public static function getScreenersChoice() {
+			
+			$Database = (new AppCore)->getDatabaseConnection(); 
+			
+			$query = "SELECT SQL_CALC_FOUND_ROWS image.*, g.country_code, g.country_name, g.region_code, g.region_name, g.neighbourhood, g.timezone, X(g.point) AS geoplace_lat, Y(g.point) AS geoplace_lon
+				FROM image
+				LEFT JOIN geoplace AS g ON g.id = image.geoplace
+				LEFT JOIN image_flags AS f ON f.image_id = image.id
+				WHERE image.hidden = ?
+				AND COALESCE(f.rejected, 0) = 0
+				AND f.screened_pick = 1
+				ORDER BY f.screened_on DESC
+				LIMIT ?, ?";
+			
+			$params = [ 
+				0,
+				(self::$pagenum - 1) * self::$perpage,
+				self::$perpage
+			];
+			
+			$result = $Database->fetchAll($query, $params);
+			
+			self::$numresults = $Database->fetchOne("SELECT FOUND_ROWS() AS total"); 
+			
+			foreach ($result as $key => $data) {
+				$result[$key] = self::ProcessPhoto($data); 
+			}
+			
+			return $result;
+
+		}
+		
+		/**
+		 * Get photo context
+		 * @since Version 3.10.0
+		 * @param \Railpage\Images\Image $Image
+		 * @param boolean $unapprovedonly
+		 * @return array
+		 */
+		
+		public static function getPhotoContext(Image $Image, $unapprovedonly = false) {
+			
+			$Database = (new AppCore)->getDatabaseConnection(); 
+			
+			if (!$unapprovedonly) {
+				
+				$query = "(SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.captured <= ? AND image.id != ? ORDER BY image.captured DESC LIMIT 0, 3)
+							UNION (SELECT id, image.captured, title, description, meta FROM image WHERE id = ?)
+							UNION (SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.captured >= ? AND image.id != ? ORDER BY captured ASC LIMIT 0, 3)";
+				
+				$params = [ 
+					$Image->DateCaptured->format("Y-m-d H:i:s"), 
+					$Image->id,
+					$Image->id, 
+					$Image->DateCaptured->format("Y-m-d H:i:s"),
+					$Image->id
+				];
+				
+			} else {
+
+				$query = "(SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE f.rejected IS NULL AND image.captured <= ? AND image.id != ? ORDER BY image.id DESC LIMIT 0, 6)
+							UNION (SELECT id, image.captured, title, description, meta FROM image WHERE id = ?)";
+				
+				$params = [ 
+					$Image->DateCaptured->format("Y-m-d H:i:s"), 
+					$Image->id,
+					$Image->id
+				];
+				
+			}
+			
+			$rs = $Database->fetchAll($query, $params);
+			
+			/**
+			 * This horrible, ugly sorting is because MySQL wasn't ordering the first SELECT correctly (ie, not at all)
+			 */
+			
+			$before = [];
+			$current = [];
+			$after = [];
+			
+			foreach ($rs as $row) {
+				$row['meta'] = json_decode($row['meta'], true); 
+				$row['url'] = Url::CreateFromImageID($row['id'])->getURLs();
+				$row['sizes'] = Images::normaliseSizes($row['meta']['sizes']);
+				
+				$Date = new DateTime($row['captured']);
+				$row['unixtime'] = $Date->getTimestamp(); 
+				
+				if ($Date < $Image->DateCaptured) {
+					$before[] = $row;
+					continue;
+				}
+				
+				if ($Date > $Image->DateCaptured) {
+					$after[] = $row;
+					continue;
+				}
+				
+				if ($row['id'] == $Image->id) {
+					$current[] = $row;
+					continue;
+				}
+			}
+			
+			usort($before, function($a, $b) {
+				return $a['unixtime'] - $b['unixtime'];
+			});
+			
+			usort($after, function($a, $b) {
+				return $a['unixtime'] + $b['unixtime'];
+			});
+			
+			return array_merge($before, $current, $after);
 			
 		}
 		
