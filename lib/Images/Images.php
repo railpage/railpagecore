@@ -401,7 +401,7 @@
 			
 			#if (!$result = $this->Redis->fetch($cachekey)) {
 			
-				$query = "SELECT * FROM image WHERE hidden = 0 ORDER BY id DESC LIMIT 0, ?";
+				$query = "SELECT i.* FROM image AS i LEFT JOIN image_flags AS f ON i.id = f.image_id WHERE i.hidden = 0 AND f.published = 1 ORDER BY i.id DESC LIMIT 0, ?";
 				
 				$return = array(); 
 				
