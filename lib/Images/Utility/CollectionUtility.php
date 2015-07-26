@@ -67,7 +67,7 @@
 			
 			$Database = (new AppCore)->getDatabaseConnection(); 
 			
-			$query = "SELECT i.*, u.username 
+			$query = "SELECT i.*, u.username, il.namespace 
 				FROM image_collection AS i
 				LEFT JOIN nuke_users AS u ON i.user_id = u.user_id 
 				LEFT JOIN image_link AS il ON namespace_key = i.id
