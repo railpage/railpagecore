@@ -157,6 +157,20 @@
 		}
 		
 		/**
+		 * Reset stylesheets
+		 * @since Version 3.9.1
+		 * @return void
+		 */
+		
+		public function resetStylesheets() {
+			$this->stylesheets = array(); 
+			
+			$this->addStylesheet("https://fonts.googleapis.com/css?family=Roboto:400,400italic,500,500italic,900,900italic|Droid+Sans|Ubuntu:300,400,300italic,400italic|Yanone+Kaffeesatz:300");
+			$this->addStylesheet("https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css");
+			
+		}
+		
+		/**
 		 * Add an OpenGraph tag
 		 * @since Version 3.8
 		 * @param string $property
