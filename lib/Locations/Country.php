@@ -14,6 +14,7 @@
 	use Railpage\Place;
 	use Railpage\Debug;
 	use Railpage\Url;
+	use Zend_Db_Expr;
 	
 	
 	/**
@@ -71,6 +72,7 @@
 		 */
 		
 		public function __construct($code) {
+			
 			parent::__construct(); 
 			
 			$this->code = $code;
@@ -79,39 +81,73 @@
 			Debug::RecordInstance();
 			$timer = Debug::GetTimer(); 
 			
+			$query = "SELECT *, X(point) AS centroid_lat, Y(point) AS centroid_lon,
+				X(bb_southwest) AS bb_southwest_lat, Y(bb_southwest) AS bb_southwest_lon,
+				X(bb_northeast) AS bb_northeast_lat, Y(bb_northeast) AS bb_northeast_lon
+			 FROM geoplace 
+			 WHERE country_name = ? 
+			 	AND region_code IS NULL 
+				AND neighbourhood IS NULL";
+			
+			if ($row = $this->db->fetchRow($query, strtoupper($code))) {
+				
+				$this->name = $row['country_name'];
+				$this->timezone = $row['timezone'];
+				
+				$this->centre = new stdClass; 
+				$this->centre->lat = $row['centroid_lat'];
+				$this->centre->lon = $row['centroid_lat'];
+				
+				$this->boundingBox = new stdClass;
+				$this->boundingBox->northEast = new stdClass;
+				$this->boundingBox->northEast->lat = $row['bb_northeast_lat'];
+				$this->boundingBox->northEast->lon = $row['bb_northeast_lon'];
+				
+				$this->boundingBox->southWest = new stdClass;
+				$this->boundingBox->southWest->lat = $row['bb_southwest_lat'];
+				$this->boundingBox->southWest->lon = $row['bb_southwest_lat'];
+				
+			} else {
+				$woe = Place::getWOEData(strtoupper($code));
+			
+				if (isset($woe['places']['place'][0]['name'])) {
+					$woe = $woe['places']['place'][0];
+					
+					$data = [ 
+						"point" => new Zend_Db_Expr(sprintf("GeomFromText('POINT(%s %s)')", $woe['centroid']['latitude'], $woe['centroid']['longitude'])),
+						"bb_southwest" => new Zend_Db_Expr(sprintf("GeomFromText('POINT(%s %s)')", $woe['boundingBox']['southWest']['latitude'], $woe['boundingBox']['southWest']['longitude'])),
+						"bb_northeast" => new Zend_Db_Expr(sprintf("GeomFromText('POINT(%s %s)')", $woe['boundingBox']['northEast']['latitude'], $woe['boundingBox']['northEast']['longitude'])),
+						"country_code" => $woe['country attrs']['code'],
+						"country_name" => $woe['name'],
+						"timezone" => isset($woe['timezone']) ? $woe['timezone'] : ""
+					];
+					
+					$this->db->insert("geoplace", $data);
+					
+					$this->name = $woe['name'];
+					
+					$this->centre = new stdClass; 
+					$this->centre->lat = $woe['centroid']['latitude'];
+					$this->centre->lon = $woe['centroid']['longitude'];
+					
+					$this->boundingBox = new stdClass;
+					$this->boundingBox->northEast = new stdClass;
+					$this->boundingBox->northEast->lat = $woe['boundingBox']['northEast']['latitude'];
+					$this->boundingBox->northEast->lon = $woe['boundingBox']['northEast']['longitude'];
+					
+					$this->boundingBox->southWest = new stdClass;
+					$this->boundingBox->southWest->lat = $woe['boundingBox']['southWest']['latitude'];
+					$this->boundingBox->southWest->lon = $woe['boundingBox']['southWest']['longitude'];
+				}
+
+			}
+			
+			
+			
 			/**
 			 * Fetch the WOE (Where On Earth) data from Yahoo
 			 */
 			
-			$woe = Place::getWOEData(strtoupper($code));
-			
-			if (isset($woe['places']['place'][0]['name'])) {
-				$woe = $woe['places']['place'][0];
-				
-				$this->name = $woe['name'];
-				
-				if (isset($woe['country attrs'])) {
-					$this->code = $woe['country attrs']['code'];
-					$this->url = new Url("/locations/" . strtolower($this->code));
-				}
-				
-				$this->centre = new stdClass; 
-				$this->centre->lat = $woe['centroid']['latitude'];
-				$this->centre->lon = $woe['centroid']['longitude'];
-				
-				$this->boundingBox = new stdClass;
-				$this->boundingBox->northEast = new stdClass;
-				$this->boundingBox->northEast->lat = $woe['boundingBox']['northEast']['latitude'];
-				$this->boundingBox->northEast->lon = $woe['boundingBox']['northEast']['longitude'];
-				
-				$this->boundingBox->southWest = new stdClass;
-				$this->boundingBox->southWest->lat = $woe['boundingBox']['southWest']['latitude'];
-				$this->boundingBox->southWest->lon = $woe['boundingBox']['southWest']['longitude'];
-				
-				if (isset($woe['timezone'])) {
-					$this->timezone = $woe['timezone'];
-				}
-			}
 			
 			Debug::LogEvent(__METHOD__, $timer);
 		}
@@ -123,7 +159,13 @@
 		 */
 		
 		public function getRegions($country = false) {
-			$query = "SELECT COUNT(id) AS count, region AS name, region_slug AS slug FROM location WHERE country = ? GROUP BY region ORDER BY region ASC";
+			$query = "SELECT COUNT(l.id) AS count, l.region_slug AS slug,
+				g.region_name AS name, g.region_code, g.timezone
+				FROM location AS l 
+					LEFT JOIN geoplace AS g ON l.geoplace = g.id 
+				WHERE l.country = ? 
+				GROUP BY l.region 
+				ORDER BY l.region ASC";
 			
 			$regions = array(); 
 			
@@ -144,14 +186,16 @@
 				}
 				
 				$row['url'] = $this->url . "/" . $row['slug'];
+				$shortname = $row['region_code'];
 				
 				/**
 				 * Get WOE data for this region
 				 */
 				
+				/*
 				#$woe = getWOEData($row['name'] . "," . $this->code); 
 				$woe = Place::getWOEData($row['name'] . "," . $this->code); 
-				$shortname = $row['name'];
+				
 				
 				if (isset($woe['places']['place'][0]['name'])) {
 					$row['name'] = $woe['places']['place'][0]['name'];
@@ -164,6 +208,7 @@
 				if (isset($woe['places']['place'][0]['timezone'])) {
 					$row['timezone'] = $woe['places']['place'][0]['timezone'];
 				}
+				*/
 				
 				$row['glyph'] = strtolower(sprintf("map-%s", $this->code));
 				
