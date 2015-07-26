@@ -135,6 +135,11 @@
 			$this->DateModified = new DateTime($row['modified'], new DateTimeZone("Australia/Melbourne"));
 			$this->setAuthor(UsersFactory::CreateUser($row['user_id']));
 			
+			if (empty($this->slug) || $this->slug == 1) {
+				$this->validate(); 
+				$this->commit(); 
+			}
+			
 			$this->makeURLs(); 
 			
 			return;
@@ -170,7 +175,7 @@
 			}
 			
 			if (empty($this->slug)) {
-				$proposal = ContentUtility::generateUrlSlug($this->title); 
+				$proposal = ContentUtility::generateUrlSlug($this->name); 
 				
 				$num = $this->db->fetchAll("SELECT id FROM image_collection WHERE slug = ?", $proposal); 
 				
