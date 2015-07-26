@@ -104,4 +104,24 @@
 			
 		}
 		
+		/**
+		 * Get an new instance of a forum post
+		 * @since Version 3.9.1
+		 * @return \Railpage\Forums\Post
+		 * @param int $post_id
+		 */
+		
+		public static function CreatePost($post_id) {
+			
+			$key = sprintf("railpage:forums.post=%d", $post_id); 
+			
+			if (!$Index = self::load($key)) {
+				$Post = new Post($post_id); 
+				self::$Registry->set($key, $Index); 
+			}
+			
+			return $Post;
+			
+		}
+		
 	}
