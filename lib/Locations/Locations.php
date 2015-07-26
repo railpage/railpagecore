@@ -14,6 +14,7 @@
 	use Railpage\Place;
 	use Railpage\Users\User;
 	use Railpage\Users\Factory as UsersFactory;
+	use Railpage\Debug;
 	
 	/**
 	 * Base Locations class
@@ -57,10 +58,8 @@
 		 */
 		 
 		public function getCountries() {
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
+			
+			$timer = Debug::GetTimer();
 			
 			$mckey = "railpage:locations.countries";
 			
@@ -76,9 +75,7 @@
 				$this->Memcached->save($mckey, $return, strtotime("+1 day"));
 			}
 			
-			if (RP_DEBUG) {
-				$site_debug[] = "Zend_DB: SUCCESS select all locations countries in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-			}
+			Debug::LogEvent(__METHOD__, $timer);
 			
 			return $return;
 		}
@@ -92,19 +89,13 @@
 		 */
 		 
 		public function getRegions($country = false) {
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
+			
+			$timer = Debug::GetTimer();
 			
 			$return = false;
 			$mckey  = ($country) ? "railpage:locations.regions.country=" . $country : "railpage:locations.regions";
 			
-			#deleteMemcacheObject($mckey);
-			
-			if ($return = $this->Memcached->fetch($mckey)) {
-				// Do nothing
-			} else {
+			if (!$return = $this->Memcached->fetch($mckey)) {
 				$return = array(); 
 				
 				if ($country) {
@@ -129,12 +120,22 @@
 						$return[$country]['children'][] = $datarow;
 					}
 				} else {
-					foreach ($this->db->fetchAll("SELECT DISTINCT region, country FROM location WHERE country IN (SELECT DISTINCT country FROM location ORDER BY country) AND active = 1 ORDER BY region desc") as $row) {
+					
+					#$query = "SELECT DISTINCT region, country FROM location WHERE country IN (SELECT DISTINCT country FROM location ORDER BY country) AND active = 1 ORDER BY region desc";
+					$query = "SELECT DISTINCT l.region, l.country, g.country_name, g.region_name FROM location AS l LEFT JOIN geoplace AS g ON l.geoplace = g.id WHERE l.active = 1 GROUP BY l.country ORDER BY l.region DESC";
+					
+					foreach ($this->db->fetchAll($query) as $row) {
 						if (!empty($row['country'])) {
-								
-							$woe = Place::getWOEData(strtoupper($row['region']));
-							if (isset($woe['places']['place'][0])) {
-								$return[$row['country']]['woe'] = $woe['places']['place'][0];
+							
+							$return[$row['country']]['woe'] = array(
+								"country" => $row['country_name']
+							);
+							
+							if (empty($return[$row['country']]['woe']['country'])) {
+								$woe = Place::getWOEData(strtoupper($row['region']));
+								$return[$row['country']]['woe'] = array(
+									"country" => $woe['places']['place'][0]['country']
+								);
 							}
 							
 							$return[$row['country']]['children'][] = $row['region']; 
@@ -146,9 +147,7 @@
 				$this->Memcached->save($mckey, $return, strtotime("+1 day"));
 			}
 			
-			if (RP_DEBUG) {
-				$site_debug[] = "Zend_DB: SUCCESS select all locations regions in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-			}
+			Debug::LogEvent(__METHOD__ . "(" . $country . ")", $timer);
 			
 			return $return;
 		}
@@ -166,22 +165,17 @@
 				return false;
 			}
 			
+			$timer = Debug::GetTimer();
+			
 			$mckey = "railpage:locations";
 			if ($country) $mckey .= ".country=" . $country;
 			if ($region) $mckey .= ".region=" . $region; 
 			
-			deleteMemcacheObject($mckey);
+			$return = $this->db->fetchAll("SELECT * FROM location WHERE country = ? AND region = ? AND active = 1 ORDER BY locality, neighbourhood", array($country, $region));
 			
-			// Check memcache
-			if ($this->memcache && $cache = $this->memcache->get($mckey)) {
-				return $cache; 
-			} else {
-				$return = $this->db->fetchAll("SELECT * FROM location WHERE country = ? AND region = ? AND active = 1 ORDER BY locality, neighbourhood", array($country, $region));
-				
-				$this->Memcached->save($mckey, $return, strtotime("+1 hour"));
-				
-				return $return; 
-			}
+			Debug::LogEvent(__METHOD__, $timer);
+			
+			return $return; 
 		}
 		
 		/**
@@ -207,10 +201,7 @@
 				return false;
 			}
 			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
+			$timer = Debug::GetTimer(); 
 			
 			$query 	= "SELECT location.*, count(locations_like.location_id) AS likes FROM location LEFT JOIN locations_like ON location.id = locations_like.location_id";
 			$params = array();
@@ -250,9 +241,7 @@
 				$this->photoRadius = $zoom; 
 			}
 			
-			if (RP_DEBUG) {
-				$site_debug[] = "Zend_DB: SUCCESS select locations in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-			}
+			Debug::LogEvent(__METHOD__, $timer);
 			
 			return $return;
 		}
@@ -275,11 +264,11 @@
 				return false;
 			}
 			
+			$timer = Debug::GetTimer(); 
+			
 			$mckey = "rp-locations-geolookup-lat:" . $lat . "-lon:" . $lon . "-dist:" . $distance . "-num:" . $num;
 			
-			if ($this->memcache && $data = $this->memcache->get($mckey)) {
-				return $data;
-			} else {
+			if (!$data = $this->memcache->get($mckey)) {
 				$query = "SELECT location.*, 3956 * 2 * ASIN(SQRT(POWER(SIN((" . $lat . " - location.lat) * pi() / 180 / 2), 2) + COS(" . $lat . " * pi() / 180) * COS(location.lat * pi() / 180) * POWER(SIN((" . $lon . " - location.long) * pi() / 180 / 2), 2))) AS distance 
 					FROM location 
 					WHERE 
@@ -303,9 +292,11 @@
 				);
 				
 				$return = $this->db->fetchAll($query, $params); 
-				
-				return $return;
 			}
+			
+			Debug::LogEvent(__METHOD__, $timer);
+			
+			return $return;
 		}
 		
 		/**
@@ -333,6 +324,8 @@
 				$radius = $this->photoRadius; 
 			}
 			
+			$timer = Debug::GetTimer(); 
+			
 			$result = false;
 				
 			$min_lat	= $lat - $radius;
@@ -355,103 +348,24 @@
 				$return[$row['id']] = $row; 
 			}
 			
+			Debug::LogEvent(__METHOD__, $timer);
+			
 			return $return;
-		}
-		
-		/**
-		 * Add a location
-		 * @deprecated Deprecated since Version 3.3. To add a location, create a new instance of Railpage\Locations\Location
-		 * @param string $lat
-		 * @param string $lon
-		 * @param string $name
-		 * @param string $desc
-		 * @param int $zoom
-		 * @param int $user_id
-		 * @return boolean
-		 * @throws \DeprecatedFunction
-		 */
-		 
-		public function addLocation($lat, $lon, $name, $desc, $zoom = 12, $user_id) {
-			if (!$this->db || !$lat || !$lon || !$name || !$desc) {
-				return false;
-			}
-			
-			throw new \DeprecatedFunction;
-			
-			// Reverse geocode
-			$url 		= "http://maps.google.com/maps/geo?q=".$lat.",".$lon."&output=json&sensor=false";
-			$data		= @file_get_contents($url); 
-			$jsondata	= json_decode($data, true); 
-			
-			if ($area = $jsondata['Placemark'][0]['AddressDetails']['Country']) {
-				$country 		= $area['CountryNameCode']; 
-				$region 		= isset($area['AdministrativeArea']['AdministrativeAreaName']) ? $area['AdministrativeArea']['AdministrativeAreaName'] : NULL; 
-				$locality 		= isset($area['AdministrativeArea']['Locality']['LocalityName']) ? $area['AdministrativeArea']['Locality']['LocalityName'] : NULL; 
-				$neighbourhood 	= isset($area['CountryNameCode']['someotherarea']) ? $area['CountryNameCode']['someotherarea'] : NULL; 
-			} else {
-				// Google doesn't give data in a consistent bloody format - go here instead
-				$geodata	= "http://www.geoplugin.net/extras/location.gp?lat=".$lat."&long=".$lon."&format=php";
-				$geodata	= @file_get_contents($geodata); 
-				$geodata	= unserialize($geodata); 
-				
-				$country		= $geodata['geoplugin_countryCode']; 
-				$region			= $geodata['geoplugin_region']; 
-				$locality		= $geodata['geoplugin_place']; 
-				$neighbourhood	= NULL;
-			}
-			
-			$dataArray = array(); 
-			$dataArray['lat'] 			= $this->db->real_escape_string($lat); 
-			$dataArray['long'] 			= $this->db->real_escape_string($lon); 
-			$dataArray['country'] 		= $this->db->real_escape_string($country); 
-			$dataArray['region'] 		= $this->db->real_escape_string($region); 
-			$dataArray['locality'] 		= $this->db->real_escape_string($locality); 
-			$dataArray['neighbourhood'] = $this->db->real_escape_string($neighbourhood); 
-			$dataArray['name'] 			= $this->db->real_escape_string($name); 
-			$dataArray['desc'] 			= $this->db->real_escape_string($desc); 
-			$dataArray['zoom'] 			= $this->db->real_escape_string($zoom); 
-			$dataArray['user_id']		= $this->db->real_escape_string($user_id); 
-			$dataArray['date_added']	= time();
-			$dataArray['date_modified'] = time(); 
-			
-			if ($dataArray['zoom'] > 16) {
-				// People keep zooming in too far, despite all the helpful text in the world. Well, tough.
-				$dataArray['zoom'] = 16; 
-			}
-			
-			$query = $this->db->buildQuery($dataArray, "location"); 
-			
-			if ($rs = $this->db->query($query)) {
-				return $this->db->insert_id;
-			} else {
-				trigger_error("Locations: could not add new location to database"); 
-				trigger_error($this->db->error); 
-				return false;
-			}
-		}
-		
+		}		
 		/**
 		 * Get newest locations
 		 * @param int $limit
 		 */
 		
 		public function newest($limit = 5) {
-			if (!$this->db) {
-				return false;
-			}
 			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-			}
+			$timer = Debug::GetTimer(); 
 			
 			$query = "SELECT * FROM location WHERE active = 1 ORDER BY date_added DESC LIMIT ?";
 			
 			$return = $this->db->fetchAll($query, $limit); 
 				
-			if (RP_DEBUG) {
-				$site_debug[] = "Zend_DB: SUCCESS select newest locations in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-			}
+			Debug::LogEvent(__METHOD__, $timer);
 			
 			return $return;
 		}
@@ -485,9 +399,9 @@
 		public function makePermalink($id = false) {
 			$mckey = $id ? "railpage:locations.permalink.id=" . $id : "railpage:locations.permalink.id=" . $this->id;
 			
-			if ($string = $this->Memcached->fetch($mckey)) {
-				return $string; 
-			} else {
+			$timer = Debug::GetTimer(); 
+			
+			if (!$string = $this->Memcached->fetch($mckey)) {
 				if ((!isset($this->country) || !isset($this->region) || !isset($this->slug)) && $id) {
 					// Fetch it from the database
 					
@@ -509,6 +423,8 @@
 				
 				$this->Memcached->save($mckey, $string, strtotime("+1 year"));
 			}
+			
+			Debug::LogEvent(__METHOD__, $timer);
 			
 			return $string;
 		}
