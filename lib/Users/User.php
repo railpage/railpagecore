@@ -1026,7 +1026,8 @@
 			 */
 			
 			if (!is_array($data) || empty($data) || count($data) === 1) {
-					
+				
+				$timer = Debug::getTimer(); 
 				$data = Utility\UserUtility::fetchFromDatabase($this); 
 				
 				Debug::logEvent(__METHOD__ . "(" . $this->id . ") loaded via ZendDB", $timer);
@@ -1126,7 +1127,7 @@
 			$this->oauth_id = $data['oauth_consumer_id'];
 			
 			// Bugfix for REALLY old accounts with a NULL user_level
-			if (!filter_var($this->level, FILTER_VALIDATE_INT) && $this->active = 1) {
+			if (!filter_var($this->level, FILTER_VALIDATE_INT) && $this->active == 1) {
 				$this->level = 1;
 			}
 			
@@ -1249,6 +1250,12 @@
 			foreach (Utility\UserUtility::getColumnMapping() as $key => $var) {
 				$data[$key] = $this->$var;
 			}
+			
+			if (strpos($data['meta'], "\\\\\\\\") !== false) {
+				$data['meta'] = NULL;
+			}
+			
+			#printArray($data);die;
 			
 			$json = [ "meta", "user_opts" ];
 			foreach ($json as $key) {
@@ -1373,6 +1380,10 @@
 			}
 			die;
 			*/
+			
+			#ob_end_flush(); echo "adfadf"; var_dump($data);die;
+			#ini_set('memory_limit','256M');
+			#file_put_contents("/srv/railpage.com.au/www/public_html/content/userdata.txt", var_export($data));die;
 			
 			if ($this->RegistrationDate instanceof DateTime) {
 				$data['user_regdate_nice'] = $this->RegistrationDate->format("Y-m-d H:i:s");
@@ -2121,7 +2132,7 @@
 				$limit = $this->items_per_page;
 			}
 			
-			$query = "SELECT SQL_CALC_FOUND_ROWS t.topic_id, t.topic_title, t.topic_poster, t.topic_time, t.topic_views, t.topic_replies, t.topic_first_post_id, t.topic_last_post_id,
+			$query = "SELECT SQL_CALC_FOUND_ROWS '1' AS unread, t.topic_id, t.topic_title, t.topic_poster, t.topic_time, t.topic_views, t.topic_replies, t.topic_first_post_id, t.topic_last_post_id,
 						f.forum_id, f.forum_name,
 						ufirst.username AS topic_first_post_username, ufirst.user_id AS topic_first_post_user_id,
 						ulast.username AS topic_last_post_username, ulast.user_id AS topic_last_post_user_id,
@@ -2138,21 +2149,31 @@
 						ORDER BY plast.post_time DESC
 						LIMIT ?, ?";
 			
-			if ($result = $this->db->fetchAll($query, array($this->id, ($page - 1) * $limit, $limit))) {
-				$return = array(); 
-				$return['page'] = $page; 
-				$return['items_per_page'] = $limit;
-				$return['total'] = $this->db_readonly->fetchOne("SELECT FOUND_ROWS() AS total"); 
-				$return['topics'] = array(); 
-				
-				foreach ($result as $row) {
-					$return['topics'][] = $row; 
-				}
-				
-				return $return;
-			} else {
+			if (!$result = $this->db->fetchAll($query, array($this->id, ($page - 1) * $limit, $limit))) {
 				return false;
 			}
+			
+			$return = array(); 
+			$topic_ids = array(); 
+			$return['page'] = $page; 
+			$return['items_per_page'] = $limit;
+			$return['total'] = $this->db_readonly->fetchOne("SELECT FOUND_ROWS() AS total"); 
+			$return['topics'] = array(); 
+			
+			foreach ($result as $row) {
+				if (filter_var($row['topic_id'], FILTER_VALIDATE_INT)) {
+					$return['topics'][$row['topic_id']] = $row; 
+					$topic_ids[] = $row['topic_id'];
+				}
+			}
+			
+			$query = "SELECT UNIX_TIMESTAMP(viewed) AS viewed, topic_id FROM nuke_bbtopics_view WHERE user_id = ? AND topic_id IN (" . implode(",", $topic_ids) . ")";
+			
+			foreach ($this->db->fetchAll($query, $this->id) as $row) {
+				$return['topics'][$row['topic_id']]['unread'] = intval($return['topics'][$row['topic_id']]['topic_last_post_date'] > $row['viewed']);
+			}
+			
+			return $return;
 		}
 		
 		/**
@@ -2410,7 +2431,7 @@
 			 * Unsuccessful login attempt - bump up the invalid auth counter
 			 */
 			
-			$TmpUser->meta['InvalidAuthCounter'] = isset($TmpUser->meta['InvalidAuthCounter']) ? 1 : $TmpUser->meta['InvalidAuthCounter']++;
+			$TmpUser->meta['InvalidAuthCounter'] = !isset($TmpUser->meta['InvalidAuthCounter']) ? 1 : $TmpUser->meta['InvalidAuthCounter']++;
 			
 			$TmpUser->addNote(sprintf("Invalid login attempt %d", $TmpUser->meta['InvalidAuthCounter']));
 			$TmpUser->commit();
@@ -2680,6 +2701,10 @@
 		 */
 		
 		public function logUserActivity($module_id = false, $url = false, $pagetitle = false, $ipaddr = false) {
+			
+			// Temporarily commented out for performance
+			return $this;
+			
 			if (!filter_var($module_id, FILTER_VALIDATE_INT)) {
 				throw new Exception("Cannot log user activity because no module ID was provided");
 			}
@@ -2794,8 +2819,27 @@
 				//$params[] = $this->id;
 				
 				// Private messages
-				$query['pms'] = "SELECT 'Private Messages' AS module, COUNT(*) AS num, '/messages' AS url, NULL AS extra FROM nuke_bbprivmsgs WHERE privmsgs_to_userid = ? AND privmsgs_type = 5";
+				$query['pms'] = "SELECT 'Private Messages' AS module, 'Private Message' AS subtitle, '<i class=\"fa fa-inbox\"></i>' AS icon, COUNT(*) AS num, '/messages' AS url, NULL AS extra FROM nuke_bbprivmsgs WHERE privmsgs_to_userid = ? AND privmsgs_type = 5";
 				$params[] = $this->id;
+				
+				$query['forums'] = "SELECT 
+					'Forums' AS module, 'Subscribed thread' AS subtitle, '<i class=\"fa fa-comment-o\"></i>' AS icon, COUNT(*) AS num, '/account/watchedthreads' AS url, NULL AS extra 
+					FROM (
+						SELECT t.topic_title
+						FROM nuke_bbtopics AS t
+						LEFT JOIN nuke_bbposts AS p ON t.topic_last_post_id = p.post_id
+						LEFT JOIN nuke_bbtopics_view AS v ON t.topic_id = v.topic_id
+						WHERE t.topic_id IN (
+							SELECT topic_id FROM nuke_bbtopics_watch WHERE user_id = ?
+						)
+						AND p.post_time > UNIX_TIMESTAMP(v.viewed)
+						AND v.user_id = ?
+						GROUP BY t.topic_id
+						ORDER BY p.post_time DESC
+					) AS topics";
+				$params[] = $this->id;
+				$params[] = $this->id;
+				
 			}
 			
 			/**
@@ -2805,19 +2849,18 @@
 			$acl_role = $this->aclRole(RP_GROUP_MODERATORS);
 			
 			if ($acl->isAllowed($acl_role, "railpage.downloads", "manage")) {
-				$query['feedback'] = "SELECT 'Feedback' AS module, COUNT(*) AS num, '/feedback/manage' AS url, NULL AS extra FROM feedback WHERE status = 1";
-				$query['events'] = "SELECT 'Events' AS module, COUNT(*) AS num, '/events?mode=pending' AS url, NULL AS extra FROM event WHERE status = 0";
-				$query['eventdates'] = "SELECT 'Event Dates' AS module, COUNT(*) AS num, '/events?mode=pending' AS url, NULL AS extra FROM event_dates WHERE status = 0";
-				$query['locations'] = "SELECT 'Locations' AS module, COUNT(*) AS num, '/locations/pending' AS url, NULL AS extra FROM location WHERE active = 0";
-				$query['reports'] = "SELECT 'Reported posts' AS module, COUNT(*) AS num, '/f-report-cp.htm' AS url, NULL AS extra FROM phpbb_reports_posts WHERE report_status = 1";
-				$query['news'] = "SELECT 'News' AS module, COUNT(*) AS num, '/news/pending' AS url, NULL AS extra FROM nuke_stories WHERE approved = 0";
-				$query['glossary'] = "SELECT 'Glossary' AS module, COUNT(*) AS num, '/glossary?mode=manage.pending' AS url, NULL AS extra FROM glossary WHERE status = 0";
-				$query['locations'] = "SELECT 'Locations' AS module, COUNT(*) AS num, '/locations/pending' AS url, NULL AS extra FROM location WHERE active = 0";
-				$query['downloads'] = "SELECT 'Downloads' AS module, COUNT(*) AS num, '/downloads/manage' AS url, NULL AS extra FROM download_items WHERE active = 1 AND approved = 0";
+				$query['feedback'] = "SELECT 'Feedback' AS module, 'Feedback item' AS subtitle, '<i class=\"fa fa-bullhorn\"></i>' AS icon, COUNT(*) AS num, '/feedback/manage' AS url, NULL AS extra FROM feedback WHERE status = 1";
+				$query['events'] = "SELECT 'Events' AS module, 'New event' AS subtitle, '<i class=\"fa fa-calendar-o\"></i>' AS icon, COUNT(*) AS num, '/events?mode=pending' AS url, NULL AS extra FROM event WHERE status = 0";
+				$query['eventdates'] = "SELECT 'Event Dates' AS module, 'Event date' AS subtitle, '<i class=\"fa fa-calendar\"></i>' AS icon, COUNT(*) AS num, '/events?mode=pending' AS url, NULL AS extra FROM event_dates WHERE status = 0";
+				$query['locations'] = "SELECT 'Locations' AS module, 'New location' AS subtitle, '<i class=\"fa fa-map-marker\"></i>' AS icon, COUNT(*) AS num, '/locations/pending' AS url, NULL AS extra FROM location WHERE active = 0";
+				$query['reports'] = "SELECT 'Reported posts' AS module, 'Reported forum post' AS subtitle, '<i class=\"fa fa-exclamation-circle\"></i>' AS icon, COUNT(*) AS num, '/f-report-cp.htm' AS url, NULL AS extra FROM phpbb_reports_posts WHERE report_status = 1 AND report_action_time > 0";
+				$query['news'] = "SELECT 'News' AS module, 'News article' AS subtitle, '<i class=\"fa fa-newspaper-o\"></i>' AS icon, COUNT(*) AS num, '/news/pending' AS url, NULL AS extra FROM nuke_stories WHERE approved = 0";
+				$query['glossary'] = "SELECT 'Glossary' AS module, 'Glossary addition' AS subtitle, '<i class=\"fa fa-inbox\"></i>' AS icon, COUNT(*) AS num, '/glossary?mode=manage.pending' AS url, NULL AS extra FROM glossary WHERE status = 0";
+				$query['downloads'] = "SELECT 'Downloads' AS module, 'New download' AS subtitle, '<i class=\"fa fa-download\"></i>' AS icon, COUNT(*) AS num, '/downloads/manage' AS url, NULL AS extra FROM download_items WHERE active = 1 AND approved = 0";
 			}
 			
 			if ($acl->isAllowed($acl_role, "railpage.gallery.competition", "manage")) {
-				$query['photocomp'] = "SELECT 'Photo comp' AS module, COUNT(*) AS num, '/gallery/comp' AS url, NULL AS extra FROM image_competition_submissions WHERE status = 0";
+				$query['photocomp'] = "SELECT 'Photo comp' AS module, 'Photo comp submission' AS subtitle, '<i class=\"fa fa-camera\"></i>' AS icon, COUNT(*) AS num, '/gallery/comp' AS url, NULL AS extra FROM image_competition_submissions WHERE status = 0";
 			}
 			
 			/**
@@ -2827,7 +2870,7 @@
 			$acl_role = $this->aclRole(RP_GROUP_LOCOS);
 			
 			if ($acl->isAllowed($acl_role, "railpage.locos", "edit")) {
-				$query['locos'] = "SELECT 'Locos' AS module, COUNT(*) AS num, '/locos/corrections' AS url, NULL AS extra FROM loco_unit_corrections WHERE status = 0";
+				$query['locos'] = "SELECT 'Locos' AS module, 'Locos correction' AS subtitle, '<i class=\"fa fa-train\"></i>' AS icon, COUNT(*) AS num, '/locos/corrections' AS url, NULL AS extra FROM loco_unit_corrections WHERE status = 0";
 			}
 			
 			if (empty($query)) {
@@ -2843,34 +2886,6 @@
 			 */
 			
 			$result = $this->db->fetchAll($query, $params); 
-			
-			/** 
-			 * Filter the forum posts to exclude ones we've read
-			 */
-			
-			foreach ($result as $id => $row) {
-				if ($row['module'] == "Forum replies") {
-					$topics = explode(";", $row['extra']); 
-					$unread = array(); 
-					
-					$ReadThreads = Forums::getReadItemsForUser($this);
-					$ReadForums = Forums::getReadItemsForUser($this, "f"); 
-					
-					foreach ($topics as $topic) {
-						$topic = explode(":", $topic);
-						
-						if ($topic[2] > strtotime("6 months ago") && (!in_array($topic[1], $ReadThreads) || $ReadThreads[$topic[1]] < $topic[2])) {
-							$unread[] = $topic[1]; 
-						}
-					}
-					
-					if (count($unread) === 0) {
-						unset($result[$id]);
-					} else {
-						$result[$id]['num'] = count($unread);
-					}
-				}
-			}
 			
 			return $result;
 		}
