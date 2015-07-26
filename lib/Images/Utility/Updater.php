@@ -33,7 +33,7 @@
 			
 			$Database = (new AppCore)->getDatabaseConnection(); 
 			
-			$query = "SELECT id, meta FROM image WHERE user_id = 0 ORDER BY id ASC";
+			$query = "SELECT id, meta FROM image WHERE user_id = 0 ORDER BY id DESC";
 			
 			foreach ($Database->fetchAll($query) as $row) {
 				
@@ -94,7 +94,7 @@
 			
 			$Database = (new AppCore)->getDatabaseConnection(); 
 			
-			$query = "SELECT id, meta FROM image WHERE captured IS NULL ORDER BY id ASC LIMIT 0, 10000";
+			$query = "SELECT id, meta FROM image WHERE captured IS NULL ORDER BY id DESC LIMIT 0, 10000";
 			
 			foreach ($Database->fetchAll($query) as $row) {
 				
