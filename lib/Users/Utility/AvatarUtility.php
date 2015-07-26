@@ -36,12 +36,18 @@
 				return false;
 			}
 			
+			
 			$Memcached = AppCore::getMemcached(); 
 			
 			$timer = Debug::getTimer(); 
 			
+			if ($user_avatar == "http://www.railpage.com.au/modules/Forums/images/avatars/https://static.railpage.com.au/image_resize") {
+				$user_avatar = self::DEFAULT_AVATAR;
+			}
+			
 			if (empty($user_avatar) || stristr($user_avatar, "blank.gif") || stristr($user_avatar, "blank.png")) {
 				$user_avatar = self::DEFAULT_AVATAR;
+				return $user_avatar;
 			}
 			
 			$parts = parse_url($user_avatar);
