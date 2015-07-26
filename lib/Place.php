@@ -7,7 +7,7 @@
 	 * @author Michael Greenhill
 	 */
 	
-	namespace Railpage; 
+	namespace Railpage;
 	
 	use Railpage\Locations\Locations;
 	use Railpage\Locations\Country;
@@ -346,43 +346,45 @@
 		 */
 		
 		public function getAddress() {
+			
 			$mckey = sprintf("railpage.place.address.lat=%s&lon=%s", $this->lat, $this->lon);
 			
-			if ($address = $this->Redis->fetch($mckey)) {
+			if ($address = $this->Memcached->fetch($mckey)) {
 				return $address; 
-			} else {
-				$url = sprintf("https://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s&sensor=false", $this->lat, $this->lon);
+			}
+			
+			$url = sprintf("https://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s&sensor=false", $this->lat, $this->lon);
+			
+			$response = $this->GuzzleClient->get($url);
+			
+			if ($response->getStatusCode() == 200) {
+				$result = json_decode($response->getBody(), true);
+			}
+			
+			$return = array();
+			
+			if (isset($result['results'][0]['formatted_address'])) {
+				$return['address'] = $result['results'][0]['formatted_address'];
 				
-				$response = $this->GuzzleClient->get($url);
-				
-				if ($response->getStatusCode() == 200) {
-					$result = json_decode($response->getBody(), true);
-				}
-				
-				$return = array();
-				
-				if (isset($result['results'][0]['formatted_address'])) {
-					$return['address'] = $result['results'][0]['formatted_address'];
+				foreach ($result['results'] as $row) {
+					if ($row['types'][0] == "street_address") {
+						$return['street_address'] = $row['formatted_address'];
+					}
 					
-					foreach ($result['results'] as $row) {
-						if ($row['types'][0] == "street_address") {
-							$return['street_address'] = $row['formatted_address'];
-						}
-						
-						if ($row['types'][0] == "locality") {
-							$return['locality'] = $row['formatted_address'];
-						}
-						
-						if ($row['types'][0] == "administrative_area_level_1") {
-							$return['region'] = $row['formatted_address'];
-						}
+					if ($row['types'][0] == "locality") {
+						$return['locality'] = $row['formatted_address'];
+					}
+					
+					if ($row['types'][0] == "administrative_area_level_1") {
+						$return['region'] = $row['formatted_address'];
 					}
 				}
-				
-				$this->Redis->save($mckey, $return, strtotime("+12 hours"));
-				
-				return $return;
 			}
+			
+			$this->Memcached->save($mckey, $return, strtotime("+1 year"));
+			
+			return $return;
+			
 		}
 		
 		/**
@@ -393,6 +395,7 @@
 		 */
 		
 		public function getWeatherForecast($days = 14) {
+			
 			$weather = false;
 			
 			/**
@@ -405,11 +408,52 @@
 			 * Try to get the weather from Memcached first
 			 */
 			
-			$mckey = sprintf("railpage:lat=%s;lon=%s;weather;days=%s", $this->lat, $this->lon, $datekey);
+			$mckey = md5(sprintf("railpage:lat=%s;lon=%s;weather;days=%s", $this->lat, $this->lon, $datekey));
 			
 			if ($weather = $this->Redis->fetch($mckey)) {
 				return $weather;
 			}
+			
+			/**
+			 * Check the database before we try to fetch it from the weather API 
+			 */
+			
+			$GeoplaceID = PlaceUtility::findGeoPlaceID($this->lat, $this->lon); 
+			
+			if ($days instanceof DateTime) {
+				$query = "SELECT date, min, max, weather, icon FROM geoplace_forecast WHERE date = ? AND geoplace = ?";
+				$params = [ $days->format("Y-m-d"), $GeoplaceID ];
+			} else {
+				$query = "SELECT date, min, max, weather, icon FROM geoplace_forecast WHERE date >= ? AND geoplace = ? LIMIT 0, ?";
+				$params = array(
+					date("Y-m-d"),
+					$GeoplaceID,
+					$days
+				);
+			}
+			
+			if ($result = $this->db->fetchAll($query, $params)) {
+				$weather = array(); 
+				
+				foreach ($result as $row) {
+					$weather[$row['date']]['forecast'] = array(
+						"min" => $row['min'],
+						"max" => $row['max'],
+						"weather" => array(
+							"title" => $row['weather'],
+							"icon" => $row['icon']
+						)
+					);
+				}
+				
+				return $weather;
+			}
+			
+			/**
+			 * Didn't find the weather cached in memory or database, so let's look it up...
+			 */
+			
+			
 			
 			/**
 			 * Restrict our maximum date range to 14 days
@@ -464,6 +508,19 @@
 						"icon" => function_exists("getWeatherIcon") ? getWeatherIcon($row['weather'][0]['description']) : ""
 					)
 				);
+				
+				$data = [
+					"geoplace" => $GeoplaceID,
+					"expires" => date("Y-m-d H:i:s", strtotime("+24 hours")),
+					"date" => $ForecastDate->format("Y-m-d"),
+					"min" => round($row['temp']['min']),
+					"max" => round($row['temp']['max']),
+					"weather" => $row['weather'][0]['main'],
+					"icon" => $weather[$ForecastDate->format("Y-m-d")]['forecast']['weather']['icon']
+				];
+				
+				$this->db->insert("geoplace_forecast", $data);
+					
 			}
 			
 			if (isset($Date) && $Date instanceof DateTime) {
