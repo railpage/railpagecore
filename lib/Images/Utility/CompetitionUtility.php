@@ -147,25 +147,54 @@
 		}
 		
 		/**
+		 * Get contestants from a photo competition
+		 * @since Version 3.10.0
+		 * @param \Railpage\Images\Competition $Comp
+		 * @return array
+		 */
+		
+		public static function getCompetitionContestants(Competition $Comp) {
+			
+			$Database = (new AppCore)->getDatabaseConnection(); 
+			
+			$query = "SELECT u.user_id, u.username, u.user_email AS contact_email FROM image_competition_submissions AS s LEFT JOIN nuke_users AS u ON s.user_id = u.user_id WHERE s.competition_id = ? AND s.status != ?";
+			$params = [ $Comp->id, Competitions::PHOTO_REJECTED ];
+			
+			return $Database->fetchAll($query, $params); 
+			
+		}
+		
+		/**
 		 * Process the recipients of the notification email
 		 * @since Version 3.9.1
 		 * @param \Railpage\Notifications\Notification $Notification
+		 * @param \Railpage\Images\Competition $Comp
+		 * @param array $notificationOptions
 		 * @return \Railpage\Notifications\Notification
 		 */
 		 
-		public static function notificationDoRecipients(Notification $Notification) {
+		public static function notificationDoRecipients(Notification $Notification, Competition $Comp, $notificationOptions = false) {
 			
 			$contestants = (new Competitions)->getPreviousContestants(); 
 			
 			$replacements = array(); 
+			$exclude = array(); 
+			
+			if ($notificationOptions['excludeCurrentContestants']) {
+				foreach (self::getCompetitionContestants($Comp) as $row) {
+					$exclude[$row['user_id']] = $row;
+				}
+			}
 			
 			foreach ($contestants as $row) {
-				$Notification->AddRecipient($row['user_id'], $row['username'], $row['contact_email']);
-				
-				// Add to the decorator
-				$replacements[$row['contact_email']] = array(
-					"[username]" => $row['username']
-				);
+				if (!in_array($row['user_id'], array_keys($exclude))) {
+					$Notification->AddRecipient($row['user_id'], $row['username'], $row['contact_email']);
+					
+					// Add to the decorator
+					$replacements[$row['contact_email']] = array(
+						"[username]" => $row['username']
+					);
+				}
 			}
 			
 			$Notification->meta['decoration'] = $replacements;
@@ -186,6 +215,17 @@
 			
 			$flag = $notificationOptions['flag'];
 			
+			if (!is_array($notificationOptions)) {
+				$notificationOptions = [];
+			}
+			
+			// If we want to exclude contestants in this competition from this email, set this to true
+			// This is to remind contestants from previous comps to submit a photo
+			
+			if (!isset($notificationOptions['excludeCurrentContestants'])) {
+				$notificationOptions['excludeCurrentContestants'] = false;
+			}
+			
 			/**
 			 * Check if the notification sent flag has been set
 			 */
@@ -203,7 +243,7 @@
 				 * Add recipients and decoration
 				 */
 				
-				$Notification = self::notificationDoRecipients($Notification); 
+				$Notification = self::notificationDoRecipients($Notification, $Comp, $notificationOptions); 
 								
 				/**
 				 * Set our email body
