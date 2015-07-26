@@ -79,12 +79,12 @@
 		 * @param string $auth
 		 */
 		
-		public function Add($title = NULL, $url = "javascript:void(0)", $auth = "0", $class = "") {
+		public function Add($title = NULL, $url = "javascript:void(0)", $auth = "0", $icon = NULL) {
 			$this->menu[$this->section]['children'][] = array(
 				"title" => $title,
 				"url" => $url,
-				"class" => $class,
-				"auth" => $auth
+				"auth" => $auth,
+				"icon" => $icon
 			);
 			
 			return $this;
