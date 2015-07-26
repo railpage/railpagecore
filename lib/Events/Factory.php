@@ -58,7 +58,7 @@
 				$cachekey = sprintf(Event::CACHE_KEY, $id); 
 				
 				if (!self::USE_REDIS || !$Event = $Redis->fetch($cachekey)) {
-					$Event = new Event($id); 
+					$Event = new Event($id);
 					
 					if (self::USE_REDIS) {
 						$Redis->save($cachekey, $Event); 
@@ -66,7 +66,7 @@
 				}
 				
 				$Registry->set($regkey, $Event); 
-			} 
+			}
 				
 			return $Event; 
 			
@@ -85,7 +85,7 @@
 			$Redis = AppCore::getRedis(); 
 			$Registry = Registry::getInstance(); 
 			
-			$regkey = sprintf(Event::REGISTRY_KEY, $id); 
+			$regkey = sprintf(EventCategory::REGISTRY_KEY, $id); 
 			
 			try {
 				$EventCategory = $Registry->get($regkey); 
