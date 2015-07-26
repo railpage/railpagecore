@@ -181,6 +181,14 @@
 		public $DateStarted;
 		
 		/**
+		 * Instance of \Railpage\Users\User who is currently viewing this thread
+		 * @since Version 3.9.1
+		 * @var \Railpage\Users\User $Viewer
+		 */
+		
+		public $Viewer;
+		
+		/**
 		 * Meta data for this thread
 		 * @since Version 3.9.1
 		 * @var array $meta
@@ -563,9 +571,19 @@
 				throw new Exception("Can't mark this thread as viewed because no thread ID exists");
 			}
 			
-			if (isset($this->Viewer) && $this->Viewer instanceof User && !$user_id) {
-				$user_id = $this->Viewer->id;
+			#if (isset($this->Viewer) && $this->Viewer instanceof User && !$user_id) {
+			#	$user_id = $this->Viewer->id;
+			#}
+			
+			if (filter_var($user_id, FILTER_VALIDATE_INT)) {
+				$this->Viewer = UserFactory::CreateUser($user_id);
 			}
+			
+			if ($this->Viewer instanceof User) {
+				Utility\ForumsUtility::updateUserThreadView($this, $this->Viewer);
+			}
+			
+			return;
 			
 			if (filter_var($user_id, FILTER_VALIDATE_INT) && $user_id > 0) {
 				$query = "CALL update_viewed_thread(?, ?)";
