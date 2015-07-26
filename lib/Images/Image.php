@@ -10,6 +10,7 @@
 	
 	use Railpage\Users\User;
 	use Railpage\Users\Factory as UserFactory;
+	use Railpage\Users\Utility\UserUtility;
 	use Railpage\API;
 	use Railpage\AppCore;
 	use Railpage\Place;
@@ -323,13 +324,6 @@
 			}
 			
 			/**
-			 * "Hit"
-			 * Such detail, many description
-			 */
-			
-			$this->hit(); 
-			
-			/**
 			 * Update the database row
 			 */
 			
@@ -350,12 +344,12 @@
 			if (isset($row['meta']['author'])) {
 				$this->author = json_decode(json_encode($row['meta']['author']));
 				
-				if (isset($this->author->railpage_id)) {
-					$this->author->User = UserFactory::CreateUser($this->author->railpage_id);
-					
-					if ($this->author->User instanceof User && $this->author->User->id != $row['user_id']) {
-						$this->commit(); 
-					}
+				if (isset($this->author->railpage_id) && $row['user_id'] === 0) {
+					$row['user_id'] == $this->author->railpage_id;
+				}
+				
+				if (filter_var($row['user_id'], FILTER_VALIDATE_INT)) {
+					$this->author->User = UserFactory::CreateUser($row['user_id']);
 				}
 			} else {
 				Debug::LogCLI("No author found in local cache - refreshing from " . $this->provider);
@@ -631,6 +625,10 @@
 				$this->author->realname = !empty($data['author']['realname']) ? $data['author']['realname'] : $data['author']['username'];
 				$this->author->id = $data['author']['id'];
 				$this->author->url = "https://www.flickr.com/photos/" . $this->author->id;
+				
+				if ($user_id = UserUtility::findFromFlickrNSID($this->author->id)) {
+					$data['author']['railpage_id'] = $user_id;
+				}
 				
 				if (isset($data['author']['railpage_id']) && filter_var($data['author']['railpage_id'], FILTER_VALIDATE_INT)) {
 					$this->author->User = UserFactory::CreateUser($data['author']['railpage_id']); 
@@ -949,11 +947,13 @@
 				"id" => $this->id,
 				"title" => $this->title,
 				"description" => $this->description,
+				"score" => $this->getScore(),
 				"provider" => array(
 					"name" => $this->provider,
 					"photo_id" => $this->photo_id
 				),
 				"sizes" => $this->sizes,
+				"srcset" => implode(", ", Utility\ImageUtility::generateSrcSet($this)),
 				"author" => isset($author) ? $author : false,
 				"url" => $this->url instanceof Url ? $this->url->getURLs() : array(),
 				"dates" => array()
@@ -1581,6 +1581,38 @@
 			$this->db->update("image", $data, $where); 
 			
 			return $this;
+			
+		}
+		
+		/**
+		 * Get the score out of 100 of this image, based on titles, tags, description, etc. 
+		 * @since Version 3.10.0
+		 * @return int
+		 */
+		
+		public function getScore() {
+			
+			$score = 0; 
+			
+			if ($this->title != "Untitled") {
+				$score += 20; 
+			}
+			
+			if (strlen($this->title) > 30) {
+				$score -= strlen($this->title) - 30;
+			}
+			
+			$score += min((strlen($this->description) / 20) * 3, 70); 
+			
+			if (!preg_match("/([a-z])/", $this->description)) {
+				$score -= 34;
+			}
+			
+			if (filter_var($this->lat, FILTER_VALIDATE_FLOAT) && filter_var($this->lon, FILTER_VALIDATE_FLOAT)) {
+				$score += 14;
+			}
+			
+			return min($score, 100);
 			
 		}
 	}
