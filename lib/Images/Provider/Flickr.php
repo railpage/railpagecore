@@ -584,5 +584,80 @@
 			
 			return false;
 		}
+		
+		/**
+		 * Get the EXIF data for this image
+		 * @since Version 3.10.0
+		 * @return array
+		 * @param int $photo_id
+		 */
+		
+		public function getExif($photo_id) {
+			
+			$data = [ "photo_id" => $photo_id ];
+			
+			$raw = $this->execute("flickr.photos.getExif", $data);
+			$raw = $raw['photo']['exif']; 
+			
+			$exif = [];
+			
+			foreach ($raw as $row) {
+				$processed_val = self::processExif($row); 
+				
+				if ($processed_val) {
+					$exif[key($processed_val)] = current($processed_val);
+				}
+			}
+			
+			ksort($exif);
+			
+			return $exif;
+			
+		}
+		
+		/**
+		 * Process a row of EXIF data
+		 * @since Version 3.10.0
+		 * @param array $row
+		 * @return array
+		 */
+		
+		private static function processExif($row) {
+			
+			$column_lookup = [
+				"Make" => "camera_make",
+				"Model" => "camera_model",
+				"Exposure Program" => "exposure_program",
+			];
+			
+			if (!isset($column_lookup[$row['label']])) {
+				$column_lookup[$row['label']] = str_replace(" ", "_", strtolower($row['label']));
+			}
+			
+			switch ($row['label']) {
+				
+				case "Software" :
+				case "ISO Speed" :
+				case "Aperture" :
+				case "Exposure" :  
+				case "Exposure Program" :
+				case "White Balance" :
+				case "Lens Model" :
+				case "Lens Serial Number" : 
+				case "Make" :
+					return [ $column_lookup[$row['label']] => $row['raw'] ];
+					break;
+				
+				case "Model" :
+					return [ $column_lookup[$row['label']] => preg_replace("/(CANON|Canon|NIKON|NIKON CORPORATION) /", "", $row['raw']) ];
+					break;
+				
+				case "Focal Length" :
+					return [ $column_lookup[$row['label']] => round(str_replace(" mm", "", $row['raw'])) ];
+					break;
+					
+			}
+			
+		}
 	}
 	

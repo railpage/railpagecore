@@ -282,4 +282,16 @@
 		public function deleteImage(Image $Image) {
 			
 		}
+		
+		/**
+		 * Get the EXIF data for this image
+		 * @since Version 3.10.0
+		 * @return array
+		 * @param int $photo_id
+		 */
+		
+		public function getExif($photo_id) {
+			
+		}
+		
 	}
