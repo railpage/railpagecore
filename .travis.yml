@@ -25,6 +25,9 @@ script:
 services:
   - redis-server
   - memcached
+
+addons:
+  mariadb: "10.0"
  
 matrix:
   fast_finish: true
