@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Generation Time: Jul 02, 2015 at 04:29 PM
+-- Generation Time: Jul 27, 2015 at 09:58 AM
 -- Server version: 5.5.39-MariaDB-1~saucy-log
 -- PHP Version: 5.5.3-1ubuntu2.6
 
@@ -11,13 +11,16 @@ SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET time_zone = "+00:00";
 
 --
--- Database: `sparta`
+-- Database: `sparta_unittest`
 --
+CREATE DATABASE IF NOT EXISTS `sparta_unittest` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+USE `sparta_unittest`;
 
 DELIMITER $$
 --
 -- Procedures
 --
+DROP PROCEDURE IF EXISTS `FixLastPostID`$$
 CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `FixLastPostID`()
 BEGIN
 DECLARE done INT DEFAULT 0;
@@ -40,6 +43,7 @@ UNTIL done END REPEAT;
 CLOSE cur1;
 END$$
 
+DROP PROCEDURE IF EXISTS `geolocation`$$
 CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `geolocation`(IN location_lat double, IN location_lon double, IN dist int, IN max int)
 BEGIN
 DECLARE lon1 float;
@@ -68,6 +72,7 @@ SET SQL_SELECT_LIMIT = default;
 
 END$$
 
+DROP PROCEDURE IF EXISTS `geophotos`$$
 CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `geophotos`(IN location_id int, IN dist int, IN max int)
 BEGIN
 DECLARE location_lon double;
@@ -102,6 +107,7 @@ SET SQL_SELECT_LIMIT = default;
 
 END$$
 
+DROP PROCEDURE IF EXISTS `latlngphotos`$$
 CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `latlngphotos`(IN lat double, IN lon double, IN dist int, IN max int)
 BEGIN
 
@@ -128,11 +134,13 @@ SET SQL_SELECT_LIMIT = default;
 
 END$$
 
+DROP PROCEDURE IF EXISTS `newscounters`$$
 CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `newscounters`()
 BEGIN
 UPDATE nuke_stories SET weeklycounter = 0;
 END$$
 
+DROP PROCEDURE IF EXISTS `PopulateLocoClass`$$
 CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `PopulateLocoClass`(IN loco_number VARCHAR(8), IN loco_number_last VARCHAR(8), IN loco_class_id INT, IN loco_gauge_id INT, IN loco_status_id INT, IN loco_manufacturer_id INT, IN prefix TEXT)
 BEGIN
 
@@ -140,7 +148,7 @@ simple_loop: LOOP
 
 SET @num_length := CHAR_LENGTH(loco_number);
 
-INSERT INTO `sparta`.`loco_unit` (`loco_id`, `loco_num`, `loco_name`, `loco_gauge`, `loco_gauge_id`, `loco_status_id`, `class_id`, `owner_id`, `operator_id`, `date_added`, `date_modified`, `entered_service`, `withdrawn`, `builders_number`, `photo_id`, `manufacturer_id`) VALUES (NULL, CONCAT(prefix, loco_number), '', '', loco_gauge_id, loco_status_id, loco_class_id, '0', '0', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), '0', '0', '', '0', loco_manufacturer_id);
+INSERT INTO `sparta_unittest`.`loco_unit` (`loco_id`, `loco_num`, `loco_name`, `loco_gauge`, `loco_gauge_id`, `loco_status_id`, `class_id`, `owner_id`, `operator_id`, `date_added`, `date_modified`, `entered_service`, `withdrawn`, `builders_number`, `photo_id`, `manufacturer_id`) VALUES (NULL, CONCAT(prefix, loco_number), '', '', loco_gauge_id, loco_status_id, loco_class_id, '0', '0', UNIX_TIMESTAMP(), UNIX_TIMESTAMP(), '0', '0', '', '0', loco_manufacturer_id);
 
 SET loco_number = lpad(loco_number + 1, @num_length, 0);
 
@@ -151,13 +159,15 @@ END IF;
 END LOOP simple_loop;
 END$$
 
+DROP PROCEDURE IF EXISTS `PopulateLocoOrgs`$$
 CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `PopulateLocoOrgs`(IN LOCO_CLASS_ID INT, IN LOCO_OPERATOR_ID INT, IN LOCO_LINK_WEIGHT INT, IN LOCO_LINK_TYPE INT)
 BEGIN
 
-INSERT INTO `sparta`.`loco_org_link` (`loco_id`, `operator_id`, `link_type`, `link_weight`) SELECT `loco_id`, LOCO_OPERATOR_ID, LOCO_LINK_TYPE, LOCO_LINK_WEIGHT FROM `sparta`.`loco_unit` WHERE `class_id` = LOCO_CLASS_ID AND `loco_id` NOT IN (SELECT `loco_id` FROM `sparta`.`loco_org_link` WHERE `operator_id` = LOCO_OPERATOR_ID AND `link_type` = LOCO_LINK_TYPE);
+INSERT INTO `sparta_unittest`.`loco_org_link` (`loco_id`, `operator_id`, `link_type`, `link_weight`) SELECT `loco_id`, LOCO_OPERATOR_ID, LOCO_LINK_TYPE, LOCO_LINK_WEIGHT FROM `sparta_unittest`.`loco_unit` WHERE `class_id` = LOCO_CLASS_ID AND `loco_id` NOT IN (SELECT `loco_id` FROM `sparta_unittest`.`loco_org_link` WHERE `operator_id` = LOCO_OPERATOR_ID AND `link_type` = LOCO_LINK_TYPE);
 
 END$$
 
+DROP PROCEDURE IF EXISTS `update_viewed_thread`$$
 CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `update_viewed_thread`(IN `val_topic_id` INT, IN `val_user_id` INT)
 BEGIN
 SELECT SQL_CALC_FOUND_ROWS topic_id, user_id FROM viewed_threads WHERE topic_id = val_topic_id AND user_id = val_user_id;
@@ -177,6 +187,7 @@ DELIMITER ;
 -- Table structure for table `api`
 --
 
+DROP TABLE IF EXISTS `api`;
 CREATE TABLE IF NOT EXISTS `api` (
   `api_key` varchar(128) NOT NULL,
   `api_secret` varchar(128) NOT NULL,
@@ -194,6 +205,7 @@ CREATE TABLE IF NOT EXISTS `api` (
 -- Table structure for table `asset`
 --
 
+DROP TABLE IF EXISTS `asset`;
 CREATE TABLE IF NOT EXISTS `asset` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `hash` varchar(32) NOT NULL,
@@ -210,6 +222,7 @@ CREATE TABLE IF NOT EXISTS `asset` (
 -- Table structure for table `asset_bak`
 --
 
+DROP TABLE IF EXISTS `asset_bak`;
 CREATE TABLE IF NOT EXISTS `asset_bak` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `hash` varchar(32) DEFAULT NULL,
@@ -232,6 +245,7 @@ CREATE TABLE IF NOT EXISTS `asset_bak` (
 -- Table structure for table `asset_link`
 --
 
+DROP TABLE IF EXISTS `asset_link`;
 CREATE TABLE IF NOT EXISTS `asset_link` (
   `asset_link_id` int(11) NOT NULL AUTO_INCREMENT,
   `asset_id` int(11) NOT NULL,
@@ -252,6 +266,7 @@ CREATE TABLE IF NOT EXISTS `asset_link` (
 -- Table structure for table `asset_type`
 --
 
+DROP TABLE IF EXISTS `asset_type`;
 CREATE TABLE IF NOT EXISTS `asset_type` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` text NOT NULL,
@@ -266,6 +281,7 @@ CREATE TABLE IF NOT EXISTS `asset_type` (
 -- Table structure for table `bancontrol`
 --
 
+DROP TABLE IF EXISTS `bancontrol`;
 CREATE TABLE IF NOT EXISTS `bancontrol` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(10) NOT NULL,
@@ -280,7 +296,7 @@ CREATE TABLE IF NOT EXISTS `bancontrol` (
   KEY `ban_active` (`ban_active`),
   KEY `banned_by` (`banned_by`),
   KEY `ip` (`ip`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=12197 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=12204 ;
 
 -- --------------------------------------------------------
 
@@ -288,6 +304,7 @@ CREATE TABLE IF NOT EXISTS `bancontrol` (
 -- Table structure for table `ban_domains`
 --
 
+DROP TABLE IF EXISTS `ban_domains`;
 CREATE TABLE IF NOT EXISTS `ban_domains` (
   `domain_id` int(12) NOT NULL AUTO_INCREMENT,
   `domain_name` varchar(256) NOT NULL,
@@ -301,6 +318,7 @@ CREATE TABLE IF NOT EXISTS `ban_domains` (
 -- Table structure for table `chronicle_item`
 --
 
+DROP TABLE IF EXISTS `chronicle_item`;
 CREATE TABLE IF NOT EXISTS `chronicle_item` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `status` tinyint(1) NOT NULL DEFAULT '0',
@@ -323,6 +341,7 @@ CREATE TABLE IF NOT EXISTS `chronicle_item` (
 -- Table structure for table `chronicle_link`
 --
 
+DROP TABLE IF EXISTS `chronicle_link`;
 CREATE TABLE IF NOT EXISTS `chronicle_link` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `item_id` int(11) NOT NULL,
@@ -339,6 +358,7 @@ CREATE TABLE IF NOT EXISTS `chronicle_link` (
 -- Table structure for table `chronicle_type`
 --
 
+DROP TABLE IF EXISTS `chronicle_type`;
 CREATE TABLE IF NOT EXISTS `chronicle_type` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `grouping` enum('Locos','Locations','Other') NOT NULL,
@@ -353,6 +373,7 @@ CREATE TABLE IF NOT EXISTS `chronicle_type` (
 -- Table structure for table `config`
 --
 
+DROP TABLE IF EXISTS `config`;
 CREATE TABLE IF NOT EXISTS `config` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `date` int(11) NOT NULL,
@@ -368,6 +389,7 @@ CREATE TABLE IF NOT EXISTS `config` (
 -- Table structure for table `download_categories`
 --
 
+DROP TABLE IF EXISTS `download_categories`;
 CREATE TABLE IF NOT EXISTS `download_categories` (
   `category_id` int(11) NOT NULL AUTO_INCREMENT,
   `category_title` varchar(50) NOT NULL DEFAULT '',
@@ -382,6 +404,7 @@ CREATE TABLE IF NOT EXISTS `download_categories` (
 -- Table structure for table `download_hits`
 --
 
+DROP TABLE IF EXISTS `download_hits`;
 CREATE TABLE IF NOT EXISTS `download_hits` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `download_id` int(11) NOT NULL,
@@ -398,6 +421,7 @@ CREATE TABLE IF NOT EXISTS `download_hits` (
 -- Table structure for table `download_items`
 --
 
+DROP TABLE IF EXISTS `download_items`;
 CREATE TABLE IF NOT EXISTS `download_items` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `category_id` int(11) NOT NULL DEFAULT '0',
@@ -426,6 +450,7 @@ CREATE TABLE IF NOT EXISTS `download_items` (
 -- Table structure for table `event`
 --
 
+DROP TABLE IF EXISTS `event`;
 CREATE TABLE IF NOT EXISTS `event` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(128) NOT NULL,
@@ -453,6 +478,7 @@ CREATE TABLE IF NOT EXISTS `event` (
 -- Table structure for table `event_categories`
 --
 
+DROP TABLE IF EXISTS `event_categories`;
 CREATE TABLE IF NOT EXISTS `event_categories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(128) NOT NULL DEFAULT '',
@@ -469,6 +495,7 @@ CREATE TABLE IF NOT EXISTS `event_categories` (
 -- Table structure for table `event_dates`
 --
 
+DROP TABLE IF EXISTS `event_dates`;
 CREATE TABLE IF NOT EXISTS `event_dates` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `event_id` int(11) NOT NULL,
@@ -490,6 +517,7 @@ CREATE TABLE IF NOT EXISTS `event_dates` (
 -- Table structure for table `feedback`
 --
 
+DROP TABLE IF EXISTS `feedback`;
 CREATE TABLE IF NOT EXISTS `feedback` (
   `assigned_to` int(11) NOT NULL,
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -510,6 +538,7 @@ CREATE TABLE IF NOT EXISTS `feedback` (
 -- Table structure for table `feedback_area`
 --
 
+DROP TABLE IF EXISTS `feedback_area`;
 CREATE TABLE IF NOT EXISTS `feedback_area` (
   `feedback_id` int(11) NOT NULL AUTO_INCREMENT,
   `feedback_title` varchar(256) NOT NULL,
@@ -522,6 +551,7 @@ CREATE TABLE IF NOT EXISTS `feedback_area` (
 -- Table structure for table `feedback_status`
 --
 
+DROP TABLE IF EXISTS `feedback_status`;
 CREATE TABLE IF NOT EXISTS `feedback_status` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(1024) NOT NULL,
@@ -534,6 +564,7 @@ CREATE TABLE IF NOT EXISTS `feedback_status` (
 -- Table structure for table `flickr_cache`
 --
 
+DROP TABLE IF EXISTS `flickr_cache`;
 CREATE TABLE IF NOT EXISTS `flickr_cache` (
   `request` char(35) NOT NULL,
   `response` longtext NOT NULL,
@@ -547,6 +578,7 @@ CREATE TABLE IF NOT EXISTS `flickr_cache` (
 -- Table structure for table `flickr_favourites`
 --
 
+DROP TABLE IF EXISTS `flickr_favourites`;
 CREATE TABLE IF NOT EXISTS `flickr_favourites` (
   `photo_id` varchar(24) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -561,6 +593,7 @@ CREATE TABLE IF NOT EXISTS `flickr_favourites` (
 -- Table structure for table `flickr_geodata`
 --
 
+DROP TABLE IF EXISTS `flickr_geodata`;
 CREATE TABLE IF NOT EXISTS `flickr_geodata` (
   `photo_id` varchar(20) NOT NULL,
   `lat` decimal(11,8) NOT NULL,
@@ -611,6 +644,7 @@ CREATE TABLE IF NOT EXISTS `flickr_geodata` (
 -- Table structure for table `flickr_rating`
 --
 
+DROP TABLE IF EXISTS `flickr_rating`;
 CREATE TABLE IF NOT EXISTS `flickr_rating` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `photo_id` bigint(20) NOT NULL,
@@ -627,13 +661,14 @@ CREATE TABLE IF NOT EXISTS `flickr_rating` (
 -- Table structure for table `fwlink`
 --
 
+DROP TABLE IF EXISTS `fwlink`;
 CREATE TABLE IF NOT EXISTS `fwlink` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `url` varchar(256) NOT NULL,
   `title` text NOT NULL,
   PRIMARY KEY (`id`),
   KEY `url` (`url`(255))
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=24558 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=24808 ;
 
 -- --------------------------------------------------------
 
@@ -641,6 +676,7 @@ CREATE TABLE IF NOT EXISTS `fwlink` (
 -- Table structure for table `gallery_mig_album`
 --
 
+DROP TABLE IF EXISTS `gallery_mig_album`;
 CREATE TABLE IF NOT EXISTS `gallery_mig_album` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(128) NOT NULL,
@@ -664,6 +700,7 @@ CREATE TABLE IF NOT EXISTS `gallery_mig_album` (
 -- Table structure for table `gallery_mig_image`
 --
 
+DROP TABLE IF EXISTS `gallery_mig_image`;
 CREATE TABLE IF NOT EXISTS `gallery_mig_image` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `album_id` int(11) NOT NULL,
@@ -686,13 +723,14 @@ CREATE TABLE IF NOT EXISTS `gallery_mig_image` (
 -- Table structure for table `geoplace`
 --
 
+DROP TABLE IF EXISTS `geoplace`;
 CREATE TABLE IF NOT EXISTS `geoplace` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `country_code` varchar(4) NOT NULL,
   `country_name` text NOT NULL,
-  `region_code` varchar(10) NOT NULL,
-  `region_name` text NOT NULL,
-  `neighbourhood` varchar(32) NOT NULL,
+  `region_code` varchar(10) DEFAULT NULL,
+  `region_name` text,
+  `neighbourhood` varchar(32) DEFAULT NULL,
   `point` point NOT NULL,
   `timezone` text NOT NULL,
   `bb_southwest` point NOT NULL,
@@ -700,7 +738,28 @@ CREATE TABLE IF NOT EXISTS `geoplace` (
   PRIMARY KEY (`id`),
   KEY `country_code` (`country_code`,`region_code`),
   SPATIAL KEY `point` (`point`)
-) ENGINE=Aria  DEFAULT CHARSET=utf8 PAGE_CHECKSUM=0 TRANSACTIONAL=0 AUTO_INCREMENT=2072 ;
+) ENGINE=Aria  DEFAULT CHARSET=utf8 PAGE_CHECKSUM=0 TRANSACTIONAL=0 AUTO_INCREMENT=2688 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `geoplace_forecast`
+--
+
+DROP TABLE IF EXISTS `geoplace_forecast`;
+CREATE TABLE IF NOT EXISTS `geoplace_forecast` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `geoplace` int(11) NOT NULL,
+  `expires` datetime NOT NULL,
+  `date` date NOT NULL,
+  `min` int(11) NOT NULL,
+  `max` int(11) NOT NULL,
+  `weather` text NOT NULL,
+  `icon` text,
+  PRIMARY KEY (`id`),
+  KEY `geoplace` (`geoplace`,`expires`),
+  KEY `date` (`date`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=268 ;
 
 -- --------------------------------------------------------
 
@@ -708,6 +767,7 @@ CREATE TABLE IF NOT EXISTS `geoplace` (
 -- Table structure for table `glossary`
 --
 
+DROP TABLE IF EXISTS `glossary`;
 CREATE TABLE IF NOT EXISTS `glossary` (
   `id` int(12) NOT NULL AUTO_INCREMENT,
   `type` enum('acronym','term','code','station','slang') NOT NULL DEFAULT 'term',
@@ -732,6 +792,7 @@ CREATE TABLE IF NOT EXISTS `glossary` (
 -- Table structure for table `idea_categories`
 --
 
+DROP TABLE IF EXISTS `idea_categories`;
 CREATE TABLE IF NOT EXISTS `idea_categories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(32) NOT NULL,
@@ -746,6 +807,7 @@ CREATE TABLE IF NOT EXISTS `idea_categories` (
 -- Table structure for table `idea_ideas`
 --
 
+DROP TABLE IF EXISTS `idea_ideas`;
 CREATE TABLE IF NOT EXISTS `idea_ideas` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `category_id` int(11) NOT NULL,
@@ -766,7 +828,7 @@ CREATE TABLE IF NOT EXISTS `idea_ideas` (
   KEY `status` (`status`),
   KEY `forum_thread_id` (`forum_thread_id`),
   KEY `redmine_id` (`redmine_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=67 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=70 ;
 
 -- --------------------------------------------------------
 
@@ -774,6 +836,7 @@ CREATE TABLE IF NOT EXISTS `idea_ideas` (
 -- Table structure for table `idea_votes`
 --
 
+DROP TABLE IF EXISTS `idea_votes`;
 CREATE TABLE IF NOT EXISTS `idea_votes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `idea_id` int(11) NOT NULL,
@@ -782,7 +845,7 @@ CREATE TABLE IF NOT EXISTS `idea_votes` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   KEY `idea_id` (`idea_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=271 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=282 ;
 
 -- --------------------------------------------------------
 
@@ -790,8 +853,10 @@ CREATE TABLE IF NOT EXISTS `idea_votes` (
 -- Table structure for table `image`
 --
 
+DROP TABLE IF EXISTS `image`;
 CREATE TABLE IF NOT EXISTS `image` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `flags` int(4) NOT NULL,
   `provider` enum('flickr','westonlangford','rpoldgallery','picasaweb','vicsig') NOT NULL,
   `photo_id` bigint(11) NOT NULL,
   `modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -814,8 +879,24 @@ CREATE TABLE IF NOT EXISTS `image` (
   KEY `geoplace` (`geoplace`),
   KEY `user_id` (`user_id`),
   KEY `hidden` (`hidden`),
-  KEY `captured` (`captured`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=68441 ;
+  KEY `captured` (`captured`),
+  KEY `flags` (`flags`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=69271 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `image_camera`
+--
+
+DROP TABLE IF EXISTS `image_camera`;
+CREATE TABLE IF NOT EXISTS `image_camera` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `make` varchar(32) NOT NULL,
+  `model` varchar(32) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `make` (`make`,`model`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=83 ;
 
 -- --------------------------------------------------------
 
@@ -823,7 +904,9 @@ CREATE TABLE IF NOT EXISTS `image` (
 -- Table structure for table `image_collection`
 --
 
+DROP TABLE IF EXISTS `image_collection`;
 CREATE TABLE IF NOT EXISTS `image_collection` (
+
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `slug` varchar(16) NOT NULL,
@@ -834,7 +917,7 @@ CREATE TABLE IF NOT EXISTS `image_collection` (
   PRIMARY KEY (`id`),
   KEY `slug` (`slug`,`created`,`modified`),
   KEY `user_id` (`user_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=11 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=19 ;
 
 -- --------------------------------------------------------
 
@@ -842,6 +925,7 @@ CREATE TABLE IF NOT EXISTS `image_collection` (
 -- Table structure for table `image_competition`
 --
 
+DROP TABLE IF EXISTS `image_competition`;
 CREATE TABLE IF NOT EXISTS `image_competition` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` text NOT NULL,
@@ -858,7 +942,7 @@ CREATE TABLE IF NOT EXISTS `image_competition` (
   PRIMARY KEY (`id`),
   KEY `slug` (`slug`,`status`,`voting_date_open`,`voting_date_close`,`author`),
   KEY `submissions_date_open` (`submissions_date_open`,`submissions_date_close`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=5 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=6 ;
 
 -- --------------------------------------------------------
 
@@ -866,6 +950,7 @@ CREATE TABLE IF NOT EXISTS `image_competition` (
 -- Table structure for table `image_competition_submissions`
 --
 
+DROP TABLE IF EXISTS `image_competition_submissions`;
 CREATE TABLE IF NOT EXISTS `image_competition_submissions` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `competition_id` int(11) NOT NULL,
@@ -876,7 +961,7 @@ CREATE TABLE IF NOT EXISTS `image_competition_submissions` (
   `status` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `competition_id` (`competition_id`,`user_id`,`image_id`,`date_added`,`status`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=29 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=37 ;
 
 -- --------------------------------------------------------
 
@@ -884,6 +969,7 @@ CREATE TABLE IF NOT EXISTS `image_competition_submissions` (
 -- Table structure for table `image_competition_votes`
 --
 
+DROP TABLE IF EXISTS `image_competition_votes`;
 CREATE TABLE IF NOT EXISTS `image_competition_votes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `competition_id` int(11) NOT NULL,
@@ -894,7 +980,123 @@ CREATE TABLE IF NOT EXISTS `image_competition_votes` (
   PRIMARY KEY (`id`),
   KEY `competition_id` (`competition_id`,`user_id`,`image_id`),
   KEY `date` (`date`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=26 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=31 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `image_exif`
+--
+
+DROP TABLE IF EXISTS `image_exif`;
+CREATE TABLE IF NOT EXISTS `image_exif` (
+  `image_id` int(11) NOT NULL,
+  `camera_id` int(11) NOT NULL DEFAULT '0',
+  `lens_id` int(11) NOT NULL DEFAULT '0',
+  `lens_sn_id` int(11) NOT NULL DEFAULT '0',
+  `aperture` double NOT NULL DEFAULT '0',
+  `exposure_id` int(11) NOT NULL DEFAULT '0',
+  `exposure_program_id` int(11) NOT NULL DEFAULT '0',
+  `focal_length` int(11) NOT NULL DEFAULT '0',
+  `iso` int(11) NOT NULL DEFAULT '0',
+  `white_balance_id` int(11) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`image_id`),
+  KEY `camera_id` (`camera_id`,`lens_id`,`aperture`,`exposure_id`,`exposure_program_id`,`focal_length`,`iso`,`white_balance_id`),
+  KEY `lens_sn_id` (`lens_sn_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `image_exposure`
+--
+
+DROP TABLE IF EXISTS `image_exposure`;
+CREATE TABLE IF NOT EXISTS `image_exposure` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `exposure` varchar(12) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `exposure` (`exposure`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=57 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `image_exposure_program`
+--
+
+DROP TABLE IF EXISTS `image_exposure_program`;
+CREATE TABLE IF NOT EXISTS `image_exposure_program` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `program` varchar(32) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `program` (`program`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=9 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `image_flags`
+--
+
+DROP TABLE IF EXISTS `image_flags`;
+CREATE TABLE IF NOT EXISTS `image_flags` (
+  `image_id` int(11) NOT NULL,
+  `published` bit(1) NOT NULL DEFAULT b'0',
+  `screened` bit(1) NOT NULL DEFAULT b'0',
+  `screened_by` int(11) NOT NULL DEFAULT '0',
+  `screened_on` datetime DEFAULT NULL,
+  `screened_pick` bit(1) NOT NULL DEFAULT b'0',
+  `rejected` bit(1) NOT NULL DEFAULT b'0',
+  PRIMARY KEY (`image_id`),
+  KEY `published` (`published`,`screened`,`screened_by`,`screened_on`,`rejected`),
+  KEY `screened_pick` (`screened_pick`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `image_flags_skip`
+--
+
+DROP TABLE IF EXISTS `image_flags_skip`;
+CREATE TABLE IF NOT EXISTS `image_flags_skip` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `image_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `date` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `image_id` (`image_id`,`user_id`),
+  KEY `date` (`date`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=25 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `image_lens`
+--
+
+DROP TABLE IF EXISTS `image_lens`;
+CREATE TABLE IF NOT EXISTS `image_lens` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `model` varchar(64) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `model` (`model`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=38 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `image_lens_sn`
+--
+
+DROP TABLE IF EXISTS `image_lens_sn`;
+CREATE TABLE IF NOT EXISTS `image_lens_sn` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `sn` varchar(128) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `sn` (`sn`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=21 ;
 
 -- --------------------------------------------------------
 
@@ -902,6 +1104,7 @@ CREATE TABLE IF NOT EXISTS `image_competition_votes` (
 -- Table structure for table `image_link`
 --
 
+DROP TABLE IF EXISTS `image_link`;
 CREATE TABLE IF NOT EXISTS `image_link` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `image_id` int(11) NOT NULL,
@@ -913,7 +1116,7 @@ CREATE TABLE IF NOT EXISTS `image_link` (
   KEY `namespace` (`namespace`,`namespace_key`,`ignored`),
   KEY `image_id` (`image_id`),
   KEY `added` (`added`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=61478 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=62156 ;
 
 -- --------------------------------------------------------
 
@@ -921,6 +1124,7 @@ CREATE TABLE IF NOT EXISTS `image_link` (
 -- Table structure for table `image_position`
 --
 
+DROP TABLE IF EXISTS `image_position`;
 CREATE TABLE IF NOT EXISTS `image_position` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `image_id` varchar(20) NOT NULL,
@@ -936,9 +1140,26 @@ CREATE TABLE IF NOT EXISTS `image_position` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `image_software`
+--
+
+DROP TABLE IF EXISTS `image_software`;
+CREATE TABLE IF NOT EXISTS `image_software` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(64) NOT NULL,
+  `version` double NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`),
+  KEY `version` (`version`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=79 ;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `image_weekly`
 --
 
+DROP TABLE IF EXISTS `image_weekly`;
 CREATE TABLE IF NOT EXISTS `image_weekly` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `image_id` int(11) NOT NULL,
@@ -946,7 +1167,21 @@ CREATE TABLE IF NOT EXISTS `image_weekly` (
   `added_by` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `image_id` (`image_id`,`datefrom`,`added_by`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=5 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=10 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `image_whitebalance`
+--
+
+DROP TABLE IF EXISTS `image_whitebalance`;
+CREATE TABLE IF NOT EXISTS `image_whitebalance` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `whitebalance` varchar(64) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `whitebalance` (`whitebalance`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=10 ;
 
 -- --------------------------------------------------------
 
@@ -954,6 +1189,7 @@ CREATE TABLE IF NOT EXISTS `image_weekly` (
 -- Table structure for table `jn_applications`
 --
 
+DROP TABLE IF EXISTS `jn_applications`;
 CREATE TABLE IF NOT EXISTS `jn_applications` (
   `jn_application_id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Unique ID for this job application',
   `jn_job_id` int(11) NOT NULL COMMENT 'Job ID',
@@ -969,6 +1205,7 @@ CREATE TABLE IF NOT EXISTS `jn_applications` (
 -- Table structure for table `jn_classifications`
 --
 
+DROP TABLE IF EXISTS `jn_classifications`;
 CREATE TABLE IF NOT EXISTS `jn_classifications` (
   `jn_classification_id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Unique ID of the job classification',
   `jn_classification_name` varchar(128) NOT NULL COMMENT 'Regular name for the classification',
@@ -983,6 +1220,7 @@ CREATE TABLE IF NOT EXISTS `jn_classifications` (
 -- Table structure for table `jn_jobs`
 --
 
+DROP TABLE IF EXISTS `jn_jobs`;
 CREATE TABLE IF NOT EXISTS `jn_jobs` (
   `job_id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Unique job ID',
   `reference_id` int(11) NOT NULL COMMENT 'The reference ID from the job poster',
@@ -1012,6 +1250,7 @@ CREATE TABLE IF NOT EXISTS `jn_jobs` (
 -- Table structure for table `jn_locations`
 --
 
+DROP TABLE IF EXISTS `jn_locations`;
 CREATE TABLE IF NOT EXISTS `jn_locations` (
   `jn_location_id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Unique job location ID',
   `jn_location_name` varchar(128) NOT NULL COMMENT 'Name of this location, eg: Melbourne > South East',
@@ -1026,6 +1265,7 @@ CREATE TABLE IF NOT EXISTS `jn_locations` (
 -- Table structure for table `loadstats`
 --
 
+DROP TABLE IF EXISTS `loadstats`;
 CREATE TABLE IF NOT EXISTS `loadstats` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `time` int(11) NOT NULL,
@@ -1048,6 +1288,7 @@ CREATE TABLE IF NOT EXISTS `loadstats` (
 -- Table structure for table `location`
 --
 
+DROP TABLE IF EXISTS `location`;
 CREATE TABLE IF NOT EXISTS `location` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `lat` decimal(11,8) NOT NULL,
@@ -1097,6 +1338,7 @@ CREATE TABLE IF NOT EXISTS `location` (
 -- Table structure for table `locations_like`
 --
 
+DROP TABLE IF EXISTS `locations_like`;
 CREATE TABLE IF NOT EXISTS `locations_like` (
   `location_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -1110,6 +1352,7 @@ CREATE TABLE IF NOT EXISTS `locations_like` (
 -- Table structure for table `location_corrections`
 --
 
+DROP TABLE IF EXISTS `location_corrections`;
 CREATE TABLE IF NOT EXISTS `location_corrections` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `location_id` int(11) NOT NULL,
@@ -1129,6 +1372,7 @@ CREATE TABLE IF NOT EXISTS `location_corrections` (
 -- Table structure for table `location_date`
 --
 
+DROP TABLE IF EXISTS `location_date`;
 CREATE TABLE IF NOT EXISTS `location_date` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `date` date NOT NULL,
@@ -1147,6 +1391,7 @@ CREATE TABLE IF NOT EXISTS `location_date` (
 -- Table structure for table `location_datetypes`
 --
 
+DROP TABLE IF EXISTS `location_datetypes`;
 CREATE TABLE IF NOT EXISTS `location_datetypes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(128) NOT NULL,
@@ -1159,6 +1404,7 @@ CREATE TABLE IF NOT EXISTS `location_datetypes` (
 -- Table structure for table `loco_class`
 --
 
+DROP TABLE IF EXISTS `loco_class`;
 CREATE TABLE IF NOT EXISTS `loco_class` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `parent` int(11) NOT NULL DEFAULT '0',
@@ -1197,6 +1443,7 @@ CREATE TABLE IF NOT EXISTS `loco_class` (
 -- Table structure for table `loco_date_type`
 --
 
+DROP TABLE IF EXISTS `loco_date_type`;
 CREATE TABLE IF NOT EXISTS `loco_date_type` (
   `loco_date_id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_date_text` text NOT NULL,
@@ -1209,6 +1456,7 @@ CREATE TABLE IF NOT EXISTS `loco_date_type` (
 -- Table structure for table `loco_gauge`
 --
 
+DROP TABLE IF EXISTS `loco_gauge`;
 CREATE TABLE IF NOT EXISTS `loco_gauge` (
   `gauge_id` int(11) NOT NULL AUTO_INCREMENT,
   `gauge_name` varchar(64) CHARACTER SET latin1 NOT NULL,
@@ -1225,6 +1473,7 @@ CREATE TABLE IF NOT EXISTS `loco_gauge` (
 -- Table structure for table `loco_groups`
 --
 
+DROP TABLE IF EXISTS `loco_groups`;
 CREATE TABLE IF NOT EXISTS `loco_groups` (
   `group_id` int(11) NOT NULL AUTO_INCREMENT,
   `group_name` varchar(256) CHARACTER SET latin1 NOT NULL,
@@ -1241,6 +1490,7 @@ CREATE TABLE IF NOT EXISTS `loco_groups` (
 -- Table structure for table `loco_groups_members`
 --
 
+DROP TABLE IF EXISTS `loco_groups_members`;
 CREATE TABLE IF NOT EXISTS `loco_groups_members` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `group_id` int(11) NOT NULL,
@@ -1256,6 +1506,7 @@ CREATE TABLE IF NOT EXISTS `loco_groups_members` (
 -- Table structure for table `loco_hits`
 --
 
+DROP TABLE IF EXISTS `loco_hits`;
 CREATE TABLE IF NOT EXISTS `loco_hits` (
   `loco_id` int(11) NOT NULL,
   `class_id` int(11) NOT NULL,
@@ -1271,6 +1522,7 @@ CREATE TABLE IF NOT EXISTS `loco_hits` (
 -- Table structure for table `loco_link`
 --
 
+DROP TABLE IF EXISTS `loco_link`;
 CREATE TABLE IF NOT EXISTS `loco_link` (
   `link_id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_id_a` int(11) NOT NULL,
@@ -1288,6 +1540,7 @@ CREATE TABLE IF NOT EXISTS `loco_link` (
 -- Table structure for table `loco_link_type`
 --
 
+DROP TABLE IF EXISTS `loco_link_type`;
 CREATE TABLE IF NOT EXISTS `loco_link_type` (
   `link_type_id` int(11) NOT NULL AUTO_INCREMENT,
   `link_type_name` varchar(128) NOT NULL,
@@ -1300,6 +1553,7 @@ CREATE TABLE IF NOT EXISTS `loco_link_type` (
 -- Table structure for table `loco_livery`
 --
 
+DROP TABLE IF EXISTS `loco_livery`;
 CREATE TABLE IF NOT EXISTS `loco_livery` (
   `livery_id` int(11) NOT NULL AUTO_INCREMENT,
   `livery` varchar(1024) NOT NULL,
@@ -1315,7 +1569,7 @@ CREATE TABLE IF NOT EXISTS `loco_livery` (
   KEY `supersedes` (`supersedes`),
   KEY `region` (`region`),
   KEY `country` (`country`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=168 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=169 ;
 
 -- --------------------------------------------------------
 
@@ -1323,6 +1577,7 @@ CREATE TABLE IF NOT EXISTS `loco_livery` (
 -- Table structure for table `loco_manufacturer`
 --
 
+DROP TABLE IF EXISTS `loco_manufacturer`;
 CREATE TABLE IF NOT EXISTS `loco_manufacturer` (
   `manufacturer_id` int(11) NOT NULL AUTO_INCREMENT,
   `manufacturer_name` varchar(256) NOT NULL,
@@ -1338,6 +1593,7 @@ CREATE TABLE IF NOT EXISTS `loco_manufacturer` (
 -- Table structure for table `loco_notes`
 --
 
+DROP TABLE IF EXISTS `loco_notes`;
 CREATE TABLE IF NOT EXISTS `loco_notes` (
   `note_id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_id` int(11) NOT NULL,
@@ -1354,6 +1610,7 @@ CREATE TABLE IF NOT EXISTS `loco_notes` (
 -- Table structure for table `loco_org_link`
 --
 
+DROP TABLE IF EXISTS `loco_org_link`;
 CREATE TABLE IF NOT EXISTS `loco_org_link` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_id` int(11) NOT NULL,
@@ -1374,6 +1631,7 @@ CREATE TABLE IF NOT EXISTS `loco_org_link` (
 -- Table structure for table `loco_org_link_type`
 --
 
+DROP TABLE IF EXISTS `loco_org_link_type`;
 CREATE TABLE IF NOT EXISTS `loco_org_link_type` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(128) NOT NULL,
@@ -1386,6 +1644,7 @@ CREATE TABLE IF NOT EXISTS `loco_org_link_type` (
 -- Table structure for table `loco_status`
 --
 
+DROP TABLE IF EXISTS `loco_status`;
 CREATE TABLE IF NOT EXISTS `loco_status` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(256) NOT NULL,
@@ -1398,6 +1657,7 @@ CREATE TABLE IF NOT EXISTS `loco_status` (
 -- Table structure for table `loco_type`
 --
 
+DROP TABLE IF EXISTS `loco_type`;
 CREATE TABLE IF NOT EXISTS `loco_type` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(256) NOT NULL,
@@ -1412,6 +1672,7 @@ CREATE TABLE IF NOT EXISTS `loco_type` (
 -- Table structure for table `loco_unit`
 --
 
+DROP TABLE IF EXISTS `loco_unit`;
 CREATE TABLE IF NOT EXISTS `loco_unit` (
   `loco_id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_num` varchar(12) NOT NULL,
@@ -1446,6 +1707,7 @@ CREATE TABLE IF NOT EXISTS `loco_unit` (
 -- Table structure for table `loco_unit_corrections`
 --
 
+DROP TABLE IF EXISTS `loco_unit_corrections`;
 CREATE TABLE IF NOT EXISTS `loco_unit_corrections` (
   `correction_id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_id` int(11) DEFAULT NULL,
@@ -1460,7 +1722,7 @@ CREATE TABLE IF NOT EXISTS `loco_unit_corrections` (
   KEY `loco_id` (`loco_id`),
   KEY `user_id` (`user_id`),
   KEY `class_id` (`class_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=90 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=96 ;
 
 -- --------------------------------------------------------
 
@@ -1468,6 +1730,7 @@ CREATE TABLE IF NOT EXISTS `loco_unit_corrections` (
 -- Table structure for table `loco_unit_date`
 --
 
+DROP TABLE IF EXISTS `loco_unit_date`;
 CREATE TABLE IF NOT EXISTS `loco_unit_date` (
   `date_id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_unit_id` int(11) NOT NULL,
@@ -1490,6 +1753,7 @@ CREATE TABLE IF NOT EXISTS `loco_unit_date` (
 -- Table structure for table `loco_unit_livery`
 --
 
+DROP TABLE IF EXISTS `loco_unit_livery`;
 CREATE TABLE IF NOT EXISTS `loco_unit_livery` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `provider` enum('flickr') NOT NULL,
@@ -1502,7 +1766,7 @@ CREATE TABLE IF NOT EXISTS `loco_unit_livery` (
   KEY `provider` (`provider`,`photo_id`,`loco_id`,`livery_id`),
   KEY `added` (`added`),
   KEY `ignored` (`ignored`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=7021 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=7041 ;
 
 -- --------------------------------------------------------
 
@@ -1510,6 +1774,7 @@ CREATE TABLE IF NOT EXISTS `loco_unit_livery` (
 -- Table structure for table `loco_unit_source`
 --
 
+DROP TABLE IF EXISTS `loco_unit_source`;
 CREATE TABLE IF NOT EXISTS `loco_unit_source` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_id` int(11) NOT NULL,
@@ -1525,6 +1790,7 @@ CREATE TABLE IF NOT EXISTS `loco_unit_source` (
 -- Table structure for table `log_api`
 --
 
+DROP TABLE IF EXISTS `log_api`;
 CREATE TABLE IF NOT EXISTS `log_api` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `date` datetime NOT NULL,
@@ -1543,6 +1809,7 @@ CREATE TABLE IF NOT EXISTS `log_api` (
 -- Table structure for table `log_downloads`
 --
 
+DROP TABLE IF EXISTS `log_downloads`;
 CREATE TABLE IF NOT EXISTS `log_downloads` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `download_id` int(11) NOT NULL,
@@ -1552,7 +1819,7 @@ CREATE TABLE IF NOT EXISTS `log_downloads` (
   `username` varchar(128) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `download_id` (`download_id`,`date`,`ip`,`user_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=0 AUTO_INCREMENT=33047 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=0 AUTO_INCREMENT=35926 ;
 
 -- --------------------------------------------------------
 
@@ -1560,6 +1827,7 @@ CREATE TABLE IF NOT EXISTS `log_downloads` (
 -- Table structure for table `log_errors`
 --
 
+DROP TABLE IF EXISTS `log_errors`;
 CREATE TABLE IF NOT EXISTS `log_errors` (
   `error_id` int(11) NOT NULL AUTO_INCREMENT,
   `error_text` mediumtext NOT NULL,
@@ -1570,7 +1838,7 @@ CREATE TABLE IF NOT EXISTS `log_errors` (
   `error_acknowledged` tinyint(1) NOT NULL DEFAULT '0',
   `trace` mediumtext NOT NULL,
   PRIMARY KEY (`error_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=359344 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=368181 ;
 
 -- --------------------------------------------------------
 
@@ -1578,6 +1846,7 @@ CREATE TABLE IF NOT EXISTS `log_errors` (
 -- Table structure for table `log_general`
 --
 
+DROP TABLE IF EXISTS `log_general`;
 CREATE TABLE IF NOT EXISTS `log_general` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `module` varchar(32) NOT NULL,
@@ -1590,7 +1859,7 @@ CREATE TABLE IF NOT EXISTS `log_general` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`,`timestamp`),
   KEY `key` (`key`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=118028 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=118776 ;
 
 -- --------------------------------------------------------
 
@@ -1598,6 +1867,7 @@ CREATE TABLE IF NOT EXISTS `log_general` (
 -- Table structure for table `log_herrings`
 --
 
+DROP TABLE IF EXISTS `log_herrings`;
 CREATE TABLE IF NOT EXISTS `log_herrings` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
@@ -1605,7 +1875,7 @@ CREATE TABLE IF NOT EXISTS `log_herrings` (
   `post_id` int(11) NOT NULL,
   `poster_id` int(11) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=3541 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=3567 ;
 
 -- --------------------------------------------------------
 
@@ -1613,6 +1883,7 @@ CREATE TABLE IF NOT EXISTS `log_herrings` (
 -- Table structure for table `log_locos`
 --
 
+DROP TABLE IF EXISTS `log_locos`;
 CREATE TABLE IF NOT EXISTS `log_locos` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
@@ -1632,6 +1903,7 @@ CREATE TABLE IF NOT EXISTS `log_locos` (
 -- Table structure for table `log_logins`
 --
 
+DROP TABLE IF EXISTS `log_logins`;
 CREATE TABLE IF NOT EXISTS `log_logins` (
   `login_id` int(11) NOT NULL AUTO_INCREMENT,
   `login_time` int(11) NOT NULL,
@@ -1643,7 +1915,7 @@ CREATE TABLE IF NOT EXISTS `log_logins` (
   PRIMARY KEY (`login_id`),
   KEY `user_id` (`user_id`),
   KEY `login_time` (`login_time`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=1586844 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=1605307 ;
 
 -- --------------------------------------------------------
 
@@ -1651,6 +1923,7 @@ CREATE TABLE IF NOT EXISTS `log_logins` (
 -- Table structure for table `log_pageactivity`
 --
 
+DROP TABLE IF EXISTS `log_pageactivity`;
 CREATE TABLE IF NOT EXISTS `log_pageactivity` (
   `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `url` varchar(2048) NOT NULL,
@@ -1667,6 +1940,7 @@ CREATE TABLE IF NOT EXISTS `log_pageactivity` (
 -- Table structure for table `log_staff`
 --
 
+DROP TABLE IF EXISTS `log_staff`;
 CREATE TABLE IF NOT EXISTS `log_staff` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `key` varchar(32) NOT NULL,
@@ -1680,7 +1954,7 @@ CREATE TABLE IF NOT EXISTS `log_staff` (
   KEY `timestamp` (`timestamp`),
   KEY `title` (`title`),
   KEY `key` (`key`,`key_val`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=6648 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=6889 ;
 
 -- --------------------------------------------------------
 
@@ -1688,6 +1962,7 @@ CREATE TABLE IF NOT EXISTS `log_staff` (
 -- Table structure for table `log_useractivity`
 --
 
+DROP TABLE IF EXISTS `log_useractivity`;
 CREATE TABLE IF NOT EXISTS `log_useractivity` (
   `log_id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
@@ -1700,7 +1975,7 @@ CREATE TABLE IF NOT EXISTS `log_useractivity` (
   KEY `user_id` (`user_id`),
   KEY `ip` (`ip`),
   KEY `module_id` (`module_id`,`date`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=933178 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=1047769 ;
 
 -- --------------------------------------------------------
 
@@ -1708,6 +1983,7 @@ CREATE TABLE IF NOT EXISTS `log_useractivity` (
 -- Table structure for table `messages`
 --
 
+DROP TABLE IF EXISTS `messages`;
 CREATE TABLE IF NOT EXISTS `messages` (
   `message_id` int(10) NOT NULL AUTO_INCREMENT,
   `message_active` tinyint(1) NOT NULL DEFAULT '1',
@@ -1732,6 +2008,7 @@ CREATE TABLE IF NOT EXISTS `messages` (
 -- Table structure for table `messages_viewed`
 --
 
+DROP TABLE IF EXISTS `messages_viewed`;
 CREATE TABLE IF NOT EXISTS `messages_viewed` (
   `row_id` int(11) NOT NULL AUTO_INCREMENT,
   `message_id` int(10) NOT NULL,
@@ -1739,7 +2016,7 @@ CREATE TABLE IF NOT EXISTS `messages_viewed` (
   PRIMARY KEY (`row_id`),
   KEY `message_id` (`message_id`),
   KEY `user_id` (`user_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=1930 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=1931 ;
 
 -- --------------------------------------------------------
 
@@ -1747,6 +2024,7 @@ CREATE TABLE IF NOT EXISTS `messages_viewed` (
 -- Table structure for table `newsletter`
 --
 
+DROP TABLE IF EXISTS `newsletter`;
 CREATE TABLE IF NOT EXISTS `newsletter` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `subject` text NOT NULL,
@@ -1765,8 +2043,8 @@ CREATE TABLE IF NOT EXISTS `newsletter` (
 -- Table structure for table `newsletter_templates`
 --
 
+DROP TABLE IF EXISTS `newsletter_templates`;
 CREATE TABLE IF NOT EXISTS `newsletter_templates` (
-
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` text NOT NULL,
   `html` text NOT NULL,
@@ -1780,6 +2058,7 @@ CREATE TABLE IF NOT EXISTS `newsletter_templates` (
 -- Table structure for table `news_feed`
 --
 
+DROP TABLE IF EXISTS `news_feed`;
 CREATE TABLE IF NOT EXISTS `news_feed` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
@@ -1787,7 +2066,7 @@ CREATE TABLE IF NOT EXISTS `news_feed` (
   `keywords` text NOT NULL,
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=14 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=15 ;
 
 -- --------------------------------------------------------
 
@@ -1795,6 +2074,7 @@ CREATE TABLE IF NOT EXISTS `news_feed` (
 -- Table structure for table `notifications`
 --
 
+DROP TABLE IF EXISTS `notifications`;
 CREATE TABLE IF NOT EXISTS `notifications` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `author` int(11) NOT NULL,
@@ -1808,7 +2088,7 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   `meta` longtext NOT NULL,
   PRIMARY KEY (`id`),
   KEY `recipient` (`author`,`transport`,`status`,`date_queued`,`date_sent`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='Notifications queue, to prevent page blocking when sending emails etc' AUTO_INCREMENT=389 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='Notifications queue, to prevent page blocking when sending emails etc' AUTO_INCREMENT=475 ;
 
 -- --------------------------------------------------------
 
@@ -1816,6 +2096,7 @@ CREATE TABLE IF NOT EXISTS `notifications` (
 -- Table structure for table `notifications_recipients`
 --
 
+DROP TABLE IF EXISTS `notifications_recipients`;
 CREATE TABLE IF NOT EXISTS `notifications_recipients` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `notification_id` int(11) NOT NULL,
@@ -1826,7 +2107,7 @@ CREATE TABLE IF NOT EXISTS `notifications_recipients` (
   `status` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `notification_id` (`notification_id`,`user_id`,`date_sent`,`status`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=521 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=664 ;
 
 -- --------------------------------------------------------
 
@@ -1834,6 +2115,7 @@ CREATE TABLE IF NOT EXISTS `notifications_recipients` (
 -- Table structure for table `notification_prefs`
 --
 
+DROP TABLE IF EXISTS `notification_prefs`;
 CREATE TABLE IF NOT EXISTS `notification_prefs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL COMMENT 'User ID that this preference belongs to',
@@ -1855,6 +2137,7 @@ CREATE TABLE IF NOT EXISTS `notification_prefs` (
 -- Table structure for table `notification_rules`
 --
 
+DROP TABLE IF EXISTS `notification_rules`;
 CREATE TABLE IF NOT EXISTS `notification_rules` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `namespace` varchar(256) NOT NULL,
@@ -1871,6 +2154,7 @@ CREATE TABLE IF NOT EXISTS `notification_rules` (
 -- Table structure for table `notification_sent`
 --
 
+DROP TABLE IF EXISTS `notification_sent`;
 CREATE TABLE IF NOT EXISTS `notification_sent` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `timestamp` datetime NOT NULL,
@@ -1889,6 +2173,7 @@ CREATE TABLE IF NOT EXISTS `notification_sent` (
 -- Table structure for table `notification_templates`
 --
 
+DROP TABLE IF EXISTS `notification_templates`;
 CREATE TABLE IF NOT EXISTS `notification_templates` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `namespace` varchar(256) NOT NULL,
@@ -1903,6 +2188,7 @@ CREATE TABLE IF NOT EXISTS `notification_templates` (
 -- Table structure for table `nuke_alliance`
 --
 
+DROP TABLE IF EXISTS `nuke_alliance`;
 CREATE TABLE IF NOT EXISTS `nuke_alliance` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(255) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
@@ -1921,6 +2207,7 @@ CREATE TABLE IF NOT EXISTS `nuke_alliance` (
 -- Table structure for table `nuke_authors`
 --
 
+DROP TABLE IF EXISTS `nuke_authors`;
 CREATE TABLE IF NOT EXISTS `nuke_authors` (
   `aid` varchar(25) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `name` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
@@ -1955,6 +2242,7 @@ CREATE TABLE IF NOT EXISTS `nuke_authors` (
 -- Table structure for table `nuke_bbarcade`
 --
 
+DROP TABLE IF EXISTS `nuke_bbarcade`;
 CREATE TABLE IF NOT EXISTS `nuke_bbarcade` (
   `arcade_name` varchar(255) NOT NULL DEFAULT '',
   `arcade_value` varchar(255) NOT NULL DEFAULT '',
@@ -1967,6 +2255,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbarcade` (
 -- Table structure for table `nuke_bbarcade_categories`
 --
 
+DROP TABLE IF EXISTS `nuke_bbarcade_categories`;
 CREATE TABLE IF NOT EXISTS `nuke_bbarcade_categories` (
   `arcade_catid` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `arcade_cattitle` varchar(100) NOT NULL DEFAULT '',
@@ -1982,6 +2271,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbarcade_categories` (
 -- Table structure for table `nuke_bbarcade_comments`
 --
 
+DROP TABLE IF EXISTS `nuke_bbarcade_comments`;
 CREATE TABLE IF NOT EXISTS `nuke_bbarcade_comments` (
   `game_id` mediumint(8) NOT NULL DEFAULT '0',
   `comments_value` varchar(255) NOT NULL DEFAULT ''
@@ -1993,6 +2283,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbarcade_comments` (
 -- Table structure for table `nuke_bbarcade_fav`
 --
 
+DROP TABLE IF EXISTS `nuke_bbarcade_fav`;
 CREATE TABLE IF NOT EXISTS `nuke_bbarcade_fav` (
   `order` mediumint(8) NOT NULL DEFAULT '0',
   `user_id` mediumint(8) NOT NULL DEFAULT '0',
@@ -2005,6 +2296,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbarcade_fav` (
 -- Table structure for table `nuke_bbauth_access`
 --
 
+DROP TABLE IF EXISTS `nuke_bbauth_access`;
 CREATE TABLE IF NOT EXISTS `nuke_bbauth_access` (
   `group_id` mediumint(8) NOT NULL DEFAULT '0',
   `forum_id` smallint(5) unsigned NOT NULL DEFAULT '0',
@@ -2030,6 +2322,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbauth_access` (
 -- Table structure for table `nuke_bbauth_arcade_access`
 --
 
+DROP TABLE IF EXISTS `nuke_bbauth_arcade_access`;
 CREATE TABLE IF NOT EXISTS `nuke_bbauth_arcade_access` (
   `group_id` mediumint(8) NOT NULL DEFAULT '0',
   `arcade_catid` mediumint(8) unsigned NOT NULL DEFAULT '0',
@@ -2043,6 +2336,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbauth_arcade_access` (
 -- Table structure for table `nuke_bbbanlist`
 --
 
+DROP TABLE IF EXISTS `nuke_bbbanlist`;
 CREATE TABLE IF NOT EXISTS `nuke_bbbanlist` (
   `ban_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `ban_userid` mediumint(8) NOT NULL DEFAULT '0',
@@ -2058,6 +2352,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbbanlist` (
 -- Table structure for table `nuke_bbcategories`
 --
 
+DROP TABLE IF EXISTS `nuke_bbcategories`;
 CREATE TABLE IF NOT EXISTS `nuke_bbcategories` (
   `cat_id` int(8) NOT NULL AUTO_INCREMENT,
   `cat_title` varchar(100) DEFAULT NULL,
@@ -2072,6 +2367,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbcategories` (
 -- Table structure for table `nuke_bbconfig`
 --
 
+DROP TABLE IF EXISTS `nuke_bbconfig`;
 CREATE TABLE IF NOT EXISTS `nuke_bbconfig` (
   `config_name` varchar(255) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `config_value` varchar(255) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
@@ -2084,6 +2380,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbconfig` (
 -- Table structure for table `nuke_bbconfirm`
 --
 
+DROP TABLE IF EXISTS `nuke_bbconfirm`;
 CREATE TABLE IF NOT EXISTS `nuke_bbconfirm` (
   `confirm_id` char(32) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `session_id` char(32) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
@@ -2097,6 +2394,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbconfirm` (
 -- Table structure for table `nuke_bbdisallow`
 --
 
+DROP TABLE IF EXISTS `nuke_bbdisallow`;
 CREATE TABLE IF NOT EXISTS `nuke_bbdisallow` (
   `disallow_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `disallow_username` varchar(25) DEFAULT NULL,
@@ -2109,6 +2407,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbdisallow` (
 -- Table structure for table `nuke_bbforums`
 --
 
+DROP TABLE IF EXISTS `nuke_bbforums`;
 CREATE TABLE IF NOT EXISTS `nuke_bbforums` (
   `forum_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `cat_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
@@ -2144,6 +2443,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbforums` (
 -- Table structure for table `nuke_bbforum_prune`
 --
 
+DROP TABLE IF EXISTS `nuke_bbforum_prune`;
 CREATE TABLE IF NOT EXISTS `nuke_bbforum_prune` (
   `prune_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `forum_id` smallint(5) unsigned NOT NULL DEFAULT '0',
@@ -2159,6 +2459,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbforum_prune` (
 -- Table structure for table `nuke_bbgamehash`
 --
 
+DROP TABLE IF EXISTS `nuke_bbgamehash`;
 CREATE TABLE IF NOT EXISTS `nuke_bbgamehash` (
   `gamehash_id` char(32) NOT NULL DEFAULT '',
   `game_id` mediumint(8) NOT NULL DEFAULT '0',
@@ -2172,6 +2473,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbgamehash` (
 -- Table structure for table `nuke_bbgames`
 --
 
+DROP TABLE IF EXISTS `nuke_bbgames`;
 CREATE TABLE IF NOT EXISTS `nuke_bbgames` (
   `game_id` mediumint(8) NOT NULL AUTO_INCREMENT,
   `game_pic` varchar(50) NOT NULL DEFAULT '',
@@ -2197,6 +2499,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbgames` (
 -- Table structure for table `nuke_bbgroups`
 --
 
+DROP TABLE IF EXISTS `nuke_bbgroups`;
 CREATE TABLE IF NOT EXISTS `nuke_bbgroups` (
   `group_id` mediumint(8) NOT NULL AUTO_INCREMENT,
   `group_type` tinyint(4) NOT NULL DEFAULT '1',
@@ -2217,6 +2520,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbgroups` (
 -- Table structure for table `nuke_bbhackgame`
 --
 
+DROP TABLE IF EXISTS `nuke_bbhackgame`;
 CREATE TABLE IF NOT EXISTS `nuke_bbhackgame` (
   `user_id` mediumint(8) NOT NULL DEFAULT '0',
   `game_id` mediumint(8) NOT NULL DEFAULT '0',
@@ -2229,6 +2533,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbhackgame` (
 -- Table structure for table `nuke_bbposts`
 --
 
+DROP TABLE IF EXISTS `nuke_bbposts`;
 CREATE TABLE IF NOT EXISTS `nuke_bbposts` (
   `post_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `topic_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
@@ -2256,7 +2561,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbposts` (
   KEY `poster_id` (`poster_id`),
   KEY `post_time` (`post_time`),
   KEY `pinned` (`pinned`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=1981059 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=1983209 ;
 
 -- --------------------------------------------------------
 
@@ -2264,6 +2569,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbposts` (
 -- Table structure for table `nuke_bbposts_edit`
 --
 
+DROP TABLE IF EXISTS `nuke_bbposts_edit`;
 CREATE TABLE IF NOT EXISTS `nuke_bbposts_edit` (
   `edit_id` int(11) NOT NULL AUTO_INCREMENT,
   `post_id` int(32) NOT NULL DEFAULT '0',
@@ -2278,7 +2584,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbposts_edit` (
   KEY `thread_id` (`thread_id`),
   KEY `poster_id` (`poster_id`),
   KEY `editor_id` (`editor_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=62726 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=63196 ;
 
 -- --------------------------------------------------------
 
@@ -2286,6 +2592,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbposts_edit` (
 -- Table structure for table `nuke_bbposts_reputation`
 --
 
+DROP TABLE IF EXISTS `nuke_bbposts_reputation`;
 CREATE TABLE IF NOT EXISTS `nuke_bbposts_reputation` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `post_id` int(11) NOT NULL,
@@ -2295,7 +2602,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbposts_reputation` (
   PRIMARY KEY (`id`),
   KEY `post_id` (`post_id`,`type`,`date`),
   KEY `user_id` (`user_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=6966 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=7676 ;
 
 -- --------------------------------------------------------
 
@@ -2303,6 +2610,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbposts_reputation` (
 -- Table structure for table `nuke_bbposts_text`
 --
 
+DROP TABLE IF EXISTS `nuke_bbposts_text`;
 CREATE TABLE IF NOT EXISTS `nuke_bbposts_text` (
   `post_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `bbcode_uid` varchar(10) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
@@ -2320,6 +2628,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbposts_text` (
 -- Table structure for table `nuke_bbprivmsgs`
 --
 
+DROP TABLE IF EXISTS `nuke_bbprivmsgs`;
 CREATE TABLE IF NOT EXISTS `nuke_bbprivmsgs` (
   `privmsgs_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `privmsgs_type` tinyint(4) NOT NULL DEFAULT '0',
@@ -2338,7 +2647,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbprivmsgs` (
   PRIMARY KEY (`privmsgs_id`),
   KEY `idx_from` (`privmsgs_from_userid`),
   KEY `idx_to` (`privmsgs_to_userid`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=331335 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=331495 ;
 
 -- --------------------------------------------------------
 
@@ -2346,6 +2655,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbprivmsgs` (
 -- Table structure for table `nuke_bbprivmsgs_archive`
 --
 
+DROP TABLE IF EXISTS `nuke_bbprivmsgs_archive`;
 CREATE TABLE IF NOT EXISTS `nuke_bbprivmsgs_archive` (
   `privmsgs_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `privmsgs_type` tinyint(4) NOT NULL DEFAULT '0',
@@ -2369,6 +2679,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbprivmsgs_archive` (
 -- Table structure for table `nuke_bbprivmsgs_text`
 --
 
+DROP TABLE IF EXISTS `nuke_bbprivmsgs_text`;
 CREATE TABLE IF NOT EXISTS `nuke_bbprivmsgs_text` (
   `privmsgs_text_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `privmsgs_bbcode_uid` varchar(10) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
@@ -2382,6 +2693,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbprivmsgs_text` (
 -- Table structure for table `nuke_bbranks`
 --
 
+DROP TABLE IF EXISTS `nuke_bbranks`;
 CREATE TABLE IF NOT EXISTS `nuke_bbranks` (
   `rank_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `rank_title` varchar(50) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
@@ -2397,6 +2709,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbranks` (
 -- Table structure for table `nuke_bbscores`
 --
 
+DROP TABLE IF EXISTS `nuke_bbscores`;
 CREATE TABLE IF NOT EXISTS `nuke_bbscores` (
   `game_id` mediumint(8) NOT NULL DEFAULT '0',
   `user_id` mediumint(8) NOT NULL DEFAULT '0',
@@ -2414,6 +2727,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbscores` (
 -- Table structure for table `nuke_bbsearch_pending`
 --
 
+DROP TABLE IF EXISTS `nuke_bbsearch_pending`;
 CREATE TABLE IF NOT EXISTS `nuke_bbsearch_pending` (
   `post_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `mode` varchar(20) COLLATE utf8_unicode_ci DEFAULT 'single',
@@ -2429,6 +2743,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbsearch_pending` (
 -- Table structure for table `nuke_bbsearch_results`
 --
 
+DROP TABLE IF EXISTS `nuke_bbsearch_results`;
 CREATE TABLE IF NOT EXISTS `nuke_bbsearch_results` (
   `search_id` int(11) unsigned NOT NULL DEFAULT '0',
   `session_id` varchar(32) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
@@ -2445,6 +2760,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbsearch_results` (
 -- Table structure for table `nuke_bbsearch_wordlist`
 --
 
+DROP TABLE IF EXISTS `nuke_bbsearch_wordlist`;
 CREATE TABLE IF NOT EXISTS `nuke_bbsearch_wordlist` (
   `word_text` varchar(50) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '',
   `word_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
@@ -2459,6 +2775,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbsearch_wordlist` (
 -- Table structure for table `nuke_bbsearch_wordmatch`
 --
 
+DROP TABLE IF EXISTS `nuke_bbsearch_wordmatch`;
 CREATE TABLE IF NOT EXISTS `nuke_bbsearch_wordmatch` (
   `post_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `word_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
@@ -2473,6 +2790,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbsearch_wordmatch` (
 -- Table structure for table `nuke_bbsessions`
 --
 
+DROP TABLE IF EXISTS `nuke_bbsessions`;
 CREATE TABLE IF NOT EXISTS `nuke_bbsessions` (
   `session_id` char(32) NOT NULL DEFAULT '',
   `session_user_id` mediumint(8) NOT NULL DEFAULT '0',
@@ -2492,6 +2810,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbsessions` (
 -- Table structure for table `nuke_bbsmilies`
 --
 
+DROP TABLE IF EXISTS `nuke_bbsmilies`;
 CREATE TABLE IF NOT EXISTS `nuke_bbsmilies` (
   `smilies_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `code` varchar(50) DEFAULT NULL,
@@ -2506,6 +2825,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbsmilies` (
 -- Table structure for table `nuke_bbthemes`
 --
 
+DROP TABLE IF EXISTS `nuke_bbthemes`;
 CREATE TABLE IF NOT EXISTS `nuke_bbthemes` (
   `themes_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `template_name` varchar(30) NOT NULL DEFAULT '',
@@ -2559,6 +2879,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbthemes` (
 -- Table structure for table `nuke_bbthemes_name`
 --
 
+DROP TABLE IF EXISTS `nuke_bbthemes_name`;
 CREATE TABLE IF NOT EXISTS `nuke_bbthemes_name` (
   `themes_id` smallint(5) unsigned NOT NULL DEFAULT '0',
   `tr_color1_name` char(50) DEFAULT NULL,
@@ -2600,6 +2921,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbthemes_name` (
 -- Table structure for table `nuke_bbtopics`
 --
 
+DROP TABLE IF EXISTS `nuke_bbtopics`;
 CREATE TABLE IF NOT EXISTS `nuke_bbtopics` (
   `topic_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `forum_id` smallint(8) unsigned NOT NULL DEFAULT '0',
@@ -2623,7 +2945,24 @@ CREATE TABLE IF NOT EXISTS `nuke_bbtopics` (
   KEY `topic_type` (`topic_type`),
   KEY `topic_poster` (`topic_poster`),
   KEY `url_slug` (`url_slug`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=11381948 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=11382124 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `nuke_bbtopics_view`
+--
+
+DROP TABLE IF EXISTS `nuke_bbtopics_view`;
+CREATE TABLE IF NOT EXISTS `nuke_bbtopics_view` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `topic_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `viewed` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `topic_id` (`topic_id`,`user_id`),
+  KEY `viewed` (`viewed`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=131792 ;
 
 -- --------------------------------------------------------
 
@@ -2631,6 +2970,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbtopics` (
 -- Table structure for table `nuke_bbtopics_watch`
 --
 
+DROP TABLE IF EXISTS `nuke_bbtopics_watch`;
 CREATE TABLE IF NOT EXISTS `nuke_bbtopics_watch` (
   `topic_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `user_id` mediumint(8) NOT NULL DEFAULT '0',
@@ -2646,6 +2986,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbtopics_watch` (
 -- Table structure for table `nuke_bbuser_group`
 --
 
+DROP TABLE IF EXISTS `nuke_bbuser_group`;
 CREATE TABLE IF NOT EXISTS `nuke_bbuser_group` (
   `group_id` mediumint(8) NOT NULL DEFAULT '0',
   `user_id` mediumint(8) NOT NULL DEFAULT '0',
@@ -2664,6 +3005,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbuser_group` (
 -- Table structure for table `nuke_bbvote_desc`
 --
 
+DROP TABLE IF EXISTS `nuke_bbvote_desc`;
 CREATE TABLE IF NOT EXISTS `nuke_bbvote_desc` (
   `vote_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `topic_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
@@ -2680,6 +3022,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbvote_desc` (
 -- Table structure for table `nuke_bbvote_results`
 --
 
+DROP TABLE IF EXISTS `nuke_bbvote_results`;
 CREATE TABLE IF NOT EXISTS `nuke_bbvote_results` (
   `vote_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `vote_option_id` tinyint(4) unsigned NOT NULL DEFAULT '0',
@@ -2695,6 +3038,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbvote_results` (
 -- Table structure for table `nuke_bbvote_voters`
 --
 
+DROP TABLE IF EXISTS `nuke_bbvote_voters`;
 CREATE TABLE IF NOT EXISTS `nuke_bbvote_voters` (
   `vote_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `vote_user_id` mediumint(8) NOT NULL DEFAULT '0',
@@ -2710,6 +3054,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbvote_voters` (
 -- Table structure for table `nuke_bbwords`
 --
 
+DROP TABLE IF EXISTS `nuke_bbwords`;
 CREATE TABLE IF NOT EXISTS `nuke_bbwords` (
   `word_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `word` char(100) NOT NULL DEFAULT '',
@@ -2723,6 +3068,7 @@ CREATE TABLE IF NOT EXISTS `nuke_bbwords` (
 -- Table structure for table `nuke_blocks`
 --
 
+DROP TABLE IF EXISTS `nuke_blocks`;
 CREATE TABLE IF NOT EXISTS `nuke_blocks` (
   `bid` int(10) NOT NULL AUTO_INCREMENT,
   `bkey` varchar(15) NOT NULL DEFAULT '',
@@ -2748,6 +3094,7 @@ CREATE TABLE IF NOT EXISTS `nuke_blocks` (
 -- Table structure for table `nuke_comments`
 --
 
+DROP TABLE IF EXISTS `nuke_comments`;
 CREATE TABLE IF NOT EXISTS `nuke_comments` (
   `tid` int(11) NOT NULL AUTO_INCREMENT,
   `pid` int(11) NOT NULL DEFAULT '0',
@@ -2773,6 +3120,7 @@ CREATE TABLE IF NOT EXISTS `nuke_comments` (
 -- Table structure for table `nuke_config`
 --
 
+DROP TABLE IF EXISTS `nuke_config`;
 CREATE TABLE IF NOT EXISTS `nuke_config` (
   `sitename` varchar(255) NOT NULL DEFAULT '',
   `nukeurl` varchar(255) NOT NULL DEFAULT '',
@@ -2837,6 +3185,7 @@ CREATE TABLE IF NOT EXISTS `nuke_config` (
 -- Table structure for table `nuke_contactbook`
 --
 
+DROP TABLE IF EXISTS `nuke_contactbook`;
 CREATE TABLE IF NOT EXISTS `nuke_contactbook` (
   `uid` int(11) NOT NULL DEFAULT '0',
   `contactid` int(11) NOT NULL AUTO_INCREMENT,
@@ -2864,6 +3213,7 @@ CREATE TABLE IF NOT EXISTS `nuke_contactbook` (
 -- Table structure for table `nuke_counter`
 --
 
+DROP TABLE IF EXISTS `nuke_counter`;
 CREATE TABLE IF NOT EXISTS `nuke_counter` (
   `type` varchar(80) NOT NULL DEFAULT '',
   `var` varchar(80) NOT NULL DEFAULT '',
@@ -2876,6 +3226,7 @@ CREATE TABLE IF NOT EXISTS `nuke_counter` (
 -- Table structure for table `nuke_downloads_categories`
 --
 
+DROP TABLE IF EXISTS `nuke_downloads_categories`;
 CREATE TABLE IF NOT EXISTS `nuke_downloads_categories` (
   `cid` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(50) NOT NULL DEFAULT '',
@@ -2892,6 +3243,7 @@ CREATE TABLE IF NOT EXISTS `nuke_downloads_categories` (
 -- Table structure for table `nuke_downloads_downloads`
 --
 
+DROP TABLE IF EXISTS `nuke_downloads_downloads`;
 CREATE TABLE IF NOT EXISTS `nuke_downloads_downloads` (
   `lid` int(11) NOT NULL AUTO_INCREMENT,
   `cid` int(11) NOT NULL DEFAULT '0',
@@ -2927,6 +3279,7 @@ CREATE TABLE IF NOT EXISTS `nuke_downloads_downloads` (
 -- Table structure for table `nuke_downloads_editorials`
 --
 
+DROP TABLE IF EXISTS `nuke_downloads_editorials`;
 CREATE TABLE IF NOT EXISTS `nuke_downloads_editorials` (
   `downloadid` int(11) NOT NULL DEFAULT '0',
   `adminid` varchar(60) NOT NULL DEFAULT '',
@@ -2943,6 +3296,7 @@ CREATE TABLE IF NOT EXISTS `nuke_downloads_editorials` (
 -- Table structure for table `nuke_downloads_modrequest`
 --
 
+DROP TABLE IF EXISTS `nuke_downloads_modrequest`;
 CREATE TABLE IF NOT EXISTS `nuke_downloads_modrequest` (
   `requestid` int(11) NOT NULL AUTO_INCREMENT,
   `lid` int(11) NOT NULL DEFAULT '0',
@@ -2968,7 +3322,7 @@ CREATE TABLE IF NOT EXISTS `nuke_downloads_modrequest` (
 -- Table structure for table `nuke_downloads_newdownload`
 --
 
-
+DROP TABLE IF EXISTS `nuke_downloads_newdownload`;
 CREATE TABLE IF NOT EXISTS `nuke_downloads_newdownload` (
   `lid` int(11) NOT NULL AUTO_INCREMENT,
   `cid` int(11) NOT NULL DEFAULT '0',
@@ -2996,6 +3350,7 @@ CREATE TABLE IF NOT EXISTS `nuke_downloads_newdownload` (
 -- Table structure for table `nuke_downloads_votedata`
 --
 
+DROP TABLE IF EXISTS `nuke_downloads_votedata`;
 CREATE TABLE IF NOT EXISTS `nuke_downloads_votedata` (
   `ratingdbid` int(11) NOT NULL AUTO_INCREMENT,
   `ratinglid` int(11) NOT NULL DEFAULT '0',
@@ -3014,6 +3369,7 @@ CREATE TABLE IF NOT EXISTS `nuke_downloads_votedata` (
 -- Table structure for table `nuke_encyclopedia`
 --
 
+DROP TABLE IF EXISTS `nuke_encyclopedia`;
 CREATE TABLE IF NOT EXISTS `nuke_encyclopedia` (
   `eid` int(10) NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL DEFAULT '',
@@ -3030,6 +3386,7 @@ CREATE TABLE IF NOT EXISTS `nuke_encyclopedia` (
 -- Table structure for table `nuke_encyclopedia_text`
 --
 
+DROP TABLE IF EXISTS `nuke_encyclopedia_text`;
 CREATE TABLE IF NOT EXISTS `nuke_encyclopedia_text` (
   `tid` int(10) NOT NULL AUTO_INCREMENT,
   `eid` int(10) NOT NULL DEFAULT '0',
@@ -3048,6 +3405,7 @@ CREATE TABLE IF NOT EXISTS `nuke_encyclopedia_text` (
 -- Table structure for table `nuke_ephem`
 --
 
+DROP TABLE IF EXISTS `nuke_ephem`;
 CREATE TABLE IF NOT EXISTS `nuke_ephem` (
   `eid` int(11) NOT NULL AUTO_INCREMENT,
   `did` int(2) NOT NULL DEFAULT '0',
@@ -3065,6 +3423,7 @@ CREATE TABLE IF NOT EXISTS `nuke_ephem` (
 -- Table structure for table `nuke_externalsearch`
 --
 
+DROP TABLE IF EXISTS `nuke_externalsearch`;
 CREATE TABLE IF NOT EXISTS `nuke_externalsearch` (
   `linkid` int(13) NOT NULL AUTO_INCREMENT,
   `rphosted` int(1) NOT NULL DEFAULT '0',
@@ -3081,6 +3440,7 @@ CREATE TABLE IF NOT EXISTS `nuke_externalsearch` (
 -- Table structure for table `nuke_faqAnswer`
 --
 
+DROP TABLE IF EXISTS `nuke_faqAnswer`;
 CREATE TABLE IF NOT EXISTS `nuke_faqAnswer` (
   `id` tinyint(4) NOT NULL AUTO_INCREMENT,
   `id_cat` tinyint(4) NOT NULL DEFAULT '0',
@@ -3098,6 +3458,7 @@ CREATE TABLE IF NOT EXISTS `nuke_faqAnswer` (
 -- Table structure for table `nuke_faqCategories`
 --
 
+DROP TABLE IF EXISTS `nuke_faqCategories`;
 CREATE TABLE IF NOT EXISTS `nuke_faqCategories` (
   `id_cat` tinyint(3) NOT NULL AUTO_INCREMENT,
   `url_slug` varchar(128) COLLATE utf8_unicode_ci NOT NULL,
@@ -3112,6 +3473,7 @@ CREATE TABLE IF NOT EXISTS `nuke_faqCategories` (
 -- Table structure for table `nuke_g2config`
 --
 
+DROP TABLE IF EXISTS `nuke_g2config`;
 CREATE TABLE IF NOT EXISTS `nuke_g2config` (
   `embedUri` varchar(255) DEFAULT NULL,
   `g2Uri` varchar(255) DEFAULT NULL,
@@ -3128,6 +3490,7 @@ CREATE TABLE IF NOT EXISTS `nuke_g2config` (
 -- Table structure for table `nuke_gallery`
 --
 
+DROP TABLE IF EXISTS `nuke_gallery`;
 CREATE TABLE IF NOT EXISTS `nuke_gallery` (
   `album_name` varchar(255) NOT NULL DEFAULT '',
   `album_title` varchar(255) NOT NULL DEFAULT '',
@@ -3144,6 +3507,7 @@ CREATE TABLE IF NOT EXISTS `nuke_gallery` (
 -- Table structure for table `nuke_hallfame_queue`
 --
 
+DROP TABLE IF EXISTS `nuke_hallfame_queue`;
 CREATE TABLE IF NOT EXISTS `nuke_hallfame_queue` (
   `qid` int(11) NOT NULL AUTO_INCREMENT,
   `qdate` varchar(255) NOT NULL DEFAULT '',
@@ -3164,6 +3528,7 @@ CREATE TABLE IF NOT EXISTS `nuke_hallfame_queue` (
 -- Table structure for table `nuke_headlines`
 --
 
+DROP TABLE IF EXISTS `nuke_headlines`;
 CREATE TABLE IF NOT EXISTS `nuke_headlines` (
   `hid` int(11) NOT NULL AUTO_INCREMENT,
   `sitename` varchar(30) NOT NULL DEFAULT '',
@@ -3178,6 +3543,7 @@ CREATE TABLE IF NOT EXISTS `nuke_headlines` (
 -- Table structure for table `nuke_journal`
 --
 
+DROP TABLE IF EXISTS `nuke_journal`;
 CREATE TABLE IF NOT EXISTS `nuke_journal` (
   `jid` int(11) NOT NULL AUTO_INCREMENT,
   `aid` varchar(30) NOT NULL DEFAULT '',
@@ -3200,6 +3566,7 @@ CREATE TABLE IF NOT EXISTS `nuke_journal` (
 -- Table structure for table `nuke_journal_comments`
 --
 
+DROP TABLE IF EXISTS `nuke_journal_comments`;
 CREATE TABLE IF NOT EXISTS `nuke_journal_comments` (
   `cid` int(11) NOT NULL AUTO_INCREMENT,
   `rid` varchar(48) NOT NULL DEFAULT '',
@@ -3217,9 +3584,9 @@ CREATE TABLE IF NOT EXISTS `nuke_journal_comments` (
 
 --
 -- Table structure for table `nuke_journal_stats`
-
 --
 
+DROP TABLE IF EXISTS `nuke_journal_stats`;
 CREATE TABLE IF NOT EXISTS `nuke_journal_stats` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `joid` varchar(48) NOT NULL DEFAULT '',
@@ -3237,6 +3604,7 @@ CREATE TABLE IF NOT EXISTS `nuke_journal_stats` (
 -- Table structure for table `nuke_links_categories`
 --
 
+DROP TABLE IF EXISTS `nuke_links_categories`;
 CREATE TABLE IF NOT EXISTS `nuke_links_categories` (
   `cid` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(50) CHARACTER SET latin1 NOT NULL DEFAULT '',
@@ -3252,6 +3620,7 @@ CREATE TABLE IF NOT EXISTS `nuke_links_categories` (
 -- Table structure for table `nuke_links_editorials`
 --
 
+DROP TABLE IF EXISTS `nuke_links_editorials`;
 CREATE TABLE IF NOT EXISTS `nuke_links_editorials` (
   `linkid` int(11) NOT NULL DEFAULT '0',
   `adminid` varchar(60) CHARACTER SET latin1 NOT NULL DEFAULT '',
@@ -3268,6 +3637,7 @@ CREATE TABLE IF NOT EXISTS `nuke_links_editorials` (
 -- Table structure for table `nuke_links_links`
 --
 
+DROP TABLE IF EXISTS `nuke_links_links`;
 CREATE TABLE IF NOT EXISTS `nuke_links_links` (
   `lid` int(11) NOT NULL AUTO_INCREMENT,
   `cid` int(11) NOT NULL DEFAULT '0',
@@ -3300,6 +3670,7 @@ CREATE TABLE IF NOT EXISTS `nuke_links_links` (
 -- Table structure for table `nuke_links_modrequest`
 --
 
+DROP TABLE IF EXISTS `nuke_links_modrequest`;
 CREATE TABLE IF NOT EXISTS `nuke_links_modrequest` (
   `requestid` int(11) NOT NULL AUTO_INCREMENT,
   `lid` int(11) NOT NULL DEFAULT '0',
@@ -3321,6 +3692,7 @@ CREATE TABLE IF NOT EXISTS `nuke_links_modrequest` (
 -- Table structure for table `nuke_links_newlink`
 --
 
+DROP TABLE IF EXISTS `nuke_links_newlink`;
 CREATE TABLE IF NOT EXISTS `nuke_links_newlink` (
   `lid` int(11) NOT NULL AUTO_INCREMENT,
   `cid` int(11) NOT NULL DEFAULT '0',
@@ -3344,6 +3716,7 @@ CREATE TABLE IF NOT EXISTS `nuke_links_newlink` (
 -- Table structure for table `nuke_links_settings`
 --
 
+DROP TABLE IF EXISTS `nuke_links_settings`;
 CREATE TABLE IF NOT EXISTS `nuke_links_settings` (
   `num_links` smallint(2) NOT NULL DEFAULT '0',
   `scroll` tinyint(1) NOT NULL DEFAULT '0',
@@ -3359,6 +3732,7 @@ CREATE TABLE IF NOT EXISTS `nuke_links_settings` (
 -- Table structure for table `nuke_links_votedata`
 --
 
+DROP TABLE IF EXISTS `nuke_links_votedata`;
 CREATE TABLE IF NOT EXISTS `nuke_links_votedata` (
   `ratingdbid` int(11) NOT NULL AUTO_INCREMENT,
   `ratinglid` int(11) NOT NULL DEFAULT '0',
@@ -3377,6 +3751,7 @@ CREATE TABLE IF NOT EXISTS `nuke_links_votedata` (
 -- Table structure for table `nuke_main`
 --
 
+DROP TABLE IF EXISTS `nuke_main`;
 CREATE TABLE IF NOT EXISTS `nuke_main` (
   `main_module` varchar(255) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
@@ -3387,6 +3762,7 @@ CREATE TABLE IF NOT EXISTS `nuke_main` (
 -- Table structure for table `nuke_message`
 --
 
+DROP TABLE IF EXISTS `nuke_message`;
 CREATE TABLE IF NOT EXISTS `nuke_message` (
   `mid` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(100) NOT NULL DEFAULT '',
@@ -3406,6 +3782,7 @@ CREATE TABLE IF NOT EXISTS `nuke_message` (
 -- Table structure for table `nuke_modules`
 --
 
+DROP TABLE IF EXISTS `nuke_modules`;
 CREATE TABLE IF NOT EXISTS `nuke_modules` (
   `mid` int(10) NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL DEFAULT '',
@@ -3427,6 +3804,7 @@ CREATE TABLE IF NOT EXISTS `nuke_modules` (
 -- Table structure for table `nuke_modules_categories`
 --
 
+DROP TABLE IF EXISTS `nuke_modules_categories`;
 CREATE TABLE IF NOT EXISTS `nuke_modules_categories` (
   `mcid` int(11) NOT NULL AUTO_INCREMENT,
   `mcname` varchar(60) NOT NULL DEFAULT '',
@@ -3442,6 +3820,7 @@ CREATE TABLE IF NOT EXISTS `nuke_modules_categories` (
 -- Table structure for table `nuke_msanalysis_admin`
 --
 
+DROP TABLE IF EXISTS `nuke_msanalysis_admin`;
 CREATE TABLE IF NOT EXISTS `nuke_msanalysis_admin` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `max_items` int(10) NOT NULL DEFAULT '10',
@@ -3484,6 +3863,7 @@ CREATE TABLE IF NOT EXISTS `nuke_msanalysis_admin` (
 -- Table structure for table `nuke_msanalysis_browsers`
 --
 
+DROP TABLE IF EXISTS `nuke_msanalysis_browsers`;
 CREATE TABLE IF NOT EXISTS `nuke_msanalysis_browsers` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `ibrowser` varchar(255) NOT NULL DEFAULT '',
@@ -3503,6 +3883,7 @@ CREATE TABLE IF NOT EXISTS `nuke_msanalysis_browsers` (
 -- Table structure for table `nuke_msanalysis_countries`
 --
 
+DROP TABLE IF EXISTS `nuke_msanalysis_countries`;
 CREATE TABLE IF NOT EXISTS `nuke_msanalysis_countries` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `domain` char(20) NOT NULL DEFAULT '',
@@ -3524,6 +3905,7 @@ CREATE TABLE IF NOT EXISTS `nuke_msanalysis_countries` (
 -- Table structure for table `nuke_msanalysis_domains`
 --
 
+DROP TABLE IF EXISTS `nuke_msanalysis_domains`;
 CREATE TABLE IF NOT EXISTS `nuke_msanalysis_domains` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `domain` char(20) NOT NULL DEFAULT '',
@@ -3540,6 +3922,7 @@ CREATE TABLE IF NOT EXISTS `nuke_msanalysis_domains` (
 -- Table structure for table `nuke_msanalysis_modules`
 --
 
+DROP TABLE IF EXISTS `nuke_msanalysis_modules`;
 CREATE TABLE IF NOT EXISTS `nuke_msanalysis_modules` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `modulename` varchar(50) NOT NULL DEFAULT '',
@@ -3559,6 +3942,7 @@ CREATE TABLE IF NOT EXISTS `nuke_msanalysis_modules` (
 -- Table structure for table `nuke_msanalysis_online`
 --
 
+DROP TABLE IF EXISTS `nuke_msanalysis_online`;
 CREATE TABLE IF NOT EXISTS `nuke_msanalysis_online` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `time` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
@@ -3582,6 +3966,7 @@ CREATE TABLE IF NOT EXISTS `nuke_msanalysis_online` (
 -- Table structure for table `nuke_msanalysis_os`
 --
 
+DROP TABLE IF EXISTS `nuke_msanalysis_os`;
 CREATE TABLE IF NOT EXISTS `nuke_msanalysis_os` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `ios` varchar(25) NOT NULL DEFAULT '',
@@ -3601,6 +3986,7 @@ CREATE TABLE IF NOT EXISTS `nuke_msanalysis_os` (
 -- Table structure for table `nuke_msanalysis_referrals`
 --
 
+DROP TABLE IF EXISTS `nuke_msanalysis_referrals`;
 CREATE TABLE IF NOT EXISTS `nuke_msanalysis_referrals` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `referral` varchar(255) NOT NULL DEFAULT '',
@@ -3620,6 +4006,7 @@ CREATE TABLE IF NOT EXISTS `nuke_msanalysis_referrals` (
 -- Table structure for table `nuke_msanalysis_scr`
 --
 
+DROP TABLE IF EXISTS `nuke_msanalysis_scr`;
 CREATE TABLE IF NOT EXISTS `nuke_msanalysis_scr` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `scr_res` varchar(25) NOT NULL DEFAULT '',
@@ -3639,6 +4026,7 @@ CREATE TABLE IF NOT EXISTS `nuke_msanalysis_scr` (
 -- Table structure for table `nuke_msanalysis_search`
 --
 
+DROP TABLE IF EXISTS `nuke_msanalysis_search`;
 CREATE TABLE IF NOT EXISTS `nuke_msanalysis_search` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `words` varchar(255) NOT NULL DEFAULT '',
@@ -3658,6 +4046,7 @@ CREATE TABLE IF NOT EXISTS `nuke_msanalysis_search` (
 -- Table structure for table `nuke_msanalysis_users`
 --
 
+DROP TABLE IF EXISTS `nuke_msanalysis_users`;
 CREATE TABLE IF NOT EXISTS `nuke_msanalysis_users` (
   `uid` int(11) NOT NULL AUTO_INCREMENT,
   `uname` varchar(25) NOT NULL DEFAULT '',
@@ -3683,6 +4072,7 @@ CREATE TABLE IF NOT EXISTS `nuke_msanalysis_users` (
 -- Table structure for table `nuke_newscomau`
 --
 
+DROP TABLE IF EXISTS `nuke_newscomau`;
 CREATE TABLE IF NOT EXISTS `nuke_newscomau` (
   `sid` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(80) DEFAULT NULL,
@@ -3699,6 +4089,7 @@ CREATE TABLE IF NOT EXISTS `nuke_newscomau` (
 -- Table structure for table `nuke_nsndownloads_config`
 --
 
+DROP TABLE IF EXISTS `nuke_nsndownloads_config`;
 CREATE TABLE IF NOT EXISTS `nuke_nsndownloads_config` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `module_name` varchar(40) NOT NULL DEFAULT '',
@@ -3721,6 +4112,7 @@ CREATE TABLE IF NOT EXISTS `nuke_nsndownloads_config` (
 -- Table structure for table `nuke_nucal_attendees`
 --
 
+DROP TABLE IF EXISTS `nuke_nucal_attendees`;
 CREATE TABLE IF NOT EXISTS `nuke_nucal_attendees` (
   `event_id` int(10) NOT NULL,
   `user_id` int(10) NOT NULL,
@@ -3733,6 +4125,7 @@ CREATE TABLE IF NOT EXISTS `nuke_nucal_attendees` (
 -- Table structure for table `nuke_nucal_categories`
 --
 
+DROP TABLE IF EXISTS `nuke_nucal_categories`;
 CREATE TABLE IF NOT EXISTS `nuke_nucal_categories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(128) NOT NULL DEFAULT '',
@@ -3747,6 +4140,7 @@ CREATE TABLE IF NOT EXISTS `nuke_nucal_categories` (
 -- Table structure for table `nuke_nucal_events`
 --
 
+DROP TABLE IF EXISTS `nuke_nucal_events`;
 CREATE TABLE IF NOT EXISTS `nuke_nucal_events` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(128) NOT NULL DEFAULT '',
@@ -3792,6 +4186,7 @@ CREATE TABLE IF NOT EXISTS `nuke_nucal_events` (
 -- Table structure for table `nuke_nucal_options`
 --
 
+DROP TABLE IF EXISTS `nuke_nucal_options`;
 CREATE TABLE IF NOT EXISTS `nuke_nucal_options` (
   `allow_user_submitted_events` tinyint(1) NOT NULL DEFAULT '0',
   `user_submitted_events_need_admin_aproval` tinyint(1) NOT NULL DEFAULT '1',
@@ -3817,6 +4212,7 @@ CREATE TABLE IF NOT EXISTS `nuke_nucal_options` (
 -- Table structure for table `nuke_optimize_gain`
 --
 
+DROP TABLE IF EXISTS `nuke_optimize_gain`;
 CREATE TABLE IF NOT EXISTS `nuke_optimize_gain` (
   `gain` decimal(10,3) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
@@ -3827,6 +4223,7 @@ CREATE TABLE IF NOT EXISTS `nuke_optimize_gain` (
 -- Table structure for table `nuke_pages`
 --
 
+DROP TABLE IF EXISTS `nuke_pages`;
 CREATE TABLE IF NOT EXISTS `nuke_pages` (
   `pid` int(10) NOT NULL AUTO_INCREMENT,
   `cid` int(10) NOT NULL DEFAULT '0',
@@ -3852,6 +4249,7 @@ CREATE TABLE IF NOT EXISTS `nuke_pages` (
 -- Table structure for table `nuke_pages_categories`
 --
 
+DROP TABLE IF EXISTS `nuke_pages_categories`;
 CREATE TABLE IF NOT EXISTS `nuke_pages_categories` (
   `cid` int(10) NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL DEFAULT '',
@@ -3866,6 +4264,7 @@ CREATE TABLE IF NOT EXISTS `nuke_pages_categories` (
 -- Table structure for table `nuke_pollcomments`
 --
 
+DROP TABLE IF EXISTS `nuke_pollcomments`;
 CREATE TABLE IF NOT EXISTS `nuke_pollcomments` (
   `tid` int(11) NOT NULL AUTO_INCREMENT,
   `pid` int(11) NOT NULL DEFAULT '0',
@@ -3891,6 +4290,7 @@ CREATE TABLE IF NOT EXISTS `nuke_pollcomments` (
 -- Table structure for table `nuke_poll_check`
 --
 
+DROP TABLE IF EXISTS `nuke_poll_check`;
 CREATE TABLE IF NOT EXISTS `nuke_poll_check` (
   `ip` varchar(20) NOT NULL DEFAULT '',
   `time` varchar(14) NOT NULL DEFAULT '',
@@ -3905,6 +4305,7 @@ CREATE TABLE IF NOT EXISTS `nuke_poll_check` (
 -- Table structure for table `nuke_poll_data`
 --
 
+DROP TABLE IF EXISTS `nuke_poll_data`;
 CREATE TABLE IF NOT EXISTS `nuke_poll_data` (
   `pollID` int(11) NOT NULL DEFAULT '0',
   `optionText` varchar(512) CHARACTER SET utf8 NOT NULL DEFAULT '',
@@ -3919,6 +4320,7 @@ CREATE TABLE IF NOT EXISTS `nuke_poll_data` (
 -- Table structure for table `nuke_poll_desc`
 --
 
+DROP TABLE IF EXISTS `nuke_poll_desc`;
 CREATE TABLE IF NOT EXISTS `nuke_poll_desc` (
   `pollID` int(11) NOT NULL AUTO_INCREMENT,
   `pollTitle` varchar(100) NOT NULL DEFAULT '',
@@ -3936,6 +4338,7 @@ CREATE TABLE IF NOT EXISTS `nuke_poll_desc` (
 -- Table structure for table `nuke_popsettings`
 --
 
+DROP TABLE IF EXISTS `nuke_popsettings`;
 CREATE TABLE IF NOT EXISTS `nuke_popsettings` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `uid` int(11) NOT NULL DEFAULT '0',
@@ -3959,6 +4362,7 @@ CREATE TABLE IF NOT EXISTS `nuke_popsettings` (
 -- Table structure for table `nuke_priv_msgs`
 --
 
+DROP TABLE IF EXISTS `nuke_priv_msgs`;
 CREATE TABLE IF NOT EXISTS `nuke_priv_msgs` (
   `msg_id` int(10) NOT NULL AUTO_INCREMENT,
   `msg_image` varchar(100) DEFAULT NULL,
@@ -3980,6 +4384,7 @@ CREATE TABLE IF NOT EXISTS `nuke_priv_msgs` (
 -- Table structure for table `nuke_public_messages`
 --
 
+DROP TABLE IF EXISTS `nuke_public_messages`;
 CREATE TABLE IF NOT EXISTS `nuke_public_messages` (
   `mid` int(10) NOT NULL AUTO_INCREMENT,
   `content` varchar(255) NOT NULL DEFAULT '',
@@ -3995,6 +4400,7 @@ CREATE TABLE IF NOT EXISTS `nuke_public_messages` (
 -- Table structure for table `nuke_queue`
 --
 
+DROP TABLE IF EXISTS `nuke_queue`;
 CREATE TABLE IF NOT EXISTS `nuke_queue` (
   `qid` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `uid` mediumint(9) NOT NULL DEFAULT '0',
@@ -4019,6 +4425,7 @@ CREATE TABLE IF NOT EXISTS `nuke_queue` (
 -- Table structure for table `nuke_quizz_admin`
 --
 
+DROP TABLE IF EXISTS `nuke_quizz_admin`;
 CREATE TABLE IF NOT EXISTS `nuke_quizz_admin` (
   `quizzID` int(11) NOT NULL AUTO_INCREMENT,
   `quizzTitle` varchar(100) NOT NULL DEFAULT '',
@@ -4049,6 +4456,7 @@ CREATE TABLE IF NOT EXISTS `nuke_quizz_admin` (
 -- Table structure for table `nuke_quizz_categories`
 --
 
+DROP TABLE IF EXISTS `nuke_quizz_categories`;
 CREATE TABLE IF NOT EXISTS `nuke_quizz_categories` (
   `cid` int(9) NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL DEFAULT '',
@@ -4063,6 +4471,7 @@ CREATE TABLE IF NOT EXISTS `nuke_quizz_categories` (
 -- Table structure for table `nuke_quizz_check`
 --
 
+DROP TABLE IF EXISTS `nuke_quizz_check`;
 CREATE TABLE IF NOT EXISTS `nuke_quizz_check` (
   `ip` varchar(20) DEFAULT NULL,
   `time` varchar(14) NOT NULL DEFAULT '',
@@ -4080,6 +4489,7 @@ CREATE TABLE IF NOT EXISTS `nuke_quizz_check` (
 -- Table structure for table `nuke_quizz_data`
 --
 
+DROP TABLE IF EXISTS `nuke_quizz_data`;
 CREATE TABLE IF NOT EXISTS `nuke_quizz_data` (
   `pollID` int(11) NOT NULL DEFAULT '0',
   `optionText` char(50) NOT NULL DEFAULT '',
@@ -4093,6 +4503,7 @@ CREATE TABLE IF NOT EXISTS `nuke_quizz_data` (
 -- Table structure for table `nuke_quizz_datacontrib`
 --
 
+DROP TABLE IF EXISTS `nuke_quizz_datacontrib`;
 CREATE TABLE IF NOT EXISTS `nuke_quizz_datacontrib` (
   `pollID` int(11) NOT NULL DEFAULT '0',
   `optionText` char(50) NOT NULL DEFAULT '',
@@ -4106,6 +4517,7 @@ CREATE TABLE IF NOT EXISTS `nuke_quizz_datacontrib` (
 -- Table structure for table `nuke_quizz_desc`
 --
 
+DROP TABLE IF EXISTS `nuke_quizz_desc`;
 CREATE TABLE IF NOT EXISTS `nuke_quizz_desc` (
   `pollID` int(11) NOT NULL AUTO_INCREMENT,
   `pollTitle` varchar(100) NOT NULL DEFAULT '',
@@ -4127,6 +4539,7 @@ CREATE TABLE IF NOT EXISTS `nuke_quizz_desc` (
 -- Table structure for table `nuke_quizz_descontrib`
 --
 
+DROP TABLE IF EXISTS `nuke_quizz_descontrib`;
 CREATE TABLE IF NOT EXISTS `nuke_quizz_descontrib` (
   `pollID` int(11) NOT NULL AUTO_INCREMENT,
   `pollTitle` varchar(100) NOT NULL DEFAULT '',
@@ -4148,6 +4561,7 @@ CREATE TABLE IF NOT EXISTS `nuke_quizz_descontrib` (
 -- Table structure for table `nuke_quiz_admin`
 --
 
+DROP TABLE IF EXISTS `nuke_quiz_admin`;
 CREATE TABLE IF NOT EXISTS `nuke_quiz_admin` (
   `quizID` int(11) NOT NULL AUTO_INCREMENT,
   `quizTitle` varchar(150) NOT NULL DEFAULT '',
@@ -4165,6 +4579,7 @@ CREATE TABLE IF NOT EXISTS `nuke_quiz_admin` (
 -- Table structure for table `nuke_quiz_categories`
 --
 
+DROP TABLE IF EXISTS `nuke_quiz_categories`;
 CREATE TABLE IF NOT EXISTS `nuke_quiz_categories` (
   `cid` int(9) NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL DEFAULT '',
@@ -4179,6 +4594,7 @@ CREATE TABLE IF NOT EXISTS `nuke_quiz_categories` (
 -- Table structure for table `nuke_quiz_check`
 --
 
+DROP TABLE IF EXISTS `nuke_quiz_check`;
 CREATE TABLE IF NOT EXISTS `nuke_quiz_check` (
   `ip` varchar(20) DEFAULT NULL,
   `time` varchar(14) NOT NULL DEFAULT '',
@@ -4196,6 +4612,7 @@ CREATE TABLE IF NOT EXISTS `nuke_quiz_check` (
 -- Table structure for table `nuke_quiz_data`
 --
 
+DROP TABLE IF EXISTS `nuke_quiz_data`;
 CREATE TABLE IF NOT EXISTS `nuke_quiz_data` (
   `pollID` int(11) NOT NULL DEFAULT '0',
   `optionText` char(150) NOT NULL DEFAULT '',
@@ -4209,6 +4626,7 @@ CREATE TABLE IF NOT EXISTS `nuke_quiz_data` (
 -- Table structure for table `nuke_quiz_desc`
 --
 
+DROP TABLE IF EXISTS `nuke_quiz_desc`;
 CREATE TABLE IF NOT EXISTS `nuke_quiz_desc` (
   `pollID` int(11) NOT NULL AUTO_INCREMENT,
   `pollTitle` blob NOT NULL,
@@ -4230,6 +4648,7 @@ CREATE TABLE IF NOT EXISTS `nuke_quiz_desc` (
 -- Table structure for table `nuke_quiz_index`
 --
 
+DROP TABLE IF EXISTS `nuke_quiz_index`;
 CREATE TABLE IF NOT EXISTS `nuke_quiz_index` (
   `quizid` int(11) NOT NULL AUTO_INCREMENT,
   `quiztitle` varchar(255) NOT NULL DEFAULT '',
@@ -4252,6 +4671,7 @@ CREATE TABLE IF NOT EXISTS `nuke_quiz_index` (
 -- Table structure for table `nuke_quotes`
 --
 
+DROP TABLE IF EXISTS `nuke_quotes`;
 CREATE TABLE IF NOT EXISTS `nuke_quotes` (
   `qid` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `quote` text,
@@ -4265,6 +4685,7 @@ CREATE TABLE IF NOT EXISTS `nuke_quotes` (
 -- Table structure for table `nuke_referer`
 --
 
+DROP TABLE IF EXISTS `nuke_referer`;
 CREATE TABLE IF NOT EXISTS `nuke_referer` (
   `rid` int(11) NOT NULL AUTO_INCREMENT,
   `url` varchar(100) NOT NULL DEFAULT '',
@@ -4278,6 +4699,7 @@ CREATE TABLE IF NOT EXISTS `nuke_referer` (
 -- Table structure for table `nuke_related`
 --
 
+DROP TABLE IF EXISTS `nuke_related`;
 CREATE TABLE IF NOT EXISTS `nuke_related` (
   `rid` int(11) NOT NULL AUTO_INCREMENT,
   `tid` int(11) NOT NULL DEFAULT '0',
@@ -4294,6 +4716,7 @@ CREATE TABLE IF NOT EXISTS `nuke_related` (
 -- Table structure for table `nuke_reviews`
 --
 
+DROP TABLE IF EXISTS `nuke_reviews`;
 CREATE TABLE IF NOT EXISTS `nuke_reviews` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
   `date` date NOT NULL DEFAULT '0000-00-00',
@@ -4317,6 +4740,7 @@ CREATE TABLE IF NOT EXISTS `nuke_reviews` (
 -- Table structure for table `nuke_reviews_add`
 --
 
+DROP TABLE IF EXISTS `nuke_reviews_add`;
 CREATE TABLE IF NOT EXISTS `nuke_reviews_add` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
   `date` date DEFAULT NULL,
@@ -4338,6 +4762,7 @@ CREATE TABLE IF NOT EXISTS `nuke_reviews_add` (
 -- Table structure for table `nuke_reviews_comments`
 --
 
+DROP TABLE IF EXISTS `nuke_reviews_comments`;
 CREATE TABLE IF NOT EXISTS `nuke_reviews_comments` (
   `cid` int(10) NOT NULL AUTO_INCREMENT,
   `rid` int(10) NOT NULL DEFAULT '0',
@@ -4357,6 +4782,7 @@ CREATE TABLE IF NOT EXISTS `nuke_reviews_comments` (
 -- Table structure for table `nuke_reviews_main`
 --
 
+DROP TABLE IF EXISTS `nuke_reviews_main`;
 CREATE TABLE IF NOT EXISTS `nuke_reviews_main` (
   `title` varchar(100) DEFAULT NULL,
   `description` text
@@ -4368,6 +4794,7 @@ CREATE TABLE IF NOT EXISTS `nuke_reviews_main` (
 -- Table structure for table `nuke_seccont`
 --
 
+DROP TABLE IF EXISTS `nuke_seccont`;
 CREATE TABLE IF NOT EXISTS `nuke_seccont` (
   `artid` int(11) NOT NULL AUTO_INCREMENT,
   `secid` int(11) NOT NULL DEFAULT '0',
@@ -4386,6 +4813,7 @@ CREATE TABLE IF NOT EXISTS `nuke_seccont` (
 -- Table structure for table `nuke_sections`
 --
 
+DROP TABLE IF EXISTS `nuke_sections`;
 CREATE TABLE IF NOT EXISTS `nuke_sections` (
   `secid` int(11) NOT NULL AUTO_INCREMENT,
   `secname` varchar(40) NOT NULL DEFAULT '',
@@ -4400,6 +4828,7 @@ CREATE TABLE IF NOT EXISTS `nuke_sections` (
 -- Table structure for table `nuke_session`
 --
 
+DROP TABLE IF EXISTS `nuke_session`;
 CREATE TABLE IF NOT EXISTS `nuke_session` (
   `uname` varchar(25) NOT NULL DEFAULT '',
   `time` varchar(14) NOT NULL DEFAULT '',
@@ -4415,6 +4844,7 @@ CREATE TABLE IF NOT EXISTS `nuke_session` (
 -- Table structure for table `nuke_sommaire`
 --
 
+DROP TABLE IF EXISTS `nuke_sommaire`;
 CREATE TABLE IF NOT EXISTS `nuke_sommaire` (
   `groupmenu` int(2) NOT NULL DEFAULT '0',
   `name` varchar(200) DEFAULT NULL,
@@ -4434,6 +4864,7 @@ CREATE TABLE IF NOT EXISTS `nuke_sommaire` (
 -- Table structure for table `nuke_sommaire_categories`
 --
 
+DROP TABLE IF EXISTS `nuke_sommaire_categories`;
 CREATE TABLE IF NOT EXISTS `nuke_sommaire_categories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `groupmenu` int(2) NOT NULL DEFAULT '0',
@@ -4450,6 +4881,7 @@ CREATE TABLE IF NOT EXISTS `nuke_sommaire_categories` (
 -- Table structure for table `nuke_spelling_words`
 --
 
+DROP TABLE IF EXISTS `nuke_spelling_words`;
 CREATE TABLE IF NOT EXISTS `nuke_spelling_words` (
   `id` mediumint(9) NOT NULL AUTO_INCREMENT,
   `word` varchar(30) CHARACTER SET latin1 COLLATE latin1_bin NOT NULL DEFAULT '',
@@ -4465,6 +4897,7 @@ CREATE TABLE IF NOT EXISTS `nuke_spelling_words` (
 -- Table structure for table `nuke_staff`
 --
 
+DROP TABLE IF EXISTS `nuke_staff`;
 CREATE TABLE IF NOT EXISTS `nuke_staff` (
   `id` int(3) NOT NULL DEFAULT '0',
   `sid` int(3) NOT NULL AUTO_INCREMENT,
@@ -4483,6 +4916,7 @@ CREATE TABLE IF NOT EXISTS `nuke_staff` (
 -- Table structure for table `nuke_staff_cat`
 --
 
+DROP TABLE IF EXISTS `nuke_staff_cat`;
 CREATE TABLE IF NOT EXISTS `nuke_staff_cat` (
   `id` int(3) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL DEFAULT '',
@@ -4496,6 +4930,7 @@ CREATE TABLE IF NOT EXISTS `nuke_staff_cat` (
 -- Table structure for table `nuke_stats_date`
 --
 
+DROP TABLE IF EXISTS `nuke_stats_date`;
 CREATE TABLE IF NOT EXISTS `nuke_stats_date` (
   `year` smallint(6) NOT NULL DEFAULT '0',
   `month` tinyint(4) NOT NULL DEFAULT '0',
@@ -4509,6 +4944,7 @@ CREATE TABLE IF NOT EXISTS `nuke_stats_date` (
 -- Table structure for table `nuke_stats_hour`
 --
 
+DROP TABLE IF EXISTS `nuke_stats_hour`;
 CREATE TABLE IF NOT EXISTS `nuke_stats_hour` (
   `year` smallint(6) NOT NULL DEFAULT '0',
   `month` tinyint(4) NOT NULL DEFAULT '0',
@@ -4523,6 +4959,7 @@ CREATE TABLE IF NOT EXISTS `nuke_stats_hour` (
 -- Table structure for table `nuke_stats_month`
 --
 
+DROP TABLE IF EXISTS `nuke_stats_month`;
 CREATE TABLE IF NOT EXISTS `nuke_stats_month` (
   `year` smallint(6) NOT NULL DEFAULT '0',
   `month` tinyint(4) NOT NULL DEFAULT '0',
@@ -4535,6 +4972,7 @@ CREATE TABLE IF NOT EXISTS `nuke_stats_month` (
 -- Table structure for table `nuke_stats_year`
 --
 
+DROP TABLE IF EXISTS `nuke_stats_year`;
 CREATE TABLE IF NOT EXISTS `nuke_stats_year` (
   `year` smallint(6) NOT NULL DEFAULT '0',
   `hits` bigint(20) NOT NULL DEFAULT '0'
@@ -4546,6 +4984,7 @@ CREATE TABLE IF NOT EXISTS `nuke_stats_year` (
 -- Table structure for table `nuke_stories`
 --
 
+DROP TABLE IF EXISTS `nuke_stories`;
 CREATE TABLE IF NOT EXISTS `nuke_stories` (
   `sid` int(11) NOT NULL AUTO_INCREMENT,
   `approved` tinyint(1) NOT NULL DEFAULT '1',
@@ -4593,7 +5032,7 @@ CREATE TABLE IF NOT EXISTS `nuke_stories` (
   KEY `time` (`time`),
   KEY `weeklycounter` (`weeklycounter`),
   KEY `informant` (`informant`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=17021 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci TRANSACTIONAL=1 AUTO_INCREMENT=17276 ;
 
 -- --------------------------------------------------------
 
@@ -4601,6 +5040,7 @@ CREATE TABLE IF NOT EXISTS `nuke_stories` (
 -- Table structure for table `nuke_stories_cat`
 --
 
+DROP TABLE IF EXISTS `nuke_stories_cat`;
 CREATE TABLE IF NOT EXISTS `nuke_stories_cat` (
   `catid` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(20) NOT NULL DEFAULT '',
@@ -4615,6 +5055,7 @@ CREATE TABLE IF NOT EXISTS `nuke_stories_cat` (
 -- Table structure for table `nuke_topics`
 --
 
+DROP TABLE IF EXISTS `nuke_topics`;
 CREATE TABLE IF NOT EXISTS `nuke_topics` (
   `topicid` int(3) NOT NULL AUTO_INCREMENT,
   `topicname` varchar(20) DEFAULT NULL,
@@ -4632,6 +5073,7 @@ CREATE TABLE IF NOT EXISTS `nuke_topics` (
 -- Table structure for table `nuke_upermissions`
 --
 
+DROP TABLE IF EXISTS `nuke_upermissions`;
 CREATE TABLE IF NOT EXISTS `nuke_upermissions` (
   `pid` int(16) NOT NULL AUTO_INCREMENT,
   `uid` int(16) NOT NULL DEFAULT '0',
@@ -4646,6 +5088,7 @@ CREATE TABLE IF NOT EXISTS `nuke_upermissions` (
 -- Table structure for table `nuke_users`
 --
 
+DROP TABLE IF EXISTS `nuke_users`;
 CREATE TABLE IF NOT EXISTS `nuke_users` (
   `user_id` int(10) NOT NULL AUTO_INCREMENT,
   `provider` enum('railpage','facebook','twitter','google') COLLATE utf8_unicode_ci NOT NULL DEFAULT 'railpage',
@@ -4668,6 +5111,7 @@ CREATE TABLE IF NOT EXISTS `nuke_users` (
   `user_unread_privmsg` smallint(5) unsigned NOT NULL DEFAULT '0',
   `user_last_privmsg` int(11) NOT NULL DEFAULT '0',
   `user_emailtime` int(11) DEFAULT NULL,
+
   `user_viewemail` tinyint(1) DEFAULT NULL,
   `user_attachsig` tinyint(1) DEFAULT '0',
   `user_showsigs` tinyint(1) NOT NULL DEFAULT '0',
@@ -4762,7 +5206,7 @@ CREATE TABLE IF NOT EXISTS `nuke_users` (
   KEY `reported_to_sfs` (`reported_to_sfs`),
   KEY `user_regdate_nice` (`user_regdate_nice`),
   KEY `provider` (`provider`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci PACK_KEYS=0 AUTO_INCREMENT=73268 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci PACK_KEYS=0 AUTO_INCREMENT=73343 ;
 
 -- --------------------------------------------------------
 
@@ -4770,6 +5214,7 @@ CREATE TABLE IF NOT EXISTS `nuke_users` (
 -- Table structure for table `nuke_users_autologin`
 --
 
+DROP TABLE IF EXISTS `nuke_users_autologin`;
 CREATE TABLE IF NOT EXISTS `nuke_users_autologin` (
   `autologin_id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
@@ -4785,7 +5230,7 @@ CREATE TABLE IF NOT EXISTS `nuke_users_autologin` (
   KEY `autologin_expire` (`autologin_expire`),
   KEY `autologin_time` (`autologin_time`),
   KEY `autologin_token` (`autologin_token`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=45139 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=45983 ;
 
 -- --------------------------------------------------------
 
@@ -4793,6 +5238,7 @@ CREATE TABLE IF NOT EXISTS `nuke_users_autologin` (
 -- Table structure for table `nuke_users_groups`
 --
 
+DROP TABLE IF EXISTS `nuke_users_groups`;
 CREATE TABLE IF NOT EXISTS `nuke_users_groups` (
   `gid` int(11) NOT NULL AUTO_INCREMENT,
   `gname` varchar(32) NOT NULL DEFAULT '',
@@ -4805,6 +5251,7 @@ CREATE TABLE IF NOT EXISTS `nuke_users_groups` (
 -- Table structure for table `nuke_users_groups_users`
 --
 
+DROP TABLE IF EXISTS `nuke_users_groups_users`;
 CREATE TABLE IF NOT EXISTS `nuke_users_groups_users` (
   `gid` int(11) NOT NULL DEFAULT '0',
   `uid` int(11) NOT NULL DEFAULT '0',
@@ -4820,6 +5267,7 @@ CREATE TABLE IF NOT EXISTS `nuke_users_groups_users` (
 -- Table structure for table `nuke_users_hash`
 --
 
+DROP TABLE IF EXISTS `nuke_users_hash`;
 CREATE TABLE IF NOT EXISTS `nuke_users_hash` (
   `user_id` int(11) NOT NULL,
   `hash` varchar(512) COLLATE utf8_unicode_ci NOT NULL,
@@ -4834,6 +5282,7 @@ CREATE TABLE IF NOT EXISTS `nuke_users_hash` (
 -- Table structure for table `nuke_users_notes`
 --
 
+DROP TABLE IF EXISTS `nuke_users_notes`;
 CREATE TABLE IF NOT EXISTS `nuke_users_notes` (
   `nid` int(11) NOT NULL AUTO_INCREMENT,
   `uid` int(11) NOT NULL DEFAULT '0',
@@ -4841,7 +5290,7 @@ CREATE TABLE IF NOT EXISTS `nuke_users_notes` (
   `datetime` int(11) NOT NULL DEFAULT '0',
   `data` mediumtext COLLATE utf8_unicode_ci,
   PRIMARY KEY (`nid`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=2609809 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=3069402 ;
 
 -- --------------------------------------------------------
 
@@ -4849,6 +5298,7 @@ CREATE TABLE IF NOT EXISTS `nuke_users_notes` (
 -- Table structure for table `nuke_users_temp`
 --
 
+DROP TABLE IF EXISTS `nuke_users_temp`;
 CREATE TABLE IF NOT EXISTS `nuke_users_temp` (
   `user_id` int(10) NOT NULL AUTO_INCREMENT,
   `username` varchar(25) NOT NULL DEFAULT '',
@@ -4867,6 +5317,7 @@ CREATE TABLE IF NOT EXISTS `nuke_users_temp` (
 -- Table structure for table `oauth_consumer`
 --
 
+DROP TABLE IF EXISTS `oauth_consumer`;
 CREATE TABLE IF NOT EXISTS `oauth_consumer` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `consumer_key` varchar(250) NOT NULL,
@@ -4885,6 +5336,7 @@ CREATE TABLE IF NOT EXISTS `oauth_consumer` (
 -- Table structure for table `oauth_consumer_nonce`
 --
 
+DROP TABLE IF EXISTS `oauth_consumer_nonce`;
 CREATE TABLE IF NOT EXISTS `oauth_consumer_nonce` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `consumer_id` int(11) NOT NULL,
@@ -4899,6 +5351,7 @@ CREATE TABLE IF NOT EXISTS `oauth_consumer_nonce` (
 -- Table structure for table `oauth_token`
 --
 
+DROP TABLE IF EXISTS `oauth_token`;
 CREATE TABLE IF NOT EXISTS `oauth_token` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `type` int(11) NOT NULL,
@@ -4917,6 +5370,7 @@ CREATE TABLE IF NOT EXISTS `oauth_token` (
 -- Table structure for table `oauth_token_type`
 --
 
+DROP TABLE IF EXISTS `oauth_token_type`;
 CREATE TABLE IF NOT EXISTS `oauth_token_type` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `type` varchar(50) NOT NULL,
@@ -4929,6 +5383,7 @@ CREATE TABLE IF NOT EXISTS `oauth_token_type` (
 -- Table structure for table `operators`
 --
 
+DROP TABLE IF EXISTS `operators`;
 CREATE TABLE IF NOT EXISTS `operators` (
   `operator_id` int(11) NOT NULL AUTO_INCREMENT,
   `operator_name` varchar(128) NOT NULL,
@@ -4944,6 +5399,7 @@ CREATE TABLE IF NOT EXISTS `operators` (
 -- Table structure for table `organisation`
 --
 
+DROP TABLE IF EXISTS `organisation`;
 CREATE TABLE IF NOT EXISTS `organisation` (
   `organisation_id` int(10) NOT NULL AUTO_INCREMENT,
   `organisation_name` text CHARACTER SET latin1 NOT NULL,
@@ -4967,6 +5423,7 @@ CREATE TABLE IF NOT EXISTS `organisation` (
 -- Table structure for table `organisation_member`
 --
 
+DROP TABLE IF EXISTS `organisation_member`;
 CREATE TABLE IF NOT EXISTS `organisation_member` (
   `organisation_id` int(10) NOT NULL,
   `user_id` int(10) NOT NULL,
@@ -4976,11 +5433,11 @@ CREATE TABLE IF NOT EXISTS `organisation_member` (
 
 -- --------------------------------------------------------
 
-
 --
 -- Table structure for table `organisation_roles`
 --
 
+DROP TABLE IF EXISTS `organisation_roles`;
 CREATE TABLE IF NOT EXISTS `organisation_roles` (
   `role_id` int(11) NOT NULL AUTO_INCREMENT,
   `role_name` text NOT NULL,
@@ -4995,6 +5452,7 @@ CREATE TABLE IF NOT EXISTS `organisation_roles` (
 -- Table structure for table `phpbb_reports_actions`
 --
 
+DROP TABLE IF EXISTS `phpbb_reports_actions`;
 CREATE TABLE IF NOT EXISTS `phpbb_reports_actions` (
   `action_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `report_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
@@ -5007,7 +5465,7 @@ CREATE TABLE IF NOT EXISTS `phpbb_reports_actions` (
   KEY `report_id` (`report_id`),
   KEY `action_user_id` (`action_user_id`),
   KEY `action_status` (`action_status`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=8601 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=8615 ;
 
 -- --------------------------------------------------------
 
@@ -5015,6 +5473,7 @@ CREATE TABLE IF NOT EXISTS `phpbb_reports_actions` (
 -- Table structure for table `phpbb_reports_config`
 --
 
+DROP TABLE IF EXISTS `phpbb_reports_config`;
 CREATE TABLE IF NOT EXISTS `phpbb_reports_config` (
   `config_name` varchar(255) CHARACTER SET latin1 NOT NULL DEFAULT '',
   `config_value` varchar(255) CHARACTER SET latin1 NOT NULL DEFAULT '',
@@ -5027,6 +5486,7 @@ CREATE TABLE IF NOT EXISTS `phpbb_reports_config` (
 -- Table structure for table `phpbb_reports_data`
 --
 
+DROP TABLE IF EXISTS `phpbb_reports_data`;
 CREATE TABLE IF NOT EXISTS `phpbb_reports_data` (
   `data_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `data_name` varchar(30) CHARACTER SET latin1 NOT NULL DEFAULT '',
@@ -5044,6 +5504,7 @@ CREATE TABLE IF NOT EXISTS `phpbb_reports_data` (
 -- Table structure for table `phpbb_reports_posts`
 --
 
+DROP TABLE IF EXISTS `phpbb_reports_posts`;
 CREATE TABLE IF NOT EXISTS `phpbb_reports_posts` (
   `report_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
   `post_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
@@ -5059,7 +5520,7 @@ CREATE TABLE IF NOT EXISTS `phpbb_reports_posts` (
   KEY `report_status` (`report_status`),
   KEY `post_id` (`post_id`),
   KEY `poster_id` (`poster_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=8561 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 PAGE_CHECKSUM=1 TRANSACTIONAL=1 AUTO_INCREMENT=8577 ;
 
 -- --------------------------------------------------------
 
@@ -5067,6 +5528,7 @@ CREATE TABLE IF NOT EXISTS `phpbb_reports_posts` (
 -- Table structure for table `phpbb_warnings`
 --
 
+DROP TABLE IF EXISTS `phpbb_warnings`;
 CREATE TABLE IF NOT EXISTS `phpbb_warnings` (
   `warn_id` int(30) NOT NULL AUTO_INCREMENT,
   `user_id` int(30) NOT NULL DEFAULT '0',
@@ -5084,7 +5546,7 @@ CREATE TABLE IF NOT EXISTS `phpbb_warnings` (
   KEY `warn_date` (`warn_date`),
   KEY `old_warning_level` (`old_warning_level`),
   KEY `new_warning_level` (`new_warning_level`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=7466 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 TRANSACTIONAL=1 AUTO_INCREMENT=7468 ;
 
 -- --------------------------------------------------------
 
@@ -5092,6 +5554,7 @@ CREATE TABLE IF NOT EXISTS `phpbb_warnings` (
 -- Table structure for table `polls`
 --
 
+DROP TABLE IF EXISTS `polls`;
 CREATE TABLE IF NOT EXISTS `polls` (
   `poll_id` int(11) NOT NULL AUTO_INCREMENT,
   `poll_name` varchar(32) NOT NULL,
@@ -5108,6 +5571,7 @@ CREATE TABLE IF NOT EXISTS `polls` (
 -- Table structure for table `popover_viewed`
 --
 
+DROP TABLE IF EXISTS `popover_viewed`;
 CREATE TABLE IF NOT EXISTS `popover_viewed` (
   `popover_id` int(11) NOT NULL,
   `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -5121,6 +5585,7 @@ CREATE TABLE IF NOT EXISTS `popover_viewed` (
 -- Table structure for table `privmsgs_hidelist`
 --
 
+DROP TABLE IF EXISTS `privmsgs_hidelist`;
 CREATE TABLE IF NOT EXISTS `privmsgs_hidelist` (
   `privmsgs_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -5134,6 +5599,7 @@ CREATE TABLE IF NOT EXISTS `privmsgs_hidelist` (
 -- Table structure for table `railcams`
 --
 
+DROP TABLE IF EXISTS `railcams`;
 CREATE TABLE IF NOT EXISTS `railcams` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `type_id` int(11) NOT NULL,
@@ -5169,6 +5635,7 @@ CREATE TABLE IF NOT EXISTS `railcams` (
 -- Table structure for table `railcams_type`
 --
 
+DROP TABLE IF EXISTS `railcams_type`;
 CREATE TABLE IF NOT EXISTS `railcams_type` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(32) NOT NULL,
@@ -5184,6 +5651,7 @@ CREATE TABLE IF NOT EXISTS `railcams_type` (
 -- Table structure for table `rating_loco`
 --
 
+DROP TABLE IF EXISTS `rating_loco`;
 CREATE TABLE IF NOT EXISTS `rating_loco` (
   `rating_id` int(11) NOT NULL AUTO_INCREMENT,
   `loco_id` int(11) NOT NULL,
@@ -5200,6 +5668,7 @@ CREATE TABLE IF NOT EXISTS `rating_loco` (
 -- Table structure for table `reminders`
 --
 
+DROP TABLE IF EXISTS `reminders`;
 CREATE TABLE IF NOT EXISTS `reminders` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `module` varchar(16) NOT NULL,
@@ -5224,6 +5693,7 @@ CREATE TABLE IF NOT EXISTS `reminders` (
 -- Table structure for table `route`
 --
 
+DROP TABLE IF EXISTS `route`;
 CREATE TABLE IF NOT EXISTS `route` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `country` varchar(12) NOT NULL DEFAULT 'AU',
@@ -5249,6 +5719,7 @@ CREATE TABLE IF NOT EXISTS `route` (
 -- Table structure for table `route_markers`
 --
 
+DROP TABLE IF EXISTS `route_markers`;
 CREATE TABLE IF NOT EXISTS `route_markers` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `weight` int(11) NOT NULL,
@@ -5272,6 +5743,7 @@ CREATE TABLE IF NOT EXISTS `route_markers` (
 -- Table structure for table `route_markers_tmp`
 --
 
+DROP TABLE IF EXISTS `route_markers_tmp`;
 CREATE TABLE IF NOT EXISTS `route_markers_tmp` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `weight` int(11) NOT NULL,
@@ -5290,6 +5762,7 @@ CREATE TABLE IF NOT EXISTS `route_markers_tmp` (
 -- Table structure for table `sighting`
 --
 
+DROP TABLE IF EXISTS `sighting`;
 CREATE TABLE IF NOT EXISTS `sighting` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `timezone` varchar(64) NOT NULL DEFAULT 'Australia/Melbourne',
@@ -5302,7 +5775,8 @@ CREATE TABLE IF NOT EXISTS `sighting` (
   `user_id` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=5095 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=5098 ;
+
 
 -- --------------------------------------------------------
 
@@ -5310,6 +5784,7 @@ CREATE TABLE IF NOT EXISTS `sighting` (
 -- Table structure for table `sighting_locos`
 --
 
+DROP TABLE IF EXISTS `sighting_locos`;
 CREATE TABLE IF NOT EXISTS `sighting_locos` (
   `sighting_id` int(11) NOT NULL,
   `loco_id` int(11) NOT NULL,
@@ -5323,6 +5798,7 @@ CREATE TABLE IF NOT EXISTS `sighting_locos` (
 -- Table structure for table `source`
 --
 
+DROP TABLE IF EXISTS `source`;
 CREATE TABLE IF NOT EXISTS `source` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(256) NOT NULL,
@@ -5338,6 +5814,7 @@ CREATE TABLE IF NOT EXISTS `source` (
 -- Table structure for table `sph_counter`
 --
 
+DROP TABLE IF EXISTS `sph_counter`;
 CREATE TABLE IF NOT EXISTS `sph_counter` (
   `counter_id` int(11) NOT NULL,
   `max_doc_id` int(11) NOT NULL,
@@ -5350,7 +5827,7 @@ CREATE TABLE IF NOT EXISTS `sph_counter` (
 -- Table structure for table `tag`
 --
 
-
+DROP TABLE IF EXISTS `tag`;
 CREATE TABLE IF NOT EXISTS `tag` (
   `tag_id` int(11) NOT NULL AUTO_INCREMENT,
   `tag` varchar(128) NOT NULL,
@@ -5364,6 +5841,7 @@ CREATE TABLE IF NOT EXISTS `tag` (
 -- Table structure for table `tag_link`
 --
 
+DROP TABLE IF EXISTS `tag_link`;
 CREATE TABLE IF NOT EXISTS `tag_link` (
   `tag_link_id` int(11) NOT NULL AUTO_INCREMENT,
   `tag_id` int(11) NOT NULL,
@@ -5385,6 +5863,7 @@ CREATE TABLE IF NOT EXISTS `tag_link` (
 -- Table structure for table `timetable_entries`
 --
 
+DROP TABLE IF EXISTS `timetable_entries`;
 CREATE TABLE IF NOT EXISTS `timetable_entries` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `point_id` int(11) NOT NULL,
@@ -5406,6 +5885,7 @@ CREATE TABLE IF NOT EXISTS `timetable_entries` (
 -- Table structure for table `timetable_points`
 --
 
+DROP TABLE IF EXISTS `timetable_points`;
 CREATE TABLE IF NOT EXISTS `timetable_points` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
   `name` varchar(128) NOT NULL,
@@ -5423,6 +5903,7 @@ CREATE TABLE IF NOT EXISTS `timetable_points` (
 -- Table structure for table `timetable_regions`
 --
 
+DROP TABLE IF EXISTS `timetable_regions`;
 CREATE TABLE IF NOT EXISTS `timetable_regions` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
   `state` varchar(12) NOT NULL,
@@ -5437,6 +5918,7 @@ CREATE TABLE IF NOT EXISTS `timetable_regions` (
 -- Table structure for table `timetable_trains`
 --
 
+DROP TABLE IF EXISTS `timetable_trains`;
 CREATE TABLE IF NOT EXISTS `timetable_trains` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
   `provider` enum('artc','pbr') NOT NULL DEFAULT 'artc',
@@ -5460,6 +5942,7 @@ CREATE TABLE IF NOT EXISTS `timetable_trains` (
 -- Table structure for table `viewed_threads`
 --
 
+DROP TABLE IF EXISTS `viewed_threads`;
 CREATE TABLE IF NOT EXISTS `viewed_threads` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `topic_id` int(11) NOT NULL,
@@ -5467,9 +5950,8 @@ CREATE TABLE IF NOT EXISTS `viewed_threads` (
   `time` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00' ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `time` (`time`),
-  KEY `user_id` (`user_id`),
-  KEY `topic_id` (`topic_id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=118762 ;
+  KEY `topic_id_index` (`topic_id`,`user_id`)
+) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=129186 ;
 
 -- --------------------------------------------------------
 
@@ -5477,6 +5959,7 @@ CREATE TABLE IF NOT EXISTS `viewed_threads` (
 -- Table structure for table `waynet`
 --
 
+DROP TABLE IF EXISTS `waynet`;
 CREATE TABLE IF NOT EXISTS `waynet` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `trainnum` varchar(12) NOT NULL,
@@ -5497,6 +5980,7 @@ CREATE TABLE IF NOT EXISTS `waynet` (
 -- Table structure for table `wheel_arrangements`
 --
 
+DROP TABLE IF EXISTS `wheel_arrangements`;
 CREATE TABLE IF NOT EXISTS `wheel_arrangements` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(256) NOT NULL,
@@ -5505,34 +5989,46 @@ CREATE TABLE IF NOT EXISTS `wheel_arrangements` (
   `image` text NOT NULL,
   PRIMARY KEY (`id`),
   KEY `slug` (`slug`)
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=43 ;
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=41 ;
 
 DELIMITER $$
 --
 -- Events
 --
+DROP EVENT IF EXISTS `trim_log_pageactivity`$$
 CREATE DEFINER=`mgreenhill`@`%` EVENT `trim_log_pageactivity` ON SCHEDULE EVERY 1 DAY STARTS '2013-03-12 17:43:49' ON COMPLETION NOT PRESERVE ENABLE COMMENT 'Deleting page activity logs older then 30 days' DO BEGIN
 DELETE FROM log_pageactivity WHERE DATEDIFF (NOW(), time) >= 30;
 END$$
 
-CREATE DEFINER=`mgreenhill`@`%` EVENT `rp_resetStoryReadCounts` ON SCHEDULE EVERY 1 WEEK STARTS '2013-11-19 19:00:20' ON COMPLETION NOT PRESERVE ENABLE DO UPDATE sparta.nuke_stories SET weeklycounter = 0$$
+DROP EVENT IF EXISTS `rp_resetStoryReadCounts`$$
+CREATE DEFINER=`mgreenhill`@`%` EVENT `rp_resetStoryReadCounts` ON SCHEDULE EVERY 1 WEEK STARTS '2013-11-19 19:00:20' ON COMPLETION NOT PRESERVE ENABLE DO UPDATE sparta_unittest.nuke_stories SET weeklycounter = 0$$
 
+DROP EVENT IF EXISTS `trim_log_api`$$
 CREATE DEFINER=`mgreenhill`@`%` EVENT `trim_log_api` ON SCHEDULE EVERY 1 DAY STARTS '2014-11-28 09:16:46' ON COMPLETION NOT PRESERVE ENABLE COMMENT 'Delete API logs older than 30 days' DO BEGIN
 DELETE FROM log_api WHERE DATEDIFF (NOW(), date) >= 30;
 END$$
 
+DROP EVENT IF EXISTS `trim_nuke_bbsearch_results`$$
 CREATE DEFINER=`mgreenhill`@`%` EVENT `trim_nuke_bbsearch_results` ON SCHEDULE EVERY 1 DAY STARTS '2015-01-03 00:33:09' ON COMPLETION NOT PRESERVE ENABLE DO BEGIN
 DELETE FROM nuke_bbsearch_results WHERE DATEDIFF (NOW(), search_time) >= 30;
 END$$
 
+DROP EVENT IF EXISTS `trim_log_logins`$$
 CREATE DEFINER=`mgreenhill`@`%` EVENT `trim_log_logins` ON SCHEDULE EVERY 1 DAY STARTS '2015-02-01 22:39:12' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM log_logins WHERE login_time < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 6 month))$$
 
+DROP EVENT IF EXISTS `trim_log_errors`$$
 CREATE DEFINER=`mgreenhill`@`%` EVENT `trim_log_errors` ON SCHEDULE EVERY 1 DAY STARTS '2015-02-01 22:42:19' ON COMPLETION NOT PRESERVE ENABLE COMMENT 'Delete error logs older than 30 days' DO DELETE FROM log_errors WHERE error_time < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 30 day))$$
 
+DROP EVENT IF EXISTS `trim_nuke_users_hash`$$
 CREATE DEFINER=`mgreenhill`@`%` EVENT `trim_nuke_users_hash` ON SCHEDULE EVERY 1 DAY STARTS '2015-02-01 22:47:00' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM nuke_users_hash WHERE date < UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 6 month))$$
 
+DROP EVENT IF EXISTS `photo_comp_enable`$$
 CREATE DEFINER=`mgreenhill`@`%` EVENT `photo_comp_enable` ON SCHEDULE EVERY 1 HOUR STARTS '2015-03-13 19:05:01' ON COMPLETION NOT PRESERVE ENABLE DO UPDATE image_competition SET status = 0 WHERE NOW() >= submissions_date_open AND voting_date_close >= NOW() AND status = 1$$
 
+DROP EVENT IF EXISTS `photo_comp_disable`$$
 CREATE DEFINER=`mgreenhill`@`%` EVENT `photo_comp_disable` ON SCHEDULE EVERY 1 HOUR STARTS '2015-03-13 19:05:52' ON COMPLETION NOT PRESERVE ENABLE DO UPDATE image_competition SET status = 1 WHERE (submissions_date_open > NOW() OR NOW() > voting_date_close) AND status = 0$$
+
+DROP EVENT IF EXISTS `trim_geoplace_weather`$$
+CREATE DEFINER=`mgreenhil`@`railpage` EVENT `trim_geoplace_weather` ON SCHEDULE EVERY 1 HOUR STARTS '2015-07-11 13:19:52' ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM geoplace_forecast WHERE expires <= NOW()$$
 
 DELIMITER ;

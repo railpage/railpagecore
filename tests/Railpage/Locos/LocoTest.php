@@ -457,6 +457,8 @@
 			$Loco = new Locomotive($loco_id); 
 			$this->assertFalse($Loco->hasCoverImage()); 
 			
+			$this->assertFalse($Loco->Class->hasCoverImage()); 
+			
 			return $Loco;
 			
 		}
@@ -473,6 +475,11 @@
 			$this->assertTrue($Loco->hasCoverImage()); 
 			
 			$Loco->getCoverImage(); 
+			
+			$Loco->Class->setCoverImage($Image); 
+			$this->assertTrue($Loco->Class->hasCoverImage()); 
+			
+			$Loco->Class->getCoverImage();
 			
 			return $Image;
 			
@@ -703,6 +710,113 @@
 			
 			$Loco = new Locomotive;
 			$Loco->setRating($User); 
+			
+		}
+		
+		/**
+		 * @depends testAddLocoClass
+		 * @depends testAddGauge
+		 * @depends testAddStatus
+		 * @depends testAddManufacturer
+		 */
+		
+		public function test_bulkAddLocos($Class, $Gauge, $status_id, $Manufacturer) {
+			
+			$Class->bulkAddLocos(10, 20, $Gauge->id, $status_id, $Manufacturer->id, "Z");
+			$Class->getFleetStatus();
+			
+			return $Class;
+			
+		}
+		
+		/**
+		 * @depends testAddLocoClass
+		 * @depends testAddGauge
+		 * @depends testAddStatus
+		 * @depends testAddManufacturer
+		 */
+		
+		public function test_bulkAddLocos_break_firstloco($Class, $Gauge, $status_id, $Manufacturer) {
+			
+			$Class->bulkAddLocos();
+			
+		}
+		
+		/**
+		 * @depends testAddLocoClass
+		 * @depends testAddGauge
+		 * @depends testAddStatus
+		 * @depends testAddManufacturer
+		 */
+		
+		public function test_bulkAddLocos_break_firstloco_letter($Class, $Gauge, $status_id, $Manufacturer) {
+			
+			$Class->bulkAddLocos("A1", 20, $Gauge->id, $status_id, $Manufacturer->id, "Z");
+			
+		}
+		
+		/**
+		 * @depends testAddLocoClass
+		 * @depends testAddGauge
+		 * @depends testAddStatus
+		 * @depends testAddManufacturer
+		 */
+		
+		public function test_bulkAddLocos_break_lastloco($Class, $Gauge, $status_id, $Manufacturer) {
+			
+			$Class->bulkAddLocos(10, false, $Gauge->id, $status_id, $Manufacturer->id, "Z");
+			
+		}
+		
+		/**
+		 * @depends testAddLocoClass
+		 * @depends testAddGauge
+		 * @depends testAddStatus
+		 * @depends testAddManufacturer
+		 */
+		
+		public function test_bulkAddLocos_break_lastloco_letter($Class, $Gauge, $status_id, $Manufacturer) {
+			
+			$Class->bulkAddLocos(10, "A20", $Gauge->id, $status_id, $Manufacturer->id, "Z");
+			
+		}
+		
+		/**
+		 * @depends testAddLocoClass
+		 * @depends testAddGauge
+		 * @depends testAddStatus
+		 * @depends testAddManufacturer
+		 */
+		
+		public function test_bulkAddLocos_break_gauge($Class, $Gauge, $status_id, $Manufacturer) {
+			
+			$Class->bulkAddLocos(10, 20, false, $status_id, $Manufacturer->id, "Z");
+			
+		}
+		
+		/**
+		 * @depends testAddLocoClass
+		 * @depends testAddGauge
+		 * @depends testAddStatus
+		 * @depends testAddManufacturer
+		 */
+		
+		public function test_bulkAddLocos_break_status($Class, $Gauge, $status_id, $Manufacturer) {
+			
+			$Class->bulkAddLocos(10, 20, $Gauge->id, false, $Manufacturer->id, "Z");
+			
+		}
+		
+		/**
+		 * @depends testAddLocoClass
+		 * @depends testAddGauge
+		 * @depends testAddStatus
+		 * @depends testAddManufacturer
+		 */
+		
+		public function test_bulkAddLocos_break_manufacturer($Class, $Gauge, $status_id, $Manufacturer) {
+			
+			$Class->bulkAddLocos(10, 20, $Gauge->id, $status_id, false, "Z");
 			
 		}
 			
