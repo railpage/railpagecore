@@ -183,8 +183,15 @@
 			$where = [ "id = ?" => $Entry->id ];
 			$Database->update("glossary", $data, $where); 
 			
+			$user_id = $Database->fetchOne("SELECT author FROM glossary WHERE id = ?", $Entry->id);
+			
+			$this->assertTrue($user_id > 0); 
+			$this->assertTrue($Entry->id > 0);
+			$this->assertInstanceOf("\Railpage\Users\User", $Entry->Author);
+			
 			$this->assertFalse(!filter_var($Entry->Author->id, FILTER_VALIDATE_INT)); 
-			$this->assertEquals($Entry->Author->id, $Database->fetchOne("SELECT author FROM glossary WHERE id = ?", $Entry->id)); 
+			$this->assertEquals($Entry->Author->id, $user_id); 
+			
 			
 			$Entry = new Entry($Entry->id); 
 			
