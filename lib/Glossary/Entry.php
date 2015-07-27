@@ -131,7 +131,7 @@
 				$this->id = $this->db->fetchOne($query, array($id, $type)); 
 			}
 			
-			if ($this->id = filter_var($this->id, FILTER_VALIDATE_INT)) {
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
 				$this->mckey = sprintf("%s.entry=%d", $this->Module->namespace, $this->id);
 				
 				$this->populate();
