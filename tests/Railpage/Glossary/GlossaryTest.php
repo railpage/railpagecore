@@ -183,6 +183,9 @@
 			$where = [ "id = ?" => $Entry->id ];
 			$Database->update("glossary", $data, $where); 
 			
+			$this->assertFalse(!filter_var($Entry->Author->id, FILTER_VALIDATE_INT)); 
+			$this->assertEquals($Entry->Author->id, $Database->fetchOne("SELECT author FROM glossary WHERE id = ?", $Entry->id)); 
+			
 			$Entry = new Entry($Entry->id); 
 			
 		}
