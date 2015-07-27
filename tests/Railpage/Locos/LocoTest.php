@@ -720,7 +720,9 @@
 		 * @depends testAddManufacturer
 		 */
 		
-		public function test_bulkAddLocos($Class, $Gauge, $status_id, $Manufacturer) {
+		public function test_bulkAddLocos($class_id, $Gauge, $status_id, $Manufacturer) {
+			
+			$Class = new LocoClass($class_id);
 			
 			$Class->bulkAddLocos(10, 20, $Gauge->id, $status_id, $Manufacturer->id, "Z");
 			$Class->getFleetStatus();
@@ -736,7 +738,11 @@
 		 * @depends testAddManufacturer
 		 */
 		
-		public function test_bulkAddLocos_break_firstloco($Class, $Gauge, $status_id, $Manufacturer) {
+		public function test_bulkAddLocos_break_firstloco($class_id, $Gauge, $status_id, $Manufacturer) {
+			
+			$this->setExpectedException("Exception", "Cannot add locomotives to class - first loco number was not provided");
+			
+			$Class = new LocoClass($class_id);
 			
 			$Class->bulkAddLocos();
 			
@@ -749,7 +755,11 @@
 		 * @depends testAddManufacturer
 		 */
 		
-		public function test_bulkAddLocos_break_firstloco_letter($Class, $Gauge, $status_id, $Manufacturer) {
+		public function test_bulkAddLocos_break_firstloco_letter($class_id, $Gauge, $status_id, $Manufacturer) {
+			
+			$this->setExpectedException("Exception", "The first locomotive number provided has letters in it - the bulk add loco code doesn't support this yet");
+			
+			$Class = new LocoClass($class_id);
 			
 			$Class->bulkAddLocos("A1", 20, $Gauge->id, $status_id, $Manufacturer->id, "Z");
 			
@@ -762,7 +772,11 @@
 		 * @depends testAddManufacturer
 		 */
 		
-		public function test_bulkAddLocos_break_lastloco($Class, $Gauge, $status_id, $Manufacturer) {
+		public function test_bulkAddLocos_break_lastloco($class_id, $Gauge, $status_id, $Manufacturer) {
+			
+			$this->setExpectedException("Exception", "Cannot add locomotives to class - last loco number was not provided");
+			
+			$Class = new LocoClass($class_id);
 			
 			$Class->bulkAddLocos(10, false, $Gauge->id, $status_id, $Manufacturer->id, "Z");
 			
@@ -775,7 +789,11 @@
 		 * @depends testAddManufacturer
 		 */
 		
-		public function test_bulkAddLocos_break_lastloco_letter($Class, $Gauge, $status_id, $Manufacturer) {
+		public function test_bulkAddLocos_break_lastloco_letter($class_id, $Gauge, $status_id, $Manufacturer) {
+			
+			$this->setExpectedException("Exception", "The last locomotive number provided has letters in it - the bulk add loco code doesn't support this yet");
+			
+			$Class = new LocoClass($class_id);
 			
 			$Class->bulkAddLocos(10, "A20", $Gauge->id, $status_id, $Manufacturer->id, "Z");
 			
@@ -788,7 +806,11 @@
 		 * @depends testAddManufacturer
 		 */
 		
-		public function test_bulkAddLocos_break_gauge($Class, $Gauge, $status_id, $Manufacturer) {
+		public function test_bulkAddLocos_break_gauge($class_id, $Gauge, $status_id, $Manufacturer) {
+			
+			$this->setExpectedException("Exception", "Cannot add locomotives to class - no gauge ID provided");
+			
+			$Class = new LocoClass($class_id);
 			
 			$Class->bulkAddLocos(10, 20, false, $status_id, $Manufacturer->id, "Z");
 			
@@ -801,7 +823,11 @@
 		 * @depends testAddManufacturer
 		 */
 		
-		public function test_bulkAddLocos_break_status($Class, $Gauge, $status_id, $Manufacturer) {
+		public function test_bulkAddLocos_break_status($class_id, $Gauge, $status_id, $Manufacturer) {
+			
+			$this->setExpectedException("Exception", "Cannot add locomotives to class - no status ID provided");
+			
+			$Class = new LocoClass($class_id);
 			
 			$Class->bulkAddLocos(10, 20, $Gauge->id, false, $Manufacturer->id, "Z");
 			
@@ -814,7 +840,11 @@
 		 * @depends testAddManufacturer
 		 */
 		
-		public function test_bulkAddLocos_break_manufacturer($Class, $Gauge, $status_id, $Manufacturer) {
+		public function test_bulkAddLocos_break_manufacturer($class_id, $Gauge, $status_id, $Manufacturer) {
+			
+			$this->setExpectedException("Exception", "Cannot add locomotives to class - no manufacturer ID was provided");
+			
+			$Class = new LocoClass($class_id);
 			
 			$Class->bulkAddLocos(10, 20, $Gauge->id, $status_id, false, "Z");
 			
