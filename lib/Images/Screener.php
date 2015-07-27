@@ -29,6 +29,10 @@
 		
 		public function getUnreviewedImages($page = 1, $items_per_page = 25) {
 			
+			if (!$this->User instanceof User) {
+				throw new Exception("Cannot find unreviewed images - no user has been set");
+			}
+			
 			$query = "SELECT SQL_CALC_FOUND_ROWS image.id, image.title, image.user_id 
 						FROM image 
 						WHERE image.id NOT IN ( 
