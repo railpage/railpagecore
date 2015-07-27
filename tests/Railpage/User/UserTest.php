@@ -708,20 +708,14 @@
 			
 			$Config = AppCore::getConfig(); 
 			$Config->AvatarMaxWidth = 100;  
-			$Config->AvatarMaxHeight = 100; 
-			
-			#$Registry = Registry::getInstance();
-			#$Registry->set("config", $Config);
+			$Config->AvatarMaxHeight = 100;
 			
 			$User->avatar = "http://doge2048.com/meta/doge-600.png";
 			$User->validateAvatar(); 
 			$User->validateAvatar(true);
 			
 			$Config->AvatarMaxWidth = 1000;  
-			$Config->AvatarMaxHeight = 1000; 
-			
-			#$Registry = Registry::getInstance();
-			#$Registry->set("config", $Config);
+			$Config->AvatarMaxHeight = 1000;
 			
 			$User->avatar = "http://doge2048.com/meta/doge-600.png";
 			$User->validateAvatar(); 

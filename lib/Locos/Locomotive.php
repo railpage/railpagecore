@@ -12,6 +12,7 @@
 	use Railpage\Locos\Liveries\Livery;
 	use Railpage\Users\User;
 	use Railpage\Users\Factory as UserFactory;
+	use Railpage\Users\Utility\UrlUtility as UserUrlUtility;
 	use Railpage\Images\Images;
 	use Railpage\Images\Image;
 	use Railpage\Assets\Asset;
@@ -751,10 +752,12 @@
 			foreach ($this->db->fetchAll($query, $this->id) as $row) {
 				if (!empty($row['user_avatar'])) {
 					try {
-						$User = UserFactory::CreateUser($row['user_id']);
+						#$User = UserFactory::CreateUser($row['user_id']);
 						
 						$row['user_avatar'] = AvatarUtility::Format($row['user_avatar'], 50, 50);
-						$row['user_url'] = $User->url;
+						#$row['user_url'] = $User->url;
+						
+						$row['user_url'] = UserUrlUtility::MakeURLs($row);
 					} catch (Exception $e) {
 						global $Error; 
 						$Error->save($e); 

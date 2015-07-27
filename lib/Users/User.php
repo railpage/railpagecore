@@ -2264,16 +2264,7 @@
 		
 		private function createUrls() {
 			
-			$PMs = new Module("pm");
-			
-			$this->url = new Url(sprintf("%s/%d", $this->Module->url, $this->id));
-			$this->url->view = $this->url->url;
-			$this->url->account = "/account";
-			$this->url->sendpm = sprintf("%s/new/to/%d", $PMs->url, $this->id);
-			$this->url->newpm = sprintf("%s/new/to/%d", $PMs->url, $this->id);
-			$this->url->ideas = sprintf("%s?mode=contributions-ideas", $this->url->url);
-			
-			return $this;
+			$this->url = Utility\UrlUtility::MakeURLs($this);
 			
 		}
 		
