@@ -62,9 +62,10 @@
 		
 		/**
 		 * @depends testAddEntry
+		 * @depends testAddUser
 		 */
 		
-		public function testCompareEntry($Entry) {
+		public function testCompareEntry($Entry, $User) {
 			
 			$NewEntry = new Entry($Entry->id); 
 			
@@ -76,6 +77,9 @@
 			$this->assertEquals(self::EXAMPLE, $NewEntry->example); 
 			$this->assertEquals($Entry->Author->id, $NewEntry->Author->id); 
 			$this->assertEquals($Entry->Author->username, $NewEntry->Author->username); 
+			
+			$this->assertEquals($Entry->Author->id, $User->id); 
+			$this->assertTrue($User->id > 0);
 			
 		}
 		
