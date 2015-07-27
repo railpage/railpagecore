@@ -158,8 +158,10 @@
 					
 					$Organisation = OrganisationsFactory::CreateOrganisation(false, $this->organisation_id); 
 					
-					$this->organisation_id = $row['organisation_id']; 
-					$this->organisation = $Organisation->name; 
+					if ($Organisation instanceof Organisation) {
+						$this->organisation_id = $row['organisation_id']; 
+						$this->organisation = $Organisation->name; 
+					}
 				}
 				
 				$this->makeURLs(); 

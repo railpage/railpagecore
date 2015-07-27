@@ -1251,11 +1251,9 @@
 				$data[$key] = $this->$var;
 			}
 			
-			if (strpos($data['meta'], "\\\\\\\\") !== false) {
+			if (is_string($data['meta']) && strpos($data['meta'], "\\\\\\\\") !== false) {
 				$data['meta'] = NULL;
 			}
-			
-			#printArray($data);die;
 			
 			$json = [ "meta", "user_opts" ];
 			foreach ($json as $key) {
