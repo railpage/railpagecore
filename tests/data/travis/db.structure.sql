@@ -21,7 +21,7 @@ DELIMITER $$
 -- Procedures
 --
 DROP PROCEDURE IF EXISTS `FixLastPostID`$$
-CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `FixLastPostID`()
+CREATE DEFINER=`travis`@`%` PROCEDURE `FixLastPostID`()
 BEGIN
 DECLARE done INT DEFAULT 0;
 DECLARE temp_post_id INT;
@@ -44,7 +44,7 @@ CLOSE cur1;
 END$$
 
 DROP PROCEDURE IF EXISTS `geolocation`$$
-CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `geolocation`(IN location_lat double, IN location_lon double, IN dist int, IN max int)
+CREATE DEFINER=`travis`@`%` PROCEDURE `geolocation`(IN location_lat double, IN location_lon double, IN dist int, IN max int)
 BEGIN
 DECLARE lon1 float;
 DECLARE lon2 float;
@@ -73,7 +73,7 @@ SET SQL_SELECT_LIMIT = default;
 END$$
 
 DROP PROCEDURE IF EXISTS `geophotos`$$
-CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `geophotos`(IN location_id int, IN dist int, IN max int)
+CREATE DEFINER=`travis`@`%` PROCEDURE `geophotos`(IN location_id int, IN dist int, IN max int)
 BEGIN
 DECLARE location_lon double;
 DECLARE location_lat double;
@@ -108,7 +108,7 @@ SET SQL_SELECT_LIMIT = default;
 END$$
 
 DROP PROCEDURE IF EXISTS `latlngphotos`$$
-CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `latlngphotos`(IN lat double, IN lon double, IN dist int, IN max int)
+CREATE DEFINER=`travis`@`%` PROCEDURE `latlngphotos`(IN lat double, IN lon double, IN dist int, IN max int)
 BEGIN
 
 DECLARE lon1 float;
@@ -135,13 +135,13 @@ SET SQL_SELECT_LIMIT = default;
 END$$
 
 DROP PROCEDURE IF EXISTS `newscounters`$$
-CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `newscounters`()
+CREATE DEFINER=`travis`@`%` PROCEDURE `newscounters`()
 BEGIN
 UPDATE nuke_stories SET weeklycounter = 0;
 END$$
 
 DROP PROCEDURE IF EXISTS `PopulateLocoClass`$$
-CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `PopulateLocoClass`(IN loco_number VARCHAR(8), IN loco_number_last VARCHAR(8), IN loco_class_id INT, IN loco_gauge_id INT, IN loco_status_id INT, IN loco_manufacturer_id INT, IN prefix TEXT)
+CREATE DEFINER=`travis`@`%` PROCEDURE `PopulateLocoClass`(IN loco_number VARCHAR(8), IN loco_number_last VARCHAR(8), IN loco_class_id INT, IN loco_gauge_id INT, IN loco_status_id INT, IN loco_manufacturer_id INT, IN prefix TEXT)
 BEGIN
 
 simple_loop: LOOP
@@ -160,7 +160,7 @@ END LOOP simple_loop;
 END$$
 
 DROP PROCEDURE IF EXISTS `PopulateLocoOrgs`$$
-CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `PopulateLocoOrgs`(IN LOCO_CLASS_ID INT, IN LOCO_OPERATOR_ID INT, IN LOCO_LINK_WEIGHT INT, IN LOCO_LINK_TYPE INT)
+CREATE DEFINER=`travis`@`%` PROCEDURE `PopulateLocoOrgs`(IN LOCO_CLASS_ID INT, IN LOCO_OPERATOR_ID INT, IN LOCO_LINK_WEIGHT INT, IN LOCO_LINK_TYPE INT)
 BEGIN
 
 INSERT INTO `sparta_unittest`.`loco_org_link` (`loco_id`, `operator_id`, `link_type`, `link_weight`) SELECT `loco_id`, LOCO_OPERATOR_ID, LOCO_LINK_TYPE, LOCO_LINK_WEIGHT FROM `sparta_unittest`.`loco_unit` WHERE `class_id` = LOCO_CLASS_ID AND `loco_id` NOT IN (SELECT `loco_id` FROM `sparta_unittest`.`loco_org_link` WHERE `operator_id` = LOCO_OPERATOR_ID AND `link_type` = LOCO_LINK_TYPE);
@@ -168,7 +168,7 @@ INSERT INTO `sparta_unittest`.`loco_org_link` (`loco_id`, `operator_id`, `link_t
 END$$
 
 DROP PROCEDURE IF EXISTS `update_viewed_thread`$$
-CREATE DEFINER=`mgreenhill`@`%` PROCEDURE `update_viewed_thread`(IN `val_topic_id` INT, IN `val_user_id` INT)
+CREATE DEFINER=`travis`@`%` PROCEDURE `update_viewed_thread`(IN `val_topic_id` INT, IN `val_user_id` INT)
 BEGIN
 SELECT SQL_CALC_FOUND_ROWS topic_id, user_id FROM viewed_threads WHERE topic_id = val_topic_id AND user_id = val_user_id;
 
