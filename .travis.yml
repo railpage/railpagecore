@@ -3,6 +3,7 @@ sudo: false
 
 env:
   - CODECLIMATE_REPO_TOKEN=20d76bff65cdc35b5d3450847800ecc6d5646842b55fe9b433cee1da0fa012ba
+  - PHP_OPTIONS="-d sendmail_path=`which true`"
 
 php:
   - 5.5
@@ -33,7 +34,7 @@ matrix:
   fast_finish: true
   allow_failures:
     - php: hhvm-nightly
-#    - php: hhvm
+    - php: hhvm
 #    - php: 7.0
 
 install:
