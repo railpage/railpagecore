@@ -589,6 +589,8 @@
 			
 			$Provider = $this->getProvider();
 			
+			$data = false;
+			
 			try {
 				$data = $Provider->getImage($this->photo_id, $force); 
 			} catch (Exception $e) {
