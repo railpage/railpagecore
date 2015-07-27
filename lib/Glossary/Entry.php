@@ -164,6 +164,7 @@
 			$this->Type = new Type($row['type']);
 			$this->status = isset($row['status']) ? $row['status'] : self::STATUS_APPROVED;
 			$this->slug = $row['slug'];
+			$this->setAuthor(UserFactory::CreateUser($row['author']));
 			
 			if ($row['date'] == "0000-00-00 00:00:00") {
 				$this->Date = new DateTime;
@@ -172,7 +173,6 @@
 				$this->Date = new DateTime($row['date']);
 			}
 			
-			$this->setAuthor(UserFactory::CreateUser($row['author']));
 			$this->makeURLs(); 
 			$this->makeSlug(); 
 			
