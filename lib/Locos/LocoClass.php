@@ -638,7 +638,7 @@
 				
 			} else {
 				$this->db->insert("loco_class", $data); 
-				$this->id = $this->db->lastInsertId(); 
+				$this->id = intval($this->db->lastInsertId()); 
 				
 				$this->createSlug();
 				$this->commit();

@@ -59,11 +59,15 @@
 					
 					$Registry->set($regkey, $LocoClass); 
 				} 
-					
-				return $LocoClass; 
+				
+				if (filter_var($LocoClass->id, FILTER_VALIDATE_INT)) {
+					return $LocoClass; 
+				}
+				
+				throw new Exception(sprintf("Locomotive class id %s could not be found", $id));
 			}
 			
-			return false;
+			throw new Exception("An invalid locomotive class ID was supplied");
 			
 		}
 		
