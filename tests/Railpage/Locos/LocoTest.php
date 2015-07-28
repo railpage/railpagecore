@@ -294,6 +294,13 @@
 			
 		}
 		
+		public function testtestFetchLoco_break() {
+			
+			$this->setExpectedException("Exception", "Data for this locomotive could not be retrieved"); 
+			$Loco = new Locomotive(99999999999999);
+			
+		}
+		
 		/**
 		 * @depends testAddLocoClass 
 		 */
