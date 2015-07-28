@@ -209,7 +209,7 @@
 		 */
 		
 		public function testAddLoco($class_id, $gauge_id, $status_id, $manufacturer_id) {
-			$Class = new LocoClass($class_id);
+			$Class = LocosFactory::CreateLocoClass($class_id);
 			$Gauge = new Gauge($gauge_id);
 			
 			$TestClass = LocosFactory::CreateLocoClass($Class->slug);
@@ -299,7 +299,7 @@
 		 */
 		
 		public function testGetClassByWheelArrangement($class_id) {
-			$Class = new LocoClass($class_id); 
+			$Class = LocosFactory::CreateLocoClass($class_id); 
 			$Arrangement = new WheelArrangement($Class->wheel_arrangement_id); 
 			
 			foreach ($Arrangement->getClasses() as $row) {
@@ -312,7 +312,7 @@
 		 */
 		
 		public function testGetClassByType($class_id) {
-			$Class = new LocoClass($class_id); 
+			$Class = LocosFactory::CreateLocoClass($class_id); 
 			$Type = new Type($Class->type_id); 
 			
 			foreach ($Type->getClasses() as $row) {
@@ -325,7 +325,7 @@
 		 */
 		
 		public function testGetClassByManufacturer($class_id) {
-			$Class = new LocoClass($class_id); 
+			$Class = LocosFactory::CreateLocoClass($class_id); 
 			$Manufacturer = new Manufacturer($Class->type_id); 
 			
 			foreach ($Manufacturer->getClasses() as $row) {
@@ -415,7 +415,7 @@
 		
 		public function test_addNote($loco_id, $User) {
 			
-			$Loco = new Locomotive($loco_id); 
+			$Loco = LocosFactory::CreateLocomotive($loco_id); 
 			$Loco->addNote("test note text", $User);
 			$note_id = $Loco->addNote("test note text1111", $User->id);
 			
@@ -443,7 +443,7 @@
 			
 			$this->setExpectedException("Exception", "No user provided");
 			
-			$Loco = new Locomotive($loco_id); 
+			$Loco = LocosFactory::CreateLocomotive($loco_id);
 			$Loco->addNote("asdfadf"); 
 			
 		}
@@ -454,7 +454,7 @@
 		
 		public function test_hasCoverImage($loco_id) {
 			
-			$Loco = new Locomotive($loco_id); 
+			$Loco = LocosFactory::CreateLocomotive($loco_id); 
 			$this->assertFalse($Loco->hasCoverImage()); 
 			
 			$this->assertFalse($Loco->Class->hasCoverImage()); 
@@ -504,7 +504,7 @@
 		
 		public function test_addLocoCorrection($loco_id, $User) {
 			
-			$Loco = new Locomotive($loco_id); 
+			$Loco = LocosFactory::CreateLocomotive($loco_id);
 			$Loco->newCorrection("test blah", $User->id); 
 			
 			$Correction = new Correction;
@@ -538,8 +538,8 @@
 		
 		public function test_addClassCorrection($class_id, $loco_id, $User) {
 			
-			$Class = new LocoClass($class_id); 
-			$Loco = new Locomotive($loco_id);
+			$Class = LocosFactory::CreateLocoClass($class_id); 
+			$Loco = LocosFactory::CreateLocomotive($loco_id);
 			
 			$Correction = new Correction;
 			$Correction->text = "test class 123132";
@@ -625,7 +625,7 @@
 		
 		public function test_listAllTheThings($loco_id) {
 			
-			$Loco = new Locomotive($loco_id);
+			$Loco = LocosFactory::CreateLocomotive($loco_id);
 			$Locos = new Locos;
 			
 			$Locos->listModels(); 
@@ -659,7 +659,7 @@
 		
 		public function test_rateLoco($loco_id, $User) {
 			
-			$Loco = new Locomotive($loco_id); 
+			$Loco = LocosFactory::CreateLocomotive($loco_id);
 			
 			$this->assertEquals(2.5, $Loco->getRating()); 
 			

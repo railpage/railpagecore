@@ -108,18 +108,7 @@
 				trigger_error("Tried to set empty value for key " . $key . " in memcache. Are you sure it should be empty?", E_USER_WARNING); 
 			}
 			
-			if (RP_DEBUG) {
-				global $site_debug;
-				$debug_timer_start = microtime(true);
-				
-				/*
-				$site_debug[] = array(
-					"key" => $key,
-					"exp" => $exp,
-					"value" => $value
-				);
-				*/
-			}
+			$timer = Debug::GetTimer(); 
 			
 			$rs = $this->cn->replace($key, $value, $exp); 
 			$verb = "Update";
@@ -129,13 +118,7 @@
 				$verb = "Set";
 			}
 			
-			if (RP_DEBUG) {
-				if ($rs === false) {
-					$site_debug[] = "Memcache: FAILED " . $verb . " " . $key . " (" . strlen(serialize($value)) . "b object, expires " . $exp . ") in " . number_format(microtime(true) - $debug_timer_start, 12) . "s";
-				} else {
-					$site_debug[] = "Memcache: SUCCEEDED " . $verb . " " . $key . " (" . strlen(serialize($value)) . "b object, expires " . $exp . ") in " . number_format(microtime(true) - $debug_timer_start, 12) . "s";
-				}
-			}
+			Debug::LogEvent(($rs === false ? "Failed" : "Succeeded") . " " . $verb . " " . $key . " (" . strlen(serialize($value)) . "b object, expires " . $exp . ")", $timer); 
 			
 			StatsD::increment("rp.memcached.set");
 		}
@@ -163,21 +146,11 @@
 				return false;
 			}
 			
-			if (RP_DEBUG) {
-				global $site_debug;
-				
-				$debug_timer_start = microtime(true);
-			}
+			$timer = Debug::GetTimer(); 
 		
 			$rs = $this->cn->get($key); 
 			
-			if (RP_DEBUG) {
-				if ($rs === false) {
-					$site_debug[] = "Memcache: NOT FOUND " . $key . " in " . number_format(microtime(true) - $debug_timer_start, 10) . "s";
-				} else {
-					$site_debug[] = "Memcache: FOUND " . $key . " in " . number_format(microtime(true) - $debug_timer_start, 10) . "s";
-				}
-			}
+			Debug::LogEvent(($rs === false ? "NOT FOUND" : "FOUND") . " " . $key, $timer); 
 			
 			StatsD::increment("rp.memcached.get");
 			
@@ -197,21 +170,11 @@
 				return false;
 			}
 			
-			if (RP_DEBUG) {
-				global $site_debug;
-				
-				$debug_timer_start = microtime(true);
-			}
+			$timer = Debug::GetTimer(); 
 			
 			$rs = $this->cn->delete($key); 
 			
-			if (RP_DEBUG) {
-				if ($rs === false) {
-					$site_debug[] = "Memcache: FAILED Delete for " . $key . " in " . number_format(microtime(true) - $debug_timer_start, 10) . "s";
-				} else {
-					$site_debug[] = "Memcache: SUCCEEDED Delete for " . $key . " in " . number_format(microtime(true) - $debug_timer_start, 10) . "s";
-				}
-			}
+			Debug::LogEvent(($rs === false ? "FAILED" : "SUCCEEDED") . " delete " . $key, $timer); 
 			
 			StatsD::increment("rp.memcached.delete");
 			

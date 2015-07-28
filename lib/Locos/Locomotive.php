@@ -340,6 +340,8 @@
 				$this->fetch(); 
 			}
 			
+			$this->id = intval($this->id);
+			
 			Debug::logEvent(sprintf("%s(%d)", __METHOD__, $this->id), $timer); 
 		}
 		
@@ -1187,7 +1189,7 @@
 							->from("idx_logs")
 							->match("module", "locos")
 							->where("key", "=", "loco_id")
-							->where("value", "=", $this->id)
+							->where("value", "=", intval($this->id))
 							->groupBy("user_id");
 			
 			$result = $query->execute();
@@ -1522,6 +1524,6 @@
 		 */
 		
 		public function __toString() {
-			return $this->number;
+			return (string) $this->number;
 		}
 	}
