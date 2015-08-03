@@ -21,7 +21,8 @@
 		
 		public static function CreateFromImageID($image_id) {
 			
-			$Url = new RealUrl(sprintf("/photos/%d", $image_id)); 
+			$Url = new RealUrl(sprintf("/photos/%d", $image_id));
+			$Url->favourite = sprintf("%s?mode=image.favourite", $Url->url);
 			
 			return $Url;
 			

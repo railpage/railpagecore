@@ -112,6 +112,10 @@
 			
 			$this->db->delete("image_flags_skip", $where);
 			
+			if ($publish) {
+				$Image = Utility\Updater::updateAuthor($Image);
+			}
+			
 			return $this;
 			
 		}

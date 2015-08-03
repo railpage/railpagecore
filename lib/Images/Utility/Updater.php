@@ -11,10 +11,9 @@
 	use Exception;
 	use InvalidArgumentException;
 	use DateTime;
-	use Railpage\Url;
 	use Railpage\Debug;
 	use Railpage\Users\Utility\UserUtility;
-	use Railpage\Users\Factory as UsersFactory;
+	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Images\Image;
 	use Railpage\Images\ImageFactory;
 	use Railpage\AppCore;
@@ -79,6 +78,25 @@
 					}
 				}
 			}
+			
+		}
+		
+		/**
+		 * Update the author for a specific image
+		 * @since Version 3.10.0
+		 * @param \Railpage\Images\Image $Image
+		 * @return \Railpage\Images\Image
+		 */
+		
+		public static function updateAuthor(Image $Image) {
+			
+			if ($id = UserUtility::findFromFlickrNSID($Image->author->id)) {
+				$Image->author->railpage_id = $id;
+				$Image->author->User = UserFactory::CreateUser($Image->author->railpage_id);
+				$Image->commit(); 
+			}
+			
+			return $Image;
 			
 		}
 		

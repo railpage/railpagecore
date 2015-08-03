@@ -106,7 +106,7 @@
 					$query .= " WHERE status = ?";
 					$where[] = $status;
 				} elseif ($status == self::STATUS_CLOSED) {
-					$query .= " WHERE status = ? AND voting_date_close < ?";
+					$query .= " WHERE status = ? AND voting_date_close < ? ORDER BY voting_date_close DESC";
 					$where[] = $status;
 					$where[] = (new DateTime)->format("Y-m-d H:i:s");
 				}

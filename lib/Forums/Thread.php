@@ -423,6 +423,8 @@
 			} else {
 				$this->db->insert("nuke_bbtopics", $data); 
 				$this->id = $this->db->lastInsertId(); 
+				
+				$this->url = new Url(sprintf("/f-t%d.htm", $this->id));
 			}
 			
 			return true;
