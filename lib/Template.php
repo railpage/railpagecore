@@ -298,7 +298,7 @@
 				}
 				
 				$minify = implode(",", $minify);
-				$tags[] = sprintf("<link href='%s/vendor/mrclay/minify/min/?f=%s&v=%s' rel='stylesheet' media='all'>", RP_WEB_ROOT, $minify, RP_VERSION);
+				$tags[] = sprintf("<link href='%s/m.php?f=%s&v=%s' rel='stylesheet' media='all'>", RP_WEB_ROOT, $minify, RP_VERSION);
 			}
 			
 			return implode("\n\t", $tags); 
@@ -538,12 +538,17 @@
 		 * Prerender a page
 		 * @since Version 3.8.7
 		 * @param string $url
+		 * @param boolean $first Set to true if this needs to be prerendered first
 		 * @return $this;
 		 */
 		
-		public function prerender($url = false) {
+		public function prerender($url = false, $first = false) {
 			if ($url && !in_array($url, $this->preload['prerender'])) {
-				$this->preload['prerender'][] = $url;
+				if ($first) {
+					array_unshift($this->preload['prerender'], $url); 
+				} else {
+					$this->preload['prerender'][] = $url;
+				}
 			}
 			
 			return $this;
@@ -553,12 +558,17 @@
 		 * Prefetch a page
 		 * @since Version 3.8.7
 		 * @param string $url
+		 * @param boolean $first Set to true if this needs to be prerendered first
 		 * @return $this;
 		 */
 		
-		public function prefetch($url = false) {
+		public function prefetch($url = false, $first = false) {
 			if ($url && !in_array($url, $this->preload['prefetch'])) {
-				$this->preload['prefetch'][] = $url;
+				if ($first) {
+					array_unshift($this->preload['prefetch'], $url);
+				} else {
+					$this->preload['prefetch'][] = $url;
+				}
 			}
 			
 			return $this;
