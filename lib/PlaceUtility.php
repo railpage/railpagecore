@@ -17,6 +17,7 @@
 	use DateTimeZone;
 	use Zend_Db_Expr;
 	use GuzzleHttp\Client;
+	use GuzzleHttp\Exception\RequestException;
 	
 	class PlaceUtility {
 		
@@ -38,38 +39,87 @@
 			$mckey = sprintf("railpage:woe=%s,%s;types=", $lat, $lon, implode(",", $placetypes)); 
 			
 			if (!$return = $Redis->fetch($mckey)) {
+				
 				$url = sprintf("http://where.yahooapis.com/v1/places\$and(.q('%s,%s'),.type(%s))?lang=en&appid=%s&format=json", $lat, $lon, implode(",", $placetypes), $Config->Yahoo->ApplicationID);
 				
-				$GuzzleClient = new Client;
-				$response = $GuzzleClient->get($url);
+				$dbresult = self::getWoeFromCache($lat, $lon); 
 				
-				if ($response->getStatusCode() == 200) {
-					$result = json_decode($response->getBody(), true);
+				if (is_array($dbresult)) {
+					return $dbresult;
 				}
 				
-				switch ($response->getStatusCode()) {
-					case 200 :
-						$return = json_decode($response->getBody(), true);
-						break;
-					
-					case 503 : 
-						throw new Exception("Your call to Yahoo Web Services failed and returned an HTTP status of 503. That means: Service unavailable. An internal problem prevented us from returning data to you.");
-						break;
-					
-					case 403 : 
-						throw new Exception("Your call to Yahoo Web Services failed and returned an HTTP status of 403. That means: Forbidden. You do not have permission to access this resource, or are over your rate limit.");
-						break;
-					
-					case 400 : 
-						throw new Exception(sprintf("Your call to Yahoo Web Services failed and returned an HTTP status of 400. That means:  Bad request. The parameters passed to the service did not match as expected. The exact error is returned in the XML/JSON response. The URL sent was: %s", $url));
-						break;
-					
-					default : 
-						throw new Exception("Your call to Yahoo Web Services returned an unexpected HTTP status of: " . $response->getStatusCode());
+				/**
+				 * Try and fetch using GuzzleHTTP from the web service
+				 */
+				
+				try {
+					$GuzzleClient = new Client;
+					$response = $GuzzleClient->get($url);
+				} catch (RequestException $e) {
+					switch ($e->getResponse()->getStatusCode()) {
+						case 503 : 
+							throw new Exception("Your call to Yahoo Web Services failed and returned an HTTP status of 503. That means: Service unavailable. An internal problem prevented us from returning data to you.");
+							break;
 						
+						case 403 : 
+							throw new Exception("Your call to Yahoo Web Services failed and returned an HTTP status of 403. That means: Forbidden. You do not have permission to access this resource, or are over your rate limit.");
+							break;
+						
+						case 400 : 
+							if (!$return = self::getViaCurl($url)) {
+								throw new Exception(sprintf("Your call to Yahoo Web Services failed (zomg) and returned an HTTP status of 400. That means:  Bad request. The parameters passed to the service did not match as expected. The exact error is returned in the XML/JSON response. The URL sent was: %s\n\n%s", $url, json_decode($e->getResponse()->getBody())));
+							}
+							
+							break;
+						
+						default : 
+							throw new Exception("Your call to Yahoo Web Services returned an unexpected HTTP status of: " . $response->getStatusCode());
+					}
+				}
+				
+				if (!$return && isset($response) && $response->getStatusCode() == 200) {
+					$return = json_decode($response->getBody(), true);
+				}
+				
+				/**
+				 * Save it in the database
+				 */
+				
+				if (!empty($lat) && !empty($lon)) {
+					$Database = (new AppCore)->getDatabaseConnection(); 
+					
+					$query = "INSERT INTO woecache (
+								lat, lon, response, stored, address
+							) VALUES (
+								%s, %s, %s, NOW(), NULL
+							) ON DUPLICATE KEY UPDATE
+								response = VALUES(response),
+								stored = NOW()";
+					
+					$query = sprintf($query, $Database->quote($lat), $Database->quote($lon), $Database->quote(json_encode($return))); 
+					$Database->query($query); 
+					
+					/*
+					$data = [ 
+						"lat" => $lat,
+						"lon" => $lon,
+						"response" => json_encode($return),
+						"stored" => new Zend_Db_Expr("NOW()")
+					];
+					
+					try {
+						$Database->insert("woecache", $data);
+					} catch (Exception $e) {
+						// throw it away
+					}
+					*/
 				}
 				
 				$return['url'] = $url;
+			
+				if ($return !== false) {
+					$Redis->save($mckey, $return); 
+				}
 			}
 
 			return $return;
@@ -215,6 +265,54 @@
 			}
 			
 			return $Database->fetchOne($query, $params); 
+			
+		}
+		
+		/**
+		 * Try to retrieve the woedata from our local DB cache
+		 * @since Version 3.10.0
+		 * @param double $lat
+		 * @param double $lon
+		 * @return array
+		 */
+		
+		private static function getWoeFromCache($lat, $lon) {
+			
+			$lat = round(str_pad($lat, 12, 0), 8);
+			$lon = round(str_pad($lon, 12, 0), 8);
+			
+			$Database = (new AppCore)->getDatabaseConnection(); 
+			
+			$query = "SELECT response FROM woecache WHERE lat = ? AND lon = ?";
+			
+			$result = $Database->fetchOne($query, array($lat, $lon));
+			
+			if (!$result) {
+				return false;
+			}
+			
+			return json_decode($result, true); 
+			
+		}
+		
+		/**
+		 * Because GuzzleHTTP is annoying and unreliable, fall back to cURL
+		 * @since Version 3.10.0
+		 * @param string $url
+		 * @return array
+		 */
+		
+		public static function getViaCurl($url) {
+			
+			$ch = curl_init(); 
+			curl_setopt($ch, CURLOPT_URL, $url); 
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); 
+			$output = curl_exec($ch); 
+			curl_close($ch);
+			
+			$return = json_decode($output, true);
+			
+			return $return;
 			
 		}
 		

@@ -23,6 +23,7 @@
 	use DateTime;
 	use DateTimeZone;
 	use GuzzleHttp\Client;
+	use GuzzleHttp\Exception\RequestException;
 	
 	/**
 	 * Place class
@@ -353,6 +354,22 @@
 				return $address; 
 			}
 			
+			/**
+			 * Try to fetch it from the local cache first
+			 */
+			
+			$query = "SELECT address FROM woecache WHERE lat = ? AND lon = ?";
+			$params = [
+				round(str_pad($this->lat, 12, 0), 8), 
+				round(str_pad($this->lon, 12, 0), 8)
+			];
+			
+			if ($result = $this->db->fetchOne($query, $params)) {
+				if (!is_null($result)) {
+					return json_decode($result, true);
+				}
+			}
+			
 			$url = sprintf("https://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s&sensor=false", $this->lat, $this->lon);
 			
 			$response = $this->GuzzleClient->get($url);
@@ -381,7 +398,26 @@
 				}
 			}
 			
-			$this->Memcached->save($mckey, $return, strtotime("+1 year"));
+			/**
+			 * Store it in Memcached
+			 */
+			
+			$this->Memcached->save($mckey, $return);
+			
+			/**
+			 * Store it in our database
+			 */
+			
+			$query = "INSERT INTO woecache (
+						lat, lon, response, stored, address
+					) VALUES (
+						%s, %s, NULL, NOW(), %s
+					) ON DUPLICATE KEY UPDATE
+						address = VALUES(address),
+						stored = NOW()";
+			
+			$query = sprintf($query, $this->db->quote($this->lat), $this->db->quote($this->lon), $this->db->quote(json_encode($return))); 
+			$this->db->query($query); 
 			
 			return $return;
 			
@@ -578,40 +614,55 @@
 					$url = sprintf("http://where.yahooapis.com/v1/places\$and(.q('%s'),.type(%s))?lang=en&appid=%s&format=json", $latlng, implode(",", $types), $Config->Yahoo->ApplicationID);
 				}
 				
-				$GuzzleClient = new Client;
-				$response = $GuzzleClient->get($url);
+				/**
+				 * Attempt to fetch the WoE data from our local cache
+				 */
 				
-				if ($response->getStatusCode() == 200) {
-					$result = json_decode($response->getBody(), true);
+				if (strpos($lookup, ",") !== false) {
+					$tmp = str_replace("places.q('", "", str_replace("')", "", $lookup));
+					$tmp = explode(",", $tmp);
+					$return = PlaceUtility::LatLonWoELookup($tmp[0], $tmp[1]);
+					return $return;
 				}
 				
-				switch ($response->getStatusCode()) {
-					case 200 :
-						$return = json_decode($response->getBody(), true);
-						break;
-					
-					case 503 : 
-						throw new Exception("Your call to Yahoo Web Services failed and returned an HTTP status of 503. That means: Service unavailable. An internal problem prevented us from returning data to you.");
-						break;
-					
-					case 403 : 
-						throw new Exception("Your call to Yahoo Web Services failed and returned an HTTP status of 403. That means: Forbidden. You do not have permission to access this resource, or are over your rate limit.");
-						break;
-					
-					case 400 : 
-						throw new Exception(sprintf("Your call to Yahoo Web Services failed and returned an HTTP status of 400. That means:  Bad request. The parameters passed to the service did not match as expected. The exact error is returned in the XML/JSON response. The URL sent was: %s", $url));
-						break;
-					
-					default : 
-						throw new Exception("Your call to Yahoo Web Services returned an unexpected HTTP status of: " . $response->getStatusCode());
+				/**
+				 * Try and fetch using GuzzleHTTP from the web service
+				 */
+				
+				try {
+					$GuzzleClient = new Client;
+					$response = $GuzzleClient->get($url);
+				} catch (RequestException $e) {
+					switch ($e->getResponse()->getStatusCode()) {
+						case 503 : 
+							throw new Exception("Your call to Yahoo Web Services failed and returned an HTTP status of 503. That means: Service unavailable. An internal problem prevented us from returning data to you.");
+							break;
 						
+						case 403 : 
+							throw new Exception("Your call to Yahoo Web Services failed and returned an HTTP status of 403. That means: Forbidden. You do not have permission to access this resource, or are over your rate limit.");
+							break;
+						
+						case 400 : 
+							if (!$return = PlaceUtility::getViaCurl($url)) {
+								throw new Exception(sprintf("Your call to Yahoo Web Services failed and returned an HTTP status of 400. That means:  Bad request. The parameters passed to the service did not match as expected. The exact error is returned in the XML/JSON response. The URL sent was: %s\n\n%s", $url, json_decode($e->getResponse()->getBody())));
+							}
+							
+							break;
+						
+						default : 
+							throw new Exception("Your call to Yahoo Web Services returned an unexpected HTTP status of: " . $response->getStatusCode());
+					}
+				}
+				
+				if (!$return && isset($response) && $response->getStatusCode() == 200) {
+					$return = json_decode($response->getBody(), true);
 				}
 				
 				$return['url'] = $url;
 			}
 			
 			if ($return !== false) {
-				$Redis->save($mckey, $return, strtotime("+2 months")); 
+				$Redis->save($mckey, $return); 
 			}
 			
 			return $return;
