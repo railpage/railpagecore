@@ -110,11 +110,11 @@
 				$this->id = $id;
 				$this->mckey = sprintf("railpage:gallery.album.image=%d", $this->id);
 				
-				if (!$row = getMemcacheObject($this->mckey)) {
+				if (!$row = $this->Memcached->fetch($this->mckey)) {
 					$query = "SELECT * FROM gallery_mig_image WHERE id = ?";
 					
 					$row = $this->db->fetchRow($query, $id);
-					setMemcacheObject($this->mckey, $row, strtotime("+1 year"));
+					$this->Memcached->save($this->mckey, $row, strtotime("+1 year"));
 				}
 				
 				$this->title = $row['title'];
@@ -192,14 +192,14 @@
 			
 			$this->db->update("gallery_mig_image", $data, $where);
 			
-			deleteMemcacheObject($this->mckey);
+			$this->Memcached->delete($this->mckey);
 			
-			#deleteMemcacheObject("railpage:gallery.album=717");
+			#$this->Memcached->delete("railpage:gallery.album=717");
 			
 			$albums = $this->db->fetchAll("SELECT id FROM gallery_mig_album WHERE featured_photo = ?", $this->id);
 			
 			foreach ($albums as $album) {
-				deleteMemcacheObject(sprintf("railpage:gallery.album=%d", $album['id']));
+				$this->Memcached->delete(sprintf("railpage:gallery.album=%d", $album['id']));
 			}
 			
 			$data = array(
@@ -251,9 +251,9 @@
 			
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
 				return new Image($id);
-			} else {
-				return false;
 			}
+			
+			return false;
 		}
 		
 		/**
@@ -276,9 +276,9 @@
 			
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
 				return new Image($id);
-			} else {
-				return false;
 			}
+			
+			return false;
 		}
 	}
 	

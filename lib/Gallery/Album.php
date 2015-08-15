@@ -106,12 +106,12 @@
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
 				$this->mckey = sprintf("railpage:gallery.album=%d", $this->id);
 				
-				if (!$data = getMemcacheObject($this->mckey)) {
+				if (!$data = $this->Memcached->fetch($this->mckey)) {
 					$query = "SELECT * FROM gallery_mig_album WHERE id = ?";
 					
 					$data = $this->db->fetchRow($query, $this->id);
 					
-					setMemcacheObject($this->mckey, $data, strtotime("+1 year"));
+					$this->Memcached->save($this->mckey, $data, strtotime("+1 year"));
 				}
 				
 				$this->name = $data['title'];
@@ -124,7 +124,7 @@
 				
 				if (self::UPDATE_PHOTO) {
 					$data['featured_photo'] = $this->updateFeaturedImage(); 
-					setMemcacheObject($this->mckey, $data, strtotime("+1 year"));
+					$this->Memcached->save($this->mckey, $data, strtotime("+1 year"));
 				}
 			
 				if (isset($data['featured_photo']) && filter_var($data['featured_photo'], FILTER_VALIDATE_INT)) {
@@ -218,7 +218,7 @@
 					"albums" => $matches
 				);
 				
-				setMemcacheObject(sprintf("railpage:gallery.old.album=%d.subalbums.page=%d.perpage=%d", $this->id, $page, $limit), $return);
+				$this->Memcached->save(sprintf("railpage:gallery.old.album=%d.subalbums.page=%d.perpage=%d", $this->id, $page, $limit), $return);
 			}
 			
 			return $return;
@@ -281,8 +281,8 @@
 						$data['featured_photo'] = $Image->id;
 						
 						$this->db->update("gallery_mig_album", $data, array("id = ?" => $this->id));
-						deleteMemcacheObject($this->mckey);
-						#setMemcacheObject($this->mckey, $data, strtotime("+1 year"));
+						$this->Memcached->delete($this->mckey);
+						#$this->Memcached->save($this->mckey, $data, strtotime("+1 year"));
 						break;
 					}
 				}
@@ -299,8 +299,8 @@
 							$data['featured_photo'] = $Image->id;
 							
 							$this->db->update("gallery_mig_album", $data, array("id = ?" => $this->id));
-							deleteMemcacheObject($this->mckey);
-							#setMemcacheObject($this->mckey, $data, strtotime("+1 year"));
+							$this->Memcached->delete($this->mckey);
+							#$this->Memcached->save($this->mckey, $data, strtotime("+1 year"));
 							break;
 						}
 					}
