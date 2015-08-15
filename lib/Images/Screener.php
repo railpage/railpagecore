@@ -97,7 +97,7 @@
 								%d, %d, %d, %d, NOW(), %d, %d
 							) ON DUPLICATE KEY UPDATE 
 								published = VALUES(published), screened_by = VALUES(screened_by), 
-								screened_on = NOW(), rejected = VALUES(rejected)",
+								screened_on = NOW(), screened_pick = VALUES(screened_pick), rejected = VALUES(rejected)",
 							$this->db->quote(intval($Image->id)), $publish, 1, $this->db->quote(intval($User->id)), $pick, !$publish);
 			
 			$this->db->query($query); 

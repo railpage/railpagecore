@@ -401,6 +401,10 @@
 		 */
 		
 		public function validate() {
+			if (empty($this->provider) && strpos($this->author->id, "@") !== false) {
+				$this->provider = "flickr";
+			}
+			
 			if (empty($this->provider)) {
 				throw new Exception("Image provider cannot be empty");
 			}

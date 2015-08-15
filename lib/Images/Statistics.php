@@ -19,6 +19,46 @@
 	class Statistics extends AppCore {
 		
 		/**
+		 * Chart: number of photos by focal length, grouped into 10mm bands
+		 * @since Version 3.10.0
+		 * @const string CHART_PHOTOS_MM
+		 */
+		
+		const CHART_PHOTOS_MM = "getPhotosByFocalLength";
+		
+		/**
+		 * Chart: number of photos by focal aperture
+		 * @since Version 3.10.0
+		 * @const string CHART_PHOTOS_APERTURE
+		 */
+		
+		const CHART_PHOTOS_APERTURE = "getPhotosByAperture";
+		
+		/**
+		 * Chart: number of photos by exposure program
+		 * @since Version 3.10.0
+		 * @const string CHART_PHOTOS_EXPOSURE_PROGRAM
+		 */
+		
+		const CHART_PHOTOS_EXPOSURE_PROGRAM = "getPhotosByExposureProgram";
+		
+		/**
+		 * Chart: number of known camera models, grouped by image author
+		 * @since Version 3.10.0
+		 * @const string CHART_UNIQUE_CAMERAS
+		 */
+		
+		const CHART_CAMERAS_POPULAR = "getCameraModelsByAuthor";
+		
+		/**
+		 * Chart: number of known camera models, grouped by total number of photos
+		 * @since Version 3.10.0
+		 * @const string CHART_CAMERAS_NUMPHOTOS
+		 */
+		
+		const CHART_CAMERAS_NUMPHOTOS = "getCameraModelsByPhotos";
+		
+		/**
 		 * Get the number of geotagged photos in each region
 		 * @since Version 3.9.1
 		 * @return array
@@ -100,6 +140,128 @@
 				LIMIT 0, 10";
 			
 			return $this->db->fetchAll($query); 
+			
+		}
+		
+		/**
+		 * Get chart data
+		 * @since Version 3.10.0
+		 * @param string $chart
+		 * @return array
+		 */
+		
+		public function getChartData($chart) {
+			
+			if (method_exists($this, $chart)) {
+				return $this->$chart(); 
+			}
+			
+		}
+		
+		/**
+		 * Get camera models by number of unique authors
+		 * @since Version 3.10.0
+		 * @return array
+		 */
+		
+		private function getCameraModelsByAuthor() {
+			
+			$query = 'SELECT CONCAT(camera_make, " ", camera_model) AS `key`, COUNT(*) AS number FROM (
+				SELECT DISTINCT e.camera_id, i.user_id, c.make AS camera_make, c.model AS camera_model
+				FROM image_exif AS e 
+				LEFT JOIN image_camera AS c ON c.id = e.camera_id
+				LEFT JOIN image AS i on e.image_id = i.id 
+				WHERE e.camera_id != 0 
+				AND i.user_id != 0
+			) AS dist WHERE camera_make != "Unknown" GROUP BY camera_id ORDER BY COUNT(*) DESC';
+			
+			$result = $this->db->fetchAll($query); 
+			$cameras = array_slice($result, 0, 10);
+			$cameras[10] = [ "key" => "Other", "number" => 0 ];
+			
+			foreach (array_slice($result, 11) as $row) {
+				$cameras[10]['number'] += $row['number'];
+			}
+			
+			return $cameras;
+			
+		}
+		
+		/**
+		 * Get camera models by number of photos
+		 * @since Version 3.10.0
+		 * @return array
+		 */
+		
+		private function getCameraModelsByPhotos() {
+			
+			$query = 'SELECT CONCAT(camera_make, " ", camera_model) AS `key`, COUNT(*) AS number FROM (
+				SELECT e.camera_id, i.user_id, c.make AS camera_make, c.model AS camera_model
+				FROM image_exif AS e 
+				LEFT JOIN image_camera AS c ON c.id = e.camera_id
+				LEFT JOIN image AS i on e.image_id = i.id 
+				WHERE e.camera_id != 0
+			) AS dist WHERE camera_make != "Unknown" GROUP BY camera_id ORDER BY COUNT(*) DESC';
+			
+			$result = $this->db->fetchAll($query); 
+			$cameras = array_slice($result, 0, 10);
+			$cameras[10] = [ "key" => "Other", "number" => 0 ];
+			
+			foreach (array_slice($result, 11) as $row) {
+				$cameras[10]['number'] += $row['number'];
+			}
+			
+			return $cameras;
+			
+		}
+		
+		/**
+		 * Get photos by the focal length, grouped into 10mm bands
+		 * @since Version 3.10.0
+		 * @return array
+		 */
+		
+		private function getPhotosByFocalLength() {
+			
+			$query = "SELECT FLOOR(focal_length / 10) * 10 AS `key`, COUNT(*) AS `val` FROM image_exif WHERE focal_length > 10 GROUP BY `key`";
+			
+			return $this->db->fetchAll($query); 
+			
+		}
+		
+		/**
+		 * Get photos by their aperture
+		 * @since Version 3.10.0
+		 * @return array
+		 */
+		
+		private function getPhotosByAperture() {
+			
+			$query = "SELECT * FROM (SELECT aperture AS `key`, COUNT(*) AS `val` FROM image_exif WHERE aperture > 0 AND aperture < 40 GROUP BY `key`) AS ap WHERE `val` > 1";
+			
+			return $this->db->fetchAll($query); 
+			
+		}
+		
+		/**
+		 * Get photos by exposure program
+		 * @since Version 3.10.0
+		 * @return array
+		 */
+		
+		private function getPhotosByExposureProgram() {
+			
+			$query = "SELECT ep.program AS `key`, COUNT(*) AS `number` FROM image_exif AS ef LEFT JOIN image_exposure_program AS ep ON ef.exposure_program_id = ep.id WHERE ep.program != \"Unknown\" GROUP BY ep.id ORDER BY COUNT(*) DESC LIMIT 0, 7";
+			
+			$return = [];
+			
+			foreach ($this->db->fetchAll($query) as $row) {
+				if (preg_match("/([a-zA-Z])/", $row['key'])) {
+					$return[] = $row;
+				}
+			}
+			
+			return $return;
 			
 		}
 	}

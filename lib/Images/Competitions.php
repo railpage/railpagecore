@@ -141,6 +141,7 @@
 				ORDER BY votes DESC
 			*/
 			
+			/*
 			$query = "SELECT 
 				u.user_id, u.username, 
 				(SELECT COUNT(s.id) AS submissions FROM image_competition_submissions AS s WHERE s.user_id = u.user_id AND s.status = 1) AS submissions,
@@ -167,6 +168,32 @@
 				LEFT JOIN image_competition AS c ON c.id = s.competition_id
 				GROUP BY user_id
 				ORDER BY votes DESC, submissions DESC, username ASC";
+				*/
+			
+			$query = "SELECT played.user_id, u.username, COALESCE(played.num_played, 0) AS submissions, COALESCE(votes.num_votes, 0) AS votes, COALESCE(won.num_won, 0) AS wins
+				FROM (
+				    SELECT s.user_id, COUNT(*) AS num_played 
+				    FROM image_competition_submissions AS s 
+					LEFT JOIN image_competition AS c ON c.id = s.competition_id 
+					WHERE s.status = 1 
+					AND c.status = 1 
+					GROUP BY s.user_id
+				) AS played
+				LEFT JOIN (
+					SELECT v.user_id, COUNT(*) AS num_votes 
+					FROM image_competition_votes AS v
+					LEFT JOIN image_competition AS c ON c.id = v.competition_id
+					WHERE c.status = 1
+					GROUP BY user_id
+				) AS votes ON played.user_id = votes.user_id
+				LEFT JOIN (
+					SELECT user_id, COUNT(*) AS num_won 
+					FROM image_competition_submissions 
+					WHERE winner = 1 
+					GROUP BY user_id
+				) AS won ON won.user_id = played.user_id
+				LEFT JOIN nuke_users AS u ON played.user_id = u.user_id
+				ORDER BY num_won DESC, num_votes DESC, username ASC";
 			
 			$return = array(); 
 			

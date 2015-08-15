@@ -27,6 +27,7 @@
 		static public function generateSrcSet(Image $Image) {
 			
 			$sources = array(); 
+			$widths = array(); 
 			
 			foreach ($Image->sizes as $size) {
 				$k = md5($size['source']); 
@@ -39,9 +40,14 @@
 					continue;
 				}
 				
+				if (in_array($size['width'], $widths)) {
+					continue;
+				}
+				
 				$multiplier = intval($size['width'] > 1600) + 1;
 				
 				$sources[$k] = sprintf("%s %dw", $size['source'], $size['width']);
+				$widths[] = $size['width'];
 			}
 			
 			return array_values($sources);

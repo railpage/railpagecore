@@ -693,7 +693,19 @@
 					$this->id
 				);
 				
-				return $this->getPhoto($this->db->fetchRow($query, $where));
+				$result = $this->db->fetchRow($query, $where);
+				
+				$photo = $this->getPhoto($result);
+				
+				if ($result['winner'] == "0") {
+					$data = [ "winner" => 1 ];
+					
+					$where = [ "id = ?" => $result['id'] ];
+					
+					$this->db->update("image_competition_submissions", $data, $where); 
+				}
+				
+				return $photo;
 			} else {
 				return false;
 			}

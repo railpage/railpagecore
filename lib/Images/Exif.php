@@ -35,6 +35,8 @@
 		
 		public function getImageExif(Image $Image, $force = false) {
 			
+			Debug::LogCLI("Fetching EIXF data for image ID " . $Image->id);
+			
 			if (!$force && isset($Image->meta['exif']) && $Image->meta['exif_format_version'] >= self::EXIF_FORMAT_VERSION) {
 				$Image->meta['exif']['camera_make'] = self::normaliseCameraMake($Image->meta['exif']['camera_make']); 
 				$Image->meta['exif']['camera_model'] = self::normaliseCameraModel($Image->meta['exif']['camera_model']); 
@@ -124,6 +126,7 @@
 			
 			$exif['camera_make'] = self::normaliseCameraMake($exif['camera_make']); 
 			$exif['camera_model'] = self::normaliseCameraModel($exif['camera_model']); 
+			$exif['software'] = self::normaliseSoftware($exif['software']);
 			
 			$query = "SELECT 
 				(SELECT id FROM image_camera WHERE make = ? AND model = ?) AS camera_id,
@@ -171,20 +174,38 @@
 			
 			$find = [ 
 				"NIKON CORPORATION",
+				"NIKON",
 				"EASTMAN KODAK COMPANY",
 				"DIGITAL CAMERA",
 				"OLYMPUS CORPORATION",
 				"FUJIFILM",
-				"FUJI PHOTO FILM CO., LTD."
+				"FUJI PHOTO FILM CO., LTD.",
+				"PENTAX Corporation",
+				"PENTAX",
+				"Samsung Electronics",
+				"SAMSUNG",
+				"SONY",
+				"RICOH",
+				"Samsung Techwin",
+				"Fujifilm Corporation",
 			];
 			
 			$replace = [
+				"Nikon",
 				"Nikon",
 				"Kodak",
 				"",
 				"Olympus",
 				"Fujifilm",
-				"Fujifilm"
+				"Fujifilm",
+				"Pentax",
+				"Pentax",
+				"Samsung",
+				"Samsung",
+				"Sony",
+				"Ricoh",
+				"Samsung",
+				"Fujifilm",
 			];
 			
 			$make = preg_replace("/([0-9]+)(D DIGITAL)/", "$1D", $make);
@@ -192,6 +213,26 @@
 			
 			return trim($make);
 			
+		}
+		
+		/**
+		 * Normalise the software program name
+		 * @since Version 3.10.0
+		 * @param string $software
+		 * @return string
+		 */
+		
+		private static function normaliseSoftware($software) {
+			
+			if (preg_match("/(Adobe Photoshop|Adobe Photoshop Elements) (CS1|CS2|CS3|CS4|CS5|CS5.1|CS5.5|CS6|CS6.5|CC|[0-9\.]+)/", $software, $matches)) {
+				$software = sprintf("%s %s", $matches[1], $matches[2]);
+				
+				if (preg_match("/(Windows|Macintosh|Mac)/", $software, $matches)) {
+					$software = sprintf("%s %s", $software, $matches[1]);
+				}
+			}
+			
+			return $software;
 		}
 		
 		/**
@@ -203,7 +244,7 @@
 		
 		private static function normaliseCameraModel($model) {
 			
-			$model = preg_replace("/(CANON|Canon|NIKON|NIKON CORPORATION|KODAK|KODAK EASYSHARE) /", "", $model);
+			$model = preg_replace("/(CANON|Canon|NIKON|NIKON CORPORATION|KODAK|KODAK EASYSHARE|PENTAX) /", "", $model);
 			$model = preg_replace("/([0-9]+)(D DIGITAL)/", "$1D", $model);
 			$model = preg_replace("/(EASYSHARE )([A-Z0-9]+)( ZOOM DIGITAL)/", "Easyshare $2 Zoom", $model);
 			$model = preg_replace("/([A-Z0-9]+)( ZOOM DIGITAL)/", "$1 Zoom", $model);
@@ -212,6 +253,8 @@
 			$model = str_replace("EOS Kiss Digital N", "EOS 350D", $model);
 			$model = str_replace("EOS Rebel T1i", "EOS 500D", $model);
 			$model = str_replace("EOS Kiss X3", "EOS 500D", $model);
+			$model = str_replace("COOLPIX", "Coolpix", $model);
+			$model = str_replace("DIGITAL IXUS", "IXUS", $model);
 			
 			return trim($model);
 			
@@ -336,6 +379,76 @@
 			
 			
 			return $format;
+			
+		}
+		
+		/**
+		 * Flag this image for an EXIF scrape
+		 * @since Version 3.10.0
+		 * @param \Railpage\Images\Image
+		 * @return void
+		 */
+		
+		public function queueExifScreening(Image $Image) {
+			
+			$data = [
+				"exifqueue" => "1"
+			];
+			
+			$where = [ 
+				"image_id = ?" => $Image->id
+			];
+			
+			$this->db->update("image_flags", $data, $where); 
+			
+			return;
+			
+		}
+		
+		/**
+		 * Fetch EXIF data for the queued images
+		 * @since Version 3.10.0
+		 * @return void
+		 */
+		
+		public static function scrapeExifQueue() {
+			
+			$sleep = 10;
+			$break = 50;
+			
+			$Database = (new AppCore)->getDatabaseConnection();
+			
+			$query = "SELECT f.image_id FROM image_flags AS f LEFT JOIN image AS i ON f.image_id = i.id WHERE f.exifqueue = 1 AND i.provider IS NOT NULL ORDER BY f.image_id DESC";
+			$exif = new Exif;
+			$ids = [];
+			
+			foreach ($Database->fetchAll($query) as $k => $row) {
+				$Image = new Image($row['image_id']); 
+				
+				$exif->getImageExif($Image); 
+				$ids[] = $Image->id;
+				
+				if (count($ids) == $break) {
+					Debug::LogCLI("Updating " . $break . " records");
+					$query = "UPDATE image_flags SET exifqueue = 0 WHERE image_id IN (" . implode(",", $ids) . ")";
+					
+					$Database->query($query);
+					$ids = [];
+					
+					#Debug::LogCLI("Waiting " . $sleep . "s for the next batch");
+					break;
+					sleep($sleep);
+				}
+				
+			}
+			
+			Debug::LogCLI("Mark all queued images as scraped");
+			
+			$query = "UPDATE image_flags SET exifqueue = 0 WHERE exifqueue = 1";
+			
+			$Database->query($query);
+			
+			return;
 			
 		}
 		
