@@ -68,4 +68,33 @@
 			
 		}
 		
+		/**
+		 * Check SpamCop for the given IP address
+		 * @since Version 3.10.0
+		 * @return boolean
+		 * @param string $ip
+		 */
+		
+		public static function spamCop($ip) {
+			
+			if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+				$ip = $_SERVER['REMOTE_ADDR']; 
+			}
+			
+			$timer = Debug::GetTimer(); 
+			
+			$reversedIp = implode(".", array_reverse(explode(".", $ip)));
+			$host = $reversedIp.".bl.spamcop.net";
+			$response = gethostbyname($host);
+			
+			if (stristr($response, "127.0.0")) {
+				return true;
+			}
+			
+			Debug::LogEvent(__METHOD__, $timer);
+			
+			return false;
+
+		}
+		
 	}

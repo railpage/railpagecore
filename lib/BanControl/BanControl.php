@@ -121,10 +121,12 @@
 				"ips" => $this->ip_addresses
 			);
 			
+			$this->Memcached->delete(self::CACHE_KEY_ALL);
 			$this->Memcached->save(self::CACHE_KEY_ALL, gzcompress(json_encode($store), self::CACHE_GZIP_LEVEL));
 			
 			if (is_object($this->Redis)) {
 				try {
+					$this->Redis->delete("railpage:bancontrol");
 					$this->Redis->save("railpage:bancontrol", $this);
 				} catch (Exception $e) {
 					// throw it away
@@ -546,7 +548,10 @@
 			$this->db->update("bancontrol", $data, $where);
 			
 			$cachekey_ip = sprintf(self::CACHE_KEY_IP, $ip_addr);
+			$this->Memcached->delete($cachekey_ip);
 			$this->Memcached->save($cachekey_ip, false, strtotime("+5 weeks")); 
+			
+			$this->cacheAll();
 			
 			return true;
 		}
