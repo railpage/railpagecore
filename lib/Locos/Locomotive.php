@@ -51,6 +51,14 @@
 		const CACHE_KEY = "railpage:locos.loco_id=%d";
 		
 		/**
+		 * Memcached key for loco descriptive text
+		 * @since Version 3.10.0
+		 * @const string CACHE_KEY_DESC
+		 */
+		
+		const CACHE_KEY_DESC = "railpage:locos.loco_id=%d;desc";
+		
+		/**
 		 * Loco ID
 		 * @since Version 3.2
 		 * @var int $id
@@ -686,6 +694,7 @@
 			$Registry = Registry::getInstance(); 
 			$regkey = sprintf(self::REGISTRY_KEY, $this->id); 
 			$Registry->remove($regkey)->set($regkey, $this); 
+			$this->Memcached->delete(sprintf(self::CACHE_KEY_DESC, $this->id));
 			
 			Debug::logEvent("Zend_DB: commit loco ID " . $this->id, $timer); 
 			
@@ -1181,6 +1190,12 @@
 		
 		public function getContributors() {
 			
+			$key = sprintf(self::CACHE_KEY, $this->id) . ";contributors";
+			
+			if ($contributors = $this->Redis->fetch($key)) {
+				return $contributors;
+			}
+			
 			$return = array(); 
 			
 			$Sphinx = AppCore::getSphinx();
@@ -1197,6 +1212,8 @@
 			foreach ($result as $row) {
 				$return[$row['user_id']] = $row['username'];
 			}
+			
+			$this->Redis->save($key, $return, strtotime("+2 hours"));
 			
 			return $return;
 			
@@ -1480,6 +1497,12 @@
 		
 		public function generateDescription() {
 			
+			$mckey = sprintf(self::CACHE_KEY_DESC, $this->id); 
+			
+			if ($str = $this->Memcached->fetch($mckey)) {
+				return $str;
+			}
+			
 			$bits = array(); 
 			
 			/**
@@ -1513,6 +1536,8 @@
 			if (substr($str, -1) === ",") {
 				$str = substr($str, 0, -1) . ".";
 			}
+			
+			$this->Memcached->save($mckey, $str, strtotime("+1 year"));
 			
 			return $str;
 		}
