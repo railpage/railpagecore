@@ -326,6 +326,7 @@
 				
 				if (isset($this->mckey) && !empty($this->mckey)) {
 					$this->Memcached->delete($this->mckey);
+					$this->Memcached->delete($this->mckey . "formatted");
 				}
 				
 				$this->db->update("glossary", $data, $where);
@@ -333,6 +334,7 @@
 				$this->db->insert("glossary", $data);
 				$this->id = $this->db->lastInsertId();
 				$this->mckey = sprintf("%s.entry=%d", $this->Module->namespace, $this->id);
+				$this->Redis->delete("railpage:glossary.index");
 			}
 				
 			$this->makeURLs(); 

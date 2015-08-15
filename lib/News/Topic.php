@@ -193,6 +193,8 @@
 			
 			$return = $this->fetchStoriesFromDatabase($page, $limit, $total); 
 			
+			$this->Memcached->save($mckey, $return, $mcexp);
+			
 			return $return;
 		}
 		
@@ -217,13 +219,13 @@
 				"topic_id" => $this->id
 			);
 			
-			$params = array($this->id, "1", $page * $limit, $limit);
+			$params = array($this->id, 1, $page * $limit, $limit);
 			
 			if (!$result = $this->db_readonly->fetchAll($query, $params)) {
 				return $return;
 			}
 			
-			$return['total'] = $this->db_readonly->fetchOne("SELECT FOUND_ROWS() AS total"); 
+			$return['total'] = $this->db->fetchOne("SELECT FOUND_ROWS() AS total"); 
 			
 			foreach ($result as $row) {
 				$row['time_relative'] = ContentUtility::relativeTime(strtotime($row['time']));
@@ -242,8 +244,6 @@
 				
 				$return['children'][] = $row; 
 			}
-			
-			$this->Memcached->save($mckey, $return, $mcexp);
 			
 			return $return;
 			

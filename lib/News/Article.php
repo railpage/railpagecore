@@ -17,6 +17,7 @@
 	use Railpage\Users\User;
 	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Url;
+	use Railpage\fwlink;
 	use Railpage\AppCore;
 	use Railpage\ContentUtility;
 		
@@ -345,6 +346,7 @@
 				$this->featured_image	= isset($return['featured_image']) ? $return['featured_image'] : false;
 				$this->lead = $return['lead'];
 				$this->paragraphs = $return['paragraphs'];
+				$this->source = $return['source'];
 				
 				// Match the first sentence
 				$line = explode("\n", $this->getLead()); 
@@ -364,11 +366,7 @@
 				}
 				
 				$this->slug = $return['slug'];
-				$this->url = new Url($this->makePermaLink($this->slug));
-				$this->url->source = $return['source']; 
-				$this->url->reject = sprintf("/news/pending?task=reject&id=%d&queue=newqueue", $this->id);
-				$this->url->edit = sprintf("/news?mode=article.edit&id=%d", $this->id);
-				$this->fwlink = $this->url->short;
+				$this->makeURLs();
 				
 				/**
 				 * Instantiate the author
@@ -413,6 +411,31 @@
 			}
 			
 			return $return;
+		}
+		
+		/**
+		 * Make the URLs for this object
+		 * @since Version 3.10.0
+		 * @return void
+		 */
+		
+		public function makeURLs() {
+			
+			$this->url = new Url($this->makePermaLink($this->slug));
+			$this->url->source = $this->source; 
+			$this->url->reject = sprintf("/news/pending?task=reject&id=%d&queue=newqueue", $this->id);
+			$this->url->edit = sprintf("/news?mode=article.edit&id=%d", $this->id);
+			$this->fwlink = $this->url->short;
+				
+			/**
+			 * Alter the URL
+			 */
+			
+			if (empty($this->getParagraphs()) && !empty($this->source)) {
+				$this->url->url = $this->source;
+				$this->url->canonical = $this->source;
+			}
+			
 		}
 		
 		/**

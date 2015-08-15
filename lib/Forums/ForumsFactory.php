@@ -124,4 +124,24 @@
 			
 		}
 		
+		/**
+		 * Get an new instance of a forum thread
+		 * @since Version 3.9.1
+		 * @return \Railpage\Forums\Thread
+		 * @param int $thread_id
+		 */
+		
+		public static function CreateThread($thread_id) {
+			
+			$key = sprintf("railpage:forums.post=%d", $thread_id); 
+			
+			if (!$Index = self::load($key)) {
+				$Thread = new Thread($thread_id); 
+				self::$Registry->set($key, $Index); 
+			}
+			
+			return $Thread;
+			
+		}
+		
 	}

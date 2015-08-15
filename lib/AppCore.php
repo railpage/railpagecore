@@ -468,7 +468,7 @@
 		
 		public static function getSphinx() {
 			
-			$Config = self::getConfig(); 
+			$Config = self::getConfig();
 			
 			$conn = new Connection();
 			$conn->setParams(array("host" => $Config->Sphinx->Host, "port" => $Config->Sphinx->Port));
@@ -533,7 +533,7 @@
 				if (!isset($Config)) {
 					$Config = array(
 						"Memcached" => array(
-							"Host" => "127.0.0.1",
+							"Host" => "cache.railpage.com.au",
 							"Port" => 11211
 						)
 					);
@@ -552,9 +552,10 @@
 		 * Get our Redist instance
 		 * @since Version 3.9.1
 		 * @return \Doctrine\Common\Cache\RedisCache
+		 * @param boolean $reload Don't fetch the cache handler from the registry and instead create a new instance
 		 */
 		
-		public static function getRedis() {
+		public static function getRedis($reload = false) {
 			if (!extension_loaded("redis") || (defined("NOREDIS") && NOREDIS == true)) {
 				return new NullCacheDriver;
 			}
@@ -562,6 +563,10 @@
 			$Registry = Registry::getInstance();
 			
 			$Config = self::getConfig();
+			
+			if ($reload) {
+				$Registry->remove("redis");
+			}
 			
 			try {
 				$cacheDriver = $Registry->get("redis");
@@ -582,15 +587,20 @@
 		 * Get an instance of Memcache for legacy code
 		 * @since Version 3.9.1
 		 * @return object
+		 * @param boolean $reload Don't fetch the cache handler from the registry and instead create a new instance
 		 */
 		
-		public static function getMemcache() {
+		public static function getMemcache($reload = false) {
 			
 			if (!extension_loaded("memcache")) {
 				return new NullCacheDriver;
 			}
 			
 			$Registry = Registry::getInstance();
+			
+			if ($reload) {
+				$Registry->remove("memcache");
+			}
 			
 			try {
 				$cacheDriver = $Registry->get("memcache");

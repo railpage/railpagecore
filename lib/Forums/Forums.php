@@ -1109,12 +1109,31 @@
 			 */
 			
 			try {
-				$key = sprintf("%s:%d", $cookiename, $User->id);
+				#$key = sprintf("%s:%d", $cookiename, $User->id);
+				$key = sprintf("railpage:forums.read;user=%d;type=%s", $User->id, $type);
+				
+				$Redis = AppCore::getRedis(); 
 				$Memcached = AppCore::getMemcached(); 
 				
-				if ($result = $Memcached->fetch($key)) {
+				$result = $Memcached->fetch($key);
+				
+				if ($result) {
 					if (!is_array($result)) {
-						$result = self::unserializeArray($result);
+						$unserial = self::unserializeArray($result);
+						
+						if (is_array($unserial)) {
+							$result = $unserial;
+							unset($unserial);
+						}
+					}
+					
+					if (!is_array($result)) {
+						$json = json_decode($result, true); 
+						
+						if (is_array($json)) {
+							$result = $json;
+							unset($json);
+						}
 					}
 					
 					if (!is_array($result)) {
@@ -1146,6 +1165,10 @@
 			 * Couldn't find shit
 			 */
 			
+			if ($type == "f_all") {
+				return false;
+			}
+			
 			return array(); 
 		}
 		
@@ -1166,9 +1189,12 @@
 			 */
 			
 			try {
-				$key = sprintf("%s:%d", $cookiename, $User->id);
-				$Memcached = AppCore::getMemcached(); 
-				$Memcached->save($key, $items, strtotime("+1 year"));
+				#$key = sprintf("%s:%d", $cookiename, $User->id);
+				$key = sprintf("railpage:forums.read;user=%d;type=%s", $User->id, $type);
+				
+				$Redis = AppCore::getRedis(true); 
+				$Memcached = AppCore::getMemcached(true);
+				$Memcached->save($key, $items, 0);
 			} catch (Exception $e) {
 				// Throw it away
 			}
@@ -1177,6 +1203,8 @@
 			 * Save it in a cookie just for good luck
 			 */
 			
-			setcookie($cookiename, self::serialize_array($items), strtotime("+1 year"), RP_AUTOLOGIN_PATH, RP_AUTOLOGIN_DOMAIN, RP_SSL_ENABLED, true); 
+			$save = is_array($items) ? self::serialize_array($items) : $items;
+			
+			setcookie($cookiename, $save, strtotime("+1 year"), RP_AUTOLOGIN_PATH, RP_AUTOLOGIN_DOMAIN, RP_SSL_ENABLED, true); 
 		}
 	}

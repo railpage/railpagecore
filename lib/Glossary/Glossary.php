@@ -87,7 +87,7 @@
 			
 			$cachekey = sprintf("railpage:glossary.lookup.text=%s", md5($text)); 
 			
-			if (!$id = $this->Memcached->fetch($cachekey)) {
+			if ($id = $this->Redis->fetch($cachekey)) {
 				$Sphinx = AppCore::getSphinx(); 
 				
 				$query = $Sphinx->select("*")
@@ -107,7 +107,7 @@
 			
 				if (count($matches) === 1) {
 					$id = $matches[0]['entry_id']; 
-					$this->Memcached->save($cachekey, $id, strtotime("+1 year")); 
+					$this->Redis->save($cachekey, $id, strtotime("+1 year")); 
 				}
 			}
 			

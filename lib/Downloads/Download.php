@@ -350,11 +350,11 @@
 			 */
 			
 			if (empty($this->id)) {
-				$dataArray['active'] 		= 1;
-				$dataArray['category_id']	= $this->cat_id;
-				$dataArray['filesize']		= empty($this->filesize) ? 0 : $this->filesize; 
+				$data['active'] 		= 1;
+				$data['category_id']	= $this->cat_id;
+				$data['filesize']		= empty($this->filesize) ? 0 : $this->filesize; 
 				
-				$this->db->insert("download_items", $dataArray);
+				$this->db->insert("download_items", $data);
 				$this->id = $this->db->lastInsertId();
 				
 				return $this->id;
@@ -363,7 +363,7 @@
 					"id = ?" => $this->id
 				);
 				
-				$this->db->update("download_items", $dataArray, $where);
+				$this->db->update("download_items", $data, $where);
 			}
 		}
 		
