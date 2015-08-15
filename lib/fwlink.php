@@ -134,7 +134,7 @@
 		
 		private function makeURLs() {
 			$this->url_canonical = sprintf("http://%s%s", RP_HOST, $this->url);
-			$this->url_short = sprintf("http://%s/fwlink?id=%d", RP_HOST, $this->id);
+			$this->url_short = sprintf("http://%s/go/%d", "railpage.com.au", $this->id);
 		}
 		
 		/**
@@ -200,5 +200,6 @@
 			
 			return true;
 		}
+		
 	}
 	
