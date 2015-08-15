@@ -13,6 +13,7 @@
 	use Railpage\SessionHandler;
 	use StatsD;
 	use Memcached as PHPMemcached;
+	use Redis;
 	use Exception;
 	use DateTime;
 	use SessionHandlerInterface;
@@ -23,6 +24,14 @@
 	 */
 	
 	class Session implements SessionHandlerInterface {
+		
+		/**
+		 * Default session length
+		 * @since Version 3.10.0
+		 * @const int DEFAULT_SESSION_LENGTH
+		 */
+		
+		const DEFAULT_SESSION_LENGTH = 3600;
 		
 		/**
 		 * Session ID
@@ -62,60 +71,63 @@
 				define("RP_SITE_DOMAIN", "railpage.com.au");
 			}
 			
-			/*
-			if ($this->Memcached->connected()) {
-				session_module_name('memcached');
-				session_save_path(sprintf("%s:%d", $this->Memcached->host, $this->Memcached->port));
-			}
-			
-			if (empty(trim(ini_get("memcached.sess_prefix")))) {
-				ini_set("memcached.sess_prefix", "memc.sess.key.");
-			}
-			*/
-			
 			/**
 			 * Get memcached host configuration. If it's empty for whatever reason, fall back to hardcoded host(s)
 			 */
 			
 			$Config = AppCore::getConfig(); 
 			
-			$host['primary']['addr'] = (isset($Config->Memcached->host) && !empty($Config->Memcached->host)) ? $Config->Memcached->host : "203.28.180.12";
+			$host['primary']['addr'] = (isset($Config->Memcached->host) && !empty($Config->Memcached->host)) ? $Config->Memcached->host : "cache.railpage.com.au";
 			$host['primary']['port'] = (isset($Config->Memcached->port) && !empty($Config->Memcached->port)) ? $Config->Memcached->host : "11211";
-			$host['secondary']['addr'] = (isset($Config->Memcached->hosts->secondary->addr) && !empty($Config->Memcached->hosts->secondary->addr)) ? $Config->Memcached->hosts->secondary->addr : "203.28.180.19";
-			$host['secondary']['port'] = (isset($Config->Memcached->hosts->secondary->port) && !empty($Config->Memcached->hosts->secondary->port)) ? $Config->Memcached->hosts->secondary->port : "11211";
 			
 			$handlername = isset($Config->SessionHandler) && !empty($Config->SessionHandler) ? $Config->SessionHandler : "MemcachedSessionHandler";
 			$handlername = sprintf("\Railpage\SessionHandler\%s", $handlername);
+			#$handlername = "Redis";
 			
 			/**
 			 * Create a new \Memcached (aka PHPMemcached) object, connect our hosts to it
 			 */
 			
-			$Memcached = new PHPMemcached;
-			$Memcached->addServer($host['primary']['addr'], $host['primary']['port']); 
-			$Memcached->addServer($host['secondary']['addr'], $host['secondary']['port']); 
-			$Memcached->setOption(PHPMemcached::OPT_DISTRIBUTION, PHPMemcached::DISTRIBUTION_CONSISTENT);
-			$Memcached->setOption(PHPMemcached::OPT_CONNECT_TIMEOUT, 150);
-			$Memcached->setOption(PHPMemcached::OPT_RETRY_TIMEOUT, 0);
-			$Memcached->setOption(PHPMemcached::OPT_HASH, PHPMemcached::HASH_MD5);
+			if (strpos($handlername, "Memcached") !== false) {
 			
-			/**
-			 * Create our MemcachedSessionHandler instance and instruct PHP to use that for session storage
-			 */
+				$Memcached = new PHPMemcached;
+				
+				foreach ($host as $row) {
+					$Memcached->addServer($row['addr'], $row['port']);
+				}
+				
+				$Memcached->setOption(PHPMemcached::OPT_DISTRIBUTION, PHPMemcached::DISTRIBUTION_CONSISTENT);
+				$Memcached->setOption(PHPMemcached::OPT_CONNECT_TIMEOUT, 150);
+				$Memcached->setOption(PHPMemcached::OPT_RETRY_TIMEOUT, 0);
+				$Memcached->setOption(PHPMemcached::OPT_HASH, PHPMemcached::HASH_MD5);
 			
-			$options = array(
-				"prefix" => "memc.sess.key.",
-				"expiretime" => 1800
-			);
+				/**
+				 * Create our MemcachedSessionHandler instance and instruct PHP to use that for session storage
+				 */
+				
+				$options = array(
+					"prefix" => "memc.sess.key.",
+					"expiretime" => self::DEFAULT_SESSION_LENGTH
+				);
+				
+				$SessionHandler = new $handlername($Memcached, $options);
+				session_set_save_handler($SessionHandler, true);
+				
+			}
 			
-			$SessionHandler = new $handlername($Memcached, $options);
-			session_set_save_handler($SessionHandler, true);
+			if (strpos($handlername, "Redis") !== false) {
+				
+				session_save_path(sprintf("tcp://%s:6379?weight=1", $host['primary']['addr']));
+				
+			}
 			
 			/**
 			 * Cross-subdomain cookies n shiz
 			 */
 			
-			session_set_cookie_params(0, "/", sprintf(".%s", RP_SITE_DOMAIN)); 
+			if (!isset($_SERVER['HTTP_REFERER']) || !strpos($_SERVER['HTTP_REFERER'], $_SERVER['SERVER_ADDR'])) {
+				session_set_cookie_params(0, "/", sprintf(".%s", RP_SITE_DOMAIN)); 
+			} 
 			
 			/**
 			 * ZOMG ACTUALLY START THE EFFING SESSION
@@ -127,13 +139,15 @@
 			 * Force a session length - from http://stackoverflow.com/a/1270960/319922
 			 */
 			
-			ini_set("session.gc_maxlifetime", 1800);
+			ini_set("session.gc_maxlifetime", self::DEFAULT_SESSION_LENGTH);
 			
-			if (empty($_POST) && isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY'] > 1800)) {
-				// last request was more than 30 minutes ago
+			/*
+			if (empty($_POST) && isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY'] > self::DEFAULT_SESSION_LENGTH)) {
+				// last request was more than 60 minutes ago
 				session_unset();     // unset $_SESSION variable for the run-time 
 				session_destroy();   // destroy session data in storage
 			}
+			*/
 			
 			$_SESSION['LAST_ACTIVITY'] = time(); // update last activity time stamp
 			
@@ -144,7 +158,7 @@
 			/*
 			if (!isset($_SESSION['CREATED'])) {
 				$_SESSION['CREATED'] = time();
-			} elseif (time() - $_SESSION['CREATED'] > 1800) {
+			} elseif (time() - $_SESSION['CREATED'] > self::DEFAULT_SESSION_LENGTH) {
 				// session started more than 30 minutes ago
 				session_regenerate_id(true);    // change session ID for the current session and invalidate old session ID
 				$_SESSION['CREATED'] = time();  // update creation time
