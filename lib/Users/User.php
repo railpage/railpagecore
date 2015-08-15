@@ -1063,7 +1063,11 @@
 			$this->timezone		= isset($data['timezone']) && !empty($data['timezone']) ? $data['timezone'] : "Australia/Melbourne";
 			$this->website		= $data['user_website'];
 			$this->hide			= $data['user_allow_viewonline']; 
-			$this->meta = isset($data['meta']) ? json_decode($data['meta'], true) : array();
+			$this->meta 		= isset($data['meta']) ? json_decode($data['meta'], true) : array();
+			
+			if (json_last_error() != JSON_ERROR_NONE || !is_array($this->meta)) {
+				$this->meta = array(); 
+			}
 			
 			if (isset($data['password_new'])) {
 				$this->password_new = $data['password_new']; 
@@ -1093,7 +1097,11 @@
 			 */
 		 
 	 		if (empty($data['user_regdate_nice']) || $data['user_regdate_nice'] == "0000-00-00") {
-	 			$datetime = new DateTime($data['user_regdate']);
+				if ($data['user_regdate'] == 0) {
+					$data['user_regdate'] = date("Y-m-d");
+				}
+				
+				$datetime = new DateTime($data['user_regdate']);
 	 			
 	 			$data['user_regdate_nice'] = $datetime->format("Y-m-d");
 	 			$update['user_regdate_nice'] = $data['user_regdate_nice'];
@@ -1400,7 +1408,7 @@
 			// Update the registry
 			$Registry = Registry::getInstance(); 
 			$regkey = sprintf(self::REGISTRY_KEY, $this->id); 
-			$Registry->remove($regkey)->set($regkey, $this); 
+			$Registry->remove($regkey); #->set($regkey, $this); 
 			
 			return true;
 		}
@@ -1710,6 +1718,10 @@
 		 */
 		
 		public function addNote($text = false, $admin_user_id = 0) {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
+				return false;
+			}
+			
 			if ($text == false || is_null(filter_var($text, FILTER_SANITIZE_STRING))) {
 				return false;
 			}
@@ -2415,6 +2427,18 @@
 				
 				return true;
 			}
+			
+			/*
+			if (strtolower($username) == "aussieman") {
+				printArray($username); 
+				printArray($password); 
+				printArray($stored_pass); 
+				printArray($stored_pass_bcrypt);
+				printArray(md5($password) === $stored_pass); 
+				printArray(password_verify($password, $stored_pass)); 
+				printArray(password_verify($password, $stored_pass_bcrypt));die;
+			}
+			*/
 						
 			/**
 			 * Unsuccessful login attempt - bump up the invalid auth counter
@@ -2610,9 +2634,10 @@
 		 * Get IP address this user has posted/logged in from
 		 * @since Version 3.9
 		 * @return array
+		 * @param \DateTime $time Find IP addresses since the provided DateTime object
 		 */
 		
-		public function getIPs() {
+		public function getIPs($time = false) {
 			$ips = array(); 
 			
 			/**
@@ -2620,6 +2645,10 @@
 			 */
 			
 			$query = "SELECT DISTINCT poster_ip FROM nuke_bbposts WHERE poster_id = ?";
+			
+			if ($time instanceof DateTime) {
+				$query .= " AND post_time >= " . $time->getTimestamp();
+			}
 			
 			foreach ($this->db->fetchAll($query, $this->id) as $row) {
 				$ips[] = decode_ip($row['poster_ip']);
@@ -2630,6 +2659,10 @@
 			 */
 			
 			$query = "SELECT DISTINCT login_ip FROM log_logins WHERE user_id = ? AND login_ip NOT IN ('" . implode("','", $ips) . "')";
+			
+			if ($time instanceof DateTime) {
+				$query .= " AND login_time >= " . $time->getTimestamp();
+			}
 			
 			foreach ($this->db->fetchAll($query, $this->id) as $row) {
 				$ips[] = $row['login_ip'];
@@ -2848,7 +2881,7 @@
 				$query['downloads'] = "SELECT 'Downloads' AS module, 'New download' AS subtitle, '<i class=\"fa fa-download\"></i>' AS icon, COUNT(*) AS num, '/downloads/manage' AS url, NULL AS extra FROM download_items WHERE active = 1 AND approved = 0";
 			}
 			
-			if ($acl->isAllowed($acl_role, "railpage.gallery.competition", "manage")) {
+			if ($acl->isAllowed($acl_role, "railpage.gallery.competition", "manage") && $this->id != 2) {
 				$query['photocomp'] = "SELECT 'Photo comp' AS module, 'Photo comp submission' AS subtitle, '<i class=\"fa fa-camera\"></i>' AS icon, COUNT(*) AS num, '/gallery/comp' AS url, NULL AS extra FROM image_competition_submissions WHERE status = 0";
 			}
 			
@@ -2858,7 +2891,7 @@
 			
 			$acl_role = $this->aclRole(RP_GROUP_LOCOS);
 			
-			if ($acl->isAllowed($acl_role, "railpage.locos", "edit")) {
+			if ($acl->isAllowed($acl_role, "railpage.locos", "edit") && $this->id != 2) {
 				$query['locos'] = "SELECT 'Locos' AS module, 'Locos correction' AS subtitle, '<i class=\"fa fa-train\"></i>' AS icon, COUNT(*) AS num, '/locos/corrections' AS url, NULL AS extra FROM loco_unit_corrections WHERE status = 0";
 			}
 			
@@ -3010,6 +3043,13 @@
 		 */
 		
 		public function validateHuman() {
+			if (!is_array($this->meta)) {
+				$this->meta = json_decode($this->meta, true);
+				if (json_last_error() != JSON_ERROR_NONE) {
+					$this->meta = array(); 
+				}
+			}
+			
 			if (!isset($this->meta['captchaTimestamp']) || empty($this->meta['captchaTimestamp']) || $this->meta['captchaTimestamp'] - 900 <= time()) {
 				return false;
 			}
@@ -3024,6 +3064,13 @@
 		 */
 		
 		public function setValidatedHuman() {
+			if (!is_array($this->meta)) {
+				$this->meta = json_decode($this->meta, true);
+				if (json_last_error() != JSON_ERROR_NONE) {
+					$this->meta = array(); 
+				}
+			}
+			
 			$this->meta['captchaTimestamp'] = strtotime("+24 hours");
 			$this->commit(); 
 			

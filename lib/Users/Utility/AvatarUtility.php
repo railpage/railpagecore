@@ -157,7 +157,8 @@
 					$args['url'] = self::DEFAULT_AVATAR; 
 				}
 				
-				$user_avatar = "https://static.railpage.com.au/image_resize.php?base64_args=".base64_encode(serialize($args)); 
+				#$user_avatar = "https://static.railpage.com.au/image_resize.php?base64_args=".base64_encode(serialize($args)); 
+				$user_avatar = sprintf("https://static.railpage.com.au/image_resize.php?w=%d&h=%d&image=%s", $args['width'], $args['height'], $args['url']);
 				
 				if ($width == $height) {
 					$user_avatar .= "&square=true";
