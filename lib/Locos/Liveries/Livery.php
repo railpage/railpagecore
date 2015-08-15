@@ -18,7 +18,7 @@
 	 * @since Version 3.2
 	 */
 	
-	class Livery extends Base {
+	class Livery extends Liveries {
 		
 		/**
 		 * Livery ID

@@ -16,7 +16,7 @@
 	 * @since Version 3.2
 	 */
 	
-	class Base extends AppCore {
+	class Liveries extends AppCore {
 		
 		/**
 		 * Return a list of livery IDs
@@ -74,6 +74,47 @@
 			}
 			
 			return $tags;
+		}
+		
+		/**
+		 * Get all the countries
+		 * @since Version 3.10.0
+		 * @return array
+		 */
+		
+		public function getAllCountries() {
+			
+			$query = "SELECT l.country, g.country_name, (SELECT COUNT(*) FROM loco_livery WHERE loco_livery.country = l.country) AS num
+				FROM loco_livery AS l
+					LEFT JOIN geoplace AS g ON g.country_code = l.country 
+				GROUP BY l.country 
+				ORDER BY g.country_name";
+			
+			return $this->db->fetchAll($query); 
+			
+		}
+		
+		/**
+		 * Get regions within a country
+		 * @since Version 3.10.0
+		 * @param string $region
+		 * @return array
+		 */
+		
+		public function getRegionsInCountry($country) {
+			
+			$country = strtoupper($country); 
+			$params = [ $country, $country, $country ];
+			
+			$query = "SELECT l.region, COALESCE(g.region_name, 'National') AS region_name, (SELECT COUNT(*) FROM loco_livery WHERE loco_livery.country = l.country AND loco_livery.region = l.region AND loco_livery.country = ?) AS num
+				FROM loco_livery AS l
+					LEFT JOIN geoplace AS g ON g.region_code = l.region AND g.country_code = ?
+				WHERE l.country = ?
+				GROUP BY l.region
+				ORDER BY g.region_name";
+			
+			return $this->db->fetchAll($query, $params);
+			
 		}
 	}
 	
