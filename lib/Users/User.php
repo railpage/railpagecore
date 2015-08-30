@@ -24,6 +24,7 @@
 	use Railpage\Forums\Index;
 	use Railpage\Debug;
 	use Railpage\Registry;
+	use Railpage\Session;
 	
 	/**
 	 * User class
@@ -1560,12 +1561,25 @@
 		/**
 		 * Set last visit time (user login)
 		 * @since Version 3.0
-		 * @version 3.0
-		 * @param int $user_id
-		 * @param int $time
+		 * @version 3.10.0
 		 */
 		 
-		public function updateVisit($user_id = false, $time = false) {
+		public function updateVisit() {
+			
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
+				return $this;
+			}
+			
+			if ($this->session_time >= (time() - Session::DEFAULT_SESSION_LENGTH)) {
+				return $this;
+			}
+			
+			$this->lastvisit = $this->session_time - Session::DEFAULT_SESSION_LENGTH;
+			$this->commit(); 
+			
+			return $this;
+			
+			/*
 			if (!$user_id && filter_var($this->id, FILTER_VALIDATE_INT)) {
 				$user_id = $this->id;
 			}
@@ -1586,7 +1600,7 @@
 			
 			/** 
 			 * Update values stored in Memcached
-			 */
+			 *#/
 			
 			if (!isset($this->mckey)) {
 				$this->mckey = sprintf("railpage:user_id=%d", $user_id);
@@ -1605,60 +1619,39 @@
 				$result['user_lastvisit'] = $time;
 				$this->Memcached->save($this->mckey, $result);
 			}
+			*/
+			
 		}
 		
 		/**
 		 * Set last session activity
 		 * @since Version 3.0
-		 * @version 3.9.1
+		 * @version 3.10.0
 		 * @return boolean
-		 * @param int $user_id
 		 * @param strint $remote_addr
 		 */
 		 
-		public function updateSessionTime($user_id = false, $remote_addr = false) {
-			if (!$user_id = filter_var($user_id, FILTER_VALIDATE_INT)) {
-				$user_id = $this->id;
+		public function updateSessionTime($remote_addr = false) {
+			
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
+				return $this;
 			}
 			
-			if (!filter_var($user_id, FILTER_VALIDATE_INT)) {
-				return false;
+			if ($this->session_time >= (time() - 300)) {
+				return $this;
 			}
 			
-			$lastupdate = isset($_SESSION['LAST_ACTIVITY']) ? $_SESSION['LAST_ACTIVITY'] : NULL;
-			#printArray(is_null($lastupdate) || $lastupdate <= time() - 300);die;
+			$this->session_time = time();
 			
-			if (is_null($lastupdate) || $lastupdate <= time() - 300) {
-				
-				$timer = Debug::getTimer(); 
-			
-				$data = [ "user_session_time" => time() ];
-				
-				$data['last_session_ip'] = $remote_addr !== false ? $remote_addr : filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_STRING);
-				
-				$this->db->update("nuke_users", $data, array("user_id = ?" => $user_id));
-				
-				$this->session_time = $data['user_session_time'];
-				
-				/** 
-				 * Update values stored in Memcached
-				 */
-			
-				if (!isset($this->mckey)) {
-					$this->mckey = sprintf("railpage:user_id=%d", $user_id);
-				}
-				
-				if ($result = $this->Memcached->fetch($this->mckey)) {
-					$result['user_session_time'] = $data['user_session_time'];
-					$result['last_session_ip'] = $data['last_session_ip'];
-					$this->Memcached->save($this->mckey, $result);
-					$this->Redis->delete($this->mckey);
-				}
-				
-				Debug::logEvent("Zend_DB: Update user session time for user ID " . $user_id, $timer); 
+			if ($remote_addr) {
+				$this->session_ip = $remote_addr;
 			}
-				
-			return true;
+			
+			$this->commit(); 
+			
+			Debug::logEvent("Zend_DB: Update user session time for user ID " . $user_id, $timer); 
+			
+			return $this;
 			
 		}
 		

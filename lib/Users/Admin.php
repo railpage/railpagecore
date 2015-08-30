@@ -153,6 +153,7 @@
 						user_session_time AS last_activity, user_regdate AS regdate, user_regdate_nice, user_posts AS posts, timezone AS timezone, flickr_nsid 
 					FROM nuke_users 
 					WHERE user_active = 1 
+						AND user_id != 0
 						AND user_session_time > 0 
 						" . $bancontrol_sql . "
 					ORDER BY user_id LIMIT ?, ?";
@@ -165,11 +166,15 @@
 				
 				foreach ($result as $row) {
 					if (empty($row['user_regdate_nice']) || $row['user_regdate_nice'] == "0000-00-00") {
-						$datetime = new DateTime($row['regdate']);
-						
-						$update['user_regdate_nice'] = $datetime->format("Y-m-d");
-						
-						$this->db->update("nuke_users", $update, array("user_id = ?" => $row['id']));
+						try {
+							$datetime = new DateTime($row['regdate']);
+							
+							$update['user_regdate_nice'] = $datetime->format("Y-m-d");
+							
+							$this->db->update("nuke_users", $update, array("user_id = ?" => $row['id']));
+						} catch (Exception $e) { 
+							// Throw it away, Manuel!
+						}
 					}
 					
 					$return['members'][$row['id']] = $row;
