@@ -96,7 +96,7 @@
 			$key = sprintf("railpage:forums.index"); 
 			
 			if (!$Index = self::load($key)) {
-				$Index = new Index($cat_id); 
+				$Index = new Index; 
 				self::$Registry->set($key, $Index); 
 			}
 			

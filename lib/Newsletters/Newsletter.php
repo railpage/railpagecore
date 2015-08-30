@@ -90,6 +90,14 @@
 		public $content;
 		
 		/**
+		 * Array of recipients
+		 * @since Version 3.10.0
+		 * @var array $recipients
+		 */
+		
+		public $recipients = [];
+		
+		/**
 		 * Constructor
 		 * @since Version 3.9.1
 		 * @param int $id
@@ -118,6 +126,7 @@
 			$this->status = $result['status'];
 			$this->template = (new Newsletters)->getTemplate($result['template_id']);
 			$this->content = json_decode($result['content'], true);
+			$this->recipients = json_decode($result['recipients'], true); 
 			
 			$this->makeURLs();
 			
@@ -163,7 +172,8 @@
 				"subject" => $this->subject,
 				"status" => $this->status,
 				"template_id" => $this->template['id'],
-				"content" => json_encode($this->content)
+				"content" => json_encode($this->content),
+				"recipients" => json_encode($this->recipients)
 			);
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
@@ -192,6 +202,12 @@
 		public function setHeroImage(Image $Image) {
 			$this->content['hero'] = $Image->getArray(); 
 			
+			if (strpos($this->content['hero']['url']['canonical'], ":///") !== false) {
+				$this->content['hero']['url']['canonical'] = sprintf("http://www.railpage.com.au/photos/%d", $this->content['hero']['id']);
+			}
+			
+			$this->content['hero']['url']['canonical'] = Utility\NewsletterUtility::CreateUTMParametersForLink($this, $this->content['hero']['url']['canonical']);
+			
 			return $this;
 		}
 		
@@ -218,7 +234,7 @@
 		public function getArray() {
 			$hero = $this->getHeroImage();
 			
-			return array(
+			$return = array(
 				"id" => $this->id,
 				"status" => array(
 					"id" => $this->status,
@@ -228,8 +244,16 @@
 				"subject" => $this->subject,
 				"hero" => $hero instanceof Image ? $hero->getArray() : array(),
 				"content" => $this->content,
-				"url" => isset($this->url) && $this->url instanceof Url ? $this->url->getUrls() : array()
+				"url" => isset($this->url) && $this->url instanceof Url ? $this->url->getUrls() : array(),
+				"recipients" => $this->recipients
 			);
+			
+			if ($hero instanceof Image) {
+				$return['hero']['url']['canonical'] = $this->content['hero']['url']['canonical'];
+			}
+			
+			return $return;
+			
 		}
 		
 		/**
@@ -243,6 +267,7 @@
 			$this->url->edit = sprintf("/administrators?mode=newsletters.edit&id=%d", $this->id);
 			$this->url->preview = sprintf("/administrators?mode=newsletters.preview&id=%d", $this->id);
 			$this->url->sendtest = sprintf("/administrators?mode=newsletters.sendtest&id=%d", $this->id);
+			$this->url->dispatch = sprintf("/administrators?mode=newsletters.dispatch&id=%d", $this->id);
 			
 			return $this;
 		}

@@ -227,7 +227,7 @@
 		 * @var boolean $pinned
 		 */
 		
-		public $pinned;
+		public $pinned = false;
 		
 		/**
 		 * Author of this post
