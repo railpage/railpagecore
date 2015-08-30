@@ -180,6 +180,14 @@
 		public $url;
 		
 		/**
+		 * Meta data for this camera
+		 * @since Version 3.10.0
+		 * @var array $meta
+		 */
+		
+		public $meta; 
+		
+		/**
 		 * Photo provider
 		 * @since Version 3.9
 		 * @var object $Provider
@@ -256,6 +264,8 @@
 				$this->url->photo = sprintf("%s/photo/", $this->url->url);
 				$this->url->flickr_auth = sprintf("%s/authenticate", $this->url->url);
 				$this->url->authenticate = $this->url->flickr_auth;
+				
+				$this->meta = isset($row['meta']) ? json_decode($row['meta'], true) : array(); 
 				
 				switch ($row['provider']) {
 					case "Flickr" : 
@@ -393,6 +403,7 @@
 				"type_id" => $this->type_id,
 				"left" => $this->left,
 				"right" => $this->right,
+				"meta" => is_array($this->meta) ? json_encode($this->meta) : $this->meta
 			);
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
@@ -734,7 +745,8 @@
 				"provider" => $this->Provider->getProviderName(),
 				"url" => $this->url->getURLs(),
 				"lat" => $this->lat,
-				"lon" => $this->lon
+				"lon" => $this->lon,
+				"meta" => $this->meta,
 			);
 		}
 	}
