@@ -14,6 +14,8 @@
 	use Railpage\Module;
 	use Exception;
 	use DateTime;
+	use Railpage\ContentUtility;
+	use Railpage\Debug;
 	
 	/**
 	 * Base news class
@@ -60,8 +62,6 @@
 			$mckey = "railpage:news.latest.count=" . $number .".offset=" . $offset;
 			$mcexp = strtotime("+5 minutes"); // Store for five minutes
 			
-			#removeMemcacheObject($mckey);
-			
 			$Sphinx = $this->getSphinx();
 			
 			$query = $Sphinx->select("*")
@@ -72,6 +72,9 @@
 					
 			$matches = $query->execute(); 
 			
+			/**
+			 * Attempt to fetch from Sphinx first
+			 */
 			
 			if (is_array($matches) && count($matches)) {
 				
@@ -98,157 +101,59 @@
 				
 				return $matches;
 				
-			} else {
-				if (RP_DEBUG) {
-					global $site_debug;
-					$debug_timer_start = microtime(true);
-				}
+			}
+			
+			/**
+			 * Fall back to database query
+			 */
+			
+			if (!$data = $this->Memcached->fetch($mckey)) {
+			
+				$timer = Debug::GetTimer(); 
+			
+				$query = "SELECT s.*, t.topicname, t.topicimage, t.topictext, u.user_id AS informant_id, u.user_id, u.username, u.user_avatar 
+						FROM nuke_stories AS s
+						LEFT JOIN nuke_topics AS t ON s.topic = t.topicid
+						LEFT JOIN nuke_users AS u ON s.informant = u.username
+						WHERE s.title != \"\"
+						AND s.approved = ?
+						ORDER BY s.time DESC
+						LIMIT ?, ?"; 
 				
-				if ($data = $this->getCache($mckey)) {
-					// Do nothing, it's already been formatted and stored
+				if ($result = $this->db_readonly->fetchAll($query, array("1", $offset, $number))) {
+					$return = array(); 
 					
-					return $data;
-				} else {
-					if ($this->db instanceof \sql_db) {
-						$query = "SELECT s.*, t.topicname, t.topicimage, t.topictext, u.user_id AS informant_id, u.user_id, u.username, u.user_avatar FROM nuke_stories s, nuke_topics t, nuke_users u WHERE u.user_id = s.user_id AND s.topic = t.topicid AND s.approved = 1 ORDER BY s.time DESC LIMIT ".$this->db->real_escape_string($offset).", ".$this->db->real_escape_string($number); 
-						
-						if ($rs = $this->db->query($query)) {
-							$return = array(); 
-							
-							require_once("includes/functions.php"); 
-							
-							while ($row = $rs->fetch_assoc()) {
-								if (function_exists("relative_date")) {
-									$row['time_relative'] = relative_date(strtotime($row['time']));
-								} else {
-									$row['time_relative'] = $row['time'];
-								}
-								
-								// Match the first sentence
-								$line = explode("\n", str_replace("\r\n", "\n", !empty($row['story_lead']) ? $row['story_lead'] : $row['hometext'])); 
-								#$row['firstline'] 	= preg_replace('/([^?!.]*.).*/', '\\1', strip_tags($line[0]));
-								$row['firstline']	= strip_tags($line[0]);
-								
-								$row['hometext'] 	= format_post($row['hometext']);
-								$row['hometext'] 	= wpautop($row['hometext']);
-								
-								$return[] = $row; 
-							}
-							
-							$this->setCache($mckey, $return, $mcexp); 
-							
-							return $return;
+					foreach ($result as $row) {
+						if (function_exists("relative_date")) {
+							$row['time_relative'] = relative_date(strtotime($row['time']));
 						} else {
-							throw new \Exception($this->db->error."\n\n".$query);
-							return false;
+							$row['time_relative'] = $row['time'];
 						}
-					} else {
-						$query = "SELECT s.*, t.topicname, t.topicimage, t.topictext, u.user_id AS informant_id, u.user_id, u.username, u.user_avatar 
-								FROM nuke_stories AS s
-								LEFT JOIN nuke_topics AS t ON s.topic = t.topicid
-								LEFT JOIN nuke_users AS u ON s.informant = u.username
-								WHERE s.title != \"\"
-								AND s.approved = ?
-								ORDER BY s.time DESC
-								LIMIT ?, ?"; 
 						
-						if ($result = $this->db_readonly->fetchAll($query, array("1", $offset, $number))) {
-							$return = array(); 
-							
-							foreach ($result as $row) {
-								if (function_exists("relative_date")) {
-									$row['time_relative'] = relative_date(strtotime($row['time']));
-								} else {
-									$row['time_relative'] = $row['time'];
-								}
-								
-								// Match the first sentence
-								$line = explode("\n", str_replace("\r\n", "\n", $row['hometext']));
-								$row['firstline']	= strip_tags($line[0]);
-								
-								$row['hometext'] 	= format_post($row['hometext']);
-								$row['hometext'] 	= wpautop($row['hometext']);
-								
-								if (empty($row['slug'])) {
-									$row['slug'] = $this->createSlug($row['sid']); 
-								}
-								
-								$row['url'] = $this->makePermaLink($row['slug']); 
-								
-								$return[] = $row; 
-							}
-							
-							$this->setCache($mckey, $return, $mcexp); 
-					
-							if (RP_DEBUG) {
-								$site_debug[] = "Zend_DB: SUCCESS select latest news articles in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-							}
-							
-							return $return;
+						// Match the first sentence
+						$line = explode("\n", str_replace("\r\n", "\n", $row['hometext']));
+						$row['firstline']	= strip_tags($line[0]);
+						
+						$row['hometext'] 	= format_post($row['hometext']);
+						$row['hometext'] 	= wpautop($row['hometext']);
+						
+						if (empty($row['slug'])) {
+							$row['slug'] = $this->createSlug($row['sid']); 
 						}
+						
+						$row['url'] = $this->makePermaLink($row['slug']); 
+						
+						$return[] = $row; 
 					}
+					
+					$this->Memcached->save($mckey, $return, $mcexp); 
+					
+					Debug::LogEvent(__METHOD__, $timer); 
 				}
+					
+				return $return;
 			}
 		}
-		
-		/**
-		 * Add story to database
-		 * @version 3.0
-		 * @since Version 3.0
-		 * @param string $title
-		 * @param string $intro
-		 * @param string $body
-		 * @param string $username
-		 * @param int $topic_id
-		 * @param string $source
-		 * @param float $lat
-		 * @param float $lon
-		 * @throws \Exception Deprecated - use new \Railpage\News\Article instead
-		 * @deprecated Deprecated since Version 3.4
-		 * @return mixed
-		 */
-		
-		public function addStory($title, $intro, $body, $username, $topic_id, $source = false, $lat = false, $lon = false) {
-			if (!$this->db) {
-				return false;
-			}
-			
-			throw new \Exception("Railpage\News\Base::addStory() is deprecated - use Railpage\News\Article instead"); 
-			
-			$return = false;
-			
-			$dataArray = array(); 
-			
-			$dataArray['subject'] 		= $this->db->real_escape_string($title); 
-			$dataArray['story'] 		= $this->db->real_escape_string($intro); 
-			$dataArray['storyext'] 		= $this->db->real_escape_string($body); 
-			$dataArray['uid'] 			= $this->db->real_escape_string($username); 
-			$dataArray['timestamp'] 	= "NOW()"; 
-			$dataArray['topic'] 		= $this->db->real_escape_string($topic_id); 
-			
-			if ($lat && $lon) {
-				$dataArray['geo_lat']	 	= $this->db->real_escape_string($lat);
-				$dataArray['geo_lon']		= $this->db->real_escape_string($lon);
-			}
-			
-			if ($source) {
-				$dataArray['source'] = $this->db->real_escape_string($source); 
-			}
-			
-			// Throw it in the pending queue
-			$query = $this->db->buildQuery($dataArray, "nuke_queue"); 
-			
-			if ($rs = $this->db->query($query)) {
-				return $this->db->insert_id;
-			} else {
-				trigger_error("News: could not add story"); 
-				trigger_error($this->db->error); 
-				trigger_error($query); 
-				
-				return false;
-			}
-		}
-		
 		
 		/**
 		 * Get pending stories
@@ -258,9 +163,6 @@
 		 */
 		 
 		public function getPending() {
-			if (!$this->db) {
-				return false;
-			}
 			
 			#$query = "SELECT s.*, t.topicname, t.topicimage, t.topictext, u.username FROM nuke_stories AS s, nuke_topics AS t, nuke_users AS u WHERE s.user_id = u.user_id AND s.topic = t.topicid";
 			$query = "SELECT s.*, t.topicname, t.topictext, u.username, 'newqueue' AS queue
@@ -272,27 +174,12 @@
 			
 			$return = array();
 			
-			if ($this->db instanceof \sql_db) {
-				if ($rs = $this->db->query($query)) {
-					while ($row = $rs->fetch_assoc()) {
-						if ($row['title'] == "") {
-							$row['title'] = "No subject";
-						}
-						
-						$return[] = $row; 
-					}
-				} else {
-					trigger_error("News: unable fetch pending news stories"); 
-					trigger_error($this->db->error); 
+			foreach ($this->db_readonly->fetchAll($query) as $row) {
+				if ($row['title'] == "") {
+					$row['title'] = "No subject";
 				}
-			} else {
-				foreach ($this->db_readonly->fetchAll($query) as $row) {
-					if ($row['title'] == "") {
-						$row['title'] = "No subject";
-					}
-					
-					$return[] = $row; 
-				}
+				
+				$return[] = $row; 
 			}
 			
 			/**
@@ -306,30 +193,13 @@
 						ORDER BY q.timestamp DESC";
 			
 			
-			if ($this->db instanceof \sql_db) {
-				if ($rs = $this->db->query($query)) {
-					while ($row = $rs->fetch_assoc()) {
-						if ($row['title'] == "") {
-							$row['title'] = "No subject";
-						}
-						
-						$return[] = $row; 
-					}
-				} else {
-					trigger_error("News: unable fetch pending news stories"); 
-					trigger_error($this->db->error); 
+			foreach ($this->db_readonly->fetchAll($query) as $row) {
+				if ($row['title'] == "") {
+					$row['title'] = "No subject";
 				}
-			} else {
-				foreach ($this->db_readonly->fetchAll($query) as $row) {
-					if ($row['title'] == "") {
-						$row['title'] = "No subject";
-					}
-					
-					$return[] = $row; 
-				}
-			}
-			
-						
+				
+				$return[] = $row; 
+			}	
 			
 			return $return;
 		}
@@ -345,84 +215,50 @@
 		public function mostReadThisWeek($limit = 5) {
 			$return = false;
 			
-			if ($this->db instanceof \sql_db) {
-				if (isset($this->id) && $this->id > 0) {
-					$topic_sql = "AND s.topic = ".$this->db->real_escape_string($this->id);
-				} else {
-					$topic_sql = NULL;
-				}
-				
-				if ($rs = $this->db->query("SELECT s.*, t.topictext, t.topicname FROM nuke_stories s, nuke_topics t WHERE s.topic = t.topicid ".$topic_sql." AND s.weeklycounter > 0 ORDER BY s.weeklycounter DESC LIMIT 0, ".$this->db->real_escape_string($limit))) {
-					$return = array(); 
-					
-					require_once("includes/functions.php"); 
-					
-					while ($row = $rs->fetch_assoc()) {
-						if (function_exists("relative_date")) {
-							$row['time_relative'] = relative_date(strtotime($row['time']));
-						} else {
-							$row['time_relative'] = $row['time'];
-						}
-						
-						// Match the first sentence
-						$line = explode("\n", str_replace("\r\n", "\n", $row['hometext'])); 
-						#$row['firstline'] 	= preg_replace('/([^?!.]*.).*/', '\\1', strip_tags($line[0]));
-						$row['firstline']	= strip_tags($line[0]);
-						
-						$return[] = $row; 
-					}
-				} else {
-					trigger_error("News: unable to fetch most read stories for topic id ".$this->id); 
-					trigger_error($this->db->error); 
-				} 
-				
-				return $return;
+			$params = array(); 
+			
+			if (isset($this->id) && filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$topic_sql = "AND s.topic = ?";
+				$params[] = $this->id; 
 			} else {
-				$params = array(); 
+				$topic_sql = NULL;
+			}
+			
+			$query = "SELECT s.*, t.topictext, t.topicname FROM nuke_stories s, nuke_topics t WHERE s.topic = t.topicid " . $topic_sql . " AND s.weeklycounter > 0 ORDER BY s.weeklycounter DESC LIMIT 0, ?";
+			$params[] = $limit;
+			
+			if ($result = $this->db_readonly->fetchAll($query, $params)) {
+				$return = array(); 
 				
-				if (isset($this->id) && filter_var($this->id, FILTER_VALIDATE_INT)) {
-					$topic_sql = "AND s.topic = ?";
-					$params[] = $this->id; 
-				} else {
-					$topic_sql = NULL;
-				}
-				
-				$query = "SELECT s.*, t.topictext, t.topicname FROM nuke_stories s, nuke_topics t WHERE s.topic = t.topicid " . $topic_sql . " AND s.weeklycounter > 0 ORDER BY s.weeklycounter DESC LIMIT 0, ?";
-				$params[] = $limit;
-				
-				if ($result = $this->db_readonly->fetchAll($query, $params)) {
-					$return = array(); 
-					
-					foreach ($result as $row) {
-						if (function_exists("relative_date")) {
-							$row['time_relative'] = relative_date(strtotime($row['time']));
-						} else {
-							$row['time_relative'] = $row['time'];
-						}
-						
-						// Match the first sentence
-						$line = explode("\n", str_replace("\r\n", "\n", !empty($row['lead']) ? $row['lead'] : $row['hometext']));
-						$row['firstline']	= trim(strip_tags($line[0]));
-						
-						$row['story_lead'] = !empty($row['lead']) ? $row['lead'] : $row['hometext'];
-						$row['story_body'] = !empty($row['paragraphs']) ? $row['paragraphs'] : $row['bodytext'];
-						
-						$row['hometext'] = wpautop(process_bbcode(!empty($row['lead']) ? $row['lead'] : $row['hometext']));
-						$row['bodytext'] = wpautop(process_bbcode(!empty($row['paragraphs']) ? $row['paragraphs'] : $row['bodytext']));
-						$row['title'] = format_topictitle($row['title']);
-						
-						if (empty($row['slug'])) {
-							$row['slug'] = $this->createSlug($row['sid']); 
-						}
-						
-						$row['url'] = $this->makePermaLink($row['slug']); 
-						
-						$return[] = $row; 
+				foreach ($result as $row) {
+					if (function_exists("relative_date")) {
+						$row['time_relative'] = relative_date(strtotime($row['time']));
+					} else {
+						$row['time_relative'] = $row['time'];
 					}
 					
-					return $return;
+					// Match the first sentence
+					$line = explode("\n", str_replace("\r\n", "\n", !empty($row['lead']) ? $row['lead'] : $row['hometext']));
+					$row['firstline']	= trim(strip_tags($line[0]));
+					
+					$row['story_lead'] = !empty($row['lead']) ? $row['lead'] : $row['hometext'];
+					$row['story_body'] = !empty($row['paragraphs']) ? $row['paragraphs'] : $row['bodytext'];
+					
+					$row['hometext'] = wpautop(process_bbcode(!empty($row['lead']) ? $row['lead'] : $row['hometext']));
+					$row['bodytext'] = wpautop(process_bbcode(!empty($row['paragraphs']) ? $row['paragraphs'] : $row['bodytext']));
+					$row['title'] = format_topictitle($row['title']);
+					
+					if (empty($row['slug'])) {
+						$row['slug'] = $this->createSlug($row['sid']); 
+					}
+					
+					$row['url'] = $this->makePermaLink($row['slug']); 
+					
+					$return[] = $row; 
 				}
 			}
+				
+			return $return;
 		}
 		
 		/**
@@ -434,47 +270,23 @@
 		 */
 		
 		public function topics($id = false) {
-			if (!$this->db) {
-				throw new \Exception("Cannot fetch news topics - no database connection has been provided to this class");
-				return false;
+			
+			$params = array(); 
+			$return = array(); 
+			
+			if (filter_var($id, FILTER_VALIDATE_INT)) {
+				$query = "SELECT * FROM nuke_topics WHERE topicid = ? ORDER BY topictext";
+				$params[] = $id;
+			} else {
+				$query = "SELECT * FROM nuke_topics ORDER BY topictext";
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				if (filter_var($id, FILTER_VALIDATE_INT)) {
-					$query = "SELECT * FROM nuke_topics WHERE topicid = ".$this->db->real_escape_string($id)." ORDER BY topictext";
-				} else {
-					$query = "SELECT * FROM nuke_topics ORDER BY topictext";
-				}
-				
-				if ($rs = $this->db->query($query)) {
-					$return = array(); 
-					
-					while ($row = $rs->fetch_assoc()) {
-						$return[] = $row; 
-					}
-					
-					return $return;
-				} else {
-					throw new \Exception("Could not fetch news topics - " . $e->getMessage()); 
-					return false;
-				}
-			} else {
-				$params = array(); 
-				$return = array(); 
-				
-				if (filter_var($id, FILTER_VALIDATE_INT)) {
-					$query = "SELECT * FROM nuke_topics WHERE topicid = ? ORDER BY topictext";
-					$params[] = $id;
-				} else {
-					$query = "SELECT * FROM nuke_topics ORDER BY topictext";
-				}
-				
-				foreach ($this->db_readonly->fetchAll($query, $params) as $row) {
-					$return[] = $row; 
-				}
-				
-				return $return;
+			foreach ($this->db_readonly->fetchAll($query, $params) as $row) {
+				$return[] = $row; 
 			}
+			
+			return $return;
+			
 		}
 		
 		/**
@@ -532,7 +344,7 @@
 			}
 			
 			$name = str_replace($find, $replace, $title);
-			$proposal = create_slug($name);
+			$proposal = ContentUtility::generateUrlSlug($name);
 			
 			/**
 			 * Trim it if the slug is too long

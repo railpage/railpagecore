@@ -127,7 +127,9 @@
 		public static function getArticleJSON($article_id) {
 			$key = sprintf("json:railpage.news.article=%d", $article_id);
 			
-			if (!$json = getMemcacheObject($key)) {
+			$Memcached = AppCore::getMemcached(); 
+			
+			if (!$json = $Memcached->fetch($key)) {
 				$Article = new Article($article_id);
 				
 				if (empty($Article->getParagraphs()) && !empty($Article->source)) {
@@ -135,6 +137,9 @@
 				}
 				
 				$json = $Article->makeJSON();
+				
+				$Memcached->save($key, $json);
+				
 			}
 			
 			$data = json_decode($json, true); 
@@ -228,6 +233,32 @@
 			$results = $Sphinx->query($Sphinx->escapeString($lookup), "idx_news_article");
 			
 			return isset($results['matches']) ? $results['matches'] : array();
+		}
+		
+		/**
+		 * Get popular news items within the last week
+		 * @since Version 3.10.0
+		 * @param int $page
+		 * @param int $limit
+		 * @return array
+		 */
+		
+		public function getPopularArticles($page = 1, $limit = 25) {
+			
+			$query = "SELECT s.sid AS story_id, s.title AS story_title, s.time AS story_date_added, 
+						COALESCE(s.lead, s.hometext) AS story_lead, COALESCE(s.paragraphs, CONCAT(s.hometext, s.bodytext)) AS story_paragraphs, s.source AS story_source, 
+						CONCAT('/news/s/', s.slug) AS story_url, s.featured_image AS story_image, t.topictext AS topic_title, CONCAT('/news/t/', t.topicname) AS topic_url
+					FROM nuke_stories AS s 
+					LEFT JOIN nuke_topics AS t ON s.topic = t.topicid
+					ORDER BY CONCAT(YEAR(s.time), MONTH(s.time), WEEK(s.time)) DESC, s.weeklycounter DESC
+					LIMIT ?, ?";
+			
+			$params = [ ($page - 1) * $limit, $limit ];
+			
+			$articles = $this->db->fetchAll($query, $params); 
+			
+			return $articles;
+			
 		}
 	}
 	

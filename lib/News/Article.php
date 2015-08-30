@@ -15,6 +15,8 @@
 	use DateInterval;
 	use Exception;
 	use Railpage\Users\User;
+	use Railpage\Users\Utility\AvatarUtility;
+	use Railpage\Users\Utility\UrlUtility;
 	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Url;
 	use Railpage\fwlink;
@@ -426,7 +428,7 @@
 			$this->url->reject = sprintf("/news/pending?task=reject&id=%d&queue=newqueue", $this->id);
 			$this->url->edit = sprintf("/news?mode=article.edit&id=%d", $this->id);
 			$this->fwlink = $this->url->short;
-				
+			
 			/**
 			 * Alter the URL
 			 */
@@ -1024,5 +1026,52 @@
 				"domain" => parse_url($this->source, PHP_URL_HOST),
 				"source" => $this->source
 			);
+		}
+		
+		/**
+		 * Get actions on this article
+		 * @since Version 3.10.0
+		 * @return array
+		 */
+		
+		public function getChangelog() {
+			
+			$query = "SELECT u.username, u.user_id, u.user_avatar, s.time AS timestamp, 'Article created' AS title, '' AS args
+						FROM nuke_stories AS s
+						LEFT JOIN nuke_users AS u ON u.user_id = s.user_id
+						WHERE s.sid = ?
+					UNION 
+					SELECT u.username, u.user_avatar, l.user_id, l.timestamp, l.title, l.args 
+						FROM log_staff AS l 
+						LEFT JOIN nuke_users AS u ON u.user_id = l.user_id
+						WHERE `key` = 'article_id' 
+						AND key_val = ? 
+						ORDER BY UNIX_TIMESTAMP(`timestamp`) DESC";
+			
+			$params = [
+				$this->id,
+				$this->id
+			];
+			
+			$return = $this->db->fetchAll($query, $params); 
+			
+			foreach ($return as $key => $val) {
+				
+				$return[$key]['user'] = array(
+					"user_id" => $val['user_id'],
+					"username" => $val['username'],
+					"avatar" => array(
+						"small" => AvatarUtility::Format($val['user_avatar'], 50, 50),
+						"medium" => AvatarUtility::Format($val['user_avatar'], 80, 80),
+						"large" => AvatarUtility::Format($val['user_avatar'], 128, 128),
+					),
+					"url" => UrlUtility::MakeURLs($val)->getURLs()
+				);
+				
+				$return[$key]['args'] = json_decode($val['args'], true);
+			}
+			
+			return $return;
+			
 		}
 	}

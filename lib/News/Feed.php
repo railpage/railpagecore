@@ -44,9 +44,12 @@
 		 * Find the news articles matching this users filters
 		 * @since Version 3.8.7
 		 * @yield \Railpage\News\Article
+		 * @param int $offset
+		 * @param int $limit
+		 * @param string $orderby
 		 */
 		
-		public function findArticles($offset = 0, $limit = false) {
+		public function findArticles($offset = 0, $limit = 25, $orderby = "story_time_unix") {
 			
 			if (empty($this->filter_topics) || empty($this->filter_words)) {
 				$this->getFilters();
@@ -60,7 +63,7 @@
 			
 			$query = $Sphinx->select("*")
 					->from("idx_news_article")
-					->orderBy("story_time_unix", "DESC")
+					->orderBy($orderby, "DESC")
 					->limit($offset, $limit)
 					->where("story_active", "=", 1);
 			
@@ -95,9 +98,9 @@
 				throw new Exception("Cannot get filters for news feed because no valid user was specified");
 			}
 			
-			if (!$row = getMemcacheObject(sprintf("rp:news.feed=%d", $this->User->id))) {
+			if (!$row = $this->Memcached->fetch(sprintf("rp:news.feed=%d", $this->User->id))) {
 				if ($row = $this->db->fetchRow("SELECT keywords, topics FROM news_feed WHERE user_id = ?", $this->User->id)) {
-					setMemcacheObject(sprintf("rp:news.feed=%d", $this->User->id), $row);
+					$this->Memcached->save(sprintf("rp:news.feed=%d", $this->User->id), $row);
 				}
 			}
 			
