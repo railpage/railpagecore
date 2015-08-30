@@ -23,6 +23,14 @@
 	class Album extends AppCore {
 		
 		/**
+		 * On-disk root path
+		 * @since Version 3.10.0
+		 * @const string ALBUMS_DIR
+		 */
+		
+		const ALBUMS_DIR = "/srv/railpage.com.au/old.www/public_html/modules/gallery/albums/";
+		
+		/**
 		 * Do we need to update these photos or not?
 		 * @since Version 3.8.7
 		 * @const boolean UPDATE_PHOTO
