@@ -18,6 +18,8 @@
 	use Railpage\Url;
 	use Railpage\Images\Images;
 	use Railpage\Images\Image;
+	use Railpage\ContentUtility;
+	use Railpage\Notifications\Notification;
 	
 	use Swift_Message;
 	use Swift_Mailer;
@@ -327,6 +329,23 @@
 							"author" => isset($CoverPhoto->author->realname) && !empty($CoverPhoto->author->realname) ? $CoverPhoto->author->realname : $CoverPhoto->author->username
 						);
 						
+						if (strpos($email['hero']['link'], "http://") === false) {
+							$email['hero']['link'] = "http://www.railpage.com.au" . $email['hero']['link']; 
+						}
+						
+						if (strpos($email['hero']['link'], "railpage.com.au") === false) {
+							$email['hero']['link'] = sprintf("http://www.railpage.com.au%s", (string) $Object->url);
+						}
+						
+						$utm = [
+							"utm_source=reminder",
+							"utm_medium=email",
+							sprintf("utm_campaign=%s", ContentUtility::generateUrlSlug($this->title))
+						];
+						
+						$joiner = strpos($email['hero']['link'], "?") === false ? "?" : "&";
+						$email['hero']['link'] .= $joiner . implode("&", $utm); 
+						
 						foreach ($CoverPhoto->sizes as $size) {
 							if ($size >= 620) {
 								$email['hero']['image'] = $size['source'];
@@ -343,14 +362,27 @@
 			 * Process and fetch the email template
 			 */
 			
-			$tpl = $Smarty->ResolveTemplate("template.reminder"); #RP_SITE_ROOT . DS . "content" . DS . "email" . DS . "template.reminder.tpl";
+			$tpl = $Smarty->ResolveTemplate("template.reminder");
 			$Smarty->Assign("email", $email);
 			$body = $Smarty->Fetch($tpl);
+			
+			$Notification = new Notification;
+			$Notification->subject = $this->title;
+			$Notification->body = $body;
+			$Notification->addRecipient($this->User->id, $this->User->username, $this->User->contact_email); 
+			$Notification->commit(); 
+			
+			if ($markAsSent) {
+				$this->sent = true;
+				$this->Dispatched = new DateTime;
+				$this->commit();
+			}
 			
 			/**
 			 * Start composing and sending the email
 			 */
 			
+			/*
 			$message = Swift_Message::newInstance()
 				->setSubject($this->title)
 				->setFrom(array(
@@ -374,6 +406,7 @@
 					$this->commit();
 				}
 			}
+			*/
 			
 			return $this;
 		}
