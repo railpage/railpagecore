@@ -308,4 +308,44 @@
 			return $Database->fetchOne($query, $slug);
 			
 		}
+		
+		/**
+		 * Make an opengraph tag from the supplied object
+		 * @since Version 3.10.0
+		 * @param \Railpage\Images\Competition $Competition
+		 * @param string $tag
+		 * @return string
+		 */
+		
+		public static function makeOpenGraphTag(Competition $Competition, $tag) {
+			
+			switch ($tag) {
+				case "description":
+				case "desc":
+					$string = trim("Theme: " . $Competition->theme);
+					
+					if (preg_match("/([a-zA-Z0-9]+)/", substr($string, -1, 1))) {
+						$string .= "."; 
+					}
+					
+					$string = trim($string);
+					
+					if (self::isSubmissionWindowOpen($Competition)) {
+						$string .= " Submissions open until " . $Competition->SubmissionsDateClose->format("F jS");
+					}
+					
+					if (self::isVotingWindowOpen($Competition)) {
+						$string .= " Voting open until " . $Competition->VotingDateClose->format("F jS");
+					}
+					
+					if (preg_match("/([a-zA-Z0-9]+)/", substr($string, -1, 1))) {
+						$string = trim($string) . "."; 
+					}
+					
+					return $string;
+					
+					break;
+					
+			}
+		}
 	}

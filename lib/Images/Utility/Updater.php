@@ -32,7 +32,10 @@
 			
 			$Database = (new AppCore)->getDatabaseConnection(); 
 			
-			$query = "SELECT id, meta FROM image WHERE user_id = 0 ORDER BY id DESC";
+			$query = "SELECT i.id, i.meta, COALESCE(g.owner, 0) AS owner
+				FROM image AS i 
+					LEFT JOIN gallery_mig_image AS g ON g.id = i.photo_id AND i.provider = 'rpoldgallery'
+				WHERE i.user_id = 0 ORDER BY i.id DESC";
 			
 			foreach ($Database->fetchAll($query) as $row) {
 				
@@ -58,6 +61,17 @@
 						continue;
 					}
 					
+				}
+				
+				if ($row['provider'] == "rpoldgallery" && $row['owner'] != 0) {
+					$data['user_id'] = $row['owner'];
+					
+					if (is_array($data['meta'])) {
+						$data['meta'] = json_decode($data['meta'], true);
+					}
+					
+					$data['meta']['author']['railpage_id'];
+					$data['meta'] = json_encode($row['meta']);
 				}
 				
 				$data['user_id'] = $row['meta']['author']['railpage_id'];

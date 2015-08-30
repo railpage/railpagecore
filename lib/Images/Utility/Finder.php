@@ -557,20 +557,38 @@
 			
 			if (!$unapprovedonly) {
 				
-				$query = "(SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.captured <= ? AND image.id != ? ORDER BY image.captured DESC LIMIT 0, 3)
-							UNION (SELECT id, image.captured, title, description, meta FROM image WHERE id = ?)
-							UNION (SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.captured >= ? AND image.id != ? ORDER BY captured ASC LIMIT 0, 3)";
+				if ($Image->DateCaptured instanceof DateTime) {
 				
-				$params = [ 
-					$Image->DateCaptured->format("Y-m-d H:i:s"), 
-					$Image->id,
-					$Image->id, 
-					$Image->DateCaptured->format("Y-m-d H:i:s"),
-					$Image->id
-				];
+					$query = "(SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.captured <= ? AND image.id != ? ORDER BY image.captured DESC LIMIT 0, 3)
+								UNION (SELECT id, image.captured, title, description, meta FROM image WHERE id = ?)
+								UNION (SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.captured >= ? AND image.id != ? ORDER BY captured ASC LIMIT 0, 3)";
+					
+					$params = [ 
+						$Image->DateCaptured->format("Y-m-d H:i:s"), 
+						$Image->id,
+						$Image->id, 
+						$Image->DateCaptured->format("Y-m-d H:i:s"),
+						$Image->id
+					];
+					
+				} else {
 				
-			} else {
-
+					$query = "(SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.id <= ? AND image.id != ? ORDER BY image.captured DESC LIMIT 0, 3)
+								UNION (SELECT id, image.captured, title, description, meta FROM image WHERE id = ?)
+								UNION (SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.id >= ? AND image.id != ? ORDER BY captured ASC LIMIT 0, 3)";
+					
+					$params = [ 
+						$Image->id, 
+						$Image->id,
+						$Image->id, 
+						$Image->id,
+						$Image->id
+					];
+					
+				}
+				
+			} elseif ($Image->DateCaptured instanceof DateTime) {
+				
 				$query = "(SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE f.rejected IS NULL AND image.captured <= ? AND image.id != ? ORDER BY image.id DESC LIMIT 0, 6)
 							UNION (SELECT id, image.captured, title, description, meta FROM image WHERE id = ?)";
 				
@@ -580,6 +598,21 @@
 					$Image->id
 				];
 				
+			} elseif (!$Image->DateCaptured instanceof DateTime) {
+				
+				$query = "(SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE f.rejected IS NULL AND image.id <= ? AND image.id != ? ORDER BY image.id DESC LIMIT 0, 6)
+							UNION (SELECT id, image.captured, title, description, meta FROM image WHERE id = ?)";
+				
+				$params = [ 
+					$Image->id, 
+					$Image->id,
+					$Image->id
+				];
+				
+			}
+			
+			if (!isset($query)) {
+				return; 
 			}
 			
 			$rs = $Database->fetchAll($query, $params);
@@ -627,5 +660,117 @@
 			return array_merge($before, $current, $after);
 			
 		}
+		
+		/**
+		 * Get a random image as an array
+		 * @since Version 3.10.0
+		 * @param string $namespace An optional linked namespace to filter by
+		 * @param int $namespace_key An optional linked namespace key to filter by
+		 * @return array
+		 */
+		
+		public static function randomImage($namespace, $namespace_key) {
+			
+			$Database = (new AppCore)->getDatabaseConnection(); 
+			
+			if (is_null($namespace) && !is_null($namespace_key)) {
+				throw new InvalidArgumentException("A namespace key was specified but an associated namespace value was not.");
+			}
+			
+			if (is_null($namespace) && is_null($namespace_key)) {
+				
+				$query = "SELECT * FROM image AS r1 JOIN (SELECT CEIL(RAND() * (SELECT MAX(id) FROM image)) AS randomid) AS r2 WHERE r1.id >= r2.randomid ORDER BY r1.id ASC LIMIT 1";
+				
+				$row = $Database->fetchRow($query); 
+				$row['meta'] = json_decode($row['meta'], true);
+				$row['sizes'] = Images::normaliseSizes($row['meta']['sizes']); 
+				
+				$row['url'] = Url::CreateFromImageID($row['id']); 
+				$row['url'] = $row['url']->getURLs();
+				
+				return $row;
+			}
+			
+			if (!is_null($namespace)) {
+				
+				$query = "SELECT il.image_id FROM image_link AS il LEFT JOIN image AS i ON i.id = il.image_id WHERE il.namespace = ? AND i.provider IS NOT NULL";
+				$params = [ $namespace ];
+				
+				if (!is_null($namespace_key)) {
+					$query .= " AND namespace_key = ?";
+					$params[] = $namespace_key;
+				}
+				
+				$ids = [];
+				
+				foreach ($Database->fetchAll($query, $params) as $row) {
+					$ids[] = $row['image_id'];
+				}
+				
+				$image_id = $ids[array_rand($ids)]; 
+				
+				$query = "SELECT * FROM image WHERE id = ?"; 
+				$row = $Database->fetchRow($query, $image_id); 
+				$row['meta'] = json_decode($row['meta'], true);
+				$row['sizes'] = Images::normaliseSizes($row['meta']['sizes']); 
+				
+				$row['url'] = Url::CreateFromImageID($row['id']); 
+				$row['url'] = $row['url']->getURLs();
+				
+				return $row;
+				
+			}
+			
+			return;
+			
+		}
+		
+		/**
+		 * Find a suitable cover photo
+		 * @since Version 3.10.0
+		 * @param string|object $search_query
+		 * @return string
+		 */
+		
+		public static function GuessCoverPhoto($search_query) {
+			
+			$cachekey = sprintf("railpage:coverphoto=%s", md5($search_query)); 
+			
+			$Memcached = AppCore::getMemcached(); 
+			
+			#if ($image = $Memcached->fetch($cachekey)) {
+			#	return $image;
+			#}
+			
+			$SphinxQL = AppCore::getSphinx(); 
+			
+			if (is_string($search_query)) {
+				$n_words = preg_match_all('/([a-zA-Z]|\xC3[\x80-\x96\x98-\xB6\xB8-\xBF]|\xC5[\x92\x93\xA0\xA1\xB8\xBD\xBE]){4,}/', $search_query, $match_arr);
+				$word_arr = $match_arr[0];
+				$words = implode(" || ", $word_arr);
+				
+				$SphinxQL->select()->from("idx_images")->match(array("title", "description"), $words, true); 
+				$rs = $SphinxQL->execute();
+				
+				if (count($rs)) {
+					$photo = $rs[0]; 
+					$photo['meta'] = json_decode($photo['meta'], true); 
+					$photo['sizes'] = Images::NormaliseSizes($photo['meta']['sizes']); 
+					
+					foreach ($photo['sizes'] as $size) {
+						if ($size['width'] > 400 && $size['height'] > 300) {
+							
+							$Memcached->save($cachekey, $size['source'], 0); 
+							
+							return $size['source'];
+						}
+					}
+				}
+			}
+			
+			return "https://static.railpage.com.au/i/logo-fb.jpg";
+			
+		}
+		
 		
 	}
