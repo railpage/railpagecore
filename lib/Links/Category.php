@@ -86,18 +86,18 @@
 			
 			if (filter_var($category_id, FILTER_VALIDATE_INT)) {
 				$this->id = $category_id;
-			} elseif (is_string($category_id)) {
-				$this->id = $this->db->fetchOne("SELECT cid FROM nuke_links_categories WHERE slug = ?", $category_id);
+			} else {
+				$this->id = self::getIdFromSlug($category_id); 
 			}
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
 				$this->mckey = sprintf("railpage.links.category=%d", $this->id);
 				
-				if (!$row = getMemcacheObject($this->mckey)) {
+				if (!$row = $this->Memcached->fetch($this->mckey)) {
 					$row = $this->db->fetchRow("SELECT * FROM nuke_links_categories WHERE cid = ?", $this->id); 
 					
 					if (!empty($row)) {
-						setMemcacheObject($this->mckey, $row);
+						$this->Memcached->save($this->mckey, $row);
 					}
 				}
 					
@@ -130,6 +130,66 @@
 			$this->links = $this->db->fetchAll($query, $this->id);
 			
 			return $this->links;
+		}
+		
+		/**
+		 * Factory code: Create an instance of Category
+		 * @since Version 3.10.0
+		 * @param string|int $category_id
+		 * @return Category
+		 */
+		
+		public static function CreateCategory($category_id) {
+			
+			$Database = (new AppCore)->getDatabaseConnection(); 
+			$Redis = AppCore::getRedis(); 
+			
+			if (!filter_var($category_id, FILTER_VALIDATE_INT)) {
+				$category_id = self::getIdFromSlug($category_id) ;
+			}
+			
+			if (!filter_var($category_id, FILTER_VALIDATE_INT)) {
+				throw new Exception("Cannot create instance of Category:: " . $category_id . " is not a valid link category"); 
+			}
+			
+			$key = sprintf("railpage:link.category.id=%d", $category_id); 
+			
+			if (!$Category = $Redis->fetch($key)) {
+				$Category = new Category($category_id); 
+				
+				$Redis->save($key, $Category, 0); 
+			}
+				
+			$Category->setDatabaseConnection($Database);
+			
+			return $Category;
+			
+		}
+		
+		/**
+		 * Fetch the category ID from a URL slug
+		 * @since Version 3.10.0
+		 * @param string $slug
+		 * @return int
+		 */
+		
+		private static function getIdFromSlug($slug) {
+			
+			$Database = (new AppCore)->getDatabaseConnection(); 
+			$Redis = AppCore::getRedis(); 
+			
+			$key = sprintf("railpage:link.category.slug=%s", $slug); 
+			
+			if ($id = $Redis->fetch($key)) {
+				return $id; 
+			}
+			
+			$id = $Database->fetchOne("SELECT cid FROM nuke_links_categories WHERE slug = ?", $slug);
+			
+			$Redis->save($key, $id); 
+			
+			return $id; 
+			
 		}
 	}
 	

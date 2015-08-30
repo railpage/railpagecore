@@ -85,7 +85,9 @@
 			 * Create an SMTP transport object
 			 */
 			
-			if (isset($this->Config->SMTP->password) && !empty($this->Config->SMTP->password) && $this->Config->SMTP->password != "xxxxx") {
+			$use_smtp = false; // TEMPORARY!
+			
+			if ($use_smtp && isset($this->Config->SMTP->password) && !empty($this->Config->SMTP->password) && $this->Config->SMTP->password != "xxxxx") {
 				$transport = Swift_SmtpTransport::newInstance($this->Config->SMTP->host, $this->Config->SMTP->port, $this->Config->SMTP->TLS = true ? "tls" : NULL)
 					->setUsername($this->Config->SMTP->username)
 					->setPassword($this->Config->SMTP->password);

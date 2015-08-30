@@ -36,43 +36,13 @@
 			
 			$mckey = "railpage:links.categories.parent=" . $parent . ".children=" . (bool)$children; 
 			
-			if ($return = getMemcacheObject("asdfadf")) {
-				return $return;
-			} elseif ($this->db instanceof \sql_db) {
-				$return = false;
-				$query	= "SELECT * FROM nuke_links_categories";
+			if (!$return = $this->Memcached->fetch($mckey)) {
+				#$query	= "SELECT * FROM nuke_links_categories ORDER BY parentid ASC, title ASC";
+				$query = "SELECT c.*, p.slug AS parent_slug, CONCAT('/links', COALESCE(CONCAT('/', p.slug, '/', c.slug), CONCAT('/', c.slug))) AS url 
+							FROM nuke_links_categories AS c 
+							LEFT JOIN nuke_links_categories AS p ON p.cid = c.parentid AND c.parentid != 0 
+							ORDER BY p.parentid ASC, c.title ASC";
 				
-				if ($children == false) {
-					$query .= " WHERE cid = ".$this->db->real_escape_string($parent);
-				} elseif ($parent) {
-					$query .= " WHERE parentid = ".$this->db->real_escape_string($parent)." OR cid = ".$this->db->real_escape_string($parent); 
-				}
-				
-				if ($rs = $this->db->query($query)) {
-					$return = array(); 
-					
-					if ($children) {
-						while ($row = $rs->fetch_assoc()) {
-							if ($row['parentid'] == 0) {
-								$return[$row['cid']] = $row; 
-							} else {
-								$return[$row['parentid']]['children'][$row['cid']] = $row; 
-							}
-						}
-					} else {
-						$return = $rs->fetch_assoc(); 
-					}
-					
-					setMemcacheObject($mckey, $return, strtotime("+24 hours")); 
-				} else {
-					trigger_error("Links: Could not return categories"); 
-					trigger_error($this->db->error); 
-					trigger_error($query); 
-				}
-			
-				return $return;
-			} else {
-				$query	= "SELECT * FROM nuke_links_categories ORDER BY parentid ASC, title ASC";
 				$params = array(); 
 				
 				if ($children == false) {
@@ -90,9 +60,8 @@
 					foreach ($this->db->fetchAll($query, $params) as $row) {
 						if (empty($row['slug'])) {
 							$row['slug'] = $this->createSlug($row['cid']); 
+							$row['url'] = $this->makePermaLink($row['cid']); 
 						}
-						
-						$row['url'] = $this->makePermaLink($row['cid']); 
 						
 						if ($row['parentid'] == 0) {
 							$return[$row['cid']] = $row; 
@@ -106,13 +75,12 @@
 					foreach ($return as $row) {
 						if (empty($row['slug'])) {
 							$row['slug'] = $this->createSlug(); 
+							$row['url'] = $this->makePermaLink($row['cid']); 
 						}
-						
-						$row['url'] = $this->makePermaLink($row['cid']); 
 					}
 				}
 				
-				setMemcacheObject($mckey, $return, strtotime("+24 hours")); 
+				$this->Memcached->save($mckey, $return, strtotime("+24 hours")); 
 				
 				return $return;
 			}
@@ -132,32 +100,7 @@
 			
 			$mckey = "railpage:links.category_id=" . $category_id . ".sort=" . $sort . ".direction=" . $direction;
 			
-			if ($return = getMemcacheObject($mckey)) {
-				return $return;
-			} elseif ($this->db instanceof \sql_db) {
-				$return	= false;
-				$query	= "SELECT * FROM nuke_links_links WHERE link_approved = 1 AND cid = ".$this->db->real_escape_string($category_id)." ORDER BY ".$this->db->real_escape_string($sort)." ".strtoupper(strtolower($this->db->real_escape_string($direction))); 
-				
-				if ($rs = $this->db->query($query)) {
-					$return = array(); 
-					
-					while ($row = $rs->fetch_assoc()) {
-						if (stripos($row['url'], "http") === false) {
-							$row['url'] = "http://".$row['url']; 
-						}
-						
-						$return[] = $row; 
-					}
-					
-					setMemcacheObject($mckey, $return, strtotime("+24 hours")); 
-				} else {
-					trigger_error("Links: Could not fetch links for category ".$category_id);
-					trigger_error($this->db->error);
-					trigger_error($query); 
-				}
-				
-				return $return; 
-			} else {
+			if (!$return = $this->Memcached->fetch($mckey)) {
 				$query	= "SELECT * FROM nuke_links_links WHERE link_approved = 1 AND cid = ? ORDER BY " . $sort . " " . $direction; 
 				$params = array(
 					$category_id
@@ -173,7 +116,7 @@
 					$return[] = $row; 
 				}
 				
-				setMemcacheObject($mckey, $return, strtotime("+24 hours")); 
+				$this->Memcached->save($mckey, $return, strtotime("+24 hours")); 
 				
 				return $return;
 			}
@@ -187,39 +130,16 @@
 		 */
 		 
 		public function getLink($id = false) {
-			if (!$id || !$this->db) {
-				return false;
+			
+			$query	= "SELECT * FROM nuke_links_links WHERE lid = ?";
+			$return = $this->db->fetchRow($query, $id); 
+				
+			if (stripos($return['url'], "http") === false) {
+				$return['url'] = "http://".$return['url']; 
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$return = false; 
-				$query	= "SELECT * FROM nuke_links_links WHERE lid = ".$this->db->real_escape_string($id); 
-				
-				if ($rs = $this->db->query($query)) {
-					$row = $rs->fetch_assoc(); 
-					
-					if (stripos($row['url'], "http") === false) {
-						$row['url'] = "http://".$row['url']; 
-					}
-					
-					return $row;
-				} else {
-					trigger_error("Links: unable to fetch link data for link ID ".$id);
-					trigger_error($this->db->error); 
-					trigger_error($query); 
-				}
-				
-				return $false;
-			} else {
-				$query	= "SELECT * FROM nuke_links_links WHERE lid = ?";
-				$return = $this->db->fetchRow($query, $id); 
-					
-				if (stripos($return['url'], "http") === false) {
-					$return['url'] = "http://".$return['url']; 
-				}
-				
-				return $return;
-			}
+			return $return;
+			
 		}
 		
 		/**
@@ -233,116 +153,22 @@
 			
 			$link = $this->getLink($id); 
 			
-			if ($this->db instanceof \sql_db) {
-				// Has this link already been reported?
-				if ($rs = $this->db->query("SELECT * FROM nuke_links_modrequest WHERE lid = ".$link['lid'])) {
-					if ($rs->num_rows == 0) {
-					
-						$dataArray = array(); 
-						$dataArray['lid'] 				= $this->db->real_escape_string($link['lid']); 
-						$dataArray['cid'] 				= $this->db->real_escape_string($link['cid']); 
-						$dataArray['sid'] 				= $this->db->real_escape_string($link['sid']); 
-						$dataArray['title'] 			= $this->db->real_escape_string($link['title']); 
-						$dataArray['image'] 			= $this->db->real_escape_string($link['image']); 
-						$dataArray['url'] 				= $this->db->real_escape_string($link['url']); 
-						$dataArray['description']		= $this->db->real_escape_string($link['description']); 
-						$dataArray['modifysubmitter'] 	= $this->db->real_escape_string($username); 
-						$dataArray['brokenlink'] 		= $this->db->real_escape_string(1); 
-						
-						$query = $this->db->buildQuery($dataArray, "nuke_links_modrequest"); 
-						
-						if ($this->db->query($query)) {
-							return true;
-						} else {
-							trigger_error("Links: could not report broken link");
-							trigger_error($this->db->error); 
-							trigger_error($query); 
-							return false;
-						}
-					} else {
-						return false;
-					}
-				} else {
-					return false;
-				}
-			} else {
-				$query = "SELECT * FROM nuke_links_modrequest WHERE lid = ?";
-				
-				if (!$this->db->fetchRow($query, $link['lid'])) {
-					$data = array(
-						"lid" => $link['lid'],
-						"cid" => $link['cid'],
-						"sid" => $link['sid'],
-						"title" => $link['title'],
-						"image" => $link['image'],
-						"url" => $link['url'],
-						"description" => $link['description'],
-						"modifysubmitter" => $username,
-						"brokenlink" => 1
-					);
-					
-					return $this->db->insert("nuke_links_modrequest", $data); 
-				}
-			}
-		}
-		
-		/**
-		 * Add a link
-		 */
-		 
-		public function add($title = false, $desc = false, $url = false, $category_id = false, $username = false, $user_email = false, $user_realname = false) {
+			$query = "SELECT * FROM nuke_links_modrequest WHERE lid = ?";
 			
-			throw new Exception("Railpage\\Links\\Links:add() is an old function");
-			
-			if (!$this->db || !$title || !$desc || !$url || !$category_id || !$username) {
-				return false;
-			}
-			
-			if ($this->db instanceof \sql_db) {
-				$dataArray = array(); 
-				
-				$dataArray['cid'] = $this->db->real_escape_string($category_id); 
-				$dataArray['sid'] = 0; 
-				$dataArray['title'] = $this->db->real_escape_string($title); 
-				$dataArray['url'] = $this->db->real_escape_string($url); 
-				$dataArray['description'] = $this->db->real_escape_string($desc); 
-				$dataArray['submitter'] = $this->db->real_escape_string($username); 
-				
-				if ($user_email) {
-					$dataArray['email'] = $this->db->real_escape_string($user_email); 
-				}
-				
-				if ($user_realname) {
-					$dataArray['name'] = $this->db->real_escape_string($user_realname); 
-				}
-				
-				// Build the query
-				$query = $this->db->buildQuery($dataArray, "nuke_links_newlink"); 
-				
-				if ($this->db->query($query)) {
-					return true;
-				} else {
-					return false;
-				}
-			} else {
+			if (!$this->db->fetchRow($query, $link['lid'])) {
 				$data = array(
-					"cid" => $category_id,
-					"sid" => 0,
-					"title" => $title,
-					"url" => $url,
-					"description" => $desc,
-					"submitter" => $username
+					"lid" => $link['lid'],
+					"cid" => $link['cid'],
+					"sid" => $link['sid'],
+					"title" => $link['title'],
+					"image" => $link['image'],
+					"url" => $link['url'],
+					"description" => $link['description'],
+					"modifysubmitter" => $username,
+					"brokenlink" => 1
 				);
 				
-				if ($user_email) {
-					$data['email'] = $user_email;
-				}
-				
-				if ($user_realname) {
-					$data['name'] = $user_realname;
-				}
-				
-				return $this->db->insert("nuke_links_newlink", $data); 
+				return $this->db->insert("nuke_links_modrequest", $data); 
 			}
 		}
 		
@@ -351,68 +177,37 @@
 		 */
 		 
 		public function getNewest($category_id = false, $limit = 20, $start = 0) {
-			if (!$this->db) {
-				return false;
+			
+			$params = array(); 
+			$query = "SELECT l.*, c.title as category_title, c.cdescription as category_description FROM nuke_links_links l, nuke_links_categories c WHERE l.cid = c.cid AND l.link_approved = 1";
+			
+			if ($category_id) {
+				$query .= " AND l.cid = ?";
+				$params[] = $category_id;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$return = false;
-				$query	= "SELECT l.*, c.title as category_title, c.cdescription as category_description FROM nuke_links_links l, nuke_links_categories c WHERE l.cid = c.cid AND l.link_approved = 1";
-				
-				if ($category_id) {
-					$query .= "AND l.cid = ".$this->db->real_escape_string($category_id); 
+			$query .= " ORDER BY date DESC LIMIT ?, ?";
+			$params[] = $start;
+			$params[] = $limit;
+			
+			$return = array(); 
+			
+			foreach ($this->db->fetchAll($query, $params) as $row) {
+				if (stripos($row['url'], "http") === false) {
+					$row['url'] = "http://".$row['url']; 
 				}
 				
-				$query .= " ORDER BY date DESC LIMIT ".$start.", ".$limit; 
+				$Category = new Category($row['cid']); 
 				
-				if ($rs = $this->db->query($query)) {
-					$return = array(); 
-					
-					while ($row = $rs->fetch_assoc()) {
-						if (stripos($row['url'], "http") === false) {
-							$row['url'] = "http://".$row['url']; 
-						}
-						
-						$return[] = $row; 
-					}
-				} else {
-					trigger_error("Links: unable to fetch newest downloads");
-					trigger_error($this->db->error); 
-					trigger_error($query); 
+				if ($Category->parent instanceof Category) {
+					$row['category_title'] = $Category->parent->name . "\\" . $row['category_title']; 
 				}
 				
-				return $return; 
-			} else {
-				$params = array(); 
-				$query = "SELECT l.*, c.title as category_title, c.cdescription as category_description FROM nuke_links_links l, nuke_links_categories c WHERE l.cid = c.cid AND l.link_approved = 1";
-				
-				if ($category_id) {
-					$query .= " AND l.cid = ?";
-					$params[] = $category_id;
-				}
-				
-				$query .= " ORDER BY date DESC LIMIT ?, ?";
-				$params[] = $start;
-				$params[] = $limit;
-				
-				$return = array(); 
-				
-				foreach ($this->db->fetchAll($query, $params) as $row) {
-					if (stripos($row['url'], "http") === false) {
-						$row['url'] = "http://".$row['url']; 
-					}
-					
-					$Category = new Category($row['cid']); 
-					
-					if ($Category->parent instanceof Category) {
-						$row['category_title'] = $Category->parent->name . "\\" . $row['category_title']; 
-					}
-					
-					$return[] = $row; 
-				}
-				
-				return $return;
+				$return[] = $row; 
 			}
+			
+			return $return;
+			
 		}
 		
 		/**

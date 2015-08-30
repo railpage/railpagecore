@@ -313,7 +313,7 @@
 		
 		private function createSlug() {
 			
-			$proposal = ContentUtility::generateUrlSlug($this->title);
+			$proposal = ContentUtility::generateUrlSlug($this->title, 28);
 			
 			$result = $this->db->fetchAll("SELECT id FROM idea_ideas WHERE slug = ?", $proposal); 
 			

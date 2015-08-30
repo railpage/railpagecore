@@ -301,7 +301,9 @@
 			if ($Doc->getElementsByTagName("p")->length > 1) {
 				foreach ($Doc->getElementsByTagName("p") as $node) {
 					
-					if ($node->childNodes->item(0)->nodeName == "#text") {
+					$el = $node->childNodes->item(0);
+					
+					if (is_object($el) && $el->nodeName == "#text") {
 						$node->nodeValue = htmlentities(str_replace("\n", " ", str_replace("\r\n", " ", $node->nodeValue))); # Without htmlentities() DOMDocument whinges and bitches something unforgivable
 						
 						if (empty(trim($node->nodeValue))) {

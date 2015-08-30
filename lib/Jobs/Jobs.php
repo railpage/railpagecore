@@ -147,7 +147,7 @@
 		 */
 		
 		public function yieldNewJobs($limit = 25) {
-			$query = "SELECT job_id FROM jn_jobs ORDER BY job_added DESC LIMIT 0, ?";
+			$query = "SELECT job_id FROM jn_jobs WHERE job_expiry >= NOW() ORDER BY job_added DESC LIMIT 0, ?";
 			
 			foreach ($this->db->fetchAll($query, $limit) as $row) {
 				yield new Job($row['job_id']);
@@ -172,7 +172,7 @@
 		 */
 		
 		public function getJobsFromEmployer(Organisation $Org, $page = 1, $limit = 25) {
-			$query = "SELECT SQL_CALC_FOUND_ROWS job_id, job_title FROM jn_jobs WHERE organisation_id = ? ORDER BY job_added DESC LIMIT ?, ?";
+			$query = "SELECT SQL_CALC_FOUND_ROWS job_id, job_title FROM jn_jobs WHERE organisation_id = ? AND job_expiry >= NOW() ORDER BY job_added DESC LIMIT ?, ?";
 			
 			$page = ($page - 1) * $limit;
 			

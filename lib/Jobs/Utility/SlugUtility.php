@@ -6,7 +6,7 @@
 	 * @author Michael Greenhill
 	 */
 	
-	namespace Railpage\Jobs; 
+	namespace Railpage\Jobs\Utility; 
 	
 	use Railpage\AppCore;
 	use Railpage\Module;
@@ -27,9 +27,11 @@
 		
 		public static function getID($type, $slug) {
 			
+			$Database = (new AppCore)->getDatabaseConnection(); 
+			
 			$query = "SELECT jn_" . $type . "_id FROM jn_" . $type . "s WHERE jn_" . $type . "_name = ?";
 			
-			if ($id = $this->db->fetchOne($query, $slug)) {
+			if ($id = $Database->fetchOne($query, $slug)) {
 				return $id;
 			}
 			

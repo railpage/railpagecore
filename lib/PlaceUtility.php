@@ -31,6 +31,12 @@
 		
 		public static function LatLonWoELookup($lat, $lon) {
 			
+			if (is_null($lon) && strpos($lat, ",") !== false) {
+				$tmp = explode(",", $lat); 
+				$lat = $tmp[0];
+				$lon = $tmp[1];
+			}
+			
 			$Config = AppCore::getConfig(); 
 			$Redis = AppCore::getRedis();
 			
@@ -88,6 +94,9 @@
 				if (!empty($lat) && !empty($lon)) {
 					$Database = (new AppCore)->getDatabaseConnection(); 
 					
+					// Stop ZF1 with MySQLi adapter from bitching about "invalid parameter: 3". Fucks sake. Sort your shit out.
+					unset($return['places']['start']); unset($return['places']['count']); unset($return['places']['total']); 
+					
 					$query = "INSERT INTO woecache (
 								lat, lon, response, stored, address
 							) VALUES (
@@ -97,28 +106,18 @@
 								stored = NOW()";
 					
 					$query = sprintf($query, $Database->quote($lat), $Database->quote($lon), $Database->quote(json_encode($return))); 
-					$Database->query($query); 
-					
-					/*
-					$data = [ 
-						"lat" => $lat,
-						"lon" => $lon,
-						"response" => json_encode($return),
-						"stored" => new Zend_Db_Expr("NOW()")
-					];
 					
 					try {
-						$Database->insert("woecache", $data);
+						$rs = $Database->query($query); 
 					} catch (Exception $e) {
 						// throw it away
 					}
-					*/
 				}
 				
 				$return['url'] = $url;
 			
 				if ($return !== false) {
-					$Redis->save($mckey, $return); 
+					$Redis->save($mckey, $return, 0); 
 				}
 			}
 

@@ -73,6 +73,7 @@
 			"Railpage\\Locos\\Utility\\" : "lib/Locos/Utility/",
 			"Railpage\\Modules\\" : "lib/Modules/",
 			"Railpage\\News\\" : "lib/News/",
+			"Railpage\\News\\Utility\\" : "lib/News/Utility/",
 			"Railpage\\Organisations\\" : "lib/Organisations/",
 			"Railpage\\RSS\\" : "lib/RSS/",
 			"Railpage\\PrivateMessages\\" : "lib/PrivateMessages/",
