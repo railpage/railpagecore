@@ -29,6 +29,14 @@
 	class Location extends Locations {
 		
 		/**
+		 * Registry cache key
+		 * @since Version 3.9.1
+		 * @const string REGISTRY_KEY
+		 */
+		
+		const REGISTRY_KEY = "railpage.location=%d";
+		
+		/**
 		 * Status: inactive
 		 * @since Version 3.9.1
 		 * @const int STATUS_INACTIVE
@@ -792,7 +800,7 @@
 			}
 			
 			if (!filter_var($user_id, FILTER_VALIDATE_INT)) { 
-				throw new InvalidArgumentException("No user ID provided"); 
+				return false;
 			}
 			
 			$query = "SELECT * FROM locations_like WHERE location_id = ? AND user_id = ?";

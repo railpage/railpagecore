@@ -111,6 +111,10 @@
 		
 		private function load($country, $region) {
 			
+			$query = "SELECT DISTINCT country_name, region_name FROM geoplace WHERE country_code = ? AND region_code = ?";
+			$result = $this->db->fetchRow($query, array(strtoupper($country), strtoupper($region))); 
+			list ($country_name, $region_name) = $result; 
+			
 			/**
 			 * Fetch the WOE (Where On Earth) data from Yahoo
 			 */
@@ -121,7 +125,8 @@
 				$this->Country = new Country($woe['country']);
 			}
 			
-			$this->name = $woe['name'];
+			$this->name = $result['region_name'];
+			$this->code = strtoupper($region);
 			$this->url = new Url(sprintf("%s/%s", $this->Country->url, $this->slug));
 			
 			$this->centre = new stdClass; 

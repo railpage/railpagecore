@@ -81,33 +81,7 @@
 			Debug::RecordInstance();
 			$timer = Debug::GetTimer(); 
 			
-			$query = "SELECT *, X(point) AS centroid_lat, Y(point) AS centroid_lon,
-				X(bb_southwest) AS bb_southwest_lat, Y(bb_southwest) AS bb_southwest_lon,
-				X(bb_northeast) AS bb_northeast_lat, Y(bb_northeast) AS bb_northeast_lon
-			 FROM geoplace 
-			 WHERE country_name = ? 
-			 	AND region_code IS NULL 
-				AND neighbourhood IS NULL";
-			
-			if ($row = $this->db->fetchRow($query, strtoupper($code))) {
-				
-				$this->name = $row['country_name'];
-				$this->timezone = $row['timezone'];
-				
-				$this->centre = new stdClass; 
-				$this->centre->lat = $row['centroid_lat'];
-				$this->centre->lon = $row['centroid_lat'];
-				
-				$this->boundingBox = new stdClass;
-				$this->boundingBox->northEast = new stdClass;
-				$this->boundingBox->northEast->lat = $row['bb_northeast_lat'];
-				$this->boundingBox->northEast->lon = $row['bb_northeast_lon'];
-				
-				$this->boundingBox->southWest = new stdClass;
-				$this->boundingBox->southWest->lat = $row['bb_southwest_lat'];
-				$this->boundingBox->southWest->lon = $row['bb_southwest_lat'];
-				
-			} else {
+			if (!$this->loadFromCache()) {
 				$woe = Place::getWOEData(strtoupper($code));
 			
 				if (isset($woe['places']['place'][0]['name'])) {
@@ -150,6 +124,58 @@
 			
 			
 			Debug::LogEvent(__METHOD__, $timer);
+		}
+		
+		/**
+		 * Populate this country from cached data
+		 * @since Version 3.10.0
+		 * @return boolean
+		 */
+		
+		private function loadFromCache() {
+			
+			$mckey = sprintf("railpage:locations.country=%s", strtoupper($this->code)); 
+			
+			if (!$row = $this->Memcached->fetch($mckey)) {
+			
+				$query = "SELECT *, X(point) AS centroid_lat, Y(point) AS centroid_lon,
+					X(bb_southwest) AS bb_southwest_lat, Y(bb_southwest) AS bb_southwest_lon,
+					X(bb_northeast) AS bb_northeast_lat, Y(bb_northeast) AS bb_northeast_lon
+				 FROM geoplace 
+				 WHERE country_name = ? 
+					AND region_code IS NULL 
+					AND neighbourhood IS NULL";
+				
+				$row = $this->db->fetchRow($query, strtoupper($this->code));
+				
+				if (is_array($row)) {
+					$this->Memcached->save($mckey, $row, 0);
+				}
+				
+			}
+			
+			if (!isset($row) || !is_array($row) || count($row) === 0) {
+				return false;
+			}
+				
+			$this->name = $row['country_name'];
+			$this->timezone = $row['timezone'];
+			
+			$this->centre = new stdClass; 
+			$this->centre->lat = $row['centroid_lat'];
+			$this->centre->lon = $row['centroid_lat'];
+			
+			$this->boundingBox = new stdClass;
+			$this->boundingBox->northEast = new stdClass;
+			$this->boundingBox->northEast->lat = $row['bb_northeast_lat'];
+			$this->boundingBox->northEast->lon = $row['bb_northeast_lon'];
+			
+			$this->boundingBox->southWest = new stdClass;
+			$this->boundingBox->southWest->lat = $row['bb_southwest_lat'];
+			$this->boundingBox->southWest->lon = $row['bb_southwest_lat'];
+			
+			return true;
+
 		}
 		
 		/**
