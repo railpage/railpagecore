@@ -93,7 +93,8 @@
 		 */
 		
 		public function getUpcomingEvents($items_per_page = 25, $page = 1) {
-			$Now = new DateTime();
+			
+			$Now = new DateTime;
 			
 			$args = array(
 				$Now->format("Y-m-d"),
@@ -104,6 +105,7 @@
 			); 
 			
 			return $this->db->fetchAll("SELECT ed.* FROM event_dates AS ed LEFT JOIN event AS e ON e.id = ed.event_id WHERE ed.date >= ? AND e.status = ? AND ed.status = ? ORDER BY ed.date LIMIT ?, ?", $args);
+		
 		}
 		
 		/**

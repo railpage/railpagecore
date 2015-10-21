@@ -140,6 +140,7 @@
 			
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
 				if ($row = $this->db->fetchRow("SELECT * FROM event_dates WHERE id = ?", $id)) {
+					
 					$this->id = $id;
 					$this->Event = Factory::CreateEvent($row['event_id']);
 					$this->Date = new DateTime($row['date']);
@@ -150,6 +151,7 @@
 					$this->url->approve = sprintf("/events?mode=event.date.setstatus&date_id=%d&status=%d", $this->id, self::STATUS_RUNNING);
 					$this->url->reject = sprintf("/events?mode=event.date.setstatus&date_id=%d&status=%d", $this->id, self::STATUS_REJECTED);
 					$this->url->cancel = sprintf("/events?mode=event.date.setstatus&date_id=%d&status=%d", $this->id, self::STATUS_CANCELLED);
+					$this->url->export = sprintf("/events/export/date/%d.ics", $this->id); 
 					
 					$this->setAuthor(UserFactory::CreateUser($row['user_id']));
 					
