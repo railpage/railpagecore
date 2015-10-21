@@ -15,6 +15,7 @@
 	use Railpage\Module;
 	use Railpage\Url;
 	use Railpage\AppCore;
+	use Railpage\ContentUtility;
 	
 	/**
 	 * Album
@@ -87,6 +88,14 @@
 		public $FeaturedImage;
 		
 		/**
+		 * The parent album
+		 * @since Version 3.10.0
+		 * @var \Railpage\Gallery\Album $ParentAlbum
+		 */
+		
+		private $ParentAlbum;
+		
+		/**
 		 * Constructor
 		 * @since Version 3.8.7
 		 * @param int|string $id
@@ -129,6 +138,9 @@
 				$this->featured_photo_id = $data['featured_photo'];
 				
 				$this->url = new Url(sprintf("%s?album=%s", $this->Module->url, $data['name']));
+				$this->url->edit = sprintf("%s?album=%s&mode=album.edit", $this->Module->url, $data['name']);
+				$this->url->new = sprintf("%s?mode=album.edit&parent_id=%d", $this->Module->url, $this->id);
+				$this->url->upload = sprintf("%s?album=%s&mode=album.upload", $this->Module->url, $data['name']);
 				
 				if (self::UPDATE_PHOTO) {
 					$data['featured_photo'] = $this->updateFeaturedImage(); 
@@ -199,7 +211,7 @@
 		 */
 		
 		public function getAlbums($page, $limit = 25) {
-			if (!$return = getMemcacheObject(sprintf("railpage:gallery.old.album=%d.subalbums.page=%d.perpage=%d", $this->id, $page, $limit))) {
+			if (!$return = $this->Memcached->fetch(sprintf("railpage:gallery.old.album=%d.subalbums.page=%d.perpage=%d", $this->id, $page, $limit))) {
 				$Sphinx = $this->getSphinx(); 
 				
 				$query = $Sphinx->select("*")
@@ -239,15 +251,36 @@
 		 */
 		
 		public function getParent() {
+			
+			if ($this->ParentAlbum instanceof Album) {
+				return $this->ParentAlbum;
+			}
+			
 			$query = "SELECT parent_id FROM gallery_mig_album WHERE id = ?";
 			
 			$id = $this->db->fetchOne($query, $this->id);
 			
 			if (filter_var($id, FILTER_VALIDATE_INT) && $id > 0) {
 				return new Album($id);
-			} else {
-				return false;
 			}
+			
+			return false;
+			
+		}
+		
+		/**
+		 * Set the parent album
+		 * @since Version 3.10.0
+		 * @param \Railpage\Gallery\Album $Album
+		 * @return \Railpage\Gallery\Album $this
+		 */
+		
+		public function setParent(Album $Album) {
+			
+			$this->ParentAlbum = $Album;
+			
+			return $this;
+			
 		}
 		
 		/**
@@ -257,6 +290,11 @@
 		 */
 		
 		public function getOwner() {
+			
+			if ($this->Owner instanceof User) {
+				return $this->Owner;
+			}
+			
 			if (filter_var($this->owner, FILTER_VALIDATE_INT)) {
 				try {
 					return UserFactory::CreateUser($this->owner);
@@ -265,6 +303,22 @@
 				}
 			
 			}
+			
+		}
+		
+		/**
+		 * Set the album owner
+		 * @since Version 3.10.0
+		 * @param \Railpage\Users\User $Owner
+		 * @return \Railpage\Gallery\Album
+		 */
+		
+		public function setOwner(User $User) {
+			
+			$this->Owner = $User; 
+			
+			return $this;
+			
 		}
 		
 		/**
@@ -320,6 +374,135 @@
 			}
 			
 			return $data['featured_photo'];
+		}
+		
+		/**
+		 * Get this album as an array
+		 * @since Version 3.10.0
+		 * @return array
+		 */
+		
+		public function getArray() {
+			
+			$album = array(
+				"id" => $this->id,
+				"name" => $this->name,
+				"url" => $this->url instanceof Url ? $this->url->getUrls() : array(),
+				"num_photos" => $this->meta['fields']['cached_photo_count'],
+				"num_albums" => 0,
+				"mckey" => urlencode($this->mckey)
+			);
+			
+			$AlbumOwner = $this->getOwner();
+			
+			if ($AlbumOwner instanceof User) {
+				$album['owner'] = array(
+					"id" => $AlbumOwner->id,
+					"username" => $AlbumOwner->username,
+					"url" => $AlbumOwner->url->getUrls(),
+					"avatar" => array(
+						"small" => format_avatar($AlbumOwner->avatar, 40),
+						"large" => format_avatar($AlbumOwner->avatar, 120)
+					)
+				);
+			}
+			
+			return $album;
+			
+		}
+		
+		/**
+		 * Validate changes to this album
+		 * @since Version 3.10.0
+		 * @return boolean
+		 * @throws \Exception if $this->name is empty
+		 * @throws \Exception if $this->Author is empty
+		 */
+		
+		private function validate() {
+			
+			if (empty($this->name)) {
+				throw new Exception("Album name is empty"); 
+			}
+			
+			if (empty($this->slug)) {
+				$this->slug = ContentUtility::generateUrlSlug($this->name, 30);
+				
+				$query = "SELECT id FROM gallery_mig_album WHERE name = ?";
+				$rs = $this->db->fetchAll($query, $this->slug); 
+				
+				if (count($rs)) {
+					$this->slug .= count($rs); 
+				}
+			}
+			
+			if (!$this->Owner instanceof User) {
+				$this->Owner = $this->getOwner();
+			}
+			
+			if (!$this->Owner instanceof User) {
+				throw new Exception("No valid album owner has been set"); 
+			}
+			
+			return true;
+			
+		}
+		
+		/**
+		 * Flush the cache for this album
+		 * @since Version 3.10.0
+		 * @return \Railpage\Gallery\Album
+		 */
+		
+		public function flushCache() {
+			
+			$this->Memcached->delete($this->mckey); 
+			
+			for ($i = 1; $i < 10; $i++) {
+				$this->Memcached->delete(sprintf("railpage:gallery.old.album=%d.subalbums.page=%d.perpage=%d", $this->id, $i, 25));
+			}
+			
+			return $this;
+			
+		}
+		
+		/**
+		 * Commit changes
+		 * @since Version 3.10.0
+		 * @return \Railpage\Gallery\Album
+		 */
+		
+		public function commit() {
+			
+			$this->validate(); 
+			
+			$data = [
+				"title" => $this->name,
+				"meta" => json_encode($this->meta),
+				"owner" => $this->Owner->id,
+				"owner_id" => $this->Owner->id,
+				"name" => $this->slug,
+				"featured_photo" => $this->featured_photo_id,
+			];
+			
+			if ($Album = $this->getParent()) {
+				$data['parent_id'] = $Album->id;
+				$data['parent'] = $Album->slug;
+			}
+			
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$where = [ "id = ?" => $this->id ];
+				$this->db->update("gallery_mig_album", $data, $where); 
+			} else {
+				$this->db->insert("gallery_mig_album", $data); 
+				$this->id = $this->db->lastInsertId(); 
+			}
+			
+			$this->flushCache(); 
+			$this->getParent()->flushCache(); 
+			
+			return $this;
+			
 		}
 	}
 	

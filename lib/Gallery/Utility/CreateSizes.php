@@ -82,6 +82,9 @@
 		
 		public static function createOtherSizes() {
 			
+			$sleep = 2; 
+			$sleep = false;
+			
 			$Database = (new AppCore)->getDatabaseConnection(); 
 			
 			$query = "SELECT i.id,
@@ -110,7 +113,7 @@
 				AND medium.size IS NULL
 				AND medium_640.size IS NULL
 				AND medium_800.size IS NULL
-				LIMIT 0, 50";
+				LIMIT 0, 250";
 			
 			$result = $Database->fetchAll($query); 
 			
@@ -145,6 +148,13 @@
 				}
 				
 				$ext = pathinfo($filename, PATHINFO_EXTENSION);
+				
+				$allowedtypes = [ "jpeg", "jpg", "png", "gif" ];
+				
+				if (!in_array($ext, $allowedtypes)) {
+					continue;
+				}
+				
 				$noext = str_replace("." . $ext, "", $filename); 
 				$image = file_get_contents($filename); 
 				
@@ -175,7 +185,6 @@
 					$dstfile = sprintf("%s.%s.%s", $noext, $key, $ext); 
 					
 					if (file_exists($dstfile)) {
-						# Destructive - commented out until it's required
 						unlink($dstfile); 
 					}
 					
@@ -216,11 +225,14 @@
 					
 				}
 				
-				Debug::LogCLI("-------------------------------");
-				Debug::LogCLI("");
-				Debug::LogCLI("Sleeping for two seconds");
-				Debug::LogCLI(""); 
-				sleep(2);
+				if ($sleep) {
+					Debug::LogCLI("-------------------------------");
+					Debug::LogCLI("");
+					Debug::LogCLI("Sleeping for two seconds");
+					Debug::LogCLI(""); 
+					sleep($sleep);
+				}
+				
 				Debug::LogCLI("-------------------------------");
 				Debug::LogCLI("");
 				
