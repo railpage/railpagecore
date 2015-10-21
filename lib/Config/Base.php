@@ -9,6 +9,10 @@
 	namespace Railpage\Config; 
 	
 	use Railpage\AppCore;
+	use Railpage\Debug;
+	use Exception;
+	use InvalidArgumentException;
+	use DateTime;
 	
 	/**
 	 * Config class
@@ -26,40 +30,54 @@
 		 */
 		
 		public function get($key = false) {
-			if ($this->db instanceof \sql_db) {
-				$query = "SELECT * FROM config";
+			
+			if ($key) {
+				$cachekey = sprintf("railpage:config:%s", $key); 
 				
-				if (!empty($key)) {
-					$query .= " WHERE `key` = '".$this->db->real_escape_string($key)."'";
-				} else {
-					$query .= " ORDER BY name";
+				if (!$value = $this->Memcached->fetch($cachekey)) {
+					$value = $this->db->fetchOne("SELECT value FROM config WHERE `key` = ?", $key); 
+					$this->Memcached->save($cachekey, $value, strtotime("+1 month")); 
 				}
 				
-				if ($rs = $this->db->query($query)) {
-					$return = array(); 
-					
-					while ($row = $rs->fetch_assoc()) {
-						$return[$row['id']] = $row; 
-					}
-					
-					return $return;
-				} else {
-					throw new \Exception($this->db->error."\n".$query); 
-					return false;
-				}
-			} else {
-				if ($key) {
-					return $this->db->fetchOne("SELECT value FROM config WHERE `key` = ?", $key); 
-				} else {
-					$return = array(); 
-					
-					foreach ($this->db->fetchAll("SELECT * FROM config ORDER BY name") as $row) {
-						$return[$row['id']] = $row; 
-					}
-					
-					return $return;
-				}
+				return $value;
 			}
+			
+			$return = array(); 
+			
+			foreach ($this->db->fetchAll("SELECT * FROM config ORDER BY name") as $row) {
+				$return[$row['id']] = $row; 
+			}
+			
+			return $return;
+			
+		}
+		
+		/**
+		 * Get a phpBB config item
+		 * @since Version 3.10.0
+		 * @param string $key
+		 * @return mixed
+		 */
+		 
+		public static function getPhpBB($key = false) {
+			
+			$Memcached = AppCore::GetMemcached(); 
+			
+			$cachekey = sprintf("railpage:config_phpbb:%s", $key); 
+		
+			if ($rs = $Memcached->fetch($cachekey)) {
+				return $rs; 
+			}
+			
+			$Database = AppCore::GetDatabase(); 
+			
+			$query = "SELECT config_value FROM nuke_bbconfig WHERE config_name = 'allow_html_tags'"; 
+			
+			$rs = $Database->fetchOne($query); 
+			$Memcached->save($cachekey, $rs, strtotime("+1 month")); 
+			
+			return $rs;
+			
 		}
 		
 		/**
@@ -75,54 +93,46 @@
 		 */
 		
 		public function set($key = false, $value, $name) {
+			
 			if (!$key) {
-				throw new \Exception("Cannot set config option - \$key not given"); 
-				return false;
+				throw new Exception("Cannot set config option - \$key not given"); 
 			}
 			
 			if (empty($value)) {
-				throw new \Exception("Cannot set config option - \$value cannot be empty"); 
-				return false;
+				throw new Exception("Cannot set config option - \$value cannot be empty"); 
 			}
 			
 			if (empty($name)) {
-				throw new \Exception("Cannot set config option - \$name cannot be empty"); 
-				return false;
+				throw new Exception("Cannot set config option - \$name cannot be empty"); 
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				if ($this->get($key)) {
-					// Update
-					
-				} else {
-					// Insert
-					
-				}
-			} else {
-				if ($this->get($key)) {
-					// Update
-					$data = array(
-						"value" => $value,
-						"name" => $name
-					);
-					
-					$where = array(
-						"`key` = ?" => $key
-					);
-					
-					return $this->db->update("config", $data, $where);
-				} else {
-					// Insert
-					$data = array(
-						"date" => time(),
-						"key" => $key,
-						"value" => $value,
-						"name" => $name
-					);
-					
-					return $this->db->insert("config", $data);
-				}
+			$cachekey = sprintf("railpage:config:%s", $key); 
+			$this->Memcached->save($cachekey, $value, strtotime("+1 month")); 
+			
+			if ($this->get($key)) {
+				// Update
+				$data = array(
+					"value" => $value,
+					"name" => $name
+				);
+				
+				$where = array(
+					"`key` = ?" => $key
+				);
+				
+				return $this->db->update("config", $data, $where);
 			}
+			
+			// Insert
+			$data = array(
+				"date" => time(),
+				"key" => $key,
+				"value" => $value,
+				"name" => $name
+			);
+			
+			return $this->db->insert("config", $data);
+			
 		}
 	}
 	
