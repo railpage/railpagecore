@@ -21,6 +21,14 @@
 	class Chronicle extends AppCore {
 		
 		/**
+		 * Sub query - all areas 
+		 * @since Version 3.10.0
+		 * @param string SubQuery_AllAreas
+		 */
+		
+		private $SubQuery_AllAreas;
+		
+		/**
 		 * Constructor
 		 */
 		
@@ -35,6 +43,12 @@
 			$this->url->today = sprintf("%s?mode=today", $this->url->url);
 			$this->url->thisweek = sprintf("%s?mode=thisweek", $this->url->url);
 			$this->url->thismonth = sprintf("%s?mode=thismonth", $this->url->url);
+			
+			$this->SubQuery_AllAreas = 
+				"SELECT 'locos' AS module, CONCAT(l.loco_num, ': ', dt.loco_date_text) AS title, d.text AS text, timestamp AS `date` FROM loco_unit_date AS d LEFT JOIN loco_unit AS l ON l.loco_id = d.loco_unit_id LEFT JOIN loco_date_type AS dt ON dt.loco_date_id = d.loco_date_id 
+					UNION SELECT 'locations' AS module, dt.name AS title, d.text, d.date FROM location_date AS d LEFT JOIN location_datetypes AS dt ON d.type_id = dt.id 
+					UNION SELECT 'events' AS module, e.title, e.description AS text, ed.date FROM event_dates AS ed LEFT JOIN event AS e ON ed.event_id = e.id";
+			
 		}
 		
 		/**
@@ -65,37 +79,38 @@
 				$Date = new DateTime;
 			}
 			
-			$events = array(); 
+			$query = "
+				SELECT * FROM (
+					" . $this->SubQuery_AllAreas . "
+				) AS items
+				WHERE `date` = ?";
 			
-			foreach ($this->getProviders() as $name) {
-				$Provider = new $name;
-				
-				$date_events = $Provider->getEventsForDate($Date); 
-				
-				if (is_array($date_events)) {
-					$events = array_merge($events, $Provider->getEventsForDate($Date));
-				}
+			return $this->db->fetchAll($query, $Date->Format("Y-m-d")); 
+			
+		}
+		
+		/**
+		 * Get events for today (On this day...) 
+		 * @since Version 3.10.0
+		 * @return array
+		 */
+		
+		public function getEntriesForToday($limit = false) {
+			
+			$Date = new DateTime;
+			
+			$query = "
+				SELECT * FROM (
+					" . $this->SubQuery_AllAreas . "
+				) AS items
+				WHERE `date` LIKE '%-" . $Date->format("d") . "' ORDER BY `date` DESC";
+			
+			if (filter_var($limit, FILTER_VALIDATE_INT)) {
+				$query .= " LIMIT 0, " . $limit;
 			}
 			
-			return $events;
+			return $this->db->fetchAll($query); 
 			
-			/*
-			if (!$date) {
-				$date = date("m-d");
-			}
-			
-			if ($date instanceof DateTime) {
-				$date = $date->format("Y-m-d");
-			}
-			
-			$date = sprintf("%%%s%%", $date);
-			
-			$query = "SELECT id FROM chronicle_item WHERE date LIKE ? ORDER BY date";
-			
-			foreach ($this->db->fetchAll($query, $date) as $row) {
-				yield new Entry($row['id']);
-			}
-			*/
 		}
 		
 		/**
@@ -115,5 +130,22 @@
 			return $providers;
 			
 		}
+		
+		/**
+		 * Get all entries
+		 * @since Version 3.10.0
+		 * @return array
+		 */
+		
+		public function getAllEntries() {
+			
+			$query = "
+				" . $this->SubQuery_AllAreas . "
+				ORDER BY `date` DESC";
+			
+			return $this->db->fetchAll($query); 
+			
+		}
+		
 	}
 	
