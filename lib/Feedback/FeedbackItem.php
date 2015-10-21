@@ -11,6 +11,7 @@
 	use Exception;
 	use DateTime;
 	use Railpage\Users\User;
+	use Railpage\Users\Admin as UserAdmin;
 	use Railpage\Url;
 	use stdClass;
 	
@@ -131,8 +132,8 @@
 				$this->area 		= $row['feedback_title'];
 				$this->area_id 		= $row['area']; 
 				$this->message 		= $row['message']; 
-				$this->status 		= $row['status']; 
-				$this->status_id 	= $row['feedback_status'];
+				$this->status 		= $row['feedback_status']; 
+				$this->status_id 	= $row['status'];
 				$this->assigned_to	= $row['assigned_to'];
 				
 				$this->url = new Url(sprintf("/feedback/manage/%d", $this->id));
@@ -158,35 +159,99 @@
 		}
 		
 		/**
+		 * Validate changes to this item
+		 * @since Version 3.10.0
+		 * @return boolean
+		 */
+		
+		private function validate() {
+			
+			if (!$this->Date instanceof DateTime && empty($this->Date)) {
+				$this->Date = new DateTime;
+			}
+			
+			if (is_null($this->user_id)) {
+				$this->user_id = 0;
+			}
+			
+			if (is_null($this->assigned_to)) {
+				$this->assigned_to = 0;
+			}
+			
+			if (is_null($this->username)) {
+				$this->username = "";
+			}
+			
+			if (!filter_var($this->status_id, FILTER_VALIDATE_INT)) {
+				$this->status_id = 1;
+			}
+			
+			if ($this->user_id == 0 && !empty($this->username)) {
+				$UserAdmin = new UserAdmin;
+				
+				$search = $UserAdmin->find($this->username, true); 
+				
+				foreach ($search as $User) {
+					$this->user_id = $User->id;
+					break;
+				}
+
+			}
+			
+			return true;
+			
+		}
+		
+		/**
+		 * Commit changes to this item
+		 * @since Version 3.10.0
+		 * @return \Railpage\Feedback\FeedbackItem
+		 */
+		
+		public function commit() {
+			
+			$this->validate();
+			
+			$data = [
+				"time" => $this->Date->getTimestamp(),
+				"user_id" => $this->user_id,
+				"username" => $this->username,
+				"email" => $this->email,
+				"area" => $this->area_id,
+				"message" => $this->message,
+				"status" => $this->status_id,
+				"assigned_to" => $this->assigned_to
+			];
+			
+			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				$where = [ "id = ?" => $this->id ];
+				$this->db->update("feedback", $data, $where);
+			} else {
+				$this->db->insert("feedback", $data); 
+				$this->id = $this->db->lastInsertId(); 
+			}
+			
+			return $this;
+			
+		}
+		
+		/**
 		 * Delete this message
 		 * @since Version 3.4
 		 * @return boolean
 		 */
 		
 		public function delete() {
-			if ($this->db instanceof \sql_db) {
-				$dataArray = array("status" => 3); 
-				$where = array("id" => $this->db->real_escape_string($this->id));
-				
-				$query = $this->db->buildQuery($dataArray, "feedback", $where);
-				
-				if ($this->db->query($query)) {
-					return true;
-				} else {
-					throw new \Exception($this->db->error."\n\n".$query);
-				}
-			} else {
-				$data = array(
-					"status" => 3
-				);
-				
-				$where = array(
-					"id = ?" => $this->id
-				);
-				
-				$this->db->update("feedback", $data, $where); 
-				return true;
-			}
+			$data = array(
+				"status" => 3
+			);
+			
+			$where = array(
+				"id = ?" => $this->id
+			);
+			
+			$this->db->update("feedback", $data, $where); 
+			return true;
 		}
 		
 		/**
@@ -202,34 +267,17 @@
 				return false;
 			}
 			
-			if ($this->db instanceof \sql_db) {
-				$dataArray = array(); 
-				$dataArray['assigned_to'] = $this->db->real_escape_string($user_id);
-				$dataArray['status'] = 2;  
-				
-				$where = array("id" => $this->id); 
-				
-				$query = $this->db->buildQuery($dataArray, "feedback", $where); 
-				
-				if ($this->db->query($query)) {
-					return true; 
-				} else {
-					throw new \Exception("Could not assign feedback item - ".$this->db->error); 
-					return false;
-				}
-			} else {
-				$data = array(
-					"assigned_to" => $user_id,
-					"status" => 2
-				);
-				
-				$where = array(
-					"id = ?" => $this->id
-				);
-				
-				$this->db->update("feedback", $data, $where); 
-				return true;
-			}
+			$data = array(
+				"assigned_to" => $user_id,
+				"status" => 2
+			);
+			
+			$where = array(
+				"id = ?" => $this->id
+			);
+			
+			$this->db->update("feedback", $data, $where); 
+			return true;
 		}
 	}
 	
