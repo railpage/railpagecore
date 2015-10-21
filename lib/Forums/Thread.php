@@ -15,6 +15,8 @@
 	use Railpage\Users\User;
 	use Railpage\Users\Factory as UserFactory;
 	use Railpage\News\Article;
+	use Railpage\Images\Image;
+	use Railpage\Images\ImageFactory;
 	use DateTime;
 	use DateTimeZone;
 	use Exception;
@@ -894,6 +896,53 @@
 			$Post = new Post($this->lastpost); 
 			
 			return $Post->Date < $stale; 
+		}
+		
+		/**
+		 * Remove the cover photo attached to this thread
+		 * @since Version 3.10.0
+		 * @return \Railpage\Forums\Thread
+		 */
+		
+		public function removeCoverPhoto() {
+			
+			unset($this->meta['coverphoto']); 
+			
+			return $this;
+			
+		}
+		
+		/**
+		 * Attach a cover photo to this thread
+		 * @since Version 3.10.0
+		 * @return \Railpage\Forums\Thread
+		 */
+		
+		public function setCoverPhoto(Image $Image) {
+			
+			$this->meta['coverphoto'] = $Image->id; 
+			$this->commit(); 
+			
+			return $this;
+			
+		}
+		
+		/**
+		 * Get the cover photo attached to this thread
+		 * @since Version 3.10.0
+		 * @return \Railpage\Images\Image
+		 */
+		 
+		public function getCoverPhoto() {
+			
+			if (isset($this->meta['coverphoto']) && filter_var($this->meta['coverphoto'], FILTER_VALIDATE_INT)) {
+				$Image = ImageFactory::CreateImage($this->meta['coverphoto']); 
+				
+				return $Image;
+			}
+			
+			return false;
+			
 		}
 	}
 	

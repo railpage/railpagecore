@@ -15,10 +15,14 @@
 	use Railpage\Module;
 	use Railpage\Url;
 	use Railpage\AppCore;
+	use Railpage\Registry;
 	use Exception;
 	use DateTime;
 	use ArrayObject;
 	use stdClass;
+	use Memcached;
+	use Doctrine\Common\Cache\MemcachedCache;
+
 
 	/**
 	 * phpBB post class
@@ -254,7 +258,9 @@
 			$this->Module = new Module("forums");
 			
 			$this->timestamp = time();
-			$this->mckey = sprintf("railpage:forums;post=%d", $postid); 
+			$this->mckey = sprintf("railpage:forums;post=%d", $postid);
+			
+			$this->Memcached = AppCore::getMemcached();  
 			
 			if (!$row = $this->Redis->fetch($this->mckey)) {
 				if (filter_var($postid, FILTER_VALIDATE_INT)) {
@@ -822,11 +828,17 @@
 		public function getReputationMarkers($force = false) {
 			$mckey = sprintf("railpage:forums.post;id=%d;getreputationmarkers", $this->id);
 			
-			if ($force) {
-				$this->Memcached->delete($mckey); 
-			}
+			$Registry = Registry::getInstance();
 			
-			if ($force || !$types = $this->Memcached->fetch($mckey)) {
+			$Memcached = new Memcached;
+			$Memcached->addServer($Config->Memcached->Host, 11211);
+			
+			#$cacheDriver = new MemcachedCache;
+			#$cacheDriver->setMemcached($Memcached);
+			
+			#$this->Memcached = $cacheDriver;
+			
+			if ($force || !$types = $Memcached->get($mckey)) {
 				$query = "SELECT r.*, u.username FROM nuke_bbposts_reputation AS r LEFT JOIN nuke_users AS u ON r.user_id = u.user_id WHERE r.post_id = ?";
 				
 				$types = $this->getReputationTypes(); 
@@ -836,7 +848,7 @@
 					$types[$row['type']]['count'] = count($types[$row['type']]['votes']);
 				}
 				
-				$this->Memcached->save($mckey, $types);
+				$Memcached->set($mckey, $types, 0);
 			}
 			
 			return $types;
