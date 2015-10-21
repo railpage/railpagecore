@@ -333,5 +333,54 @@
 			
 			return $scheme . $user . $pass . $host . $port . $path . $query . $fragment; 
 		}
+		
+		/**
+		 * Get OpenGraph tags from a specified URL
+		 * Really stupid and elaborate Memcached expiry handling is due to a bug in Debian's PHP5-Memcached package
+		 *
+		 * @since Version 3.10.0
+		 * @param string $url
+		 * @return array
+		 */
+		
+		public static function GetOpenGraphTags($url) {
+			
+			$Memcached = AppCore::GetMemcached(); 
+			
+			$mckey = md5($url); 
+			
+			if ($result = $Memcached->fetch($mckey)) {
+				$exp = $Memcached->fetch(sprintf("%s-exp", $mckey)); 
+				
+				if ($exp < time()) {
+					$Memcached->delete($mckey); 
+					$Memcached->delete(sprintf("%s-exp", $mckey)); 
+					$result = false; 
+				}
+			}
+			
+			if (!$result) {
+			
+				/**
+				 * Ensure our OG handler is loaded
+				 */
+				
+				require_once("vendor" . DS . "scottmac" . DS . "opengraph" . DS . "OpenGraph.php");
+				$graph = \OpenGraph::fetch($url);
+				
+				$result = array();
+				
+				foreach ($graph as $key => $value) {
+					$result[$key] = $value;
+				}
+				
+				$Memcached->save($mckey, $result, 0); // 0 or will not cache
+				$Memcached->save(sprintf("%s-exp", $mckey), strtotime("+1 day"), 0); // alternate method of specifying expiry
+				
+			}
+			
+			return $result;
+			
+		}
 
 	}
