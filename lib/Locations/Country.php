@@ -14,6 +14,7 @@
 	use Railpage\Place;
 	use Railpage\Debug;
 	use Railpage\Url;
+	use Railpage\ISO\ISO_3166;
 	use Zend_Db_Expr;
 	
 	
@@ -78,10 +79,13 @@
 			$this->code = $code;
 			$this->url = new Url("/locations/" . strtolower($this->code));
 			
+			$countries = ISO_3166::get_countries();
+			$this->name = $countries[$code]['name'];
+			
 			Debug::RecordInstance();
 			$timer = Debug::GetTimer(); 
 			
-			if (!$this->loadFromCache()) {
+			if (!$this->loadFromCache() || empty($this->name)) {
 				$woe = Place::getWOEData(strtoupper($code));
 			
 				if (isset($woe['places']['place'][0]['name'])) {
@@ -158,7 +162,7 @@
 				return false;
 			}
 				
-			$this->name = $row['country_name'];
+			#$this->name = $row['country_name'];
 			$this->timezone = $row['timezone'];
 			
 			$this->centre = new stdClass; 

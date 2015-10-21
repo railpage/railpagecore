@@ -361,6 +361,11 @@
 			}
 			
 			$this->url = new Url(sprintf("%s/%s", $this->makeRegionPermalink(), $this->slug));
+			$this->url->suncalc = sprintf("http://suncalc.net/#/%s,%s,%d/%s/%s/", $this->lat, $this->lon, $this->zoom, (new DateTime)->format("Y.m.d"), (new DateTime)->format("H:m"));
+			$this->url->googlemaps = sprintf("http://maps.google.com.au/maps?q=%s,%s", $this->lat, $this->lon); 
+			#$this->url->staticmap = sprintf("https://api.mapbox.com/v4/mapbox.streets-basic/pin-l-camera+285A98(%s,%s)/%s,%s,%d/800x600.png?access_token=%s", $this->lon, $this->lat, $this->lon, $this->lat, 15, "pk.eyJ1IjoiZG9jdG9yamJlYW0iLCJhIjoiU1QtYnktZyJ9.R2caqw77mb_7VU5M9-gPug");
+			$this->url->staticmap = sprintf("https://maps.googleapis.com/maps/api/staticmap?center=%s,%s&key=%s&zoom=%d&size=%dx%d&sensor=false&markers=color:red|%s,%s", $this->lat, $this->lon, $this->Config->Google->API_Key, $this->zoom, $this->Config->OpenGraphMapWidth, $this->Config->OpenGraphMapHeight, $this->lat, $this->lon);
+			
 			
 			if ($this->geoplace_id == 0) {
 				$this->updateGeoplace();
@@ -462,7 +467,7 @@
 		private function geocode() {
 			
 			if (!empty($this->region) && !empty($this->country) && !empty($this->locality)) {
-				return;
+				#return;
 			}
 			
 			$woe = PlaceUtility::LatLonWoELookup($this->lat, $this->lon);
@@ -472,6 +477,28 @@
 			$this->region = $woe['region_code'];
 			$this->locality = $woe['neighbourhood'];
 			$this->neighbourhood = null; // $this->neighbourhood is ignored
+			
+			if (empty($this->region)) {
+				$this->region = $woe['region']; 
+			}
+			
+			/**
+			 * Shit's a little bit broken, it's ok
+			 */
+			
+			if (empty($this->region) || empty($this->country)) {
+				$woe = PlaceUtility::LatLonWoELookup($this->lat, $this->lon, true); // force lookup, ignore any cached data
+				$woe = PlaceUtility::formatWoE($woe);
+				
+				$this->region = $woe['region_code'];
+				$this->country = $woe['country_code'];
+			}
+			
+			if (empty($this->region)) {
+				$this->region = strtoupper($woe['region_name']); 
+			}
+			
+			#printArray($this->region);die;
 			
 			return;
 			
@@ -922,7 +949,17 @@
 		public function getArray() {
 			return array(
 				"id" => $this->id,
+				"lat" => $this->lat,
+				"lon" => $this->lon,
+				"zoom" => $this->zoom,
 				"name" => $this->name,
+				"desc" => $this->desc,
+				"traffic" => is_object($this->traffic) ? $this->traffic->__toString() : $this->traffic,
+				"environment" => is_object($this->environment) ? $this->environment->__toString() : $this->environment,
+				"directions_driving" => is_object($this->directions_driving) ? $this->directions_driving->__toString() : $this->directions_driving,
+				"directions_parking" => is_object($this->directions_parking) ? $this->directions_parking->__toString() : $this->directions_parking,
+				"directions_pt" => is_object($this->directions_pt) ? $this->directions_pt->__toString() : $this->directions_pt,
+				"amenities" => is_object($this->amenities) ? $this->amenities->__toString() : $this->amenities,
 				"url" => $this->url instanceof Url ? $this->url->getURLs() : array("url" => $this->url)
 			);
 		}

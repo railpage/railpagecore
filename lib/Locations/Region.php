@@ -15,6 +15,7 @@
 	use Railpage\Place;
 	use Railpage\Url;
 	use Railpage\Debug;
+	use Railpage\ISO\ISO_3166;
 	
 	/**
 	 * Class
@@ -122,11 +123,14 @@
 			$woe = $this->fetchWoE($country, $region);
 			
 			if (empty($this->Country->name) && !preg_match("@[a-zA-Z]+@", $country) && isset($woe['country'])) {
-				$this->Country = new Country($woe['country']);
+				$this->Country = Factory::CreateCountry($woe['country']);
 			}
 			
-			$this->name = $result['region_name'];
+			#$regions = ISO_3166::regions_by_country($country);
+			
+			
 			$this->code = strtoupper($region);
+			$this->name = ISO_3166::getRegionName($country, $region); 
 			$this->url = new Url(sprintf("%s/%s", $this->Country->url, $this->slug));
 			
 			$this->centre = new stdClass; 
@@ -144,6 +148,10 @@
 			
 			if (isset($woe['timezone'])) {
 				$this->timezone = $woe['timezone'];
+			}
+			
+			if (empty($this->name)) {
+				$this->name = ucwords(strtolower(str_replace("-", " ", $this->code))); 
 			}
 		}
 		

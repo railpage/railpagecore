@@ -15,6 +15,7 @@
 	use Railpage\Users\User;
 	use Railpage\Users\Factory as UsersFactory;
 	use Railpage\Debug;
+	use Railpage\ISO\ISO_3166;
 	
 	/**
 	 * Base Locations class
@@ -268,7 +269,7 @@
 			
 			$mckey = "rp-locations-geolookup-lat:" . $lat . "-lon:" . $lon . "-dist:" . $distance . "-num:" . $num;
 			
-			if (!$data = $this->memcache->get($mckey)) {
+			if (!$return = $this->Memcached->fetch($mckey)) {
 				$query = "SELECT location.*, 3956 * 2 * ASIN(SQRT(POWER(SIN((" . $lat . " - location.lat) * pi() / 180 / 2), 2) + COS(" . $lat . " * pi() / 180) * COS(location.lat * pi() / 180) * POWER(SIN((" . $lon . " - location.long) * pi() / 180 / 2), 2))) AS distance 
 					FROM location 
 					WHERE 
@@ -292,6 +293,8 @@
 				);
 				
 				$return = $this->db->fetchAll($query, $params); 
+				
+				$this->Memcached->save($mckey, $return, 0);
 			}
 			
 			Debug::LogEvent(__METHOD__, $timer);

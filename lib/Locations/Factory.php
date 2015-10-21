@@ -71,6 +71,60 @@
 			
 		}
 		
+		/**
+		 * Create a region
+		 * @since Version 3.10.0
+		 * @param string $country
+		 * @param string $region
+		 * @return \Railpage\Locations\Region
+		 */
+		
+		public static function CreateRegion($country = NULL, $region = false) {
+			
+			$Memcached = AppCore::getMemcached(); 
+			$Redis = AppCore::getRedis(); 
+			$Registry = Registry::getInstance();
+			
+			$regkey = sprintf("railpage:country=%s;region=%s", $country, $region); 
+			
+			try {
+				$Region = $Registry->get($regkey); 
+			} catch (Exception $e) {
+				$Region = new Region($country, $region); 
+				$Registry->set($regkey, $Region); 
+			}
+			
+			return $Region;
+			
+		}
+		
+		/**
+		 * Create a country
+		 * @since Version 3.10.0
+		 * @param string $country
+		 * @param string $region
+		 * @return \Railpage\Locations\Region
+		 */
+		
+		public static function CreateCountry($code) {
+			
+			$Memcached = AppCore::getMemcached(); 
+			$Redis = AppCore::getRedis(); 
+			$Registry = Registry::getInstance();
+			
+			$regkey = sprintf("railpage:country=%s", $code); 
+			
+			try {
+				$Country = $Registry->get($regkey); 
+			} catch (Exception $e) {
+				$Country = new Country($code); 
+				$Registry->set($regkey, $Country); 
+			}
+			
+			return $Country;
+			
+		}
+		
 	}
 	
 	
