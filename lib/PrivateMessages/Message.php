@@ -10,6 +10,7 @@
 	
 	use Exception;
 	use DateTime;
+	use Railpage\AppCore;
 	use Railpage\Users\User;
 	use Railpage\Users\Factory as UserFactory;
 	use Railpage\Notifications\Notifications;
@@ -384,6 +385,7 @@
 			
 			$this->db->insert("nuke_bbprivmsgs", $data);
 			$pm_id = $this->db->lastInsertId();
+			$this->id = $pm_id;
 			
 			$data = array(
 				"privmsgs_text_id" => $pm_id,
@@ -403,12 +405,14 @@
 				 * Template settings
 				 */
 				
-				global $Smarty;
+				$Smarty = AppCore::getSmarty(); 
+				
 				$Smarty->assign("server_addr", "www.railpage.com.au");
-				$Smarty->assign("message_id", $pm_id);
+				$Smarty->assign("message_id", $this->id);
 				$Smarty->assign("pm_from_username", $this->Author->username);
 				$Smarty->assign("userdata_username", $this->Recipient->username);
 				
+				/*
 				if (defined("RP_SITE_ROOT")) {
 					$path = sprintf("%s%scontent%semail_pm.tpl", RP_SITE_ROOT, DS, DS);
 				} else {
@@ -416,6 +420,7 @@
 				}
 				
 				$html = $Smarty->fetch($path);
+				*/
 				
 				/**
 				 * Create a user notification
@@ -424,10 +429,25 @@
 				$Notification = new Notification;
 				$Notification->transport = Notifications::TRANSPORT_EMAIL;
 				$Notification->status = Notifications::STATUS_QUEUED;
-				$Notification->subject = "New private message on Railpage";
-				$Notification->body = $html;
-				$Notification->addRecipient($this->Recipient->id, $this->Recipient->username, $this->Recipient->contact_email)->commit();
+				$Notification->subject = sprintf("[Private Messages] New message from %s", $this->Author->username);
+				#$Notification->body = $html;
+				$Notification->addRecipient($this->Recipient->id, $this->Recipient->username, $this->Recipient->contact_email);
 				
+				$tpl = $Smarty->ResolveTemplate("template.generic");
+				
+				$email = array(
+					"subject" => sprintf("New message from %s", $this->Author->username),
+					"subtitle" => "Private Messages",
+					"body" => nl2br(sprintf("Hi %s,\n\n<a href='http://www.railpage.com.au%s?utm_medium&email&utm_source=private-messages&utm_campain=user-%d'>%s</a> has sent you a new <a href='http://www.railpage.com.au/messages/conversation/%d?utm_medium=email&utm_source=private-messages&utm_campaign=user-%d#%d'>private message</a> in the conversation titled <em>%s</em>.",
+								$this->Recipient->username, $this->Author->url->url, $this->Author->id, $this->Author->username, $this->id, $this->Author->id, $this->id, $this->subject))
+									
+				);
+				
+				$Smarty->Assign("email", $email);
+				
+				$Notification->body = $Smarty->fetch($tpl);
+				
+				/*
 				$message = Swift_Message::newInstance()
 					->setSubject("New private message on Railpage")
 					->setFrom(array("rp2@railpage.com.au" => "Railpage"))
@@ -442,6 +462,10 @@
 				$mailer = Swift_Mailer::newInstance($transport);
 				
 				$result = $mailer->send($message);
+				*/
+				
+				$Notification->commit(); 
+				
 			}
 		}
 		
@@ -453,9 +477,8 @@
 		 */
 		
 		public function commit() {
-			if (!$this->id) {
+			if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
 				throw new Exception("Cannot commit changes to PM - PM does not exist!"); 
-				return false;
 			} 
 			
 			$this->validate();
@@ -497,7 +520,7 @@
 				
 				$this->db->update("nuke_bbprivmsgs_text", $data, $where);
 				
-				removeMemcacheObject($this->mckey);
+				$this->Memcached->delete($this->mckey);
 				
 				return true;
 			} else {
