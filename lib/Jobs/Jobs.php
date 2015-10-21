@@ -159,7 +159,7 @@
 		 */
 		
 		public function getNumNewJobs() {
-			$query = "SELECT COUNT(job_id) FROM jn_jobs WHERE job_added >= ?";
+			$query = "SELECT COUNT(job_id) FROM jn_jobs WHERE job_added >= ? AND job_expiry >= NOW()";
 			
 			return $this->db->fetchOne($query, (new DateTime("@" . strtotime("30 days ago")))->format("Y-m-d H:i:s"));
 		}
