@@ -145,16 +145,19 @@
 				return; 
 			}
 			
-			$User->Memcached->delete($User->mckey);
+			$Memcached = AppCore::GetMemcached(); 
+			$Redis = AppCore::GetRedis(); 
+			
+			$Memcached->delete($User->mckey);
 			
 			try {
-				$User->Redis->delete(sprintf("railpage:users.user=%d", $User->id));
+				$Redis->delete(sprintf("railpage:users.user=%d", $User->id));
 			} catch (Exception $e) {
 				// throw it away
 			}
 			
 			try {
-				$User->Redis->delete($User->mckey);
+				$Redis->delete($User->mckey);
 			} catch (Exception $e) {
 				// throw it away
 			}
@@ -282,6 +285,33 @@
 			$query = "SELECT user_id FROM nuke_users WHERE flickr_nsid = ?"; 
 			
 			return $Database->fetchOne($query, $nsid); 
+			
+		}
+		
+		/**
+		 * Get a user ID from a given username
+		 * @since Version 3.10.0
+		 * @param string $username
+		 * @return int
+		 */
+		
+		public static function getUserId($username) {
+			
+			$Database = (new AppCore)->getDatabaseConnection(); 
+			$Memcached = AppCore::GetMemcached(); 
+			
+			$user_id = false;
+			
+			$mckey = sprintf("railpage:username=%s;user_id", $username); 
+			
+			if (!$user_id = $Memcached->fetch($mckey)) {
+				$query = "SELECT user_id FROM nuke_users WHERE username = ? LIMIT 0, 1";
+				
+				$user_id = $Database->fetchOne($query, $username); 
+				$Memcached->save($mckey, $user_id, strtotime("+1 year")); 
+			}
+			
+			return $user_id; 
 			
 		}
 	}

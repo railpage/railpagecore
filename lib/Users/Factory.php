@@ -45,4 +45,23 @@
 			
 		}
 		
+		/**
+		 * Create a user by their username
+		 * @since Version 3.9.1
+		 * @return \Railpage\Users\User
+		 * @param int|string $id
+		 */
+		
+		public static function CreateUserFromUsername($username = false) {
+			
+			$id = Utility\UserUtility::getUserId($username); 
+				
+			if (!filter_var($id, FILTER_VALIDATE_INT)) {
+				throw new Exception("Could not find user ID from given username"); 
+			}
+			
+			return self::CreateUser($id); 
+			
+		}
+		
 	}

@@ -84,6 +84,14 @@
 		const SYSTEM_USER_ID = 72587;
 		
 		/**
+		 * Human validation TTL
+		 * @since Version 3.10.0
+		 * @const int HUMAN_VALIDATION_TTL
+		 */
+		
+		const HUMAN_VALIDATION_TTL = 1800;
+		
+		/**
 		 * Array of group IDs this user is a member of
 		 * @since Version 3.7
 		 * @var array $groups
@@ -2350,7 +2358,16 @@
 			 * Create a temporary instance of the requested user for logging purposes
 			 */
 			
-			$TmpUser = filter_var($this->id, FILTER_VALIDATE_INT) ? new User($this->id) : new User($username);
+			#$TmpUser = filter_var($this->id, FILTER_VALIDATE_INT) ? new User($this->id) : new User($username);
+			try {
+				$TmpUser = Factory::CreateUserFromUsername($username); 
+			} catch (Exception $e) {
+				
+				if ($e->getMessage() == "Could not find user ID from given username") {
+					$TmpUser = new User($this->id); 
+				}
+				
+			}
 			
 			/**
 			 * Get the stored password for this username
@@ -3043,7 +3060,7 @@
 				}
 			}
 			
-			if (!isset($this->meta['captchaTimestamp']) || empty($this->meta['captchaTimestamp']) || $this->meta['captchaTimestamp'] - 900 <= time()) {
+			if (!isset($this->meta['captchaTimestamp']) || empty($this->meta['captchaTimestamp']) || $this->meta['captchaTimestamp'] - self::HUMAN_VALIDATION_TTL <= time()) {
 				return false;
 			}
 			

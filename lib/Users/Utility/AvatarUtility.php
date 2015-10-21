@@ -69,11 +69,13 @@
 				
 				$query['s'] = $width;
 				$bits = array(); 
+				
 				foreach ($query as $key => $val) {
 					$bits[] = sprintf("%s=%s", $key, $val); 
 				}
 				
-				return sprintf("%s://%s%s?%s", $parts['scheme'], $parts['host'], $parts['path'], implode("&", $bits));
+				$user_avatar = sprintf("%s://%s%s?%s", $parts['scheme'], $parts['host'], $parts['path'], implode("&", $bits));
+				return self::GravatarHTTPS($user_avatar); 
 			}
 			
 			$mckey = sprintf("railpage.user:avatar=%s;width=%s;height=%s", $user_avatar, $width, $height);
@@ -83,7 +85,7 @@
 			 */
 			
 			if ($result = $Memcached->fetch($mckey)) {
-				return $result;
+				return self::GravatarHTTPS($result);
 			}
 			
 			/**
@@ -139,7 +141,7 @@
 					if ($width && $height) {
 						if ($dimensions[0] <= $width && $dimensions[1] <= $height) {
 							// It fits within the width and height - return it as-is
-							return $user_avatar;
+							return self::GravatarHTTPS($user_avatar);
 						}
 					}
 				}
@@ -169,6 +171,25 @@
 			
 			Debug::logEvent(__METHOD__, $timer) ;
 			
-			return $user_avatar;
+			return self::GravatarHTTPS($user_avatar);
+		}
+	
+		/**
+		 * Check for Gravatar and convert to HTTPS if required
+		 * @since Version 3.10.0
+		 * @param string $avatar
+		 * @return string
+		 */
+		
+		public static function GravatarHTTPS($avatar) {
+			
+			if (!preg_match("/gravatar.com/i", $avatar)) {
+				return $avatar; 
+			}
+			
+			$avatar = str_replace("http://", "https://", $avatar); 
+			
+			return $avatar;
+			
 		}
 	}
