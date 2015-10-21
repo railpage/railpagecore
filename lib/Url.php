@@ -2,6 +2,7 @@
 	/**
 	 * URL class
 	 * Provide links to various aspects (SELF, UPDATE, whatever) while retaining a __toString() function for older code
+	 * Also provide basic URL lookup functions, eg oEmbed fetch
 	 * @since Version 3.8.7
 	 * @package Railpage
 	 * @author Michael Greenhill
@@ -12,6 +13,7 @@
 	use Railpage\fwlink;
 	use Railpage\Debug;
 	use Exception;
+	use GuzzleHttp\Client;
 	
 	/**
 	 * URLs
@@ -85,6 +87,44 @@
 		public function getURLs() {
 			
 			return get_object_vars($this);
+			
+		}
+		
+		/**
+		 * Get oEmbed content from a given URL, and cache it in Memcached for better performance
+		 * @since Version 3.10.0
+		 * @param string $url
+		 * @return array
+		 */
+		
+		public static function oEmbedLookup($url) {
+			
+			$Cache = AppCore::GetRedis(); 
+			
+			$cachekey = sprintf("railpage:oembed=%s", md5($url)); 
+			
+			if ($result = $Cache->fetch($cachekey)) {
+				return $result;
+			}
+			
+			$GuzzleClient = new Client;
+			
+			$response = $GuzzleClient->get($url);
+			
+			if ($response->getStatusCode() != 200) {
+				throw new Exception("Could not fetch oEmbed content from " . $url . " - server responded with " . $response->getStatusCode() . " HTTP code"); 
+			}
+			
+			$body = $response->getBody();
+			
+			// Try a JSON conversion
+			if ($rs = json_decode($body, true)) {
+				$body = $rs; 
+			}
+			
+			$Cache->save($cachekey, $body, strtotime("+1 month")); 
+			
+			return $body;
 			
 		}
 	}

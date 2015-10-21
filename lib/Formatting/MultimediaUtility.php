@@ -53,6 +53,36 @@
 		}
 		
 		/**
+		 * Convert Vimeo links into embedded content
+		 * @since Version 3.10.0
+		 * @param \DOMElement $e
+		 * @return \DOMElement
+		 */
+		
+		public static function EmbedVimeo(DOMElement $e) {
+			
+			$url = pq($e)->attr("href"); 
+			
+			if (strpos($url, "vimeo.com") === false) {
+				return $e;
+			}
+			
+			// Fetch oEmbed
+			$oembed = Url::oEmbedLookup(sprintf("https://vimeo.com/api/oembed.json?url=%s", $url));
+			
+			if (!is_array($oembed) || !isset($oembed['html'])) {
+				return $e;
+			}
+			
+			$oembed['html'] .= "<br><br><a href='" . $url . "'>" . $oembed['title'] . " by " . $oembed['author_name'] . "</a>";
+			
+			pq($e)->replaceWith($oembed['html']); 
+			
+			return $e;
+			
+		}
+		
+		/**
 		 * Convert a Flickr group link into embedded content
 		 * @since Version 3.10.0
 		 * @param \DOMElement $e
