@@ -204,6 +204,11 @@
 				foreach ($parts as $part) {
 					if (preg_match("#i-([a-zA-Z0-9]+)#", $part, $matches)) {
 						if ($Image = $this->findImage("SmugMug", $matches[1], $option)) {
+							if (is_null($Image->photo_id) || $Image->photo_id == 0) {
+								$Image->photo_id = $matches[1]; 
+								$Image->commit(); 
+							}
+							
 							return $Image;
 						}
 					}
@@ -217,6 +222,19 @@
 			if (preg_match("#vicsig.net/photo#", $url, $matches)) {
 				// Do nothing yet
 			}
+			
+			/**
+			 * 500px.com
+			 */
+			
+			if (preg_match("#500px.com/photo/([0-9]+)/#", $url, $matches)) {
+				$photo_id = $matches[1]; 
+				
+				if ($Image = $this->findImage("FiveHundredPx", $photo_id, $option)) {
+					return $Image;
+				}
+			}
+			
 		}
 		
 		/**

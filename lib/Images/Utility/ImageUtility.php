@@ -21,7 +21,7 @@
 		 * Generate the HTML5 picture srcset string
 		 * @since Version 3.10.0
 		 * @param \Railpage\Images\Image $Image
-		 * @return string
+		 * @return array
 		 */
 		 
 		static public function generateSrcSet(Image $Image) {

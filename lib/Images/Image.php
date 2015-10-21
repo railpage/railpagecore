@@ -518,12 +518,20 @@
 			$params = array();
 			
 			switch ($this->provider) {
+				case "smugmug" :
+					$imageprovider = __NAMESPACE__ . "\\Provider\\SmugMug";
+					break;
+				
 				case "picasaweb" :
 					$imageprovider = __NAMESPACE__ . "\\Provider\\PicasaWeb";
 					break;
 				
 				case "rpoldgallery" : 
 					$imageprovider = __NAMESPACE__ . "\\Provider\RPOldGallery";
+					break;
+				
+				case "fivehundredpx" : 
+					$imageprovider = __NAMESPACE__ . "\\Provider\FiveHundredPx";
 					break;
 				
 				case "flickr" : 
@@ -615,6 +623,8 @@
 				}
 			}
 			
+			#ob_end_clean(); printArray($data['author']);die;
+			
 			if ($data) {
 				$this->sizes = $data['sizes'];
 				$this->title = empty($data['title']) ? "Untitled" : $data['title'];
@@ -654,7 +664,7 @@
 				 * Load the Place object
 				 */
 				
-				if ($option != Images::OPT_NOPLACE && isset($data['location'])) {
+				if ($option != Images::OPT_NOPLACE && isset($data['location']) && !empty($data['location'])) {
 					try {
 						$this->Place = Place::Factory($data['location']['latitude'], $data['location']['longitude']);
 					} catch (Exception $e) {
@@ -958,7 +968,7 @@
 					"name" => $this->provider,
 					"photo_id" => $this->photo_id
 				),
-				"sizes" => $this->sizes,
+				"sizes" => Images::NormaliseSizes($this->sizes),
 				"srcset" => implode(", ", Utility\ImageUtility::generateSrcSet($this)),
 				"author" => isset($author) ? $author : false,
 				"url" => $this->url instanceof Url ? $this->url->getURLs() : array(),

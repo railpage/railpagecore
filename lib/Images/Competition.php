@@ -718,7 +718,7 @@
 		 */
 		
 		public function getVotes() {
-			$query = "SELECT * FROM image_competition_votes WHERE competition_id = ? ORDER BY date DESC";
+			$query = "SELECT v.*, u.username FROM image_competition_votes AS v LEFT JOIN nuke_users AS u ON u.user_id = v.user_id WHERE v.competition_id = ? ORDER BY v.date DESC";
 			
 			return $this->db->fetchAll($query, $this->id);
 		}
@@ -916,6 +916,8 @@
 				$this->id,
 				$Image->id
 			);
+			
+			#printArray($params);die;
 			
 			$user_id = $this->db->fetchOne($query, $params);
 			

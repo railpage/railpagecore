@@ -22,6 +22,7 @@
 	use Railpage\Gallery\Album as G1Album;
 	use Railpage\Gallery\Image as G1Image;
 	use Railpage\Users;
+	use Railpage\Users\User;
 	
 	/**
 	 * Provider
@@ -45,6 +46,7 @@
 		 */
 		
 		public function getImage($id, $force = false) {
+			
 			$Image = new G1Image($id); 
 			
 			/**
@@ -74,6 +76,9 @@
 				"urls" => "",
 				"location" => "",
 			);
+			
+			return $this->photo;
+			
 		}
 		
 		/**

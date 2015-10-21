@@ -211,6 +211,10 @@
 		public function getImage($id, $force = false) {
 			$mckey = sprintf("railpage:image.provider=%s;image=%d", self::PROVIDER_NAME, $id);
 			
+			if ($force) {
+				$this->Memcached->delete($mckey); 
+			}
+			
 			if (!$force && $this->photo = $this->Memcached->fetch($mckey)) {
 				return $this->photo;
 			} else {
@@ -263,9 +267,7 @@
 					$this->photo['author']['railpage_id'] = $tmp_user_id;
 				}
 				
-				if (function_exists("setMemcacheObject")) {
-					setMemcacheObject($mckey, $this->photo, strtotime("+2 days"));
-				}
+				$this->Memcached->save($mckey, $this->photo, strtotime("+2 days"));
 				
 				return $this->photo;
 			}
@@ -301,9 +303,7 @@
 				}
 			}
 			
-			if (function_exists("setMemcacheObject")) {
-				setMemcacheObject($mckey, $this->photo, strtotime("+2 days"));
-			}
+			$this->Memcached->save($mckey, $this->photo, strtotime("+2 days"));
 			
 			return $this;
 		}
