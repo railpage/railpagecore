@@ -106,7 +106,7 @@
 		public function getPhoto($id) {
 			$mckey = sprintf("railpage:railcam.provider=%s;railcam.image=%d", self::PROVIDER_NAME, $id);
 			
-			if (function_exists("getMemcacheObject") && $this->photo = getMemcacheObject($mckey)) {
+			if ($this->photo = $this->Memcached->fetch($mckey)) {
 				return $this->photo;
 			} else {
 				$return = array(); 
@@ -124,8 +124,8 @@
 					"id" => $id,
 					"dates" => array(
 						"taken" => new DateTime($return['photo']['dates']['taken']),
-						"uploaded" => new DateTime(sprintf("@%s", $return['photo']['dateuploaded'])),
-						"updated" => new DateTime(sprintf("@%s", $return['photo']['dates']['lastupdate']))
+						"uploaded" => 0,
+						"updated" => 0
 					),
 					"author" => array(
 						"id" => $return['photo']['owner']['nsid'],
@@ -139,9 +139,15 @@
 					"sizes" => $return['photo']['sizes']
 				);
 				
-				if (function_exists("setMemcacheObject")) {
-					setMemcacheObject($mckey, $this->photo, strtotime("+2 days"));
+				if (isset($return['photo']['dateuploaded'])) {
+					$this->photo['dates']['uploaded'] = new DateTime(sprintf("@%s", $return['photo']['dateuploaded'])); 
 				}
+				
+				if (isset($return['photo']['lastupdate'])) {
+					$this->photo['dates']['updated'] = new DateTime(sprintf("@%s", $return['photo']['lastupdate'])); 
+				}
+				
+				$this->Memcached->save($mckey, $this->photo, strtotime("+2 days"));
 				
 				return $this->photo;
 			}
@@ -177,9 +183,7 @@
 				}
 			}
 			
-			if (function_exists("setMemcacheObject")) {
-				setMemcacheObject($mckey, $this->photo, strtotime("+2 days"));
-			}
+			$this->Memcached->save($mckey, $this->photo, strtotime("+2 days"));
 			
 			return $this;
 		}

@@ -13,6 +13,11 @@
 	use flickr_railpage;
 	use Railpage\Url;
 	use Railpage\Locos\Locomotive;
+	use Railpage\Images\Images;
+	use Railpage\AppCore;
+	use Railpage\Debug;
+	use PDO;
+	use Zend_Db_Expr;
 	
 	/**
 	 * Railcam photo
@@ -305,7 +310,7 @@
 				"description" => $this->description,
 				"provider" => $this->getProviderName(),
 				"url" => $this->url->getURLs(),
-				"sizes" => $this->sizes,
+				"sizes" => Images::NormaliseSizes($this->sizes),
 				"dates" => $this->dates
 			);
 		}
@@ -321,6 +326,79 @@
 			if (!filter_var($Loco->id, FILTER_VALIDATE_INT)) {
 				throw new Exception("An invalid instance of Railpage\\Locos\\Locomotive was supplied");
 			}
+			
+			/**
+			 * Lookup this sighting in Sphinx first
+			 */
+			
+			$Config = AppCore::GetConfig(); 
+			$SphinxPDO_New = new PDO("mysql:host=" . $Config->Sphinx->Host . ";port=9312"); 
+			$lookup = $SphinxPDO_New->prepare("SELECT * FROM idx_sightings WHERE meta.source = :source AND meta.photo_id = :photo_id");
+			$lookup->bindValue(":source", "railcam", PDO::PARAM_STR);
+			$lookup->bindValue(":photo_id", intval($this->id), PDO::PARAM_INT); 
+			$lookup->execute(); 
+			
+			$id = 0; 
+			$loco_ids = [];
+			$meta = []; 
+			
+			/**
+			 * If it's in Sphinx then we need to adjust some insert values
+			 */
+			
+			if ($lookup->rowCount() > 0) {
+				$row = $lookup->fetchAll(PDO::FETCH_ASSOC); 
+				$id = $row[0]['id']; 
+				$loco_ids = json_decode($row[0]['loco_ids'], true);
+				$meta = json_decode($row[0]['meta'], true);
+			}
+			
+			if (!in_array($Loco->id, $loco_ids)) {
+				$loco_ids[] = $Loco->id;
+			}
+			
+			$meta['source'] = "railcam";
+			$meta['railcam_id'] = intval($this->Camera->id);
+			$meta['photo_id'] = intval($this->id);
+			
+			/**
+			 * Prepare the insert
+			 */
+			
+			$data = [ 
+				"timezone" => $this->Camera->timezone,
+				"date" => $this->dates['taken']->format("Y-m-d H:i:s"),
+				"date_added" => new Zend_Db_Expr("NOW()"),
+				"lat" => $this->Camera->lat,
+				"lon" => $this->Camera->lon,
+				"text" => $this->text,
+				"user_id" => $this->User->id,
+				"loco_ids" => json_encode($loco_ids),
+				"meta" => json_encode($meta)
+			];
+			
+			/**
+			 * Guess the train code
+			 */
+			
+			if (preg_match("/([0-9]{1})([a-zA-Z]{2})([0-9]{1})/", $this->title, $matches)) {
+				$data['traincode'] = sprintf("%s%s%s", $matches[1], $matches[2], $matches[3]); 
+			}
+			
+			#printArray($data); printArray($id); die;
+			
+			/**
+			 * Insert / update
+			 */
+			
+			if ($id > 0) {
+				$where = [ "id = ?" => $id ];
+				$this->db->update("sighting", $data, $where);
+			} else {
+				$this->db->insert("sighting", $data); 
+			}
+			
+			return $this;
 			
 			$data = array(
 				"id" => (int) str_replace(".", "", microtime(true)),

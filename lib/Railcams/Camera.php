@@ -12,6 +12,7 @@
 	use DateTime;
 	use DateTimeZone;
 	use Railpage\Url;
+	use Railpage\Debug;
 	use flickr_railpage;
 	
 	use Rezzza\Flickr\Metadata;
@@ -543,6 +544,65 @@
 			}
 			
 			return $return;
+		}
+		
+		/**
+		 * Get latest photo from this railcam
+		 * @since Version 3.10.0
+		 * @return \Railpage\Railcams\Photo
+		 * @param boolean $update Update cached data if it's stale
+		 */
+		
+		public function getLatest($update = true) {
+			
+			$mckey = sprintf("railpage:railcam=%d;latest=1", $this->id);
+			
+			/**
+			 * Shitty, hacky way to handle Memcached expiry bug on Debian
+			 */
+			
+			$mckey_age = $mckey . ";expiry"; 
+			
+			$exp = $this->Memcached->fetch($mckey_age); 
+			
+			if ($update && (!$exp || $exp < time())) {
+				$this->Memcached->delete($mckey); 
+			}
+			
+			/**
+			 * Fetch from Memcached, or load from API
+			 */
+			
+			if (!$latest = $this->Memcached->fetch($mckey)) {
+				
+				$latest = $this->getPhotos(1); 
+		
+				Debug::LogCLI("Fetched " . count($latest['photo']) . " photo(s)"); 
+				
+				foreach ($latest['photo'] as $key => $photo) {
+					
+					Debug::LogCLI("Processing photo..."); 
+					
+					$photo['timezone'] = $this->timezone;
+					
+					$Date = new DateTime($photo['datetaken']);
+					$Date->setTimezone(new DateTimeZone($this->timezone));
+					
+					$photo['datetaken'] = $Date->format("c");
+					
+					$latest['photo'][$key] = $photo;
+				}
+
+				Debug::LogCLI("Saving photo in Memcached"); 
+				$this->Memcached->save($mckey, $latest, 0);
+				
+				Debug::LogCLI("Saving photo expiry in Memcached"); 
+				$this->Memcached->save($mckey_age, strtotime("+5 minutes"), 0); 
+				
+			}
+			
+			return $this->getPhoto($latest['photo'][0]['id']);
+			
 		}
 		
 		/**

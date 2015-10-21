@@ -13,6 +13,7 @@
 	use Exception;
 	use DateTime;
 	use stdClass;
+	use PDO;
 	
 	/**
 	 * Railcams base class
@@ -125,6 +126,22 @@
 		 */
 		
 		public function getTaggedPhotos($DateFrom = false, $DateTo = false) {
+			
+			$Config = AppCore::GetConfig(); 
+			$SphinxPDO_New = new PDO("mysql:host=" . $Config->Sphinx->Host . ";port=9312"); 
+			$lookup = $SphinxPDO_New->prepare("SELECT * FROM idx_sightings WHERE meta.source = :source ORDER BY date_unix DESC LIMIT 0, 25");
+			$lookup->bindValue(":source", "railcam", PDO::PARAM_STR); 
+			$lookup->execute(); 
+			
+			$result = $lookup->fetchAll(PDO::FETCH_ASSOC); 
+			
+			foreach ($result as $key => $val) {
+				$result[$key]['loco_ids'] = json_decode($val['loco_ids'], true); 
+				$result[$key]['meta'] = json_decode($val['meta'], true); 
+			}
+			
+			return $result;
+			
 			
 			$Sphinx = $this->getSphinx(); 
 			
