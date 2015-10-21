@@ -647,17 +647,18 @@
 		 * @return boolean
 		 */
 		
-		public function isIPBanned($ipaddr = false) {
+		public function isIPBanned($ipaddr = false, $force = false) {
 			
 			if (!$ipaddr) {
 				throw new Exception("Cannot check for banned IP address because no or an invaild IP address was given");
 			}
 			
-			if (empty($this->ip_addresses)) {
+			if ($force || empty($this->ip_addresses)) {
 				$this->loadAll(); 
 			}
 			
 			return isset($this->ip_addresses[$ipaddr]);
+			
 		}
 		
 		/**
@@ -696,6 +697,10 @@
 		
 		public static function isClientBanned($user_id, $remote_addr, $force = false) {
 			
+			if ($remote_addr == "58.96.64.238" || $user_id == 71317) {
+				$force = true;
+			}
+			
 			if (!$force && isset($_SESSION['isClientBanned'])) {
 				$sess = $_SESSION['isClientBanned'];
 				
@@ -731,6 +736,20 @@
 			} catch (Exception $e) {
 				
 			}
+			
+			/**
+			 * Delete all cached keys
+			 */
+			
+			if ($force) {
+				$Memcached->delete(self::CACHE_KEY_ALL); 
+				$Memcached->delete("railpage:bancontrol.users;v5");
+				$Memcached->delete("railpage:bancontrol.ips;v4"); 
+			}
+			
+			/**
+			 * Continue with the lookup
+			 */
 			
 			if ($force || !$BanControl instanceof BanControl) {
 				$BanControl = new BanControl;
