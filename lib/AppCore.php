@@ -853,10 +853,24 @@
 		/**
 		 * Return the database connection
 		 * @since Version 3.9.1
+		 * @return \Zend_Db
 		 */
 		
 		public function getDatabaseConnection() {
 			return $this->db;
 		}
+		
+		/**
+		 * Get the database connection in a super lazy coding way
+		 * @since Version 3.10.0
+		 * @return \Zend_Db
+		 */
+		
+		public static function GetDatabase() {
+			
+			return (new AppCore)->getDatabaseConnection(); 
+			
+		}
+		
 	}
 	
