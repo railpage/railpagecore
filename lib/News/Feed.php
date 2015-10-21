@@ -144,7 +144,11 @@
 			}
 			
 			unset($data['user_id']);
-			setMemcacheObject(sprintf("rp:news.feed=%d", $this->User->id), $data);
+			
+			$key = sprintf("rp:news.feed=%d", $this->User->id);
+			
+			$this->Memcached->delete($key);
+			$this->Memcached->save($key, $data);
 			
 			return $this;
 		}

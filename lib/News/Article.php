@@ -22,6 +22,7 @@
 	use Railpage\fwlink;
 	use Railpage\AppCore;
 	use Railpage\ContentUtility;
+	use Railpage\Debug;
 		
 	/**
 	 * News article display and management
@@ -596,18 +597,28 @@
 				
 			// Format the article blurb
 			try {
-				$this->blurb = prepare_submit($this->blurb); 
+				if (!empty($this->blurb)) {
+					$this->blurb = prepare_submit($this->blurb); 
+				} 
+				
+				if (!empty($this->lead)) {
+					$this->lead = prepare_submit($this->lead); 
+				}
 			} catch (Exception $e) {
-				global $Error; 
-				$Error->save($e); 
+				Debug::SaveError($e);
 			} 
 			
 			// Format the article body
 			try {
-				$this->body = prepare_submit($this->body); 
+				if (!empty($this->body)) {
+					$this->body = prepare_submit($this->body); 
+				}
+				
+				if (!empty($this->paragraphs)) {
+					$this->paragraphs = prepare_submit($this->paragraphs);
+				}
 			} catch (Exception $e) {
-				global $Error; 
-				$Error->save($e); 
+				Debug::SaveError($e);
 			}
 			
 			if ($this->Topic instanceof \Railpage\Forums\Thread) {
@@ -1041,14 +1052,21 @@
 						LEFT JOIN nuke_users AS u ON u.user_id = s.user_id
 						WHERE s.sid = ?
 					UNION 
-					SELECT u.username, u.user_avatar, l.user_id, l.timestamp, l.title, l.args 
+					SELECT u.username, l.user_id, u.user_avatar, l.timestamp, l.title, l.args 
 						FROM log_staff AS l 
 						LEFT JOIN nuke_users AS u ON u.user_id = l.user_id
 						WHERE `key` = 'article_id' 
 						AND key_val = ? 
-						ORDER BY UNIX_TIMESTAMP(`timestamp`) DESC";
+					UNION 
+					SELECT u.username, l.user_id, u.user_avatar, l.timestamp, l.title, l.args 
+						FROM log_general AS l 
+						LEFT JOIN nuke_users AS u ON u.user_id = l.user_id
+						WHERE `key` = 'article_id' 
+						AND value = ? 
+					ORDER BY UNIX_TIMESTAMP(`timestamp`) DESC";
 			
 			$params = [
+				$this->id,
 				$this->id,
 				$this->id
 			];
