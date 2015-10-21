@@ -81,6 +81,7 @@
 			"Railpage\\Railcams\\Provider\\" : "lib/Railcams/Provider/",
 			"Railpage\\Reminders\\" : "lib/Reminders/",
 			"Railpage\\SessionHandler\\" : "lib/SessionHandler/",
+			"Railpage\\Sightings\\" : "lib/Sightings/",
 			"Railpage\\SiteEvent\\" : "lib/SiteEvent/",
 			"Railpage\\SiteMessage\\" : "lib/SiteMessage/",
 			"Railpage\\SiteMessages\\" : "lib/SiteMessages/",
@@ -123,7 +124,8 @@
 		"smarty/smarty": "~3.1",
         "foolz/sphinxql-query-builder": "dev-master",
 		"nilportugues/sphinx-search": "dev-master",
-		"leg/simhash-php": "dev-master"
+		"leg/simhash-php": "dev-master",
+		"lusitanian/oauth": "~0.3"
 	},
 	"require-dev" : {
 		"codeclimate/php-test-reporter": "dev-master",
