@@ -295,6 +295,7 @@
 			 * Memcached lookup
 			 */
 			
+			/*
 			if ($return = $this->Memcached->fetch($mckey)) {
 				
 				$update = false;
@@ -312,6 +313,7 @@
 				
 				return $return;
 			}
+			*/
 			
 			/**
 			 * Database lookup
@@ -782,7 +784,7 @@
 		 */
 		
 		public function deleteNote($note_id = false) {
-			if (!$note_id || empty($note_id)) {
+			if (!filter_var($note_id, FILTER_VALIDATE_INT)) {
 				return false;
 			} 
 			

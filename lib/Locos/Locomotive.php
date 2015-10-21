@@ -25,6 +25,8 @@
 	use stdClass;
 	use Railpage\Registry;
 	use Railpage\Users\Utility\AvatarUtility;
+	use Railpage\Sightings\Sightings;
+	use Railpage\Sightings\Sighting;
 		
 	/**
 	 * Loco object
@@ -1177,7 +1179,7 @@
 		 */
 		
 		public function sightings() {
-			$Sightings = new \Railpage\Sightings\Base;
+			$Sightings = new Sightings;
 			
 			return $Sightings->findLoco($this->id); 
 		}
