@@ -13,6 +13,7 @@
 	use DateTime;
 	use DateTimeZone;
 	use DateInterval;
+	use Railpage\Registry;
 	
 	class Debug {
 		
@@ -172,6 +173,36 @@
 			}
 			
 			print $text . "\n";
+			
+			return;
+			
+		}
+		
+		/**
+		 * Save an error message
+		 * @since Version 3.10.0
+		 * @param string|Exception $error
+		 * @return void
+		 */
+		
+		public static function SaveError($error) {
+			
+			if ($error instanceof Exception) {
+				$error = $error->getMessage(); 
+			}
+			
+			$Registry = Registry::getInstance();
+			
+			try {
+				$Error_Handler = $Registry->get("errorlogger");
+			} catch (Exception $e) {
+				require_once("includes" . DS . "error.class.php");
+				$Error_Handler = new Error_Handler;
+				
+				$Registry->set("errorlogger", $Error_Handler);
+			}
+			
+			$Error_Handler->save($error);
 			
 			return;
 			
