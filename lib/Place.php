@@ -13,6 +13,7 @@
 	use Railpage\Locations\Country;
 	use Railpage\Locations\Region;
 	use Railpage\Locations\Location;
+	use Railpage\Locations\Factory as LocationsFactory;
 	use Railpage\Debug;
 	use Railpage\GTFS\GTFS;
 	use Railpage\Registry;
@@ -129,7 +130,7 @@
 			 * Simple enough - create the country object
 			 */
 			
-			$this->Country = new Country($woe['places']['place'][0]['country']);
+			$this->Country = LocationsFactory::CreateCountry($woe['places']['place'][0]['country']);
 			
 			/**
 			 * Bit trickier - find the region, ie, the next geographical location down from a country
@@ -137,7 +138,7 @@
 			
 			foreach ($woe['places']['place'][0] as $key => $val) {
 				if (isset($val['type']) && strtolower($val['type']) != "country") {
-					$this->Region = new Region($val['woeid']);
+					$this->Region = LocationsFactory::CreateRegion($val['woeid']);
 					break;
 				}
 			}
@@ -338,6 +339,34 @@
 			}
 			
 			return $places;
+		}
+		
+		/**
+		 * Get an associative array of this object
+		 * @since Version 3.10.0
+		 * @return array
+		 */
+		
+		public function getArray() {
+			
+			$array = array(
+				"lat" => $this->lat,
+				"lon" => $this->lon,
+				"name" => $this->name,
+				"address" => $this->getAddress(),
+				"region" => array(
+					"name" => $this->Region->name,
+					"code" => $this->Country->code
+				),
+				"country" => array(
+					"name" => $this->Country->name,
+					"code" => $this->Country->code
+				),
+				"url" => $this->url instanceof Url ? $this->url->getURLs() : array("url" => $this->url)
+			);
+			
+			return $array;
+			
 		}
 		
 		/**
@@ -585,84 +614,149 @@
 			}
 			
 			$return = array();
-			
+			$expiry = strtotime("+1 year"); 
 			$mckey = "railpage:woe=" . $lookup;
 			
 			if ($types) {
 				$mckey .= ";types=" . implode(",", $types); 
 			}
 			
-			$Redis = AppCore::getRedis();
+			$Cache = AppCore::getRedis();
+			$Cache = AppCore::getMemcached(); 
 			
-			#$nocache = true; 
+			/**
+			 * Try and get the WoE data from Memcached or Redis
+			 */
 			
-			if (!$return = $Redis->fetch($mckey)) {
-				
-				$Config = AppCore::getConfig(); 
-				
-				$latlng = $lookup;
-				
-				if (preg_match("@[a-zA-Z]+@", $lookup) || strpos($lookup, ",")) {
-					$lookup = sprintf("places.q('%s')", $lookup);
-				} else {
-					$lookup = sprintf("place/%s", $lookup);
-				}
-				
-				if ($types === false) {
-					$url = sprintf("http://where.yahooapis.com/v1/%s?lang=en&appid=%s&format=json", $lookup, $Config->Yahoo->ApplicationID);
-				} else {
-					$url = sprintf("http://where.yahooapis.com/v1/places\$and(.q('%s'),.type(%s))?lang=en&appid=%s&format=json", $latlng, implode(",", $types), $Config->Yahoo->ApplicationID);
-				}
+			if ($return = $Cache->fetch($mckey)) {
 				
 				/**
-				 * Attempt to fetch the WoE data from our local cache
+				 * Convert JSON back to an array if required
 				 */
 				
-				if (strpos($lookup, ",") !== false) {
-					$tmp = str_replace("places.q('", "", str_replace("')", "", $lookup));
-					$tmp = explode(",", $tmp);
-					$return = PlaceUtility::LatLonWoELookup($tmp[0], $tmp[1]);
-					return $return;
+				if (!is_array($return) && is_string($return)) {
+					$return = json_decode($return, true); 
 				}
 				
-				/**
-				 * Try and fetch using GuzzleHTTP from the web service
-				 */
+				return $return;
 				
-				try {
-					$GuzzleClient = new Client;
-					$response = $GuzzleClient->get($url);
-				} catch (RequestException $e) {
-					switch ($e->getResponse()->getStatusCode()) {
-						case 503 : 
-							throw new Exception("Your call to Yahoo Web Services failed and returned an HTTP status of 503. That means: Service unavailable. An internal problem prevented us from returning data to you.");
-							break;
-						
-						case 403 : 
-							throw new Exception("Your call to Yahoo Web Services failed and returned an HTTP status of 403. That means: Forbidden. You do not have permission to access this resource, or are over your rate limit.");
-							break;
-						
-						case 400 : 
-							if (!$return = PlaceUtility::getViaCurl($url)) {
-								throw new Exception(sprintf("Your call to Yahoo Web Services failed and returned an HTTP status of 400. That means:  Bad request. The parameters passed to the service did not match as expected. The exact error is returned in the XML/JSON response. The URL sent was: %s\n\n%s", $url, json_decode($e->getResponse()->getBody())));
-							}
-							
-							break;
-						
-						default : 
-							throw new Exception("Your call to Yahoo Web Services returned an unexpected HTTP status of: " . $response->getStatusCode());
-					}
-				}
-				
-				if (!$return && isset($response) && $response->getStatusCode() == 200) {
-					$return = json_decode($response->getBody(), true);
-				}
-				
-				$return['url'] = $url;
 			}
 			
+			/**
+			 * Try and get the WoE data from the database
+			 */
+			
+			$Database = (new AppCore)->getDatabaseConnection(); 
+			
+			$query = "SELECT response FROM cache_woe WHERE hash = ?";
+			
+			if ($return = $Database->fetchOne($query, md5($mckey))) {
+				
+				$return = json_decode($return, true);
+				
+				$Cache->save($mckey, $return, $expiry); 
+				
+				return $return;
+				
+			}
+			
+			/**
+			 * Nothing found in our cache - look it up
+			 */
+				
+			$Config = AppCore::getConfig(); 
+			
+			$latlng = $lookup;
+			
+			if (preg_match("@[a-zA-Z]+@", $lookup) || strpos($lookup, ",")) {
+				$lookup = sprintf("places.q('%s')", $lookup);
+			} else {
+				$lookup = sprintf("place/%s", $lookup);
+			}
+			
+			if ($types === false) {
+				$url = sprintf("http://where.yahooapis.com/v1/%s?lang=en&appid=%s&format=json", $lookup, $Config->Yahoo->ApplicationID);
+			} else {
+				$url = sprintf("http://where.yahooapis.com/v1/places\$and(.q('%s'),.type(%s))?lang=en&appid=%s&format=json", $latlng, implode(",", $types), $Config->Yahoo->ApplicationID);
+			}
+					
+			/**
+			 * Attempt to fetch the WoE data from our local cache
+			 */
+			
+			if (strpos($lookup, ",") !== false) {
+				$tmp = str_replace("places.q('", "", str_replace("')", "", $lookup));
+				$tmp = explode(",", $tmp);
+				$return = PlaceUtility::LatLonWoELookup($tmp[0], $tmp[1]);
+				
+				$Cache->save($mckey, $return, strtotime("+1 hour")); 
+				
+				return $return;
+			}
+			
+			/**
+			 * Try and fetch using GuzzleHTTP from the web service
+			 */
+			
+			try {
+				$GuzzleClient = new Client;
+				$response = $GuzzleClient->get($url);
+			} catch (RequestException $e) {
+				switch ($e->getResponse()->getStatusCode()) {
+					case 503 : 
+						throw new Exception("Your call to Yahoo Web Services failed and returned an HTTP status of 503. That means: Service unavailable. An internal problem prevented us from returning data to you.");
+						break;
+					
+					case 403 : 
+						throw new Exception("Your call to Yahoo Web Services failed and returned an HTTP status of 403. That means: Forbidden. You do not have permission to access this resource, or are over your rate limit.");
+						break;
+					
+					case 400 : 
+						if (!$return = PlaceUtility::getViaCurl($url)) {
+							throw new Exception(sprintf("Your call to Yahoo Web Services failed and returned an HTTP status of 400. That means:  Bad request. The parameters passed to the service did not match as expected. The exact error is returned in the XML/JSON response. The URL sent was: %s\n\n%s", $url, json_decode($e->getResponse()->getBody())));
+						}
+						
+						break;
+					
+					default : 
+						throw new Exception("Your call to Yahoo Web Services returned an unexpected HTTP status of: " . $e->getResponse()->getStatusCode());
+				}
+			}
+			
+			if (!$return && isset($response) && $response->getStatusCode() == 200) {
+				$return = json_decode($response->getBody(), true);
+			}
+			
+			$return['url'] = $url;
+			
+			/**
+			 * Attempt to cache this data
+			 */
+			
 			if ($return !== false) {
-				$Redis->save($mckey, $return); 
+				
+				/**
+				 * Save it in MariaDB
+				 */
+				
+				$data = [
+					"hash" => md5($mckey),
+					"response" => json_encode($return),
+					"expiry" => date("Y-m-d H:i:s", $expiry)
+				]; 
+				
+				$Database->insert("cache_woe", $data); 
+				
+				$rs = $Cache->save($mckey, $return, $expiry); 
+				
+				/**
+				 * Verify that it actually saved in the cache handler. It's being a turd lately
+				 */
+				
+				if (!$rs || json_encode($return) != json_encode($Cache->fetch($mckey))) {
+					$Cache->save($mckey, json_encode($return), $expiry); 
+				}
+				
 			}
 			
 			return $return;
