@@ -29,7 +29,7 @@
 		 * @return array
 		 */
 		
-		public static function LatLonWoELookup($lat, $lon) {
+		public static function LatLonWoELookup($lat, $lon, $force = false) {
 			
 			if (is_null($lon) && strpos($lat, ",") !== false) {
 				$tmp = explode(",", $lat); 
@@ -44,7 +44,7 @@
 			
 			$mckey = sprintf("railpage:woe=%s,%s;types=", $lat, $lon, implode(",", $placetypes)); 
 			
-			if (!$return = $Redis->fetch($mckey)) {
+			if ($force || !$return = $Redis->fetch($mckey)) {
 				
 				$url = sprintf("http://where.yahooapis.com/v1/places\$and(.q('%s,%s'),.type(%s))?lang=en&appid=%s&format=json", $lat, $lon, implode(",", $placetypes), $Config->Yahoo->ApplicationID);
 				
@@ -310,6 +310,51 @@
 			curl_close($ch);
 			
 			$return = json_decode($output, true);
+			
+			return $return;
+			
+		}
+		
+		/**
+		 * Google Maps reverse geocode lookup - as a fallback where Yahoo WoE is missing data
+		 * @since Version 3.10.0
+		 * @param float $lat
+		 * @param float $lon
+		 * @return array
+		 */
+		
+		public static function GoogleWoELookup($lat, $lon) {
+			
+			$url = sprintf("https://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s&key=AIzaSyC1lUe1h-gwmFqj9xDTDYI9HYVTUxNscCA", $lat, $lon); 
+			
+			try {
+				$GuzzleClient = new Client;
+				$response = $GuzzleClient->get($url);
+			} catch (RequestException $e) {
+				switch ($e->getResponse()->getStatusCode()) {
+					case 503 : 
+						throw new Exception("The call to Google Maps Geocoding API failed and returned an HTTP status of 503. That means: Service unavailable. An internal problem prevented us from returning data to you.");
+						break;
+					
+					case 403 : 
+						throw new Exception("YThe call to Google Maps Geocoding API failed and returned an HTTP status of 403. That means: Forbidden. You do not have permission to access this resource, or are over your rate limit.");
+						break;
+					
+					case 400 : 
+						if (!$return = self::getViaCurl($url)) {
+							throw new Exception(sprintf("The call to Google Maps Geocoding API failed (zomg) and returned an HTTP status of 400. That means:  Bad request. The parameters passed to the service did not match as expected. The exact error is returned in the XML/JSON response. The URL sent was: %s\n\n%s", $url, json_decode($e->getResponse()->getBody())));
+						}
+						
+						break;
+					
+					default : 
+						throw new Exception("The call to Google Maps Geocoding API returned an unexpected HTTP status of: " . $response->getStatusCode());
+				}
+			}
+			
+			if (!$return && isset($response) && $response->getStatusCode() == 200) {
+				$return = json_decode($response->getBody(), true);
+			}
 			
 			return $return;
 			
