@@ -102,9 +102,9 @@
 		public $GeoPlace;
 		
 		/**
-		 * Object of image sizes and their source URLs
+		 * Array of image sizes and their source URLs
 		 * @since Version 3.8.7
-		 * @var \stdClass $sizes
+		 * @var array $sizes
 		 */
 		
 		public $sizes;
@@ -913,9 +913,10 @@
 		/**
 		 * Link this image to a loco, location, etc
 		 * @param string $namespace
-		 * @param int $id
+		 * @param int|string $namespace_key
 		 * @throws \Exception if $namespace is null
 		 * @throws \Exception if $namespace_key is null
+		 * @return \Railpage\Images\Image
 		 */
 		
 		public function addLink($namespace = NULL, $namespace_key = NULL) {
@@ -1035,6 +1036,7 @@
 		 * @param string $namespace
 		 * @param boolean $force
 		 * @return \Railpage\Images\Image;
+		 * @throws \Exception if $namespace is null or empty
 		 */
 		
 		public function findObjects($namespace = NULL, $force = false) {
@@ -1191,6 +1193,7 @@
 		 * Mark an image as ignored
 		 * @since Version 3.8.7
 		 * @param boolean $ignored
+		 * @return boolean
 		 */
 		
 		public function ignored($ignored = true, $link_id = 0) {

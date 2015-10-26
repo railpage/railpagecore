@@ -17,6 +17,7 @@
 	use DateTime;
 	use DateInterval;
 	use DateTimeZone;
+	use Zend_Db_Expr;
 	
 	/**
 	 * Competitions
@@ -335,4 +336,44 @@
 			return $this->db->fetchAll($query);
 
 		}
+		
+		/**
+		 * Get the next photo competition
+		 * @since Version 3.10.0
+		 * @param \Railpage\Gallery\Competition $Comp
+		 * @return \Railpage\Gallery\Competition
+		 */
+		
+		public function getNextCompetition(Competition $Comp) {
+			
+			$query = "SELECT id 
+				FROM image_competition
+				WHERE submissions_date_close >= NOW()
+				AND id != ?
+				ORDER BY submissions_date_open DESC
+				LIMIT 0, 1";
+			
+			$params = [
+				$Comp->id,
+			];
+			
+			$id = $this->db->fetchOne($query, $params); 
+			
+			try {
+				$Comp = new Competition($id); 
+			} catch (Exception $e) {
+				// throw it away
+			}
+			
+			if ($Comp instanceof Competition && filter_var($Comp->id, FILTER_VALIDATE_INT)) {
+				return $Comp; 
+			} 
+			
+			$NextComp = $this->autoPopulateNextComp(); 
+			$NextComp->setAuthor(UserFactory::CreateUser(User::SYSTEM_USER_ID))->commit(); 
+			
+			return $NextComp;
+			
+		}
+		
 	}

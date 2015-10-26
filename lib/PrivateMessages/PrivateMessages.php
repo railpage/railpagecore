@@ -14,6 +14,8 @@
 	use Exception;
 	use Railpage\Users\User;
 	use Railpage\Users\Factory as UserFactory;
+	use Railpage\Users\Utility\UrlUtility as UserUrlUtility;
+	use Railpage\Users\Utility\AvatarUtility;
 	 
 	define("PM_INBOX", "inbox"); 
 	define("PM_OUTBOX", "outbox"); 
@@ -253,6 +255,46 @@
 			}
 			
 			return $return;
+		}
+		
+		/**
+		 * Find the most concacted members between the supplied user
+		 * @since Version 3.10.0
+		 * @return array
+		 */
+		
+		public function getMostContactedUsers() {
+			
+			if (!$this->Author instanceof User) {
+				throw new Exception(__NAMESPACE__ . "::Author has not been set"); 
+			}
+			
+			$query = "SELECT COUNT(*) AS num_msgs, pm.privmsgs_to_userid AS user_id, u.username, u.user_avatar
+						FROM nuke_bbprivmsgs AS pm 
+							LEFT JOIN nuke_users AS u ON u.user_id = pm.privmsgs_to_userid 
+						WHERE pm.privmsgs_from_userid = ? 
+						AND pm.privmsgs_to_userid != ? 
+						AND pm.privmsgs_date >= UNIX_TIMESTAMP(DATE_SUB(NOW(), INTERVAL 90 day)) 
+						GROUP BY pm.privmsgs_to_userid 
+						ORDER BY COUNT(*) DESC 
+						LIMIT 0, 10";
+			
+			$params = [ $this->Author->id, $this->Author->id ] ;
+			
+			$users = $this->db->fetchAll($query, $params); 
+			
+			foreach ($users as $key => $row) {
+				$users[$key]['url'] = UserUrlUtility::MakeURLs($row)->getURLs(); 
+				$users[$key]['avatar'] = array(
+					"tiny" => AvatarUtility::Format($row['user_avatar'], 25, 25),
+					"thumb" => AvatarUtility::Format($row['user_avatar'], 50, 50),
+					"small" => AvatarUtility::Format($row['user_avatar'], 75, 75),
+					"medium" => AvatarUtility::Format($row['user_avatar'], 100, 100)
+				);
+			}
+			
+			return $users;
+			
 		}
 	}
 	

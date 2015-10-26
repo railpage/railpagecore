@@ -38,7 +38,7 @@
 		/**
 		 * Status: Approved
 		 * @since Version 3.9
-		 * @const STATUS_APPROVED
+		 * @const int STATUS_APPROVED
 		 */
 		
 		const STATUS_APPROVED = 1;
@@ -46,10 +46,18 @@
 		/**
 		 * Status: Unapproved
 		 * @since Version 3.9
-		 * @const STATUS_UNAPPROVED
+		 * @const int STATUS_UNAPPROVED
 		 */
 		
 		const STATUS_UNAPPROVED = 0;
+		
+		/**
+		 * Maximum title length
+		 * since Version 3.10.0
+		 * @const int MAX_TITLE_LENGTH
+		 */
+		
+		const MAX_TITLE_LENGTH = 58;
 		
 		/**
 		 * Story ID
@@ -681,6 +689,12 @@
 			
 			$this->makeJSON();
 			
+			/**
+			 * Update our URLs
+			 */
+			
+			$this->makeURLs();
+			
 			return true;
 		}
 		
@@ -732,6 +746,14 @@
 			
 			if (!filter_var($this->approved)) {
 				$this->approved = self::STATUS_UNAPPROVED;
+			}
+			
+			if (strlen($this->title) > self::MAX_TITLE_LENGTH) {
+				throw new Exception("Article title is too long - " . self::MAX_TITLE_LENGTH . " characters allowed (you wrote " . strlen($this->title) . ")"); 
+			}
+			
+			if (is_null($this->source)) {
+				$this->source = "";
 			}
 			
 			/**
@@ -796,11 +818,7 @@
 					
 					"url" => $this->url instanceof Url ? $this->url->getURLs() : array("url" => sprintf("/news/article-%d", $this->id)),
 					
-					"topic" => array(
-						"id" => $this->Topic->id,
-						"title" => $this->Topic->title,
-						"url" => $this->Topic->url instanceof Url ? $this->Topic->url->getURLs() : array("url" => sprintf("/news/topic-%d", $this->Topic->id)),
-					),
+					"topic" => $this->Topic->getArray(),
 					
 					"thread" => array(
 						"id" => $this->topic_id,
@@ -865,7 +883,9 @@
 		 */
 		
 		public function getArray() {
-			return json_decode($this->getJSON(), true); 
+			//return json_decode($this->getJSON(), true); 
+			
+			return json_decode($this->makeJSON(), true);
 		}
 		
 		/**

@@ -226,12 +226,11 @@
 		 * Ban user
 		 * @since Version 3.2
 		 * @version 3.2
-		 * @param int $user_id
-		 * @param string $reason
-		 * @param int $expiry
-		 * @param int $admin_user_id
+		 * @param int|boolean $user_id
+		 * @param string|boolean $reason
+		 * @param int|boolean $expiry
+		 * @param int|boolean $admin_user_id
 		 * @return boolean
-		 * @todo use new \Railpage\Notifications\Notification for emailing out ban notice
 		 */
 		
 		public function banUser($user_id = false, $reason = false, $expiry = false, $admin_user_id = false) {
@@ -341,10 +340,10 @@
 		 * Ban IP address
 		 * @since Version 3.2
 		 * @version 3.2
-		 * @param string $ip_addr
-		 * @param string $reason
-		 * @param int $expiry
-		 * @param int $admin_user_id
+		 * @param string|bool $ip_addr
+		 * @param string|bool $reason
+		 * @param int|bool $expiry
+		 * @param int|bool $admin_user_id
 		 * @return boolean
 		 */
 		
@@ -403,9 +402,8 @@
 		 * @since Version 3.2
 		 * @version 3.2
 		 * @param int $ban_id
-		 * @param int $user_id
+		 * @param int|bool $user_id
 		 * @return boolean
-		 * @todo use new \Railpage\Notifications\Notification for emailing out unbanned notices
 		 */
 		
 		public function unBanUser($ban_id, $user_id = false) {
@@ -504,7 +502,7 @@
 		 * Unban IP address
 		 * @since Version 3.5
 		 * @param int $ban_id
-		 * @param string $ip_addr
+		 * @param string|bool $ip_addr
 		 * @return boolean
 		 */
 		
@@ -559,9 +557,10 @@
 		/**
 		 * Edit a ban 
 		 * @since Version 3.4
-		 * @param int $ban_id
-		 * @param int $expire
+		 * @param int|bool $ban_id
+		 * @param int|bool $expire
 		 * @return bool
+		 * @throws \Exception if no ban ID is given
 		 */
 		
 		public function editUserBan($ban_id = false, $expire = false) {
@@ -599,7 +598,7 @@
 				"id = ?" => $ban_id
 			);
 			
-			$cachekey_user = sprintf(self::CACHE_KEY_USER, $user_id);
+			$cachekey_user = sprintf(self::CACHE_KEY_USER, $ban_id);
 			$this->Memcached->save($cachekey_user, false, $expire); 
 			
 			$this->db->update("bancontrol", $data, $where);
@@ -609,8 +608,10 @@
 		/**
 		 * Lookup IP address
 		 * @since Version 3.6
-		 * @param string $ip
+		 * @param string|bool $ip
 		 * @param boolean $activeOnly
+		 * @throws \Exception if no IP address is given
+		 * @returns bool
 		 */
 		
 		public function lookupIP($ip = false, $activeOnly = true) {
@@ -626,8 +627,10 @@
 		/**
 		 * Lookup IP user
 		 * @since Version 3.6
-		 * @param string $user_id
+		 * @param string|bool $user_id
 		 * @param boolean $activeOnly
+		 * @returns bool
+		 * @throws \Exception if no user ID is given
 		 */
 		
 		public function lookupUser($user_id = false, $activeOnly = true) {
@@ -643,8 +646,10 @@
 		/**
 		 * Check if an IP address is banned
 		 * @since Version 3.9
-		 * @param string $ipaddr
-		 * @return boolean
+		 * @param string|bool $ipaddr
+		 * @param bool $force Force a check
+		 * @return bool
+		 * @throws \Exception if no IP address is given
 		 */
 		
 		public function isIPBanned($ipaddr = false, $force = false) {

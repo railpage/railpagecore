@@ -319,6 +319,7 @@
 		 */
 		
 		public function commit() {
+			
 			$this->validate(); 
 			
 			$data = array(
@@ -685,11 +686,22 @@
 		
 		public function getWinningPhoto() {
 			if ($this->VotingDateClose < new DateTime) {
+				
+				/*
 				$query = "SELECT * FROM image_competition_submissions WHERE image_id = (
 					SELECT image_id FROM image_competition_votes WHERE competition_id = ? ORDER BY COUNT(image_id) DESC LIMIT 1
 				)";
+				*/
+				
+				$query = "SELECT COUNT(*) AS votes, s.* FROM image_competition_submissions AS s 
+					LEFT JOIN image_competition_votes AS v ON s.image_id = v.image_id AND v.competition_id = ? 
+					WHERE s.competition_id = ?
+					GROUP BY v.image_id 
+					ORDER BY COUNT(*) 
+					DESC LIMIT 0, 1";
 				
 				$where = array(
+					$this->id,
 					$this->id
 				);
 				
@@ -1000,6 +1012,47 @@
 		}
 		
 		/**
+		 * Get all the photos in this competition and sort them by vote counts
+		 * @since Version 3.10.0
+		 * #return array
+		 */
+		
+		public function getPhotosAsArrayByVotes() {
+			
+			$photos = $this->getPhotosAsArray(); 
+			
+			/**
+			 * Add the votes to each photo
+			 */
+			
+			$votes = array(); 
+			
+			foreach ($this->getVotes() as $vote) {
+				$votes[$vote['image_id']][] = $vote; 
+			}
+			
+			foreach ($photos as $key => $photo) {
+				$photos[$key]['votes'] = $votes[$photo['image']['id']]; 
+				$photos[$key]['votes_percentage'] = round((count($photos[$key]['votes']) / $total_votes) * 100);
+			}
+			
+			/**
+			 * Sort the photos by votes
+			 */
+			
+			usort($photos, function($a, $b) {
+				if (count($a['votes']) == count($b['votes'])) {
+					return 0;
+				}
+				
+				return (count($a['votes']) > count($b['votes'])) ? -1 : 1;
+			});
+			
+			return $photos; 
+
+		}
+		
+		/**
 		 * Release votes cast for a given image
 		 * @since Version 3.9.1
 		 * @param \Railpage\Images\Image $Image
@@ -1071,6 +1124,12 @@
 				if (isset($this->meta['winnernotified']) && $this->meta['winnernotified'] === true) {
 					return $this;
 				}
+				
+				/**
+				 * Create a news article
+				 */
+				
+				Utility\CompetitionUtility::createNewsArticle($this); 
 				
 				/**
 				 * Create a site message

@@ -893,7 +893,7 @@
 			
 			$stale = new DateTime("6 months ago");
 			
-			$Post = new Post($this->lastpost); 
+			$Post = ForumsFactory::CreatePost($this->lastpost); 
 			
 			return $Post->Date < $stale; 
 		}

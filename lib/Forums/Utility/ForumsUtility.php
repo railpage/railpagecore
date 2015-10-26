@@ -36,6 +36,14 @@
 		
 		public static function updateUserThreadView(Thread $Thread, $User = false) {
 			
+			// Prevent browser prefetch/preview from creating a timestamp
+			if (
+				(isset($_SERVER["HTTP_X_PURPOSE"]) && (strtolower($_SERVER["HTTP_X_PURPOSE"]) == "preview")) || 
+				(isset($_SERVER["HTTP_X_MOZ"]) && (strtolower($_SERVER["HTTP_X_MOZ"]) == "prefetch")) 
+			) {
+				return;
+			}
+			
 			if (!$User instanceof User || $User->id == 0 || $User->guest) {
 				return;
 			}

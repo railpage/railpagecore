@@ -91,8 +91,8 @@
 		/**
 		 * Constructor
 		 * @since Version 3.9
-		 * @param int $id The ID of the photo from the provider
-		 * @param object $Provider The provider of the image, using the \Railpage\Railcams\Provider interface
+		 * @param int|bool $id The ID of the photo from the provider
+		 * @param object|bool $Provider The provider of the image, using the \Railpage\Railcams\Provider interface
 		 */
 		
 		public function __construct($id = false, $Provider = false) {
@@ -117,9 +117,10 @@
 		 * @since Version 3.9
 		 * @param object $Provider The provider of the image, using the \Railpage\Railcams\Provider interface
 		 * @return \Railpage\Railcams\Photo
+		 * @throws \Exception if the $Provider does not implement \Railapge\Railcams\ProviderInterface
 		 */
 		
-		public function setProvider($Provider = false) {
+		public function setProvider($Provider) {
 			$implements = class_implements($Provider);
 			
 			if (in_array("Railpage\\Railcams\\ProviderInterface", $implements)) {
@@ -319,6 +320,8 @@
 		 * Tag a locomotive in this photo
 		 * @since Version 3.9
 		 * @return \Railpage\Railcams\Photo
+		 * @throws \Exception if the supplied $Loco object does not have an ID
+		 * @param \Railpage\Locos\Locomotive $Loco
 		 */
 		
 		public function tagLoco(Locomotive $Loco) {
@@ -441,6 +444,7 @@
 			foreach ($locos as $row) {
 				yield new Locomotive($row['loco_id']);
 			}
+
 		}
 	}
 	

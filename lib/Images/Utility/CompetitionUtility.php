@@ -19,6 +19,11 @@
 	use Railpage\Notifications\Notification;
 	use DateTime;
 	use Railpage\AppCore;
+	use Railpage\News\Article as NewsArticle;
+	use Railpage\News\Topic as NewsTopic;
+	use Railpage\News\News;
+	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
 	
 	class CompetitionUtility {
 		
@@ -77,6 +82,75 @@
 		}
 		
 		/**
+		 * Create a news article announcing the end of the competition
+		 * @since Version 3.10.0
+		 * @param \Railpage\Images\Competition $Comp
+		 * @return void
+		 */
+		
+		public static function createNewsArticle(Competition $Comp) {
+		
+			// incomplete
+			//return; 
+			
+			/**
+			 * Get the winning photo
+			 */
+			
+			$Photo = $Comp->getWinningPhoto();
+			
+			/**
+			 * Get all photos by vote count
+			 */
+			
+			$photos = $Comp->getPhotosAsArrayByVotes(); 
+			
+			/**
+			 * Get the next competition
+			 */
+			
+			$Competitions = new Competitions;
+			$NextComp = $Competitions->getNextCompetition($Comp); 
+			
+			/**
+			 * Curate the news article
+			 */
+			
+			$Topic = new NewsTopic(5); // Topic in the Railpage category
+			$Article = new NewsArticle;
+			
+			$Article->title = $Comp->title . " photo comp";
+			$Article->lead = sprintf("Congratulations to [url=%s]%s[/url] who has won the [url=%s]%s[/url] photo competition with %d votes.", $Photo->Author->url->url, $Photo->Author->username, $Comp->url->url, $Comp->title, count($photos[0]['votes'])); 
+			$Article->firstline = $Article->lead;
+			$Article->featured_image = $Photo->Image->sizes['medium']['source'];
+			
+			$Article->paragraphs  = $Article->lead . "\n\n" . sprintf("In second place was [url=%s]%s[/url] with %d votes, and in third place was [url=%s]%s[/url] with %d votes.\n\n", $photos[1]['author']['url']['url'], $photos[1]['author']['username'], count($photos[1]['votes']), $photos[2]['author']['url']['url'], $photos[2]['author']['username'], count($photos[2]['votes'])); 
+			
+			if (self::isSubmissionWindowOpen($NextComp) && !self::isVotingWindowOpen($NextComp)) {
+				$Article->paragraphs .= sprintf("Submissions for our next competition, [url=%s]%s[/url], are open until %s.", $NextComp->url->url, $NextComp->title, $NextComp->SubmissionsDateClose->Format("F jS")); 
+			} elseif (!self::isSubmissionWindowOpen($NextComp) && !self::isVotingWindowOpen($NextComp)) {
+				$Article->paragraphs .= sprintf("Submissions for our next competition, [url=%s]%s[/url], are open from %s until %s.", $NextComp->url->url, $NextComp->title, $NextComp->SubmissionsDateOpen->Format("F jS"), $NextComp->SubmissionsDateClose->Format("F jS")); 
+			}
+			
+			if ($NextComp->VotingDateOpen > new DateTime) {
+				
+				if (!preg_match('/[\p{P}]$/u', $NextComp->theme)) {
+					$NextComp->theme .= ".";
+				}
+				
+				$Article->paragraphs .= sprintf("Entry to the competition is open to all registered users. If you're not a registered user, you can [url=/registration]sign up now[/url]!\n\nThe next theme is: [i]%s[/i]\n\n", $NextComp->theme); 
+				
+			}
+			
+			$Article->setAuthor(UserFactory::CreateUser(User::SYSTEM_USER_ID))
+					->setStaff(UserFactory::CreateUser(User::SYSTEM_USER_ID))
+					->setTopic($Topic);
+			
+			$Article->commit()->Approve(User::SYSTEM_USER_ID);
+			
+		}
+		
+		/**
 		 * Create a site message targeted to the competition winner
 		 * @since Version 3.9.1
 		 * @param \Railpage\Images\Competition $Comp
@@ -84,6 +158,7 @@
 		 */
 		
 		public static function createSiteNotificationForWinner(Competition $Comp) {
+			
 			$Photo = $Comp->getWinningPhoto();
 			
 			if (!$SiteMessage = (new SiteMessages)->getMessageForObject($Comp)) {
@@ -94,6 +169,7 @@
 				$SiteMessage->Object = $Comp;
 				$SiteMessage->targetUser($Photo->Author)->commit(); 
 			}
+			
 		}
 		
 		/**

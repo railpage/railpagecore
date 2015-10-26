@@ -18,6 +18,7 @@
 	use Railpage\Module;
 	use Railpage\Debug;
 	use Railpage\ContentUtility;
+	use Railpage\Formatting\ColourUtility;
 	
 	// Make sure the parent class is loaded
 		
@@ -407,6 +408,23 @@
 			foreach ($this->db->fetchAll($query, array($this->id, $items_per_page)) as $row) {
 				yield new Article($row['sid']);
 			}
+		}
+		
+		/**
+		 * Get this news topic as an array
+		 * @since Version 3.10.0
+		 * @return array
+		 */
+		
+		public function getArray() {
+			
+			return array(
+				"id" => $this->id,
+				"title" => $this->title,
+				"url" => $this->url->getURLs(),
+				"highlight" => ColourUtility::String2Hex($this->title),
+			);
+			
 		}
 	}
 	

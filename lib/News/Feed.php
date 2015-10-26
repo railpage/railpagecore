@@ -25,6 +25,30 @@
 	class Feed extends News {
 		
 		/**
+		 * Filter: Unread articles only
+		 * @since Version 3.10.0
+		 * @const string FILTER_UNREAD
+		 */
+		
+		const FILTER_UNREAD = "unread";
+		
+		/**
+		 * Filter: Read articles only
+		 * @since Version 3.10.0
+		 * @const string FILTER_READ
+		 */
+		
+		const FILTER_READ = "read";
+		
+		/**
+		 * Additional filters to apply to this feed
+		 * @since Version 3.10.0
+		 * @var array $filters
+		 */
+		 
+		private $filters;
+		
+		/**
 		 * Keywords to filter on
 		 * @since Version 3.8.7
 		 * @var array $filter_words
@@ -71,6 +95,42 @@
 				$query->where("topic_id", "IN", $this->filter_topics);
 			}
 			
+			/**
+			 * Unread items only
+			 */
+			
+			if ($this->hasFilter(self::FILTER_UNREAD) !== false) {
+				$article_ids = [];
+				
+				foreach (Utility\ArticleUtility::getReadArticlesForUser($this->User) as $row) {
+					$article_ids[] = intval($row['story_id']); 
+				}
+				
+				if (count($article_ids)) {
+					$query->where("story_id", "NOT IN", $article_ids); 
+				}
+			}
+			
+			/**
+			 * Read items only
+			 */
+			
+			if ($this->hasFilter(self::FILTER_READ) !== false) {
+				$article_ids = [];
+				
+				foreach (Utility\ArticleUtility::getReadArticlesForUser($this->User) as $row) {
+					$article_ids[] = $row['story_id']; 
+				}
+				
+				if (count($article_ids)) {
+					$query->where("story_id", "IN", $article_ids);
+				}
+			}
+			
+			/**
+			 * Matching keywords
+			 */
+			
 			if (!empty($this->filter_words) && count($this->filter_words) && !(count($this->filter_words) === 1 && $this->filter_words[0] == "")) {
 				$words = implode(" | ", $this->filter_words);
 				
@@ -88,9 +148,59 @@
 		}
 		
 		/**
+		 * Add a filter to the search
+		 * @since Version 3.10.0
+		 * @param string $filter
+		 * @return \Railpage\News\Feed
+		 */
+		 
+		public function addFilter($filter) {
+			
+			if (!$this->hasFilter($filter)) {
+				$this->filters[] = $filter; 
+			}
+			
+			if ($filter == self::FILTER_UNREAD) {
+				$key = $this->hasFilter(self::FILTER_READ);
+				
+				if ($key !== false) {
+					unset($this->filters[$key]);
+				}
+			}
+			
+			if ($filter == self::FILTER_READ) {
+				$key = $this->hasFilter(self::FILTER_UNREAD);
+				
+				if ($key !== false) {
+					unset($this->filters[$key]);
+				}
+			}
+			
+			return $this;
+			
+		}
+		
+		/**
+		 * Check if we have a particular filter set
+		 * @since Version 3.10.0
+		 * @param string $filter
+		 * @return boolean
+		 */
+		
+		public function hasFilter($filter) {
+			
+			if (!in_array($filter, $this->filters)) {
+				return false;
+			}
+			
+			return array_search($filter, $this->filters);
+			
+		}
+		
+		/**
 		 * Get filters from the database
 		 * @since Version 3.8.7
-		 * @return $this
+		 * @return \Railpage\News\Feed
 		 */
 		
 		public function getFilters() {
@@ -115,7 +225,7 @@
 		/**
 		 * Set filters for this user
 		 * @since Version 3.8.7
-		 * @return $this
+		 * @return \Railpage\News\Feed
 		 */
 		
 		public function setFilters() {

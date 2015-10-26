@@ -13,6 +13,7 @@
 	use Memcached as MemcachedBlahBlah;
 	use Redis;
 	use Railpage\Users\User;
+	use Railpage\Images\Image;
 	use Foolz\SphinxQL\SphinxQL;
 	use Foolz\SphinxQL\Connection;
 	use SphinxClient;
@@ -58,7 +59,8 @@
 		
 		/**
 		 * Database object
-		 * @var object $db An instance of ZendDB or sql_db representing a database connection. sql_db is being phased out and replaced with ZendDB v1
+		 * @var object $db An instance of ZendDB or sql_db representing a database connection.
+		 *                 sql_db is being phased out and replaced with ZendDB v1
 		 * @since Version 3.7
 		 */
 		
@@ -67,7 +69,9 @@
 		/**
 		 * Memcache object
 		 * @since Version 3.7.5
-		 * @var object $memcache A memcache object providing get/set/update helpers. This is being phased out in favour of getMemcacheObject(), setMemcacheObject() and deleteMemcacheObject()
+		 * @var object $memcache A memcache object providing get/set/update helpers.
+		 *                       This is being phased out in favour of getMemcacheObject(),
+		 *                       setMemcacheObject() and deleteMemcacheObject()
 		 */
 		
 		public $memcache;
@@ -83,7 +87,7 @@
 		/**
 		 * Destroy
 		 * @since Version 3.7.5
-		 * @var boolean $destory
+		 * @var boolean $destroy
 		 */
 		
 		public $destroy = false;
@@ -99,9 +103,10 @@
 		/**
 		 * Image object
 		 * 
-		 * Surpases $this->photo_id and $this->Asset
+		 * Surpasses $this->photo_id and $this->Asset
 		 * @since Version 3.8.7
-		 * @var \Railpage\Images\Image $Image An instance of \Railpage\Images\Image representing the cover photo or dominant image of this object
+		 * @var \Railpage\Images\Image $Image An instance of \Railpage\Images\Image representing the
+		 *                                    cover photo or dominant image of this object
 		 */
 		
 		public $Image;
@@ -137,6 +142,22 @@
 		 */
 		
 		public $User;
+
+		/**
+		 * Guest user object - an instance of User that represents a guest/viewer
+		 * @since Version 3.10.0
+		 * @var \Railpage\Users\User $Guest
+		 */
+
+		public $Guest;
+
+		/**
+		 * User object representing a recipient (eg: in an email, or a private message)
+		 * @since Version 3.10.0
+		 * @var \Railpage\Users\User $Recipient
+		 */
+
+		public $Recipient;
 		
 		/**
 		 * Staff object
@@ -159,6 +180,7 @@
 		 * @since Version 3.7
 		 * @global object $ZendDB
 		 * @global object $ZendDB_ReadOnly
+		 * @throws \Exception if a database object cannot be created
 		 */
 		
 		public function __construct() {
@@ -306,7 +328,7 @@
 		 * Cache an object in Memcache
 		 * @deprecated 3.8.7 Calls to this method should be replaced with setMemcacheObject() with the same parameter(s)
 		 * @since Version 3.7.5
-		 * @param string $key Memcache's unique identifier for this data
+		 * @param string|boolean $key Memcache's unique identifier for this data
 		 * @param mixed $value The data we wish to store in Memcache
 		 * @param int $exp A unix timestamp representing the expiry point. Leave as 0 for never expire
 		 * @return boolean
@@ -324,7 +346,7 @@
 		 * Fetch an object from Memcache
 		 * @deprecated 3.8.7 Calls to this method should be replaced with getMemcacheObject() with the same parameter(s)
 		 * @since Version 3.7.5
-		 * @param string $key
+		 * @param string|boolean $key
 		 * @return mixed
 		 */
 		
@@ -340,7 +362,7 @@
 		 * Remove an object from Memcache
 		 * @deprecated 3.8.7 Calls to this method should be replaced with deleteMemcacheObject() with the same parameter(s)
 		 * @since Version 3.7.5
-		 * @param string $key
+		 * @param string|boolean $key
 		 * @return mixed
 		 */
 		
@@ -356,7 +378,7 @@
 		 * Remove an object from Memcache
 		 * @deprecated 3.8.7 Calls to this method should be replaced with deleteMemcacheObject() with the same parameter(s)
 		 * @since Version 3.7.5
-		 * @param string $key
+		 * @param string|boolean $key
 		 * @return mixed
 		 */
 		
@@ -549,7 +571,7 @@
 		 
 		
 		/**
-		 * Get our Redist instance
+		 * Get our Redis instance
 		 * @since Version 3.9.1
 		 * @return \Doctrine\Common\Cache\RedisCache
 		 * @param boolean $reload Don't fetch the cache handler from the registry and instead create a new instance
@@ -656,7 +678,7 @@
 		/**
 		 * Create a URL slug if the create_slug() function doesn't exist
 		 * @since Version 3.9.1
-		 * @param string $url
+		 * @param string $string
 		 * @return string
 		 */
 		
@@ -688,6 +710,7 @@
 		 * Set the database connection for this object
 		 * @since Version 3.9.1
 		 * @return $this
+		 * @throws \Exception if no database connection is provided
 		 */
 		
 		public function setDatabaseConnection($cn = false) {
@@ -704,6 +727,7 @@
 		 * Set the read-only database connection for this object
 		 * @since Version 3.9.1
 		 * @return $this
+		 * @throws \Exception if no database connection is provided
 		 */
 		
 		public function setDatabaseReadOnlyConnection($cn = false) {
