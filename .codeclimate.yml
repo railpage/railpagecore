@@ -1,8 +1,14 @@
-languages:
-  Ruby: false
-  JavaScript: true
-  PHP: true
-  Python: false
+---
+engines:
+  phpcodesniffer:
+    enabled: true
+  phpmd:
+    enabled: true
+ratings:
+  paths:
+  - "**.php"
+  - "**.module"
+  - "**.inc"
 exclude_paths:
- - lib/vendor/**/*
- - tests/**/*
+- lib/vendor/**/*
+- tests/**/*
