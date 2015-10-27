@@ -513,6 +513,16 @@
 				return $prop;
 			}
 			
+			/**
+			 * Look in the etc directory for the core code
+			 */
+			
+			$prop = dirname(__DIR__) . DS . "etc" . DS . "templates" . DS . $template. ".tpl";
+			
+			if (file_exists($prop)) {
+				return $prop;
+			}
+			
 			throw new Exception("Cannot find a template file matching " . $template . " in any directories");
 		}
 		
