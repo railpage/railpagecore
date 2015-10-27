@@ -546,13 +546,13 @@
 			 * Try to get the weather forecast from openweathermap
 			 */
 			
-			try {
+			//try {
 				$response = $this->GuzzleClient->get($url);
-			} catch (\GuzzleHTTP\RequestException $e) {
-				return false;
-			} catch (Exception $e) {
-				return false;
-			}
+			//} catch (\GuzzleHTTP\RequestException $e) {
+			//	return false;
+			//} catch (Exception $e) {
+			//	return false;
+			//}
 				
 			if ($response->getStatusCode() == 200) {
 				$forecast = json_decode($response->getBody(), true);

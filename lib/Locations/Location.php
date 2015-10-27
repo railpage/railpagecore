@@ -816,7 +816,7 @@
 		/**
 		 * Check if user has "liked" this location
 		 * @since Version 3.0 
-		 * @param int $user_id
+		 * @param int|bool $user_id
 		 * @return boolean
 		 */
 		
@@ -843,7 +843,7 @@
 		/**
 		 * Recommend a location
 		 * @since Version 3.0 
-		 * @param int $user_id
+		 * @param int|bool $user_id
 		 * @return boolean
 		 */
 		 

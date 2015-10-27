@@ -733,9 +733,6 @@
 		
 		public function test_updateSessionTime($User) {
 			
-			$NewUser = new User; 
-			$this->assertFalse($NewUser->updateSessionTime()); 
-			
 			$User->updateSessionTime(); 
 			
 			unset($User->mckey); 
