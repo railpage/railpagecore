@@ -189,7 +189,7 @@
 			$user_id = $this->db->fetchOne($query, $params);
 			
 			if (filter_var($user_id, FILTER_VALIDATE_INT)) {
-				return new User($user_id);
+				return Factory::CreateUser($user_id);
 			}
 			
 			throw new Exception(sprintf("No user found with an email address of %s and logging in via %s", $email, $provider));

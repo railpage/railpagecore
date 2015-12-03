@@ -314,4 +314,27 @@
 			return $user_id; 
 			
 		}
+		
+		/**
+		 * Get the rank for this user
+		 * @since Version 3.10.0
+		 * @param \Railpage\Users\User $User
+		 * @return array
+		 */
+		
+		public static function getUserRank(User $User) {
+			
+			$query = "SELECT COALESCE(c.rank_id, r.rank_id) AS rank_id, COALESCE(c.rank_title, r.rank_title) AS rank_title
+						FROM nuke_users AS u 
+						LEFT JOIN nuke_bbranks AS c ON c.rank_id = u.user_rank
+						LEFT JOIN nuke_bbranks AS r ON r.rank_min != -1 AND r.rank_min > (SELECT COUNT(*) FROM nuke_bbposts AS p WHERE p.poster_id = u.user_id) 
+						WHERE u.user_id = ?
+                        LIMIT 1";
+			
+			$Database = AppCore::GetDatabase(); 
+			
+			return $Database->fetchRow($query, $User->id); 
+			
+		}
+		
 	}

@@ -1047,6 +1047,15 @@
              */
 
             $data = Utility\UserUtility::normaliseAvatarPath($data);
+            
+            // Fix a dodgy timezone
+            if ($data['timezone'] == "America/Kentucky") {
+                $data['timezone'] = "America/Kentucky/Louisville";
+                
+                $update['timezone'] = $data['timezone'];
+
+                $this->db->update("nuke_users", $update, array( "user_id = ?" => $this->id ));
+            }
 
             // Backwards compatibility
             if ($data['timezone']) {
@@ -3143,7 +3152,8 @@
 
             if (!is_array($this->meta)) {
                 $this->meta = json_decode($this->meta, true);
-                if (json_last_error() != JSON_ERROR_NONE) {
+            
+                if (!is_array($this->meta)) {
                     $this->meta = array();
                 }
             }

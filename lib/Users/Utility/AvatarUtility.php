@@ -167,7 +167,7 @@
 				}
 			}
 			
-			$Memcached->save($mckey, $user_avatar, strtotime("+1 month"));
+			$Memcached->save($mckey, $user_avatar, 0);
 			
 			Debug::logEvent(__METHOD__, $timer) ;
 			
