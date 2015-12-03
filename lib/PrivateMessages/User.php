@@ -23,7 +23,7 @@
 		 * @var object $User
 		 */
 		
-		private $User;
+		public $User;
 		
 		/**
 		 * Constructor

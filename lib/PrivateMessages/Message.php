@@ -400,6 +400,17 @@
 			 */
 			
 			if ($this->Recipient->notify_privmsg == 1) {
+                
+                /**
+                 * Send a push notification
+                 */
+                
+                $Push = new Notification;
+                $Push->transport = Notifications::TRANSPORT_PUSH;
+                $Push->subject = sprintf("[Private Messages] New message from %s", $this->Author->username);
+                $Push->body = sprintf("%s has sent you a new private message in the conversation titled \"%s\"", $this->Author->username, $this->subject); 
+                $Push->setActionUrl(sprintf("/messages/conversation/%d", $this->id))->addRecipient($this->Recipient->id, $this->Recipient->username, $this->Recipient->username);
+                $Push->commit()->dispatch(); 
 				
 				/**
 				 * Template settings

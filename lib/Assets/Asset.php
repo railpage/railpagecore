@@ -11,6 +11,14 @@
      */
 
     namespace Railpage\Assets;
+	
+	use Railpage\AppCore;
+	use Railpage\Url;
+	use Railpage\Users\User;
+	use Railpage\Users\Factory as UserFactory;
+	use Exception;
+	use DateTime;
+	
 
     /**
      * Asset class
@@ -183,7 +191,7 @@
                     $this->instances[$row['asset_link_id']] = $row;
 
                     $this->Date = new DateTime($row['date']);
-                    $this->User = new User($row['user_id']);
+                    $this->User = UserFactory::CreateUser($row['user_id']);
                 }
             }
         }

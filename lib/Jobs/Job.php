@@ -166,13 +166,13 @@
 			if (!$result = $this->Memcached->fetch($this->mckey)) {			
 				$result = $this->db->fetchRow($query, $this->id);
 				
-				$this->Memcached->save($this->mckey, $result); 
+				$this->Memcached->save($this->mckey, $result, strtotime("+ week")); 
 			}
 			
 			$this->title 		= $result['job_title'];
 			$this->desc 		= $result['job_description'];
 			$this->expiry 		= $this->expiry = new DateTime($result['job_expiry']);
-			$this->expiry_until	= $result['job_expiry_until'];
+			$this->expiry_until	= (new DateTime)->diff($this->expiry)->format("%a");
 			$this->salary		= $result['job_salary'];
 			$this->special_cond	= $result['job_special_cond'];
 			$this->duration		= $result['job_duration']; 

@@ -454,12 +454,15 @@
 		
 		/**
 		 * Get weather forecast for this place
+         * @todo Fix the weather forecasting, since openweathermap.org has started requiring API keys
 		 * @since Version 3.8.7
 		 * @return array
 		 * @param int $days
 		 */
 		
 		public function getWeatherForecast($days = 14) {
+            
+            return false;
 			
 			$weather = false;
 			

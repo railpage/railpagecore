@@ -298,7 +298,7 @@
 				}
 				
 				$minify = implode(",", $minify);
-				$tags[] = sprintf("<link href='%s/m.php?f=%s&v=%s' rel='stylesheet' media='all'>", RP_WEB_ROOT, $minify, RP_VERSION);
+				$tags[] = sprintf("<link href='//static.railpage.com.au/m.php?f=%s&v=%s' rel='stylesheet' media='all'>", $minify, RP_VERSION);
 			}
 			
 			return implode("\n\t", $tags); 
