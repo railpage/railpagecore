@@ -125,12 +125,13 @@
 		 */
 		
 		public static function getArticleJSON($article_id) {
+			
 			$key = sprintf("json:railpage.news.article=%d", $article_id);
 			
 			$Memcached = AppCore::getMemcached(); 
 			
 			if (!$json = $Memcached->fetch($key)) {
-				$Article = new Article($article_id);
+				$Article = Factory::CreateArticle($article_id);
 				
 				if (empty($Article->getParagraphs()) && !empty($Article->source)) {
 					$Article->url->url = $Article->source;
@@ -138,7 +139,7 @@
 				
 				$json = $Article->makeJSON();
 				
-				$Memcached->save($key, $json);
+				$Memcached->save($key, $json, 0);
 				
 			}
 			
@@ -150,6 +151,7 @@
 			}
 			
 			return $json;
+			
 		}
 		
 		/**

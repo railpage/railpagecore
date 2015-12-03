@@ -12,6 +12,7 @@
 	
 	use DateTime;
 	use Exception;
+	use Railpage\AppCore;
 		
 	/**
 	 * Find a news article from its URL slug
@@ -26,13 +27,15 @@
 		 */
 		
 		public function __construct($slug) {
-			global $ZendDB, $ZendDB_ReadOnly;
+			
+			$Database = AppCore::GetDatabase(); 
+			$Cache = AppCore::GetMemcached(); 
 			
 			$mckey = "railpage:news.article_slug=" . $slug;
 			
 			$loaded = false;
 			
-			if ($story_id = getMemcacheObject($mckey)) {
+			if ($story_id = $Cache->fetch($mckey)) {
 				try {
 					parent::__construct($story_id);
 					$loaded = true;
@@ -46,10 +49,10 @@
 			 */
 			
 			if (!$loaded) {
-				$story_id = $ZendDB_ReadOnly->fetchOne("SELECT sid FROM nuke_stories WHERE slug = ?", $slug); 
+				$story_id = $Database->fetchOne("SELECT sid FROM nuke_stories WHERE slug = ?", $slug); 
 				
 				if (filter_var($story_id, FILTER_VALIDATE_INT)) {
-					setMemcacheObject($mckey, $story_id, strtotime("+6 months"));
+					$Cache->save($mckey, $story_id, strtotime("+6 months"));
 					
 					parent::__construct($story_id); 
 				} else {

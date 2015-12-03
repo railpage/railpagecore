@@ -41,6 +41,14 @@
 		const FILTER_READ = "read";
 		
 		/**
+		 * Filter: Articles published in the last 30 days
+		 * @since Version 3.10.0
+		 * @const string FILTER_LAST_30_DAYS
+		 */
+		
+		const FILTER_LAST_30_DAYS = "age:30days";
+		
+		/**
 		 * Additional filters to apply to this feed
 		 * @since Version 3.10.0
 		 * @var array $filters
@@ -136,6 +144,14 @@
 				
 				$query->match("story_text", $words)->option("ranker", "matchany");
 			}
+            
+            /**
+             * Age: newer than 30 days
+             */
+            
+            if ($this->hasFilter(self::FILTER_LAST_30_DAYS) !== false) {
+                $query->where("story_time_unix", "BETWEEN", array(strtotime("30 days ago"), time())); 
+            }
 				
 			$matches = $query->execute();
 			
