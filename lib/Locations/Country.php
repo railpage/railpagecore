@@ -22,7 +22,16 @@
      * Country
      * @since Version 3.8.7
      */
+    
     class Country extends Locations {
+		
+		/**
+		 * Registry/Redis/Memcached cache identifier
+		 * @since Version 3.10.0
+		 * @const string CACHE_KEY
+		 */
+		
+		const CACHE_KEY = "railpage.country=%s";
 
         /**
          * Country name
@@ -150,21 +159,25 @@
         private function loadFromCache() {
 
             $mckey = sprintf("railpage:locations.country=%s", strtoupper($this->code));
+            
+            #printArray($mckey);die;
 
-            if (!$row = $this->Memcached->fetch($mckey)) {
+            if (!$row = $this->Memcached->fetch($mckey) && !$row = $this->Redis->fetch($mckey)) {
 
                 $query = "SELECT *, X(point) AS centroid_lat, Y(point) AS centroid_lon,
 					X(bb_southwest) AS bb_southwest_lat, Y(bb_southwest) AS bb_southwest_lon,
 					X(bb_northeast) AS bb_northeast_lat, Y(bb_northeast) AS bb_northeast_lon
 				 FROM geoplace 
-				 WHERE country_name = ? 
+				 WHERE country_code = ? 
 					AND region_code IS NULL 
-					AND neighbourhood IS NULL";
+					AND neighbourhood IS NULL
+                    LIMIT 0, 1";
 
                 $row = $this->db->fetchRow($query, strtoupper($this->code));
 
                 if (is_array($row)) {
-                    $this->Memcached->save($mckey, $row, 0);
+                    $this->Memcached->save($mckey, $row, strtotime("+1 year"));
+                    $this->Redis->save($mckey, $row, strtotime("+1 year"));
                 }
 
             }
