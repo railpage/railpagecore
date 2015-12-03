@@ -106,7 +106,7 @@
 				$query = "SELECT * FROM loco_gauge WHERE gauge_id = ?";
 				
 				$row = $this->db->fetchRow($query, $this->id); 
-				$this->Memcached->save($this->mckey, $row); 
+				$this->Memcached->save($this->mckey, $row, strtotime("+1 year")); 
 			}
 			
 			$this->name = $row['gauge_name'];

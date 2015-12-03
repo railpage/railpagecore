@@ -466,7 +466,8 @@
 			 * Fetch a nicely formatted gauge
 			 */
 			
-			$this->setGauge(new Gauge($row['loco_gauge_id'])); 
+			#$this->setGauge(new Gauge($row['loco_gauge_id'])); 
+			$this->setGauge(Factory::Create("Gauge", $row['loco_gauge_id'])); 
 			
 			/**
 			 * If an asset ID exists and is greater than 0, create the asset object

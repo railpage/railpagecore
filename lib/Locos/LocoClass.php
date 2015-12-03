@@ -24,6 +24,7 @@
 	use Railpage\Debug;
 	use Railpage\Registry;
 	use Railpage\AppCore;
+    use Railpage\Sightings\Sightings;
 		
 	/**
 	 * Locomotive class (eg X class or 92 class) class
@@ -1062,7 +1063,7 @@
 		 */
 		
 		public function sightings() {
-			$Sightings = new \Railpage\Sightings\Base;
+			$Sightings = new Sightings;
 			
 			return $Sightings->findLocoClass($this->id); 
 		}
