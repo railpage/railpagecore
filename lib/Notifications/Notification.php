@@ -147,6 +147,25 @@
 				$this->addRecipient($row['user_id'], $row['name'], $row['destination']);
 			}
 		}
+        
+        /**
+         * Set the call-to-action URL
+         * @since Version 3.10.0
+         * @param string $url
+         * @return \Railpage\Notifications\Notification
+         */
+        
+        public function setActionUrl($url) {
+            
+            if (!is_array($this->meta)) {
+                $this->meta = []; 
+            }
+            
+            $this->meta['url'] = $url;
+            
+            return $this;
+            
+        }
 		
 		/**
 		 * Validate this notification
@@ -180,6 +199,10 @@
 			if (empty($this->body) && is_null($this->body) && empty($this->subject) && is_null($this->subject)) {
 				throw new Exception("No body or subject has been set");
 			}
+            
+            if ($this->status != Notifications::STATUS_QUEUED) {
+                $this->DateSent = new DateTime;
+            }
 			
 			return true;
 		}
@@ -268,6 +291,10 @@
 				case Notifications::TRANSPORT_EMAIL : 
 					$Transport = new Transport\Email;
 					break;
+					
+				case Notifications::TRANSPORT_PUSH : 
+					$Transport = new Transport\Push;
+					break;
 			}
 			
 			/**
@@ -343,6 +370,14 @@
 			
 			if (isset($this->meta['decoration'])) {
 				$array['decoration'] = $this->meta['decoration'];
+			}
+			
+			if (isset($this->meta['headers'])) {
+				$array['headers'] = $this->meta['headers'];
+			}
+			
+			if (isset($this->meta['unsubscribe'])) {
+				$array['unsubscribe'] = $this->meta['unsubscribe'];
 			}
 			
 			if ($this->Author instanceof User) {
@@ -491,4 +526,20 @@
 		
 			return $recipients;
 		}
+        
+        /**
+         * Add a header to the notification
+         * @since Version 3.10.0
+         * @param string $name
+         * @param string $value
+         * @return \Railpage\Notifications\Notification
+         */
+        
+        public function addHeader($name, $value) {
+            
+            $this->meta['headers'][$name] = $value;
+            
+            return $this;
+            
+        }
 	}
