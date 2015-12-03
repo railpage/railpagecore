@@ -15,6 +15,9 @@
 			<directory>etc</directory>
 			<directory>smarty</directory>
 		</blacklist>
+		<whitelist processUncoveredFilesFromWhitelist="true">
+			<directory suffix=".php">lib</directory>
+		</whitelist>
 	</filter>
 	
 	<listeners>
