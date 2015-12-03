@@ -31,6 +31,14 @@
 	 */
 	
 	class Competition extends AppCore {
+        
+        /**
+         * Registry key
+         * @since Version 3.10.0
+         * @const CACHE_KEY
+         */
+        
+        const CACHE_KEY = "railpage:photo.comp=%d";
 		
 		/**
 		 * Competition ID
@@ -198,6 +206,8 @@
 			$this->notifySubmissionsOpen();
 			$this->notifyVotingOpen(); 
 			$this->notifyWinner(); 
+			
+			Utility\CompetitionUtility::createNewsArticle_SubmissionsOpen($this);
 			
 			return $this;
 		}
@@ -414,7 +424,7 @@
 			$Photo = new stdClass;
 			$Photo->id = $image['id'];
 			$Photo->Author = UserFactory::CreateUser($image['user_id']);
-			$Photo->Image = new Image($image['image_id']);
+			$Photo->Image = ImageFactory::CreateImage($image['image_id']);
 			$Photo->DateAdded = new DateTime($image['date_added']);
 			$Photo->Meta = json_decode($image['meta'], true);
 			
@@ -627,6 +637,8 @@
 			
 			$this->db->insert("image_competition_submissions", $data);
 			
+            Utility\PushNotify::photoAwaitingApproval($this, $Image, $User); 
+            
 			return $this->db->lastInsertId();
 		}
 		
@@ -1119,17 +1131,18 @@
 		 */
 		
 		private function notifyWinner() {
-			if ($Photo = $this->getWinningPhoto()) {
 				
-				if (isset($this->meta['winnernotified']) && $this->meta['winnernotified'] === true) {
-					return $this;
-				}
+            if (isset($this->meta['winnernotified']) && $this->meta['winnernotified'] === true) {
+                return $this;
+            }
+                
+			if ($Photo = $this->getWinningPhoto()) {
 				
 				/**
 				 * Create a news article
 				 */
 				
-				Utility\CompetitionUtility::createNewsArticle($this); 
+				Utility\CompetitionUtility::createNewsArticle_Winner($this); 
 				
 				/**
 				 * Create a site message

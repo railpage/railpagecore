@@ -82,16 +82,61 @@
 		}
 		
 		/**
+		 * Create a news article announcing the commencement of submissions
+		 * @since Version 3.10.0
+		 * @param \Railpage\Images\Competition $Comp
+		 * @return void
+		 */
+		
+		public static function createNewsArticle_SubmissionsOpen(Competition $Comp) {
+			
+			if (isset($Comp->meta['news.submissions.open']) && $Comp->meta['news.submissions.open'] == "created") {
+				return;
+			}
+			
+			if (!self::isSubmissionWindowOpen($Comp)) {
+				return;
+			}
+			
+			$theme = $Comp->theme;
+			if (!preg_match('/[\p{P}]$/u', $theme)) {
+				$theme .= ".";
+			}
+			
+			/**
+			 * Curate the news article
+			 */
+			
+			$Topic = new NewsTopic(5); // Topic in the Railpage category
+			$Article = new NewsArticle;
+			
+			$Article->title = "Submissions open for " . $Comp->title . " photo comp";
+			$Article->featured_image = "https://static.railpage.com.au/i/photocomphero.jpg";
+			
+			$Article->lead = sprintf("Submissions are now open for our monthly international photo competition. The theme for this competition is <em>%s</em>", $theme); 
+			$Article->firstline = $Article->lead;
+			$Article->paragraphs  = $Article->lead . "\n\n" . sprintf("Entries are open until %s. Please take a moment to read the competition rules before submitting your entry, and please note the photo must belong to you.\n\n", $Comp->SubmissionsDateClose->format("F jS"));
+			$Article->paragraphs .= sprintf("To enter the competition your photo must appear on Flickr or SmugMug, and you must have a valid Railpage user account. For further details, view the submissions thus far or to enter your own photo please head to the <a href='%s'>%s</a> competition page.", $Comp->url->url, $Comp->title); 
+			
+			$Article->setAuthor(UserFactory::CreateUser(User::SYSTEM_USER_ID))
+					->setStaff(UserFactory::CreateUser(User::SYSTEM_USER_ID))
+					->setTopic($Topic);
+			
+			$Article->commit();
+			
+			$Comp->meta['news.submissions.open'] = "created";
+			$Comp->commit();
+			
+		}
+		
+		/**
 		 * Create a news article announcing the end of the competition
 		 * @since Version 3.10.0
 		 * @param \Railpage\Images\Competition $Comp
 		 * @return void
 		 */
 		
-		public static function createNewsArticle(Competition $Comp) {
-		
-			// incomplete
-			//return; 
+		public static function createNewsArticle_Winner(Competition $Comp) {
 			
 			/**
 			 * Get the winning photo
@@ -146,7 +191,8 @@
 					->setStaff(UserFactory::CreateUser(User::SYSTEM_USER_ID))
 					->setTopic($Topic);
 			
-			$Article->commit()->Approve(User::SYSTEM_USER_ID);
+			$Article->commit();
+			$Article->Approve(User::SYSTEM_USER_ID);
 			
 		}
 		
@@ -285,6 +331,7 @@
 		 * @param \Railpage\Images\Competition $Comp
 		 * @param array $notificationOptions
 		 * @return void
+         * @todo Finish push notifications
 		 */
 		
 		public static function sendNotification(Competition $Comp, $notificationOptions) {
@@ -314,12 +361,16 @@
 				
 				$Notification = new Notification;
 				$Notification->subject = $notificationOptions['subject'];
+                $Push = new Notification;
+                $Push->subject = $Notification->subject;
+                $Push->transport = Notifications::TRANSPORT_PUSH;
 				
 				/**
 				 * Add recipients and decoration
 				 */
 				
-				$Notification = self::notificationDoRecipients($Notification, $Comp, $notificationOptions); 
+				$Notification = self::notificationDoRecipients($Notification, $Comp, $notificationOptions);
+				$Push = self::notificationDoRecipients($Push, $Comp, $notificationOptions);  
 								
 				/**
 				 * Set our email body

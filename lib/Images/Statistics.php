@@ -166,8 +166,8 @@
 		
 		private function getCameraModelsByAuthor() {
 			
-			$query = 'SELECT CONCAT(camera_make, " ", camera_model) AS `key`, COUNT(*) AS number FROM (
-				SELECT DISTINCT e.camera_id, i.user_id, c.make AS camera_make, c.model AS camera_model
+			$query = 'SELECT CONCAT(camera_make, " ", camera_model) AS `key`, COUNT(*) AS number, href FROM (
+				SELECT DISTINCT e.camera_id, i.user_id, c.make AS camera_make, c.model AS camera_model, CONCAT("/photos/cameras/", c.url_slug) AS href
 				FROM image_exif AS e 
 				LEFT JOIN image_camera AS c ON c.id = e.camera_id
 				LEFT JOIN image AS i on e.image_id = i.id 
@@ -195,8 +195,8 @@
 		
 		private function getCameraModelsByPhotos() {
 			
-			$query = 'SELECT CONCAT(camera_make, " ", camera_model) AS `key`, COUNT(*) AS number FROM (
-				SELECT e.camera_id, i.user_id, c.make AS camera_make, c.model AS camera_model
+			$query = 'SELECT CONCAT(camera_make, " ", camera_model) AS `key`, COUNT(*) AS number, href FROM (
+				SELECT e.camera_id, i.user_id, c.make AS camera_make, c.model AS camera_model, CONCAT("/photos/cameras/", c.url_slug) AS href
 				FROM image_exif AS e 
 				LEFT JOIN image_camera AS c ON c.id = e.camera_id
 				LEFT JOIN image AS i on e.image_id = i.id 
@@ -264,4 +264,38 @@
 			return $return;
 			
 		}
+        
+        /**
+         * Get stats for a given camera
+         * @since Version 3.10.0
+         * @param \Railpage\Images\Camera $Camera
+         * @return array
+         */
+        
+        public function getStatsForCamera(Camera $Camera) {
+            
+            $query = "(SELECT 'Photos on Railpage' AS label, COUNT(*) AS value FROM image_exif WHERE camera_id = ?)
+                UNION (SELECT 'Most used lens' AS label, l.model AS value FROM image_exif AS e LEFT JOIN image_lens AS l ON e.lens_id = l.id WHERE e.camera_id = ? GROUP BY e.lens_id ORDER BY COUNT(*) DESC LIMIT 1)
+                UNION (SELECT 'Screener\'s Choice' AS label, COUNT(*) AS value FROM image_flags AS f LEFT JOIN image_exif AS e ON e.image_id = f.image_id WHERE e.camera_id = ? AND f.screened_pick = 1)";
+            
+            $params[] = $Camera->id;
+            $params[] = $Camera->id;
+            $params[] = $Camera->id;
+            
+            $result = $this->db->fetchAll($query, $params); 
+            
+            foreach ($result as $key => $row) {
+                if ($row['value'] === 0) {
+                    unset($result[$key]); 
+                    continue;
+                }
+                
+                if (filter_var($row['value'], FILTER_VALIDATE_INT)) {
+                    $result[$key]['value'] = number_format($row['value'], 0);
+                }
+            }
+            
+            return $result;
+            
+        }
 	}

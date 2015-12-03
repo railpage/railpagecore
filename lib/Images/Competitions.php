@@ -110,7 +110,10 @@
 					$query .= " WHERE status = ? AND voting_date_close < ? ORDER BY voting_date_close DESC";
 					$where[] = $status;
 					$where[] = (new DateTime)->format("Y-m-d H:i:s");
-				}
+				} elseif ($status == self::STATUS_FUTURE) {
+					$query .= " WHERE submissions_date_open > ? ORDER BY submissions_date_open ASC";
+					$where[] = (new DateTime)->format("Y-m-d H:i:s");
+                }
 			}
 			
 			$comps = array(); 
@@ -375,5 +378,17 @@
 			return $NextComp;
 			
 		}
+        
+        /**
+         * Get a list of image screeners
+         * @since Version 3.10.0
+         * @return array
+         */
+        
+        public static function getScreeners() {
+            
+            
+            
+        }
 		
 	}

@@ -249,6 +249,7 @@
 			$query = "SELECT u.user_id, u.username, CONCAT('/user/', u.user_id) AS url, COUNT(*) AS num
 				FROM image_flags AS f
 				LEFT JOIN nuke_users AS u ON f.screened_by = u.user_id 
+                WHERE u.user_id NOT IN (2)
 				GROUP BY f.screened_by
 				ORDER BY u.username";
 			
@@ -338,5 +339,65 @@
 			return $return;
 			
 		}
+        
+        /**
+         * Get the last review date by a given user
+         * @since Version 3.10.0
+         * @param \Railpage\Users\User $User
+         * @return \DateTime|false Returns false if guest, or no review date found
+         */
+        
+        public static function getLastReviewDate(User $User) {
+            
+            if (!filter_var($User->id, FILTER_VALIDATE_INT)) {
+                return false;
+            }
+            
+            $Database = AppCore::GetDatabase(); 
+            
+            $query = "SELECT screened_on FROM image_flags WHERE screened_by = ? ORDER BY screened_on DESC LIMIT 0, 1";
+            
+            $date = $Database->fetchOne($query, $User->id); 
+            
+            if (!$date) {
+                
+                $maintainers = [ 
+                    11437,
+                    13666
+                ];
+                
+                if (in_array($User->id, $maintainers)) {
+                    return new DateTime("jan 1 1970"); 
+                }
+                
+                return false;
+            }
+            
+            return new DateTime($date); 
+            
+        }
 		
+		/**
+		 * Get screeners who haven't done any work in the last seven days
+		 * @since Version 3.10.0
+		 * @return array
+		 */
+		
+		public static function getLazyScreeners() {
+			
+			$Database = AppCore::GetDatabase(); 
+			
+			$query = "SELECT * FROM ( 
+                SELECT u.user_id, u.username, u.user_email, MAX(s.screened_on) AS last_screen 
+                FROM image_flags AS s 
+                LEFT JOIN nuke_users AS u ON u.user_id = s.screened_by 
+                GROUP BY u.user_id 
+            ) AS screeners 
+            WHERE user_id NOT IN (2) 
+            AND last_screen < DATE_SUB(NOW(), INTERVAL 7 DAY)";
+			
+			return $Database->fetchAll($query); 
+			
+		}
+        
 	}

@@ -147,5 +147,21 @@
 		public function __toString() {
 			return $this->sizes['largest']['source'];
 		}
+        
+        /**
+         * Static function to make using this class easier/lazier
+         * @since Version 3.10.0
+         * @param double $lat
+         * @param double $lon
+         * @return string
+         */
+        
+        public static function Image($lat, $lon) {
+            
+            $MapImage = new MapImage($lat, $lon);
+            return $MapImage->__toString(); 
+            
+        }
+        
 	}
 	

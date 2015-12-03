@@ -23,6 +23,10 @@
 			
 			$Url = new RealUrl(sprintf("/photos/%d", $image_id));
 			$Url->favourite = sprintf("%s?mode=image.favourite", $Url->url);
+            
+            if ($Url->canonical == "http://" . $Url->url) {
+                $Url->canonical = sprintf("http://railpage.com.au%s", $Url->url);
+            }
 			
 			return $Url;
 			
