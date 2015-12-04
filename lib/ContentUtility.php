@@ -321,6 +321,11 @@
 		 */
 		
 		public static function unparse_url($parsed_url) { 
+        
+            if (is_array($parsed_url['query'])) {
+                $parsed_url['query'] = implode("&", $parsed_url['query']); 
+            }
+            
 			$scheme   = isset($parsed_url['scheme']) ? $parsed_url['scheme'] . '://' : ''; 
 			$host     = isset($parsed_url['host']) ? $parsed_url['host'] : ''; 
 			$port     = isset($parsed_url['port']) ? ':' . $parsed_url['port'] : ''; 
