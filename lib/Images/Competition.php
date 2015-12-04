@@ -225,6 +225,7 @@
 			$this->url->edit = sprintf("/gallery?mode=competitions.new&id=%d", $this->id);
 			$this->url->pending = sprintf("/gallery?mode=competition.pendingphotos&id=%d", $this->id);
 			$this->url->suggestsubject = sprintf("/gallery?mode=competition.nextsubject&id=%d", $this->id);
+            $this->url->tied = sprintf("/gallery?mode=competition.tied&id=%d", $this->id);
 			
 			/**
 			 * Get the UTM email campaign link
@@ -697,42 +698,63 @@
 		 */
 		
 		public function getWinningPhoto() {
-			if ($this->VotingDateClose < new DateTime) {
+            
+			if ($this->VotingDateClose >= new DateTime) {
+                return false;
+            }
 				
-				/*
-				$query = "SELECT * FROM image_competition_submissions WHERE image_id = (
-					SELECT image_id FROM image_competition_votes WHERE competition_id = ? ORDER BY COUNT(image_id) DESC LIMIT 1
-				)";
-				*/
-				
-				$query = "SELECT COUNT(*) AS votes, s.* FROM image_competition_submissions AS s 
-					LEFT JOIN image_competition_votes AS v ON s.image_id = v.image_id AND v.competition_id = ? 
-					WHERE s.competition_id = ?
-					GROUP BY v.image_id 
-					ORDER BY COUNT(*) 
-					DESC LIMIT 0, 1";
-				
-				$where = array(
-					$this->id,
-					$this->id
-				);
-				
-				$result = $this->db->fetchRow($query, $where);
-				
-				$photo = $this->getPhoto($result);
-				
-				if ($result['winner'] == "0") {
-					$data = [ "winner" => 1 ];
-					
-					$where = [ "id = ?" => $result['id'] ];
-					
-					$this->db->update("image_competition_submissions", $data, $where); 
-				}
-				
-				return $photo;
-			} else {
-				return false;
-			}
+            /*
+            $query = "SELECT * FROM image_competition_submissions WHERE image_id = (
+                SELECT image_id FROM image_competition_votes WHERE competition_id = ? ORDER BY COUNT(image_id) DESC LIMIT 1
+            )";
+            */
+            
+            $query = "SELECT COUNT(*) AS votes, s.* FROM image_competition_submissions AS s 
+                LEFT JOIN image_competition_votes AS v ON s.image_id = v.image_id AND v.competition_id = ? 
+                WHERE s.competition_id = ?
+                GROUP BY v.image_id 
+                ORDER BY COUNT(*) DESC";
+            
+            $where = array(
+                $this->id,
+                $this->id
+            );
+            
+            $votes = false;
+            
+            $result = $this->db->fetchAll($query, $where);
+            
+            /**
+             * Check for a tied competition
+             */
+            
+            foreach ($result as $key => $row) {
+                
+                if ($votes === false) {
+                    $votes = $row['votes']; 
+                    continue;
+                }
+                
+                if ($votes == $row['votes']) {
+                    Utility\CompetitionUtility::NotifyTied($this); 
+                    return false;
+                }
+                
+            }
+            
+            $result = $result[0]; 
+            
+            $photo = $this->getPhoto($result);
+            
+            if ($result['winner'] == "0") {
+                $data = [ "winner" => 1 ];
+                
+                $where = [ "id = ?" => $result['id'] ];
+                
+                $this->db->update("image_competition_submissions", $data, $where); 
+            }
+            
+            return $photo;
 		}
 		
 		/**

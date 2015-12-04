@@ -17,6 +17,7 @@
 	use Railpage\SiteMessages\SiteMessages;
 	use Railpage\SiteMessages\SiteMessage;
 	use Railpage\Notifications\Notification;
+    use Railpage\Notifications\Notifications;
 	use DateTime;
 	use Railpage\AppCore;
 	use Railpage\News\Article as NewsArticle;
@@ -475,4 +476,89 @@
 					
 			}
 		}
+        
+        /**
+         * Send out a notification to site admins to cast a deciding vote in the event of a tied competition
+         * @since Version 3.10.0
+         * @param \Railpage\Images\Competition $Comp
+         * @return void
+         */
+        
+        public static function NotifyTied(Competition $Comp) {
+            
+            if (isset($Comp->meta['notifytied']) && $Comp->meta['notifytied'] >= strtotime("-1 day")) {
+                return;
+            }
+            
+            $Comp->meta['notifytied'] = time(); 
+            $Comp->commit(); 
+            
+            $Smarty = AppCore::GetSmarty(); 
+            
+            // User who will cast the deciding vote
+            $Decider = UserFactory::CreateUser(45); 
+            
+            // Create the push notification
+            $Push = new Notification;
+            $Push->transport = Notifications::TRANSPORT_PUSH; 
+            $Push->subject = "Tied photo competition";
+            $Push->body = sprintf("The %s photo competition is tied. Cast a deciding vote ASAP.", $Comp->title); 
+            $Push->setActionUrl($Comp->url->tied)->addRecipient($Decider->id, $Decider->username, $Decider->username); 
+            $Push->commit()->dispatch(); 
+            
+            // Create an email notification as a backup
+            $Email = new Notification;
+            $Email->subject = "Tied competition: " . $Comp->title;
+            $Email->addRecipient($Decider->id, $Decider->username, $Decider->username); 
+            $tpl = $Smarty->ResolveTemplate("template.generic");
+				
+			$email = array(
+                "subject" => $Email->subject,
+                "subtitle" => "Photo competitions",
+                "body" => sprintf("<p>The <a href='%s'>%s</a>photo competition is tied and requires a deciding vote. <a href='%s'>Cast it ASAP</a>.</p>", $Comp->url->canonical, $Comp->title, $Comp->url->tied)
+            );
+            
+            $Smarty->Assign("email", $email);
+            
+            $Email->body = $Smarty->fetch($tpl);
+            
+            $Email->commit(); 
+            
+            return;
+            
+        }
+        
+        /**
+         * Get photos tied for first place
+         * @since Version 3.10.0
+         * @param \Railpage\Images\Competition $Comp
+         * @return array
+         */
+        
+        public static function getTiedPhotos(Competition $Comp) {
+            
+            $photos = $Comp->getPhotosAsArrayByVotes(); 
+            $votes = false;
+            $tied = [];
+            
+            foreach ($photos as $key => $photo) {
+                if ($votes === false) {
+                    $votes = count($photo['votes']); 
+                    $tied[] = $photo;
+                    continue;
+                }
+                
+                if (count($photo['votes']) === $votes) {
+                    $tied[] = $photo;
+                }
+                
+                if (count($photo['votes']) < $votes) {
+                    continue;
+                }
+                
+            }
+               
+            return $tied;
+            
+        }
 	}
