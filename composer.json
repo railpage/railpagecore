@@ -124,7 +124,7 @@
 		"smarty/smarty": "~3.1",
         "foolz/sphinxql-query-builder": "dev-master",
 		"nilportugues/sphinx-search": "dev-master",
-		"leg/simhash-php": "1.0-security",
+		"leg/simhash-php": "1.0",
 		"lusitanian/oauth": "~0.3"
 	},
 	"require-dev" : {
