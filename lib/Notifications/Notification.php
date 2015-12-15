@@ -437,6 +437,14 @@
 					);
 					
 					break;
+                    
+				case Notifications::TRANSPORT_PUSH :
+					$array['transport'] = array(
+						"id" => $this->transport,
+						"name" => "Push"
+					);
+					
+					break;
 			}
 			
 			return $array;

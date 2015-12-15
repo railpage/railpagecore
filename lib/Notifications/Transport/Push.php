@@ -120,8 +120,8 @@
         
         private function removeStaleSubscriptions($result, $subscriptions) {
             
-            printArray($subscriptions); 
-            printArray($result); 
+            #printArray($subscriptions); 
+            #printArray($result); 
             
             $unsub = [];
             
