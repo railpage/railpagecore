@@ -357,6 +357,16 @@
 				$this->db->insert("image_competition", $data);
 				$this->id = $this->db->lastInsertId(); 
 			}
+            
+            /**
+             * Clear the cache
+             */
+            
+            $regkey = sprintf(self::CACHE_KEY, $this->id);
+            $Redis = AppCore::GetRedis(); 
+            $Memcached = AppCore::GetMemcached(); 
+            $Redis->delete($regkey);
+            $Memcached->delete($regkey);
 			
 			/**
 			 * Check our themes and see if we need to mark this theme as used
@@ -425,7 +435,7 @@
 			$Photo = new stdClass;
 			$Photo->id = $image['id'];
 			$Photo->Author = UserFactory::CreateUser($image['user_id']);
-			$Photo->Image = ImageFactory::CreateImage($image['image_id']);
+			$Photo->Image = ImageFactory::CreateImage(isset($image['image_id']) ? $image['image_id'] : $image['id']);
 			$Photo->DateAdded = new DateTime($image['date_added']);
 			$Photo->Meta = json_decode($image['meta'], true);
 			
@@ -702,7 +712,58 @@
 			if ($this->VotingDateClose >= new DateTime) {
                 return false;
             }
-				
+            
+            $photos = $this->getPhotosAsArrayByVotes(); 
+            $num_votes = false;
+            $tied = []; 
+            
+            foreach ($photos as $key => $photo) {
+                if ($num_votes === false) {
+                    $num_votes = count($photo['votes']); 
+                    $tied[] = $photo;
+                    continue;
+                }
+                
+                if ($num_votes == count($photo['votes'])) {
+                    $tied[] = $photo; 
+                    continue;
+                }
+                
+                if (count($photo['votes']) < $num_votes) {
+                    continue;
+                }
+            }
+            
+            if (count($tied) > 1) {
+                Utility\CompetitionUtility::NotifyTied($this); 
+                return false;
+            }
+            
+            $tied[0]['image']['user_id'] = $tied[0]['author']['id'];
+		    
+            $result = $tied[0]['image']; 
+            
+            if ($result['winner'] == "0") {
+                $data = [ "winner" => 1 ];
+                
+                $where = [ "id = ?" => $result['id'] ];
+                
+                $this->db->update("image_competition_submissions", $data, $where); 
+            }
+            
+            $photo = $this->getPhoto($result);
+            
+            /*
+            global $User; 
+            if ($User->id == 45) {
+                #printArray($tied[0]);die;
+                return $photo;
+            }
+            */
+            
+            return $photo;
+            
+            
             /*
             $query = "SELECT * FROM image_competition_submissions WHERE image_id = (
                 SELECT image_id FROM image_competition_votes WHERE competition_id = ? ORDER BY COUNT(image_id) DESC LIMIT 1

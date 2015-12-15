@@ -134,10 +134,10 @@
             try {
 				$Competition = $Registry->get($regkey); 
 			} catch (Exception $e) {
-				if (!$Competition = $Redis->fetch($regkey)) {
+				#if (!$Competition = $Redis->fetch($regkey)) {
 					$Competition = new Competition($id); 
 					$Redis->save($regkey, $Competition, strtotime("+1 day"));
-				}
+				#}
 				
 				$Registry->set($regkey, $Competition); 
 			}

@@ -82,6 +82,14 @@
 		 */
 		
 		public static $sortdir = "DESC";
+        
+        /**
+         * Number of photos in either direction to return when looking for photo context
+         * @since Version 3.10.0
+         * @var int $num_context
+         */
+        
+        public static $num_context = 3;
 		
 		/**
 		 * Find photos that fit within the given object(s)
@@ -559,53 +567,59 @@
 				
 				if ($Image->DateCaptured instanceof DateTime) {
 				
-					$query = "(SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.captured <= ? AND image.id != ? ORDER BY image.captured DESC LIMIT 0, 3)
-								UNION (SELECT id, image.captured, title, description, meta FROM image WHERE id = ?)
-								UNION (SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.captured >= ? AND image.id != ? ORDER BY captured ASC LIMIT 0, 3)";
+					$query = "(SELECT image.id, image.provider, image.photo_id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.captured <= ? AND image.id != ? ORDER BY image.captured DESC LIMIT 0, ?)
+								UNION (SELECT id, image.provider, image.photo_id, image.captured, title, description, meta FROM image WHERE id = ?)
+								UNION (SELECT image.id, image.provider, image.photo_id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.captured >= ? AND image.id != ? ORDER BY captured ASC LIMIT 0, ?)";
 					
 					$params = [ 
 						$Image->DateCaptured->format("Y-m-d H:i:s"), 
 						$Image->id,
+                        self::$num_context,
 						$Image->id, 
 						$Image->DateCaptured->format("Y-m-d H:i:s"),
-						$Image->id
+						$Image->id,
+                        self::$num_context,
 					];
 					
 				} else {
 				
-					$query = "(SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.id <= ? AND image.id != ? ORDER BY image.captured DESC LIMIT 0, 3)
-								UNION (SELECT id, image.captured, title, description, meta FROM image WHERE id = ?)
-								UNION (SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.id >= ? AND image.id != ? ORDER BY captured ASC LIMIT 0, 3)";
+					$query = "(SELECT image.id, image.provider, image.photo_id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.id <= ? AND image.id != ? ORDER BY image.captured DESC LIMIT 0, ?)
+								UNION (SELECT id, image.provider, image.photo_id, image.captured, title, description, meta FROM image WHERE id = ?)
+								UNION (SELECT image.id, image.provider, image.photo_id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.id >= ? AND image.id != ? ORDER BY captured ASC LIMIT 0, ?)";
 					
 					$params = [ 
 						$Image->id, 
 						$Image->id,
+                        self::$num_context,
 						$Image->id, 
 						$Image->id,
-						$Image->id
+						$Image->id,
+                        self::$num_context,
 					];
 					
 				}
 				
 			} elseif ($Image->DateCaptured instanceof DateTime) {
 				
-				$query = "(SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE f.rejected IS NULL AND image.captured <= ? AND image.id != ? ORDER BY image.id DESC LIMIT 0, 6)
-							UNION (SELECT id, image.captured, title, description, meta FROM image WHERE id = ?)";
+				$query = "(SELECT image.id, image.provider, image.photo_id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE f.rejected IS NULL AND image.captured <= ? AND image.id != ? ORDER BY image.id DESC LIMIT 0, ?)
+							UNION (SELECT id, image.provider, image.photo_id, image.captured, title, description, meta FROM image WHERE id = ?)";
 				
 				$params = [ 
 					$Image->DateCaptured->format("Y-m-d H:i:s"), 
 					$Image->id,
+                    self::$num_context * 2,
 					$Image->id
 				];
 				
 			} elseif (!$Image->DateCaptured instanceof DateTime) {
 				
-				$query = "(SELECT image.id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE f.rejected IS NULL AND image.id <= ? AND image.id != ? ORDER BY image.id DESC LIMIT 0, 6)
-							UNION (SELECT id, image.captured, title, description, meta FROM image WHERE id = ?)";
+				$query = "(SELECT image.id, image.provider, image.photo_id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE f.rejected IS NULL AND image.id <= ? AND image.id != ? ORDER BY image.id DESC LIMIT 0, ?)
+							UNION (SELECT id, image.provider, image.photo_id, image.captured, title, description, meta FROM image WHERE id = ?)";
 				
 				$params = [ 
 					$Image->id, 
 					$Image->id,
+                    self::$num_context * 2,
 					$Image->id
 				];
 				
