@@ -170,6 +170,7 @@
 				LEFT JOIN nuke_topics AS t ON s.topic = t.topicid
 				LEFT JOIN nuke_users AS u ON s.user_id = u.user_id
 				WHERE s.approved = 0
+                AND s.queued = 0
 				ORDER BY s.time DESC";
 			
 			$return = array();

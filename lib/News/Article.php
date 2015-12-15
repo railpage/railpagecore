@@ -293,6 +293,14 @@
          */
         
         public $unique_id; 
+        
+        /**
+         * Is this article queued for drip feed publishing?
+         * @since Version 3.10.0
+         * @var boolean $queued
+         */
+         
+        public $queued = false;
 
         /**
          * Constructor
@@ -378,6 +386,7 @@
                 $this->paragraphs = $return['paragraphs'];
                 $this->source = $return['source'];
                 $this->unique_id = isset($return['unique_id']) ? $return['unique_id'] : md5($this->title);
+                $this->queued = isset($return['queued']) ? $return['queued'] : false;
 
                 // Match the first sentence
                 $line = explode("\n", $this->getLead());
@@ -453,7 +462,10 @@
 
             $this->url = new Url($this->makePermaLink($this->slug));
             $this->url->source = $this->source;
-            $this->url->reject = sprintf("/news/pending?task=reject&id=%d&queue=newqueue", $this->id);
+            $this->url->reject = sprintf("/news/pending?task=reject&id=%d", $this->id);
+            $this->url->publish = sprintf("/news/pending?task=approve&id=%d", $this->id);
+            $this->url->approve = sprintf("/news/pending?task=approve&id=%d", $this->id);
+            $this->url->queue = sprintf("/news/pending?task=queue&id=%d", $this->id);
             $this->url->edit = sprintf("/news?mode=article.edit&id=%d", $this->id);
             $this->fwlink = $this->url->short;
 
@@ -652,6 +664,7 @@
             $dataArray['slug'] = empty($this->slug) ? $this->createSlug() : $this->slug;
             $dataArray['topic'] = $this->Topic->id;
             $dataArray['unique_id'] = $this->unique_id;
+            $dataArray['queued'] = $this->queued;
 
             if ($this->featured_image !== false) {
                 $dataArray['featured_image'] = $this->featured_image;
@@ -749,6 +762,10 @@
 			if (empty($this->unique_id)) {
 				$this->unique_id = md5($this->title); 
 			}
+            
+            if (!is_bool($this->queued)) {
+                $this->queued = false;
+            }
 
             /**
              * Try to get the featured image from OpenGraph tags
@@ -809,6 +826,7 @@
                     "body"     => $this->getParagraphs(),
                     "image"    => $this->featured_image,
                     "approved" => $this->approved,
+                    "queued"   => $this->queued,
                     "source"   => $this->source,
 
                     "url"      => $this->url instanceof Url ? $this->url->getURLs() : array( "url" => sprintf("/news/article-%d", $this->id) ),
