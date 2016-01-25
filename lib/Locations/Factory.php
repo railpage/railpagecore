@@ -85,13 +85,18 @@
 			$Redis = AppCore::getRedis(); 
 			$Registry = Registry::getInstance();
 			
-			$regkey = sprintf("railpage:country=%s;region=%s", $country, $region); 
+			$key = sprintf("railpage:country=%s;region=%s", $country, $region); 
 			
 			try {
-				$Region = $Registry->get($regkey); 
+				$Region = $Registry->get($key); 
 			} catch (Exception $e) {
-				$Region = new Region($country, $region); 
-				$Registry->set($regkey, $Region); 
+                
+                if (!$Region = $Redis->fetch($key)) {
+    				$Region = new Region($country, $region); 
+                    $Redis->save($key, $Region, 0);
+                }
+                
+				$Registry->set($key, $Region); 
 			}
 			
 			return $Region;
@@ -112,13 +117,23 @@
 			$Redis = AppCore::getRedis(); 
 			$Registry = Registry::getInstance();
 			
-			$regkey = sprintf("railpage:country=%s", $code); 
+			$key = sprintf(Country::CACHE_KEY, strtolower($code)); 
 			
 			try {
-				$Country = $Registry->get($regkey); 
+				
+                $Country = $Registry->get($key); 
+                
 			} catch (Exception $e) {
+                
+                if ($Country = $Redis->fetch($key)) {
+                    $Registry->set($key, $Country); 
+                    return $Country;
+                }
+                
 				$Country = new Country($code); 
-				$Registry->set($regkey, $Country); 
+				$Registry->set($key, $Country); 
+                $Redis->save($key, $Country, 0);
+                
 			}
 			
 			return $Country;
