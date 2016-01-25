@@ -24,7 +24,9 @@
 			
 			$this->assertInternalType("array", $Place->getAddress());
 		}
-		
+
+		/*
+		 * //openweathermap now requires a subscription
 		public function testGetWeather() {
 			$lat = "-37.13009600";
 			$lon = "145.07711000";
@@ -35,5 +37,6 @@
 			$this->assertInternalType("array", $weather);
 			$this->assertCount(14, $weather);
 		}
+		*/
 	}
 	

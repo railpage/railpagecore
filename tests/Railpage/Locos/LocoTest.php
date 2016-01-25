@@ -11,7 +11,7 @@
 	use Railpage\Locos\WheelArrangement;
 	use Railpage\Locos\Gauge;
 	use Railpage\Locos\Status;
-	use Railpage\Locos\Liveries\Base as Liveries;
+	use Railpage\Locos\Liveries\Liveries;
 	use Railpage\Locos\Liveries\Livery;
 	use Railpage\Locos\Factory as LocosFactory;
 	use Railpage\Users\User;

@@ -108,8 +108,8 @@
 		
 		public function test_like_break_lookup($Location, $User) {
 			
-			$this->setExpectedException("InvalidArgumentException", "No user ID provided"); 
-			$Location->doesUserLike(); 
+			//$this->setExpectedException("InvalidArgumentException", "No user ID provided");
+			$this->assertFalse($Location->doesUserLike());
 			
 		}
 		

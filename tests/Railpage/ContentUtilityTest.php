@@ -28,7 +28,7 @@
 			$this->assertEquals("one week ago", ContentUtility::relativeTime(strtotime("7 days ago"))); 
 			$this->assertEquals("2 weeks ago", ContentUtility::relativeTime(strtotime("14 days ago"))); 
 			
-			$this->assertEquals("last month", ContentUtility::relativeTime(strtotime("1 month ago")));  
+			$this->assertEquals("last month", ContentUtility::relativeTime(strtotime("1 month ago")));
 			$this->assertEquals("2 months ago", ContentUtility::relativeTime(strtotime("2 months ago")));  
 			
 			$this->assertEquals("last year", ContentUtility::relativeTime(strtotime("12 months ago"))); 
