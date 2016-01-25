@@ -107,12 +107,12 @@
          *
          * @since Version 3.8.7
          *
-         * @param int $id
+         * @param int|bool $id
          *
          * @returns \Railpage\Warnings\Warning
          */
 
-        public function __construct($id) {
+        public function __construct($id = false) {
 
             parent::__construct();
 
