@@ -208,6 +208,7 @@
 			$this->notifyWinner(); 
 			
 			Utility\CompetitionUtility::createNewsArticle_SubmissionsOpen($this);
+			Utility\CompetitionUtility::createNewsArticle_VotingOpen($this);
 			
 			return $this;
 		}

@@ -46,6 +46,22 @@
 				if ($this->db->fetchOne($query, $Week->format("Y-m-d"))) {
 					$Week->add(new DateInterval("P7D"));
 				}
+				
+				if ($this->db->fetchOne($query, $Week->format("Y-m-d"))) {
+					$Week->add(new DateInterval("P7D"));
+				}
+				
+				if ($this->db->fetchOne($query, $Week->format("Y-m-d"))) {
+					$Week->add(new DateInterval("P7D"));
+				}
+				
+				if ($this->db->fetchOne($query, $Week->format("Y-m-d"))) {
+					$Week->add(new DateInterval("P7D"));
+				}
+				
+				if ($this->db->fetchOne($query, $Week->format("Y-m-d"))) {
+					$Week->add(new DateInterval("P7D"));
+				}
 			}
 			
 			if ($this->db->fetchOne($query, $Week->format("Y-m-d"))) {

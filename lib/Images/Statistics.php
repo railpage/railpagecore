@@ -15,6 +15,7 @@
 	use Railpage\AppCore;
 	use Railpage\Debug;
 	use Railpage\Url;
+	use Railpage\Users\Utility\UrlUtility as UserUrlUtility;
 	
 	class Statistics extends AppCore {
 		
@@ -57,6 +58,30 @@
 		 */
 		
 		const CHART_CAMERAS_NUMPHOTOS = "getCameraModelsByPhotos";
+		
+		/**
+		 * Hits: daily
+		 * @since Version 3.10.0
+		 * @const string HITS_DAILY
+		 */
+		
+		const HITS_DAILY = "daily";
+		
+		/**
+		 * Hits: weekly
+		 * @since Version 3.10.0
+		 * @const string HITS_WEEKLY
+		 */
+		
+		const HITS_WEEKLY = "weekly";
+		
+		/**
+		 * Hits: overall
+		 * @since Version 3.10.0
+		 * @const string HITS_OVERALL
+		 */
+		
+		const HITS_OVERALL = "overall";
 		
 		/**
 		 * Get the number of geotagged photos in each region
@@ -223,7 +248,7 @@
 		
 		private function getPhotosByFocalLength() {
 			
-			$query = "SELECT FLOOR(focal_length / 10) * 10 AS `key`, COUNT(*) AS `val` FROM image_exif WHERE focal_length > 10 GROUP BY `key`";
+			$query = "SELECT FLOOR(focal_length / 10) * 10 AS `key`, COUNT(*) AS `val` FROM image_exif WHERE focal_length > 10 AND focal_length <= 500 GROUP BY `key`";
 			
 			return $this->db->fetchAll($query); 
 			
@@ -298,4 +323,49 @@
             return $result;
             
         }
+		
+		/**
+		 * Get the top 5 photos viewed today/weekly/overall
+		 * @since Version 3.10.0
+		 * @param string $lookup
+		 * @param int $num
+		 * @return array
+		 */
+		
+		public function getMostViewedPhotos($lookup = self::HITS_WEEKLY, $num = 5) {
+			
+			$allowed = [ 
+				self::HITS_DAILY => "hits_today",
+				self::HITS_WEEKLY => "hits_weekly",
+				self::HITS_OVERALL => "hits_overall"
+			];
+			
+			if (!in_array($lookup, array_keys($allowed))) {
+				throw new InvalidArgumentException("Parameter supplied for lookup type is invalid"); 
+			}
+			
+			$query = "SELECT i.*,
+				u.username,
+				f.*
+				FROM image AS i
+				LEFT JOIN image_flags AS f ON f.image_id = i.id
+				LEFT JOIN nuke_users AS u ON i.user_id = u.user_id
+				ORDER BY " . $allowed[$lookup] . " DESC 
+				LIMIT 0, ?";
+			
+			$result = $this->db->fetchAll($query, $num); 
+			
+			foreach ($result as $key => $val) {
+				$result[$key]['meta'] = json_decode($val['meta'], true); 
+				$result[$key]['meta']['author']['url'] = UserUrlUtility::MakeURLs($val); 
+				$result[$key]['meta']['sizes'] = Images::normaliseSizes($result[$key]['meta']['sizes']); 
+				
+				if ($result[$key]['meta']['author']['url'] instanceof Url) {
+					$result[$key]['meta']['author']['url'] = $result[$key]['meta']['author']['url']->getURLs(); 
+				}
+			}
+			
+			return $result;
+			
+		}
 	}

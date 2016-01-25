@@ -28,11 +28,63 @@
 		
 		public static function CreateImage($id = false, $provider = false, $options = false) {
 			
+			$Redis = AppCore::GetRedis(); 
+			$Registry = Registry::GetInstance(); 
+				
+			$cachekey = sprintf("rp:v2;cache.image=%s;o=%s", $id, crc32(json_encode($options))); 
+			
 			if ($id && !$provider) {
+				
 				return new Image($id, $options); 
+				
+				try {
+					$Image = $Registry->get($cachekey); 
+				} catch (Exception $e) {
+					
+					if (!$Image = $Redis->fetch($cachekey)) {
+						
+						$Image = new Image($id, $options); 
+						
+						$Redis->save($cachekey, $Image, strtotime("+10 minutes")); 
+						
+					}
+					
+					$Registry->set($cachekey, $Image); 
+					
+				}
+				
+				return $Image;
 			}
 			
+			$cachekey .= sprintf(";p=%s", $provider); 
+			#$Registry = Registry::getInstance();
+			
+			#echo $cachekey;die;
+			
 			return (new Images)->findImage($provider, $id, $options);
+			
+			try {
+				$Image = $Registry->get($cachekey); 
+			} catch (Exception $e) {
+				
+				if ($Image = $Redis->fetch($cachekey) && $Image instanceof Image) {
+					$Registry->set($cachekey, $Image); 
+					return $Image;
+				}
+				
+				try {
+					$Images = new Images;
+					$Image = $Images->findImage($provider, $id, $options);
+					
+					$Redis->save($cachekey, $Image, strtotime("+10 minutes")); 
+					
+					$Registry->set($cachekey, $Image);
+				} catch (Exception $e) {
+					$Image = false;
+				}
+			}
+			
+			return $Image;
 			
 		}
 		
@@ -40,7 +92,7 @@
 		 * Return a new instance of Image from a data array
 		 * @since Version 3.9.1
 		 * @param array $data
-		 * @return \Rialpage\Images\Image
+		 * @return \Railpage\Images\Image
 		 */
 		 
 		public static function CreateImageFromArray($data) {
