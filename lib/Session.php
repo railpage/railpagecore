@@ -304,5 +304,42 @@
 		public function gc($maxlifetime) {
 			return true;
 		}
+        
+        /**
+         * Add a modal dialogue to our session, to display at the next page generation
+         * @since Version 3.10.0
+         * @param string $html
+         * @return \Railpage\Session
+         */
+        
+        public function modal($html) {
+            
+            if ($html instanceof DialogueModal) {
+                $html = $html->__toString(); 
+            }
+            
+            $_SESSION['modal'] = (string) $html;
+            
+            return $this;
+            
+        }
+        
+        /**
+         * Clear the modal dialogue set in the $_SESSION superglobal
+         * @since Version 3.10.0
+         * @return \Railpage\Session
+         */
+        
+        public function ClearGlobals() {
+               
+            unset($_SESSION['message']); 
+            unset($_SESSION['error']); 
+            unset($_SESSION['infomessage']);
+            unset($_SESSION['modal']); 
+            
+            return $this;
+            
+        }
+        
 	}
 	

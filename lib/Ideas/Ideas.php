@@ -64,6 +64,13 @@
 		const STATUS_UNDERCONSIDERATION = 5;
 		
 		/**
+		 * Status: Duplicate
+		 * @const STATUS_DUPLICATE
+		 */
+		
+		const STATUS_DUPLICATE = 6;
+		
+		/**
 		 * Constructor
 		 */
 		

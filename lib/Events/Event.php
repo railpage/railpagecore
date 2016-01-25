@@ -20,6 +20,8 @@
 	use DateTime;
 	use Exception;
 	use stdClass;
+	use Railpage\Images\Images;
+	
 	
 	/**
 	 * Event class
@@ -326,9 +328,10 @@
 		 * @return array
 		 * @param DateTime $Start DateTime instance representing the date to limit searches from 
 		 * @param DateTime $End DateTme instance representing the date to limit searches to
+		 * @param $status Only show dates with this status flag
 		 */
 		
-		public function getDates(DateTime $Start, DateTime $End = NULL) {
+		public function getDates(DateTime $Start, DateTime $End = NULL, $status = Events::STATUS_APPROVED) {
 			
 			if (RP_DEBUG) {
 				global $site_debug;
@@ -339,7 +342,7 @@
 			
 			$params = array(
 				$this->id,
-				Events::STATUS_APPROVED
+				$status
 			);
 			
 			if ($Start instanceof DateTime) {
@@ -422,17 +425,15 @@
 				"event_id = ?" => $this->id
 			);
 			
-			if ($this->db->delete("event_dates", $where)) {
-				$where = array(
-					"id = ?" => $this->id
-				);
-				
-				$this->db->delete("event", $where);
-				
-				return true;
-			}
+			$this->db->delete("event_dates", $where);
+			$where = array(
+				"id = ?" => $this->id
+			);
 			
-			return false;
+			$this->db->delete("event", $where);
+			
+			return true;
+				
 		}
 		
 		/**
@@ -469,6 +470,9 @@
 			$this->url = new Url(sprintf("%s/%s", $this->Module->url, $this->slug));
 			$this->url->edit = sprintf("%s?mode=event.edit&event_id=%d", $this->Module->url, $this->id);
 			$this->url->delete = sprintf("%s?mode=event.reject&event_id=%d", $this->Module->url, $this->id);
+			$this->url->reject = $this->url->delete;
+			$this->url->approve = sprintf("%s?mode=event.approve&event_id=%d", $this->Module->url, $this->id);
+			$this->url->publish = $this->url->approve; 
 			
 			if (isset($this->meta['website']) && !empty($this->meta['website'])) {
 				$this->url->website = $this->meta['website'];
@@ -549,6 +553,26 @@
 				return $this->meta['address'];
 				
 			}
+			
+		}
+		
+		/**
+		 * Get the cover photo for this event
+		 * @since Version 3.10.0
+		 * @return false|array
+		 */
+		
+		public function getCoverPhoto() {
+			
+			if (!isset($this->meta['coverphoto']) || empty($this->meta['coverphoto'])) {
+				return false;
+			}
+			
+			if ($CoverPhoto = (new Images)->getImageFromUrl($this->meta['coverphoto'], Images::OPT_NOPLACE)) {
+				return $CoverPhoto->getArray();
+			}
+			
+			return false;
 			
 		}
 	}

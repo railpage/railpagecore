@@ -98,7 +98,13 @@
 		public function getEntriesForToday($limit = false) {
 			
 			$Date = new DateTime;
+            
+            $cachekey = sprintf("railpage:chronicle.date=%s;limit=%d", $Date->getTimestamp(), $limit); 
 			
+            if ($result = $this->Memcached->Fetch($cachekey)) {
+                return $result;
+            }
+            
 			$query = "
 				SELECT * FROM (
 					" . $this->SubQuery_AllAreas . "
@@ -108,6 +114,8 @@
 			if (filter_var($limit, FILTER_VALIDATE_INT)) {
 				$query .= " LIMIT 0, " . $limit;
 			}
+            
+            $this->Memcached->save($cachekey, $result, strtotime("+24 hours"));
 			
 			return $this->db->fetchAll($query); 
 			

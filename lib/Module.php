@@ -12,6 +12,7 @@
     use DateTime;
     use Exception;
     use stdClass;
+    use Railpage\Users\User;
 
     if (!defined("RP_SITE_ROOT")) {
         define("RP_SITE_ROOT", "");
@@ -347,15 +348,47 @@
                 $this->db = $Registry->get("db");
             }
 
-            $query = "SELECT count(log_id) AS num, DATE_FORMAT(date, '%Y-%m-%d') AS date FROM log_useractivity WHERE module_id = ? GROUP BY DATE_FORMAT(date, '%Y-%m-%d')";
+            $query = "SELECT count(log_id) AS num, DATE_FORMAT(date, '%Y-%m-%d') AS date FROM log_useractivity WHERE module_id = ? AND date >= ? AND date <= ? GROUP BY DATE_FORMAT(date, '%Y-%m-%d')";
 
             $return = array();
+            $params = [
+                $this->id,
+                $DateFrom->Format("Y-m-d 00:00:00"),
+                $DateTo->Format("Y-m-d 23:59:59")
+            ];
 
-            foreach ($this->db->fetchAll($query, $this->id) as $row) {
+            foreach ($this->db->fetchAll($query, $params) as $row) {
                 $return[$row['date']] = $row['num'];
             }
 
             return $return;
+        }
+        
+        /**
+         * Record user activity against this module
+         * @since Version 3.10.0
+         * @param \Railpage\Users\User $User
+         * @param string $ip
+         * @param string $url
+         * @param string $pagetitle
+         * @return \Railpage\Module
+         */
+        
+        public function makeImpression(User $User, $ip, $url, $pagetitle) {
+            
+            $data = [
+                "user_id" => is_null($User->id) ? 0 : $User->id,
+                "ip" => $ip,
+                "module_id" => $this->id,
+                "url" => $url,
+                "pagetitle" => $pagetitle
+                
+            ];
+            
+            $this->db->insert("log_useractivity", $data);
+            
+            return $this;
+            
         }
     }
 	

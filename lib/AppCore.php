@@ -762,22 +762,31 @@
 				 */
 				
 				if (isset($Config->SMTP)) {
-					$transport = Swift_SmtpTransport::newInstance($Config->SMTP->host, $Config->SMTP->port, $Config->SMTP->TLS = true ? "tls" : NULL)
-						->setUsername($Config->SMTP->username)
-						->setPassword($Config->SMTP->password);
+					
+					$Redis = self::getRedis(); 
+					
+					if (!$mailStream = $Redis->fetch("railpage:logger.swiftmail")) {
+					
+						$transport = Swift_SmtpTransport::newInstance($Config->SMTP->host, $Config->SMTP->port, $Config->SMTP->TLS = true ? "tls" : NULL)
+							->setUsername($Config->SMTP->username)
+							->setPassword($Config->SMTP->password);
+							
+						$mailer = Swift_Mailer::newInstance($transport);
+						$mailer->registerPlugin(new Swift_Plugins_AntiFloodPlugin(100, 30));
 						
-					$mailer = Swift_Mailer::newInstance($transport);
-					$mailer->registerPlugin(new Swift_Plugins_AntiFloodPlugin(100, 30));
+						$message = Swift_Message::newInstance("[RP] Something went wrong!")
+							->setFrom(array("errorz@railpage.com.au" => "Failpage service"))
+							->setTo(array("michael@railpage.com.au" => "Michael Greenhill"))
+							->setBody("", "text/html");
+						
+						$htmlFormatter = new HtmlFormatter;
+						
+						$mailStream = new SwiftMailerHandler($mailer, $message, Logger::ERROR);
+						$mailStream->setFormatter($htmlFormatter);
+						
+						$Redis->save("railpage:logger.swiftmail", $mailStream); 
 					
-					$message = Swift_Message::newInstance("[RP] Something went wrong!")
-						->setFrom(array("errorz@railpage.com.au" => "Failpage service"))
-						->setTo(array("michael@railpage.com.au" => "Michael Greenhill"))
-						->setBody("", "text/html");
-					
-					$htmlFormatter = new HtmlFormatter;
-					
-					$mailStream = new SwiftMailerHandler($mailer, $message, Logger::ERROR);
-					$mailStream->setFormatter($htmlFormatter);
+					}
 					
 					$Log->pushHandler($mailStream);
 				}

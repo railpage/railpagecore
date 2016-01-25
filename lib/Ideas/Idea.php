@@ -91,6 +91,14 @@
 		public $redmine_id = 0;
 		
 		/**
+		 * Array of meta data
+		 * @since Version 3.10.0
+		 * @var array $meta
+		 */
+		
+		public $meta = [];
+		
+		/**
 		 * Author of this idea
 		 * @var \Railpage\Users\User $Author
 		 */
@@ -154,6 +162,11 @@
 			$this->status = $row['status'];
 			$this->forum_thread_id = $row['forum_thread_id'];
 			$this->redmine_id = $row['redmine_id'];
+			$this->meta = json_decode($row['meta'], true); 
+			
+			if (!is_array($this->meta)) {
+				$this->meta = []; 
+			}
 			
 			$this->setAuthor(UserFactory::CreateUser($row['author']));
 			$this->fetchVotes();
@@ -177,7 +190,8 @@
 				"inprogress" => Ideas::STATUS_INPROGRESS,
 				"active" => Ideas::STATUS_ACTIVE,
 				"underconsideration" => Ideas::STATUS_UNDERCONSIDERATION,
-				"active" => Ideas::STATUS_ACTIVE
+				"active" => Ideas::STATUS_ACTIVE,
+				"duplicate" => Ideas::STATUS_DUPLICATE,
 			];
 			
 			foreach ($status as $key => $val) {
@@ -299,7 +313,8 @@
 				"date" => $this->Date->format("Y-m-d H:i:s"),
 				"status" => $this->status,
 				"forum_thread_id" => $this->forum_thread_id,
-				"redmine_id" => $this->redmine_id
+				"redmine_id" => $this->redmine_id,
+				"meta" => json_encode($this->meta),
 			);
 			
 			return $data;
