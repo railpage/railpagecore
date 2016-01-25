@@ -454,12 +454,15 @@
 		
 		/**
 		 * Get weather forecast for this place
+         * @todo Fix the weather forecasting, since openweathermap.org has started requiring API keys
 		 * @since Version 3.8.7
 		 * @return array
 		 * @param int $days
 		 */
 		
 		public function getWeatherForecast($days = 14) {
+            
+            return false;
 			
 			$weather = false;
 			
@@ -546,13 +549,13 @@
 			 * Try to get the weather forecast from openweathermap
 			 */
 			
-			try {
+			//try {
 				$response = $this->GuzzleClient->get($url);
-			} catch (\GuzzleHTTP\RequestException $e) {
-				return false;
-			} catch (Exception $e) {
-				return false;
-			}
+			//} catch (\GuzzleHTTP\RequestException $e) {
+			//	return false;
+			//} catch (Exception $e) {
+			//	return false;
+			//}
 				
 			if ($response->getStatusCode() == 200) {
 				$forecast = json_decode($response->getBody(), true);
