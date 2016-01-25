@@ -159,7 +159,7 @@
 			if (filter_var($id, FILTER_VALIDATE_INT)) {
 				$this->id = $id;
 				
-				$this->url = new Url("/flickr?tag=railpage:livery=" . $this->id);
+				$this->url = new Url("/photos/search?livery_id=" . $this->id);
 				
 				$this->fetch();
 			}
@@ -196,7 +196,7 @@
 				$this->region		= $row['region'];
 				$this->country		= $row['country'];
 				$this->tag = sprintf("railpage:livery=%d", $this->id);
-				$this->url = new Url("/flickr?tag=" . $this->tag);
+				$this->url = new Url("/photos/search?livery_id=" . $this->id);
 				
 				if (filter_var($this->photo_id, FILTER_VALIDATE_INT)) {
 					

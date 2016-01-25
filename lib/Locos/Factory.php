@@ -9,11 +9,9 @@
 
     namespace Railpage\Locos;
 
-    use Railpage\Debug;
-    use Railpage\AppCore;
-    use Railpage\Url;
-    use Railpage\Registry;
     use Exception;
+    use Railpage\AppCore;
+    use Railpage\Registry;
 
     class Factory {
 
@@ -32,12 +30,14 @@
          * @since Version 3.9.1
          * @return \Railpage\Locos\LocoClass
          *
-         * @param int|string $id
+         * @param int|string|bool $id Integer or string are valid values - defaults to bool false
+         *
+         * @throws \Exception if loco class id could not be found
+         * @throws \Exception if an invalid class ID was supplied
          */
 
         public static function CreateLocoClass($id = false) {
 
-            $Memcached = AppCore::getMemcached();
             $Redis = AppCore::getRedis();
             $Registry = Registry::getInstance();
 
@@ -81,14 +81,13 @@
          * @since Version 3.9.1
          * @return \Railpage\Locos\Locomotive
          *
-         * @param int    $id
-         * @param string $class
-         * @param string $number
+         * @param int|bool    $id
+         * @param string|bool $class
+         * @param string|bool $number
          */
 
         public static function CreateLocomotive($id = false, $class = false, $number = false) {
 
-            $Memcached = AppCore::getMemcached();
             $Redis = AppCore::getRedis();
             $Registry = Registry::getInstance();
 
@@ -137,8 +136,6 @@
             $class = sprintf("\Railpage\Locos\%s", $Object);
             $regkey = sprintf("railpage:locos.%s=%d", strtolower($Object), $id);
 
-            $Memcached = AppCore::getMemcached();
-            $Redis = AppCore::getRedis();
             $Registry = Registry::getInstance();
 
             try {
