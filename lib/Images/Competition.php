@@ -31,6 +31,14 @@
 	 */
 	
 	class Competition extends AppCore {
+        
+        /**
+         * Registry key
+         * @since Version 3.10.0
+         * @const CACHE_KEY
+         */
+        
+        const CACHE_KEY = "railpage:photo.comp=%d";
 		
 		/**
 		 * Competition ID
@@ -199,6 +207,9 @@
 			$this->notifyVotingOpen(); 
 			$this->notifyWinner(); 
 			
+			Utility\CompetitionUtility::createNewsArticle_SubmissionsOpen($this);
+			Utility\CompetitionUtility::createNewsArticle_VotingOpen($this);
+			
 			return $this;
 		}
 		
@@ -215,6 +226,7 @@
 			$this->url->edit = sprintf("/gallery?mode=competitions.new&id=%d", $this->id);
 			$this->url->pending = sprintf("/gallery?mode=competition.pendingphotos&id=%d", $this->id);
 			$this->url->suggestsubject = sprintf("/gallery?mode=competition.nextsubject&id=%d", $this->id);
+            $this->url->tied = sprintf("/gallery?mode=competition.tied&id=%d", $this->id);
 			
 			/**
 			 * Get the UTM email campaign link
@@ -346,6 +358,16 @@
 				$this->db->insert("image_competition", $data);
 				$this->id = $this->db->lastInsertId(); 
 			}
+            
+            /**
+             * Clear the cache
+             */
+            
+            $regkey = sprintf(self::CACHE_KEY, $this->id);
+            $Redis = AppCore::GetRedis(); 
+            $Memcached = AppCore::GetMemcached(); 
+            $Redis->delete($regkey);
+            $Memcached->delete($regkey);
 			
 			/**
 			 * Check our themes and see if we need to mark this theme as used
@@ -414,7 +436,7 @@
 			$Photo = new stdClass;
 			$Photo->id = $image['id'];
 			$Photo->Author = UserFactory::CreateUser($image['user_id']);
-			$Photo->Image = new Image($image['image_id']);
+			$Photo->Image = ImageFactory::CreateImage(isset($image['image_id']) ? $image['image_id'] : $image['id']);
 			$Photo->DateAdded = new DateTime($image['date_added']);
 			$Photo->Meta = json_decode($image['meta'], true);
 			
@@ -627,6 +649,8 @@
 			
 			$this->db->insert("image_competition_submissions", $data);
 			
+            Utility\PushNotify::photoAwaitingApproval($this, $Image, $User); 
+            
 			return $this->db->lastInsertId();
 		}
 		
@@ -685,42 +709,114 @@
 		 */
 		
 		public function getWinningPhoto() {
-			if ($this->VotingDateClose < new DateTime) {
-				
-				/*
-				$query = "SELECT * FROM image_competition_submissions WHERE image_id = (
-					SELECT image_id FROM image_competition_votes WHERE competition_id = ? ORDER BY COUNT(image_id) DESC LIMIT 1
-				)";
-				*/
-				
-				$query = "SELECT COUNT(*) AS votes, s.* FROM image_competition_submissions AS s 
-					LEFT JOIN image_competition_votes AS v ON s.image_id = v.image_id AND v.competition_id = ? 
-					WHERE s.competition_id = ?
-					GROUP BY v.image_id 
-					ORDER BY COUNT(*) 
-					DESC LIMIT 0, 1";
-				
-				$where = array(
-					$this->id,
-					$this->id
-				);
-				
-				$result = $this->db->fetchRow($query, $where);
-				
-				$photo = $this->getPhoto($result);
-				
-				if ($result['winner'] == "0") {
-					$data = [ "winner" => 1 ];
-					
-					$where = [ "id = ?" => $result['id'] ];
-					
-					$this->db->update("image_competition_submissions", $data, $where); 
-				}
-				
-				return $photo;
-			} else {
-				return false;
-			}
+            
+			if ($this->VotingDateClose >= new DateTime) {
+                return false;
+            }
+            
+            $photos = $this->getPhotosAsArrayByVotes(); 
+            $num_votes = false;
+            $tied = []; 
+            
+            foreach ($photos as $key => $photo) {
+                if ($num_votes === false) {
+                    $num_votes = count($photo['votes']); 
+                    $tied[] = $photo;
+                    continue;
+                }
+                
+                if ($num_votes == count($photo['votes'])) {
+                    $tied[] = $photo; 
+                    continue;
+                }
+                
+                if (count($photo['votes']) < $num_votes) {
+                    continue;
+                }
+            }
+            
+            if (count($tied) > 1) {
+                Utility\CompetitionUtility::NotifyTied($this); 
+                return false;
+            }
+            
+            $tied[0]['image']['user_id'] = $tied[0]['author']['id'];
+		    
+            $result = $tied[0]['image']; 
+            
+            if ($result['winner'] == "0") {
+                $data = [ "winner" => 1 ];
+                
+                $where = [ "id = ?" => $result['id'] ];
+                
+                $this->db->update("image_competition_submissions", $data, $where); 
+            }
+            
+            $photo = $this->getPhoto($result);
+            
+            /*
+            global $User; 
+            if ($User->id == 45) {
+                #printArray($tied[0]);die;
+                return $photo;
+            }
+            */
+            
+            return $photo;
+            
+            
+            /*
+            $query = "SELECT * FROM image_competition_submissions WHERE image_id = (
+                SELECT image_id FROM image_competition_votes WHERE competition_id = ? ORDER BY COUNT(image_id) DESC LIMIT 1
+            )";
+            */
+            
+            $query = "SELECT COUNT(*) AS votes, s.* FROM image_competition_submissions AS s 
+                LEFT JOIN image_competition_votes AS v ON s.image_id = v.image_id AND v.competition_id = ? 
+                WHERE s.competition_id = ?
+                GROUP BY v.image_id 
+                ORDER BY COUNT(*) DESC";
+            
+            $where = array(
+                $this->id,
+                $this->id
+            );
+            
+            $votes = false;
+            
+            $result = $this->db->fetchAll($query, $where);
+            
+            /**
+             * Check for a tied competition
+             */
+            
+            foreach ($result as $key => $row) {
+                
+                if ($votes === false) {
+                    $votes = $row['votes']; 
+                    continue;
+                }
+                
+                if ($votes == $row['votes']) {
+                    Utility\CompetitionUtility::NotifyTied($this); 
+                    return false;
+                }
+                
+            }
+            
+            $result = $result[0]; 
+            
+            $photo = $this->getPhoto($result);
+            
+            if ($result['winner'] == "0") {
+                $data = [ "winner" => 1 ];
+                
+                $where = [ "id = ?" => $result['id'] ];
+                
+                $this->db->update("image_competition_submissions", $data, $where); 
+            }
+            
+            return $photo;
 		}
 		
 		/**
@@ -1119,17 +1215,18 @@
 		 */
 		
 		private function notifyWinner() {
-			if ($Photo = $this->getWinningPhoto()) {
 				
-				if (isset($this->meta['winnernotified']) && $this->meta['winnernotified'] === true) {
-					return $this;
-				}
+            if (isset($this->meta['winnernotified']) && $this->meta['winnernotified'] === true) {
+                return $this;
+            }
+                
+			if ($Photo = $this->getWinningPhoto()) {
 				
 				/**
 				 * Create a news article
 				 */
 				
-				Utility\CompetitionUtility::createNewsArticle($this); 
+				Utility\CompetitionUtility::createNewsArticle_Winner($this); 
 				
 				/**
 				 * Create a site message

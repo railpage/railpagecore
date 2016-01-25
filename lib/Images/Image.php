@@ -12,6 +12,7 @@
     use Railpage\Users\User;
     use Railpage\Users\Factory as UserFactory;
     use Railpage\Users\Utility\UserUtility;
+	use Railpage\Images\Utility\ImageUtility;
     use Railpage\API;
     use Railpage\AppCore;
     use Railpage\Place;
@@ -549,42 +550,7 @@
                 return $this->ImageProvider;
             }
 
-            #printArray($this->provider);die;
-
-            $imageprovider = __NAMESPACE__ . "\\Provider\\" . ucfirst($this->provider);
-            $params = array();
-
-            switch ($this->provider) {
-                case "smugmug" :
-                    $imageprovider = __NAMESPACE__ . "\\Provider\\SmugMug";
-                    break;
-
-                case "picasaweb" :
-                    $imageprovider = __NAMESPACE__ . "\\Provider\\PicasaWeb";
-                    break;
-
-                case "rpoldgallery" :
-                    $imageprovider = __NAMESPACE__ . "\\Provider\RPOldGallery";
-                    break;
-
-                case "fivehundredpx" :
-                    $imageprovider = __NAMESPACE__ . "\\Provider\FiveHundredPx";
-                    break;
-
-                case "flickr" :
-                    $params = array_merge(array(
-                        "oauth_token"  => "",
-                        "oauth_secret" => ""
-                    ), $this->providerOptions);
-
-                    if (isset( $this->Config->Flickr->APIKey )) {
-                        $params['api_key'] = $this->Config->Flickr->APIKey;
-                    }
-
-                    break;
-            }
-
-            return new $imageprovider($params);
+            return ImageUtility::CreateImageProvider($this->provider, $this->providerOptions);
 
         }
 

@@ -17,6 +17,7 @@
 	use Railpage\Images\Image;
 	use Railpage\Images\ImageFactory;
 	use Railpage\AppCore;
+	use Zend_Db_Expr;
 	
 	class Updater {
 		
@@ -144,6 +145,55 @@
 					
 					$Database->update("image", $data, $where);
 				}
+				
+			}
+			
+		}
+		
+		/**
+		 * Fetch the latest information on an album from the relevant provider
+		 * @since Version 3.10.0
+		 * @param array $album
+		 * @return void
+		 */
+	
+		public static function ScrapeAlbum($album) {
+			
+			Debug::LogCLI("Scraping album ID " . $album['album_id'] . " from provider " . $album['provider']); 
+			
+			set_time_limit(30);
+			
+			$Database = AppCore::GetDatabase(); 
+			$Provider = ImageUtility::CreateImageProvider($album['provider']); 
+			
+			// Assume Flickr for now, we can update the internal code later
+			$params = [ "photoset_id" => $album['album_id'] ]; 
+			$albumdata = $Provider->execute("flickr.photosets.getInfo", $params); 
+			
+			// Insert this shit into the database
+			$data = [
+				"scraped" => new Zend_Db_Expr("NOW()"),
+				"meta" => json_encode($albumdata['photoset'])
+			];
+			
+			$where = [ "id = ?" => $album['id'] ];
+			$Database->update("image_scrape_album", $data, $where); 
+			
+			// Fetch the photos
+			$params['user_id'] = $albumdata['photoset']['owner'];
+			$photos = $Provider->execute("flickr.photosets.getPhotos", $params); 
+			
+			foreach ($photos['photoset']['photo'] as $photo) {
+				
+				Debug::LogCLI("Scraping photo ID " . $photo['id']); 
+				
+				set_time_limit(10);
+				
+				$Image = ImageFactory::CreateImage($photo['id'], $album['provider']);
+				
+				Debug::LogCLI("Sleeping for 2 seconds..."); 
+				
+				sleep(2); 
 				
 			}
 			

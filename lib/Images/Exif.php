@@ -11,6 +11,7 @@
 	use Railpage\AppCore;
 	use Railpage\Url;
 	use Railpage\Debug;
+    use Railpage\ContentUtility;
 	use Exception;
 	use InvalidArgumentException;
 	use DateTime;
@@ -24,6 +25,24 @@
 		 */
 		
 		const EXIF_FORMAT_VERSION = 1.2202;
+        
+        /**
+         * Make a URL slug for a camera from brand and model
+         * @since Version 3.10.0
+         * @param string $make
+         * @param string $model
+         * @return string
+         */
+        
+        public static function makeCameraUrlSlug($make, $model) {
+            
+            $Database = AppCore::GetDatabase(); 
+            
+            $prop = ContentUtility::generateUrlSlug(sprintf("%s %s", $make, $model), 30); 
+            
+            return $prop;
+            
+        }
 		
 		/**
 		 * Get EXIF data from an image
@@ -40,6 +59,8 @@
 			if (!$force && isset($Image->meta['exif']) && $Image->meta['exif_format_version'] >= self::EXIF_FORMAT_VERSION) {
 				$Image->meta['exif']['camera_make'] = self::normaliseCameraMake($Image->meta['exif']['camera_make']); 
 				$Image->meta['exif']['camera_model'] = self::normaliseCameraModel($Image->meta['exif']['camera_model']); 
+                
+                $Image->meta['exif']['camera'] = ImageFactory::CreateCamera($Image->meta['exif']['camera_id'])->getArray();
 				
 				return $Image->meta['exif'];
 			}
@@ -331,7 +352,7 @@
 			// Aperture
 			if (isset($exif['aperture'])) {
 				$format[] = array(
-					"icon" => "<i class='f' style='width:16px;height:16px;display:inline-block;background: url(https://cloud.githubusercontent.com/assets/11262717/6442104/90d16e0e-c0ed-11e4-8b58-9f25df36f775.png) center;background-size:cover;'></i>",
+					"icon" => "https://static.railpage.com.au/i/icons/camera119.svg",
 					"label" => "Aperture",
 					"value" => sprintf("<em>ƒ</em>/%s", $exif['aperture'])
 				);
@@ -339,33 +360,40 @@
 			
 			if (isset($exif['exposure'])) {
 				$format[] = array(
-					"icon" => "", 
+					"icon" => "https://static.railpage.com.au/i/icons/clock218.svg", 
 					"label" => "Exposure", 
 					"value" => $exif['exposure']
 				);
 			}
 			
-			$format[] = array(
-				"icon" => "", 
-				"label" => "Camera", 
-				"value" => sprintf("%s %s", $exif['camera_make'], $exif['camera_model'])
-			);
+			if (isset($exif['camera'])) {
+				$format[] = array(
+					"icon" => "https://static.railpage.com.au/i/icons/camera3.svg", 
+					"label" => "Camera", 
+					"value" => sprintf("%s %s", $exif['camera_make'], $exif['camera_model']),
+					"url" => $exif['camera']['url']
+				);
+			}
 			
-			$format[] = array(
-				"icon" => "", 
-				"label" => "Lens", 
-				"value" => $exif['lens_model']
-			);
+			if (isset($exif['lens_model'])) {
+				$format[] = array(
+					"icon" => "https://static.railpage.com.au/i/icons/photo-camera31.svg", 
+					"label" => "Lens", 
+					"value" => $exif['lens_model']
+				);
+			}
 			
-			$format[] = array(
-				"icon" => "", 
-				"label" => "ISO", 
-				"value" => $exif['iso_speed']
-			);
+			if (isset($exif['iso_speed'])) {
+				$format[] = array(
+					"icon" => "https://static.railpage.com.au/i/icons/iso7.svg", 
+					"label" => "ISO", 
+					"value" => $exif['iso_speed']
+				);
+			}
 			
 			if (isset($exif['focal_length'])) {
 				$format[] = array(
-					"icon" => "", 
+					"icon" => "https://static.railpage.com.au/i/icons/tool292.svg", 
 					"label" => "Focal length", 
 					"value" => sprintf("%smm", $exif['focal_length'])
 				);

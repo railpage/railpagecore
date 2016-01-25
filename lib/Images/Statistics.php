@@ -15,6 +15,7 @@
 	use Railpage\AppCore;
 	use Railpage\Debug;
 	use Railpage\Url;
+	use Railpage\Users\Utility\UrlUtility as UserUrlUtility;
 	
 	class Statistics extends AppCore {
 		
@@ -57,6 +58,30 @@
 		 */
 		
 		const CHART_CAMERAS_NUMPHOTOS = "getCameraModelsByPhotos";
+		
+		/**
+		 * Hits: daily
+		 * @since Version 3.10.0
+		 * @const string HITS_DAILY
+		 */
+		
+		const HITS_DAILY = "daily";
+		
+		/**
+		 * Hits: weekly
+		 * @since Version 3.10.0
+		 * @const string HITS_WEEKLY
+		 */
+		
+		const HITS_WEEKLY = "weekly";
+		
+		/**
+		 * Hits: overall
+		 * @since Version 3.10.0
+		 * @const string HITS_OVERALL
+		 */
+		
+		const HITS_OVERALL = "overall";
 		
 		/**
 		 * Get the number of geotagged photos in each region
@@ -166,8 +191,8 @@
 		
 		private function getCameraModelsByAuthor() {
 			
-			$query = 'SELECT CONCAT(camera_make, " ", camera_model) AS `key`, COUNT(*) AS number FROM (
-				SELECT DISTINCT e.camera_id, i.user_id, c.make AS camera_make, c.model AS camera_model
+			$query = 'SELECT CONCAT(camera_make, " ", camera_model) AS `key`, COUNT(*) AS number, href FROM (
+				SELECT DISTINCT e.camera_id, i.user_id, c.make AS camera_make, c.model AS camera_model, CONCAT("/photos/cameras/", c.url_slug) AS href
 				FROM image_exif AS e 
 				LEFT JOIN image_camera AS c ON c.id = e.camera_id
 				LEFT JOIN image AS i on e.image_id = i.id 
@@ -195,8 +220,8 @@
 		
 		private function getCameraModelsByPhotos() {
 			
-			$query = 'SELECT CONCAT(camera_make, " ", camera_model) AS `key`, COUNT(*) AS number FROM (
-				SELECT e.camera_id, i.user_id, c.make AS camera_make, c.model AS camera_model
+			$query = 'SELECT CONCAT(camera_make, " ", camera_model) AS `key`, COUNT(*) AS number, href FROM (
+				SELECT e.camera_id, i.user_id, c.make AS camera_make, c.model AS camera_model, CONCAT("/photos/cameras/", c.url_slug) AS href
 				FROM image_exif AS e 
 				LEFT JOIN image_camera AS c ON c.id = e.camera_id
 				LEFT JOIN image AS i on e.image_id = i.id 
@@ -223,7 +248,7 @@
 		
 		private function getPhotosByFocalLength() {
 			
-			$query = "SELECT FLOOR(focal_length / 10) * 10 AS `key`, COUNT(*) AS `val` FROM image_exif WHERE focal_length > 10 GROUP BY `key`";
+			$query = "SELECT FLOOR(focal_length / 10) * 10 AS `key`, COUNT(*) AS `val` FROM image_exif WHERE focal_length > 10 AND focal_length <= 500 GROUP BY `key`";
 			
 			return $this->db->fetchAll($query); 
 			
@@ -262,6 +287,85 @@
 			}
 			
 			return $return;
+			
+		}
+        
+        /**
+         * Get stats for a given camera
+         * @since Version 3.10.0
+         * @param \Railpage\Images\Camera $Camera
+         * @return array
+         */
+        
+        public function getStatsForCamera(Camera $Camera) {
+            
+            $query = "(SELECT 'Photos on Railpage' AS label, COUNT(*) AS value FROM image_exif WHERE camera_id = ?)
+                UNION (SELECT 'Most used lens' AS label, l.model AS value FROM image_exif AS e LEFT JOIN image_lens AS l ON e.lens_id = l.id WHERE e.camera_id = ? GROUP BY e.lens_id ORDER BY COUNT(*) DESC LIMIT 1)
+                UNION (SELECT 'Screener\'s Choice' AS label, COUNT(*) AS value FROM image_flags AS f LEFT JOIN image_exif AS e ON e.image_id = f.image_id WHERE e.camera_id = ? AND f.screened_pick = 1)";
+            
+            $params[] = $Camera->id;
+            $params[] = $Camera->id;
+            $params[] = $Camera->id;
+            
+            $result = $this->db->fetchAll($query, $params); 
+            
+            foreach ($result as $key => $row) {
+                if ($row['value'] === 0) {
+                    unset($result[$key]); 
+                    continue;
+                }
+                
+                if (filter_var($row['value'], FILTER_VALIDATE_INT)) {
+                    $result[$key]['value'] = number_format($row['value'], 0);
+                }
+            }
+            
+            return $result;
+            
+        }
+		
+		/**
+		 * Get the top 5 photos viewed today/weekly/overall
+		 * @since Version 3.10.0
+		 * @param string $lookup
+		 * @param int $num
+		 * @return array
+		 */
+		
+		public function getMostViewedPhotos($lookup = self::HITS_WEEKLY, $num = 5) {
+			
+			$allowed = [ 
+				self::HITS_DAILY => "hits_today",
+				self::HITS_WEEKLY => "hits_weekly",
+				self::HITS_OVERALL => "hits_overall"
+			];
+			
+			if (!in_array($lookup, array_keys($allowed))) {
+				throw new InvalidArgumentException("Parameter supplied for lookup type is invalid"); 
+			}
+			
+			$query = "SELECT i.*,
+				u.username,
+				f.*
+				FROM image AS i
+				LEFT JOIN image_flags AS f ON f.image_id = i.id
+				LEFT JOIN nuke_users AS u ON i.user_id = u.user_id
+				ORDER BY " . $allowed[$lookup] . " DESC 
+				LIMIT 0, ?";
+			
+			$result = $this->db->fetchAll($query, $num); 
+			
+			foreach ($result as $key => $val) {
+				$result[$key]['meta'] = json_decode($val['meta'], true); 
+				$result[$key]['meta']['author']['url'] = UserUrlUtility::MakeURLs($val); 
+				$result[$key]['meta']['sizes'] = Images::normaliseSizes($result[$key]['meta']['sizes']); 
+				
+				if ($result[$key]['meta']['author']['url'] instanceof Url) {
+					$result[$key]['meta']['author']['url'] = $result[$key]['meta']['author']['url']->getURLs(); 
+				}
+			}
+			
+			return $result;
 			
 		}
 	}

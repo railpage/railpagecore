@@ -273,13 +273,17 @@
 			self::$sizes = $sizes;
 			
 			self::normaliseSizes_addMissingSizes("thumb", 280, 150);
-			self::normaliseSizes_addMissingSizes("small", 500, 281);	
+			self::normaliseSizes_addMissingSizes("small", 500, 281);
+			self::normaliseSizes_addMissingSizes("square", 75, 75);	
+			self::normaliseSizes_addMissingSizes("largesquare", 150, 150);	
 			
 			self::normaliseSizes_addShorthands("fullscreen", 1920);
 			self::normaliseSizes_addShorthands("largest");
 			self::normaliseSizes_addShorthands("larger", 1024, 1920);
 			self::normaliseSizes_addShorthands("large", 1024, 1024);
 			self::normaliseSizes_addShorthands("medium", 800, 800);
+			self::normaliseSizes_addShorthands("square", 75, 75);	
+			self::normaliseSizes_addShorthands("largesquare", 150, 150);	
 			
 			if (!isset(self::$sizes['larger'])) {
 				self::$sizes['larger'] = self::$sizes['largest'];
