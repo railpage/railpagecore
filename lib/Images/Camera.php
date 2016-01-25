@@ -162,6 +162,7 @@
 				} catch (Exception $e) {
 					// Don't care
 				}
+				
             }
             
             return true;
