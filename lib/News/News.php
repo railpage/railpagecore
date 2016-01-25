@@ -125,12 +125,13 @@
 		 */
 		
 		public static function getArticleJSON($article_id) {
+			
 			$key = sprintf("json:railpage.news.article=%d", $article_id);
 			
 			$Memcached = AppCore::getMemcached(); 
 			
 			if (!$json = $Memcached->fetch($key)) {
-				$Article = new Article($article_id);
+				$Article = Factory::CreateArticle($article_id);
 				
 				if (empty($Article->getParagraphs()) && !empty($Article->source)) {
 					$Article->url->url = $Article->source;
@@ -138,7 +139,7 @@
 				
 				$json = $Article->makeJSON();
 				
-				$Memcached->save($key, $json);
+				$Memcached->save($key, $json, 0);
 				
 			}
 			
@@ -150,6 +151,7 @@
 			}
 			
 			return $json;
+			
 		}
 		
 		/**
@@ -194,6 +196,14 @@
 			}
 			
 			#printArray($topic);die;
+			
+			if (preg_match("/(aurizon)/i", $topic)) {
+				return new Topic("aurizon"); 
+			}
+			
+			if (preg_match("/(asciano|pacific national|pac nat)/i", $topic)) {
+				return new Topic("asciano"); 
+			}
 			
 			/**
 			 * If we don't have a valid topic ID then it didn't work. Time to approximate
