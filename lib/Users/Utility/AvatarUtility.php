@@ -167,11 +167,29 @@
 				}
 			}
 			
-			$Memcached->save($mckey, $user_avatar, strtotime("+1 month"));
+			$Memcached->save($mckey, $user_avatar, 0);
 			
 			Debug::logEvent(__METHOD__, $timer) ;
 			
 			return self::GravatarHTTPS($user_avatar);
+		}
+		
+		/**
+		 * Get an array of avatar sizes
+		 * @since Version 3.10.0
+		 * @param string $avatar
+		 * @return array
+		 */
+		
+		public static function getAvatarSizes($avatar) {
+			
+			return array(
+				"tiny"   => self::Format($avatar, 25, 25),
+				"thumb"  => self::Format($avatar, 50, 50),
+				"small"  => self::Format($avatar, 75, 75),
+				"medium" => self::Format($avatar, 100, 100)
+			);
+			
 		}
 	
 		/**

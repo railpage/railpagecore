@@ -140,32 +140,43 @@
 		
 		public function fetch() {
 			
-			$query = "SELECT g.group_attrs, g.organisation_id, g.group_id AS id, g.group_name AS name, g.group_type AS type, 
-						g.group_description AS description, g.group_moderator AS owner_user_id, u.username AS owner_username 
-					FROM nuke_bbgroups AS g 
-						INNER JOIN nuke_users AS u ON g.group_moderator = u.user_id 
-					WHERE g.group_id = ?";
+			$mckey = sprintf("railpage:group=%d", intval($this->id)); 
 			
-			if ($row = $this->db->fetchRow($query, $this->id)) {
-				$this->name = $row['name']; 
-				$this->type = $row['type']; 
-				$this->desc = $row['description']; 
-				$this->owner_user_id = $row['owner_user_id']; 
-				$this->owner_username = $row['owner_username']; 
-				$this->attributes = json_decode($row['group_attrs'], true);
+			if (!$row = $this->Redis->fetch($mckey)) {
+			
+				$query = "SELECT g.group_attrs, g.organisation_id, g.group_id AS id, g.group_name AS name, g.group_type AS type, 
+							g.group_description AS description, g.group_moderator AS owner_user_id, u.username AS owner_username 
+						FROM nuke_bbgroups AS g 
+							INNER JOIN nuke_users AS u ON g.group_moderator = u.user_id 
+						WHERE g.group_id = ?";
 				
-				if (filter_var($row['organisation_id'], FILTER_VALIDATE_INT) && $row['organisation_id'] !== 0) {
-					
-					$Organisation = OrganisationsFactory::CreateOrganisation(false, $this->organisation_id); 
-					
-					if ($Organisation instanceof Organisation) {
-						$this->organisation_id = $row['organisation_id']; 
-						$this->organisation = $Organisation->name; 
-					}
-				}
+				$row = $this->db->fetchRow($query, $this->id); 
 				
-				$this->makeURLs(); 
+				$this->Redis->save($mckey, $row, 0); 
 			}
+			
+			if (!is_array($row)) {
+				throw new Exception("Could not fetch group data for group ID " . $this->id); 
+			}
+			
+			$this->name = $row['name']; 
+			$this->type = $row['type']; 
+			$this->desc = $row['description']; 
+			$this->owner_user_id = $row['owner_user_id']; 
+			$this->owner_username = $row['owner_username']; 
+			$this->attributes = json_decode($row['group_attrs'], true);
+			
+			if (filter_var($row['organisation_id'], FILTER_VALIDATE_INT) && $row['organisation_id'] !== 0) {
+				
+				$Organisation = OrganisationsFactory::CreateOrganisation(false, $this->organisation_id); 
+				
+				if ($Organisation instanceof Organisation) {
+					$this->organisation_id = $row['organisation_id']; 
+					$this->organisation = $Organisation->name; 
+				}
+			}
+			
+			$this->makeURLs(); 
 		}
 		
 		/**
@@ -276,6 +287,9 @@
 		
 		public function addMember($username = false, $user_id = false, $org_role = false, $org_contact = false, $org_perms = false) {
 			
+			$mckey = sprintf("railpage:group=%d", intval($this->id)); 
+			$this->Redis->delete($mckey); 
+			
 			if ($username && !$user_id) {
 				$query = "SELECT user_id, username FROM nuke_users WHERE username = ? AND user_active = 1"; 
 				$params = [ $username ];
@@ -353,7 +367,7 @@
 			}
 			
 			$mckey = sprintf("railpage:group=%d.user_id=%d", $this->id, $User->id);
-			$this->Memcached->delete($mckey);
+			$this->Redis->delete($mckey);
 			
 			$rdkey = sprintf("railpage:usergroups.user_id=%d", $User->id); 
 			$this->Redis->delete($rdkey); 
@@ -422,12 +436,19 @@
 			}
 			
 			if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+				
 				$where = [ "group_id = ?" => $this->id ];
 				$this->db->update("nuke_bbgroups", $data, $where); 
+			
+				$mckey = sprintf("railpage:group=%d", intval($this->id)); 
+				$this->Redis->delete($mckey); 
+				
 			} else {
+				
 				$data['group_single_user'] = 0; 
 				$this->db->insert("nuke_bbgroups", $data); 
 				$this->id = $this->db->lastInsertId(); 
+				
 			}
 			
 			$this->makeURLs(); 
@@ -454,22 +475,23 @@
 			$mckey = sprintf("railpage:group=%d.user_id=%d", $this->id, $user_id);
 		
 			$timer = Debug::getTimer(); 
+			$result = false;
 			
-			if (!$result = $this->Memcached->fetch($mckey)) {
+			//if (!$result = $this->Redis->fetch($mckey)) {
 				$query = "SELECT user_id FROM nuke_bbuser_group WHERE group_id = ? AND user_id = ? AND user_pending = 0";
 				$params = [ $this->id, $user_id ];
 				
 				$id = $this->db->fetchOne($query, $params);
 				if (filter_var($id, FILTER_VALIDATE_INT)) {
-					$this->Memcached->save($mckey, "yes", strtotime("+1 day")); 
+					$this->Redis->save($mckey, "yes", strtotime("+1 day")); 
 					Debug::logEvent(__METHOD__ . " found user ID " . $user_id . " in group ID " . $this->id, $timer); 
 					return true; 
 				}
-			}
+			//}
 				
 			Debug::logEvent(__METHOD__ . " did not find ID " . $user_id . " in group ID " . $this->id, $timer); 
 			
-			return $result;
+			return (bool) $result;
 		}
 		
 		/**
@@ -494,6 +516,9 @@
 			]; 
 			
 			$this->db->delete("nuke_bbuser_group", $where); 
+			
+			$mckey = sprintf("railpage:group=%d", intval($this->id)); 
+			$this->Redis->delete($mckey); 
 						
 			$this->updateUserGroupMembership($user_id);
 			
@@ -516,7 +541,10 @@
 			$where = [ 
 				"user_id = ?" => $User->id,
 				"group_id = ?" => $this->id
-			];
+			]; 
+			
+			$mckey = sprintf("railpage:group=%d", intval($this->id)); 
+			$this->Redis->delete($mckey); 
 			
 			$this->db->update("nuke_bbuser_group", $data, $where); 
 			

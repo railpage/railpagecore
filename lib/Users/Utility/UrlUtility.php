@@ -34,6 +34,10 @@
 				];
 			}
 			
+			if (!isset($UserData['user_id']) || !filter_var($UserData['user_id'], FILTER_VALIDATE_INT)) {
+				return false;
+			}
+			
 			$Module = new Module("users");
 			$PMs = new Module("pm");
 			
@@ -43,6 +47,8 @@
 			$Url->sendpm = sprintf("%s/new/to/%d", $PMs->url, $UserData['user_id']);
 			$Url->newpm = sprintf("%s/new/to/%d", $PMs->url, $UserData['user_id']);
 			$Url->ideas = sprintf("%s?mode=contributions-ideas", $Url->url);
+			$Url->forums = sprintf("/f-s-u-%s.htm", $UserData['username']);
+			$Url->photos = sprintf("/photos/search?user_id=%d", $UserData['user_id']);
 			
 			return $Url;
 			
