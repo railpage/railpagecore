@@ -11,6 +11,7 @@
 	use Railpage\AppCore;
 	use Railpage\Notifications\TransportInterface;
 	use Exception;
+	use InvalidArgumentException;
 	use DateTime;
 	
 	use Swift_Message;
@@ -45,7 +46,7 @@
 		
 		public function setData($data) {
 			if (!is_array($data)) {
-				throw new Exception("No or invalid message data was sent");
+				throw new InvalidArgumentException("No or invalid message data was sent");
 			}
 			
 			$this->data = $data;
@@ -74,6 +75,20 @@
 				->setFrom(array($from_email => $from_name))
 				->setBody($this->data['body'], 'text/html')
 				->setCharset("UTF-8");
+			
+			/**
+			 * Add any text headers
+			 */
+			
+			if (isset($this->data['headers'])) {
+				
+				$headers = $message->getHeaders(); 
+				
+				foreach ($this->data['headers'] as $name => $value) {
+					$headers->addTextHeader($name, $value);
+				}
+				
+			}
 			
 			/*
 			foreach ($this->data['recipients'] as $recipient) {
