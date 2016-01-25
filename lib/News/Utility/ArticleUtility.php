@@ -67,5 +67,48 @@
 			return $Database->fetchAll($query, intval($User->id)); 
 			
 		}
+        
+        /**
+         * Get the formatted lead text for this article
+         * @since Version 3.10.0
+         * @param \Railpage\News\Article $Article
+         * @param string $section The section of the article (lead or paragraphs) to format
+         * @return string
+         */
+        
+        public static function FormatArticleText($Article, $section = "lead") {
+            
+            $Memcached = AppCore::GetMemcached(); 
+            
+            $cachekey = $section == "lead" ? Article::CACHE_KEY_FORMAT_LEAD : Article::CACHE_KEY_FORMAT_PARAGRAPHS;
+            $cachekey = sprintf($cachekey, $Article->id); 
+            
+            $whitespace_find 	= array("<p> </p>", "<p></p>", "<p>&nbsp;</p>");
+            $whitespace_replace = array("", "", ""); 
+            
+            #$Memcached->delete($cachekey);
+            
+            if (!$text = $Memcached->Fetch($cachekey)) {
+                
+                $text = $section == "lead" ? $Article->getLead() : $Article->getParagraphs();
+                
+                if (function_exists("format_post")) {
+                    
+                    $text = str_replace($whitespace_find, $whitespace_replace, $text);
+                    $text = format_post($text); 
+                    
+                    if (is_object($text)) {
+                        $text = $text->__toString(); 
+                    }
+                    
+                    $Memcached->save($cachekey, $text, 0); 
+                    
+                }
+                
+            }
+            
+            return $text;
+            
+        }
 	
 	}

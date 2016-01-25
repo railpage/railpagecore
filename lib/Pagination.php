@@ -341,9 +341,22 @@
 				 ->addDividers()
 				 ->addNavigation(); 
             
+            $tpl = $this->Smarty->ResolveTemplate($this->params['template']);
+            
+            $caching = false;
+            if ($this->Smarty->cache) {
+                $caching = true; 
+                $this->Smarty->cache = false;
+                $this->Smarty->clearCache($tpl);
+            }
+            
             $this->Smarty->Assign("pagination", $this->getParam("links")); 
             
-            $html = $this->Smarty->Fetch($this->Smarty->ResolveTemplate($this->params['template'])); 
+            $html = $this->Smarty->Fetch($tpl); 
+            
+            if ($caching) {
+                $this->Smarty->cache = true;
+            }
             
             return $html;
             

@@ -25,6 +25,7 @@
 	use Railpage\Registry;
 	use Railpage\AppCore;
     use Railpage\Sightings\Sightings;
+	use Zend_Db_Expr;
 		
 	/**
 	 * Locomotive class (eg X class or 92 class) class
@@ -997,6 +998,39 @@
 			$status_id = trim($status_id);
 			$manufacturer_id = trim($manufacturer_id);
 			$prefix = trim($prefix);
+			
+			$currentLocoNum = $first_loco;
+			
+			while ($currentLocoNum <= $last_loco) {
+				// Check if this loco already exists
+				if (!$this->db->fetchOne("SELECT loco_id FROM loco_unit WHERE loco_num = ? AND class_id = ?", array(sprintf("%s%d", $prefix, $currentLocoNum), $this->id))) {
+					$data = [
+						"loco_num" => sprintf("%s%d", $prefix, $currentLocoNum),
+						"loco_name" => '',
+						"loco_gauge" => '',
+						"loco_gauge_id" => intval($gauge_id),
+						"loco_status_id" => intval($status_id),
+						"class_id" => intval($this->id),
+						"owner_id" => 0,
+						"operator_id" => 0,
+						"date_added" => new Zend_Db_Expr("UNIX_TIMESTAMP()"),
+						"date_modified" => new Zend_Db_Expr("UNIX_TIMESTAMP()"),
+						"entered_service" => 0,
+						"withdrawn" => 0,
+						"builders_number" => "",
+						"photo_id" => 0,
+						"manufacturer_id" => intval($manufacturer_id)
+					];
+					
+					$this->db->insert("loco_unit", $data); 
+					$currentLocoNum++; 
+					
+				}
+			}
+			
+			return $this;
+			
+			printArray(func_get_args());die;
 			
 			$this->db->query("CALL PopulateLocoClass(?, ?, ?, ?, ?, ?, ?)", array($first_loco, $last_loco, $this->id, $gauge_id, $status_id, $manufacturer_id, $prefix));
 			

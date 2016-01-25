@@ -268,7 +268,8 @@
 					->orderBy("story_time_unix", "DESC")
 					->limit($page * $limit, $limit)
 					->where("topic_id", "=", $this->id)
-					->where("story_active", "=", 1);
+					->where("story_active", "=", 1)
+                    ->option("max_matches", 10000);
 					
 			$matches = $query->execute(); 
 			
@@ -421,7 +422,7 @@
 			return array(
 				"id" => $this->id,
 				"title" => $this->title,
-				"url" => $this->url->getURLs(),
+				"url" => $this->url instanceof Url ? $this->url->getURLs() : [],
 				"highlight" => ColourUtility::String2Hex($this->title),
 			);
 			

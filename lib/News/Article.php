@@ -33,6 +33,22 @@
      * @copyright Copyright (c) 2012 Michael Greenhill
      */
     class Article extends Base {
+        
+        /**
+         * Cache key to store and fetch the formatted lead text from the cache
+         * @since Version 3.10.0
+         * @const string CACHE_KEY_FORMAT_LEAD
+         */
+        
+        const CACHE_KEY_FORMAT_LEAD = "railpage:format.news.lead=%d";
+        
+        /**
+         * Cache key to store and fetch the formatted paragraph text from the cache
+         * @since Version 3.10.0
+         * @const string CACHE_KEY_FORMAT_PARAGRAPHS
+         */
+        
+        const CACHE_KEY_FORMAT_PARAGRAPHS = "railpage:format.news.paragraphs=%d";
 
         /**
          * Status: Approved
@@ -645,6 +661,9 @@
 
                 $this->Redis->delete(sprintf("railpage:news.article=%s", $this->id));
                 $this->Redis->delete(sprintf("railpage:news.article=%s", $this->slug));
+                
+                $this->Memcached->delete(sprintf(self::CACHE_KEY_FORMAT_LEAD, $this->id)); 
+                $this->Memcached->delete(sprintf(self::CACHE_KEY_FORMAT_PARAGRAPHS, $this->id)); 
             }
 
             $dataArray['approved'] = $this->approved;
@@ -673,6 +692,10 @@
             if (!empty( $this->username ) || $this->Author instanceof User) {
                 $dataArray['informant'] = $this->Author instanceof User ? $this->Author->username : $this->username;
             }
+			
+			foreach ($dataArray as $key => $val) {
+				$dataArray[$key] = trim($val); 
+			}
 
             /**
              * Save changes

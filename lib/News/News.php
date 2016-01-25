@@ -197,6 +197,14 @@
 			
 			#printArray($topic);die;
 			
+			if (preg_match("/(aurizon)/i", $topic)) {
+				return new Topic("aurizon"); 
+			}
+			
+			if (preg_match("/(asciano|pacific national|pac nat)/i", $topic)) {
+				return new Topic("asciano"); 
+			}
+			
 			/**
 			 * If we don't have a valid topic ID then it didn't work. Time to approximate
 			 */

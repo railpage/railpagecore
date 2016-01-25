@@ -1512,7 +1512,7 @@
                 define("RP_GROUP_ADMINS", "michaelisawesome");
             }
 
-            if ($group_id == RP_GROUP_ADMINS && $this->level >= 2) {
+            if ($group_id == RP_GROUP_ADMINS && $this->level == 2) {
                 return true;
             }
 
@@ -3132,12 +3132,7 @@
                 "realname"      => $this->real_name,
                 "contact_email" => $this->contact_email,
                 "avatar"        => $this->avatar,
-                "avatar_sizes"  => array(
-                    "tiny"   => Utility\AvatarUtility::Format($this->avatar, 25, 25),
-                    "thumb"  => Utility\AvatarUtility::Format($this->avatar, 50, 50),
-                    "small"  => Utility\AvatarUtility::Format($this->avatar, 75, 75),
-                    "medium" => Utility\AvatarUtility::Format($this->avatar, 100, 100)
-                ),
+                "avatar_sizes"  => Utility\AvatarUtility::getAvatarSizes($this->avatar),
                 "url"           => $this->url->getURLs()
             );
         }

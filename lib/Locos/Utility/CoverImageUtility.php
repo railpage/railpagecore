@@ -16,6 +16,7 @@
 	use Railpage\Debug;
 	use Railpage\Images\Images;
 	use Railpage\Images\Image;
+	use Railpage\Images\ImageFactory;
 	
 	
 	class CoverImageUtility {
@@ -80,6 +81,7 @@
 			
 			$cachekey = sprintf("railpage:%s=%d;coverimage", $Object->namespace, $Object->id); 
 			$Memcached = AppCore::getMemcached(); 
+			$Redis = AppCore::GetRedis();
 			
 			#printArray($cachekey);die;
 			
@@ -87,14 +89,18 @@
 				return $result;
 			}
 			
+			if ($result = $Redis->fetch($cachekey)) {
+				return $result;
+			}
+			
 			$photoidvar = isset($Object->flickr_image_id) ? "flickr_image_id" : "photo_id";
 			
 			if (isset($Object->meta['coverimage'])) {
-				$Image = new Image($Object->meta['coverimage']['id']);
+				$Image = ImageFactory::CreateImage($Object->meta['coverimage']['id']);
 			} elseif ($Object->Asset instanceof Asset) {
 				$Image = $Object->Asset;
 			} elseif (isset($Object->$photoidvar) && filter_var($Object->$photoidvar, FILTER_VALIDATE_INT) && $Object->$photoidvar > 0) {
-				$Image = (new Images)->findImage("flickr", $Object->$photoidvar);
+				$Image = ImageFactory::CreateImage($Object->$photoidvar, "flickr");
 			}
 			
 			$return = array(
@@ -141,7 +147,8 @@
 				));
 			}
 			
-			$Memcached->save($cachekey, $return, strtotime("+1 hour")); 
+			$Memcached->save($cachekey, $return, strtotime("+1 hour"));
+			$Redis->save($cachekey, $return, strtotime("+1 hour")); 
 			
 			return $return;
 			
