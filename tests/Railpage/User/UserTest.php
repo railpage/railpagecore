@@ -810,6 +810,11 @@
 			$Group->owner_user_id = $User->id;
 			$Group->commit(); 
 			
+			// Nuke our Redis cache
+			$mckey = sprintf("railpage:group=%d.user_id=%d", $Group->id, $User->id);
+			$Redis = \Railpage\AppCore::GetRedis(); 
+			$Redis->Delete($mckey); 
+			
 			$this->assertFalse(!filter_var($Group->id, FILTER_VALIDATE_INT)); 
 			
 			$this->assertFalse($Group->userInGroup($User)); 

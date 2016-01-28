@@ -333,7 +333,7 @@
 		
 		public function testGetClassByManufacturer($class_id) {
 			$Class = LocosFactory::CreateLocoClass($class_id); 
-			$Manufacturer = new Manufacturer($Class->type_id); 
+			$Manufacturer = new Manufacturer($Class->manufacturer_id); 
 			
 			foreach ($Manufacturer->getClasses() as $row) {
 				$this->assertEquals($row['manufacturer']['id'], $Manufacturer->id);
