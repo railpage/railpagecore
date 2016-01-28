@@ -49,7 +49,7 @@
 		public function testGetEntryType($TestType) {
 			$EntryType = new EntryType($TestType->id);
 			
-			$this->assertEquals(1, $EntryType->id);
+			$this->assertEquals($TestType->id, $EntryType->id);
 			$this->assertEquals("Test entry type", $EntryType->text);
 			$this->assertEquals(EntryType::GROUPING_LOCOS, $EntryType->group);
 		}
