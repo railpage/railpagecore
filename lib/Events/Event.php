@@ -21,7 +21,7 @@
 	use Exception;
 	use stdClass;
 	use Railpage\Images\Images;
-	
+	use Railpage\ContentUtility;
 	
 	/**
 	 * Event class
@@ -265,6 +265,8 @@
 			if (!$this->Author instanceof User) {
 				throw new Exception("A valid user object must be set (hint: Event::setAuthor()");
 			}
+			
+			$this->title = ContentUtility::FormatTitle($this->title);
 			
 			return true;
 		}

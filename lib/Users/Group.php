@@ -477,7 +477,7 @@
 			$timer = Debug::getTimer(); 
 			$result = false;
 			
-			//if (!$result = $this->Redis->fetch($mckey)) {
+			if (!$result = $this->Redis->fetch($mckey)) {
 				$query = "SELECT user_id FROM nuke_bbuser_group WHERE group_id = ? AND user_id = ? AND user_pending = 0";
 				$params = [ $this->id, $user_id ];
 				
@@ -487,7 +487,7 @@
 					Debug::logEvent(__METHOD__ . " found user ID " . $user_id . " in group ID " . $this->id, $timer); 
 					return true; 
 				}
-			//}
+			}
 				
 			Debug::logEvent(__METHOD__ . " did not find ID " . $user_id . " in group ID " . $this->id, $timer); 
 			

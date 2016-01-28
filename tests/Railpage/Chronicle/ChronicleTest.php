@@ -9,6 +9,23 @@
 	class ChronicleTest extends PHPUnit_Framework_TestCase {
 		
 		/**
+		 * Create a demo user
+		 */
+		
+		public function testCreateDemoUser() {
+			
+			$User = new User;
+			$User->username = "phpunit";
+			$User->contact_email = "phpunit@website.com";
+			$User->provider = "railpage";
+			$User->setPassword("thisisnotmypassword");
+			$User->commit(); 
+			
+			return $User; 
+			
+		}
+		
+		/**
 		 * EntryType
 		 */
 		
@@ -50,24 +67,14 @@
 		
 		/**
 		 * Entry
+		 * @depends testCreateDemoUser
 		 */
 		
-		public function testAddEntry() {
+		public function testAddEntry($User) {
 			
 			$Entry = new Entry; 
 			
 			$this->assertInstanceOf("Railpage\\Chronicle\\Entry", $Entry);
-			
-			/**
-			 * Create a new User object 
-			 */
-			
-			$User = new User;
-			$User->username = "phpunit";
-			$User->contact_email = "phpunit@website.com";
-			$User->provider = "railpage";
-			$User->setPassword("thisisnotmypassword");
-			$User->commit(); 
 			
 			$Entry->setAuthor($User);
 			$Entry->Date = new DateTime("1988-02-18");
@@ -80,20 +87,28 @@
 			
 		}
 		
-		public function testGetEntry() {
+		/**
+		 * @depends testAddEntry
+		 */
+		
+		public function testGetEntry($entry_id) {
 			
-			$Entry = new Entry(1);
+			$Entry = new Entry($entry_id);
 			
-			$this->assertEquals(1, $Entry->id);
+			$this->assertEquals($entry_id, $Entry->id);
 			$this->assertEquals("A test chronicle entry", $Entry->blurb);
 			$this->assertEquals("A test chronicle entry descriptive text", $Entry->text);
 			$this->assertEquals("18th February 1988", $Entry->Date->format("jS F Y"));
 			
 		}
 		
-		public function testUpdateEntry() {
+		/**
+		 * @depends testAddEntry
+		 */
+		
+		public function testUpdateEntry($entry_id) {
 			
-			$Entry = new Entry(1);
+			$Entry = new Entry($entry_id);
 			
 			$Entry->blurb = "blurb";
 			$Entry->text = "text";
@@ -105,7 +120,7 @@
 			$Entry->commit(); 
 			
 			// Reload the operator
-			$Entry = new Entry(1);
+			$Entry = new Entry($entry_id);
 			
 			$this->assertEquals($updated_blurb, $Entry->blurb);
 			$this->assertEquals($updated_text, $Entry->text);
@@ -115,14 +130,18 @@
 			
 		}
 		
-		public function test_getEntriesForDate() {
+		/**
+		 * @depends testCreateDemoUser
+		 */
+		
+		public function test_getEntriesForDate($User) {
 			
 			$Chronicle = new Chronicle;
 			
 			$Entry = new Entry;
-			$User = new User(1);
+			$NewUser = new User($User->id); 
 			
-			$Entry->setAuthor($User);
+			$Entry->setAuthor($NewUser);
 			$Entry->Date = new DateTime("1970-02-18");
 			$Entry->blurb = "A test chronicle entry";
 			$Entry->text = "A test chronicle entry descriptive text";
@@ -138,7 +157,7 @@
 			
 			$now = new DateTime;
 			$Entry = new Entry;
-			$Entry->setAuthor($User);
+			$Entry->setAuthor($NewUser);
 			$Entry->Date = $now; 
 			$Entry->blurb = "A test entry for today";
 			$Entry->text = "Blah don't care";
