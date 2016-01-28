@@ -37,18 +37,29 @@
 			$EntryType->text = "Test entry type";
 			$EntryType->group = EntryType::GROUPING_LOCOS;
 			$EntryType->commit(); 
+			
+			return $EntryType;
+			
 		}
 		
-		public function testGetEntryType() {
-			$EntryType = new EntryType(1);
+		/**
+		 * @depends testAddEntryType
+		 */
+		
+		public function testGetEntryType($TestType) {
+			$EntryType = new EntryType($TestType->id);
 			
 			$this->assertEquals(1, $EntryType->id);
 			$this->assertEquals("Test entry type", $EntryType->text);
 			$this->assertEquals(EntryType::GROUPING_LOCOS, $EntryType->group);
 		}
 		
-		public function testUpdateEntryType() {
-			$EntryType = new EntryType(1);
+		/**
+		 * @depends testAddEntryType
+		 */
+		
+		public function testUpdateEntryType($TestType) {
+			$EntryType = new EntryType($TestType->id);
 			
 			$EntryType->text = "Test entry type updated to Locations";
 			$EntryType->group = EntryType::GROUPING_LOCATIONS;
@@ -59,7 +70,7 @@
 			$EntryType->commit(); 
 			
 			// Reload the operator
-			$EntryType = new EntryType(1);
+			$EntryType = new EntryType($TestType->id);
 			
 			$this->assertEquals($updated_name, $EntryType->text);
 			$this->assertEquals($updated_desc, $EntryType->group);
@@ -68,9 +79,10 @@
 		/**
 		 * Entry
 		 * @depends testCreateDemoUser
+		 * @depends testAddEntryType
 		 */
 		
-		public function testAddEntry($User) {
+		public function testAddEntry($User, $TestType) {
 			
 			$Entry = new Entry; 
 			
@@ -80,7 +92,7 @@
 			$Entry->Date = new DateTime("1988-02-18");
 			$Entry->blurb = "A test chronicle entry";
 			$Entry->text = "A test chronicle entry descriptive text";
-			$Entry->EntryType = new EntryType(1);
+			$Entry->EntryType = new EntryType($TestType->id);
 			$Entry->commit(); 
 			
 			return $Entry->id;
@@ -148,10 +160,12 @@
 			$Entry->EntryType = new EntryType(1);
 			$Entry->commit(); 
 			
+			$id = $Entry->id;
+			
 			$Date = new DateTime("28th April 1989");
 			
 			foreach ($Chronicle->getEntriesForDate($Date) as $Entry) {
-				$this->assertEquals(1, $Entry->id);
+				$this->assertEquals($id, $Entry->id);
 				$this->assertEquals($Date->format("Y-m-d"), $Entry->Date->format("Y-m-d"));
 			}
 			
