@@ -22,7 +22,7 @@
          * @const boolean USE_REDIS
          */
 
-        const USE_REDIS = false; // causing errors
+        const USE_REDIS = true; // causing errors
 
         /**
          * Return a locomotive class
