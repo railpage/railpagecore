@@ -1,14 +1,31 @@
 ---
 engines:
-  phpcodesniffer:
+  csslint:
+    enabled: false
+  duplication:
+    enabled: true
+    config:
+      languages:
+      - php
+  eslint:
+    enabled: false
+  fixme:
     enabled: true
   phpmd:
     enabled: true
+  phpcodesniffer:
+    enabled: true
+  radon:
+    enabled: false
 ratings:
   paths:
   - "**.php"
-  - "**.module"
-  - "**.inc"
 exclude_paths:
 - lib/vendor/**/*
+- config/**/*
 - tests/**/*
+- smarty/**/*
+- build/**/*
+- db.dist/**/*
+- .git/**/*
+- etc/**/*
