@@ -24,14 +24,14 @@
     use Railpage\News\Article;
     use Railpage\News\Feed;
     use Railpage\News\News;
-	use Railpage\Images\ImageFactory;
-	use Railpage\Images\Images;
-	use Railpage\Images\Image;
+    use Railpage\Images\ImageFactory;
+    use Railpage\Images\Images;
+    use Railpage\Images\Image;
     use Railpage\Images\ImageCache;
     use Railpage\Images\MapImage;
     use Railpage\Images\PhotoOfTheWeek;
-	use Railpage\Notifications\Notifications;
-	use Railpage\Notifications\Notification;
+    use Railpage\Notifications\Notifications;
+    use Railpage\Notifications\Notification;
     use Railpage\Users\Factory as UserFactory;
     use Railpage\Users\User;
     

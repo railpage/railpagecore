@@ -153,16 +153,16 @@
             if (empty($this->slug)) {
                 $this->slug = ContentUtility::generateUrlSlug(sprintf("%s %s", $this->manufacturer, $this->name)); 
                 
-				try {
-					$count = $this->db->fetchAll("SELECT id FROM image_camera WHERE url_slug = ?", $this->slug); 
-					
-					if (count($count)) {
-						$this->slug .= count($count); 
-					}
-				} catch (Exception $e) {
-					// Don't care
-				}
-				
+                try {
+                    $count = $this->db->fetchAll("SELECT id FROM image_camera WHERE url_slug = ?", $this->slug); 
+                    
+                    if (count($count)) {
+                        $this->slug .= count($count); 
+                    }
+                } catch (Exception $e) {
+                    // Don't care
+                }
+                
             }
             
             return true;
