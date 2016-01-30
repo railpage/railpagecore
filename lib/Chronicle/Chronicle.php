@@ -10,7 +10,7 @@
     
     use Railpage\AppCore;
     use Railpage\Module;
-    Use Railpage\Url;
+    use Railpage\Url;
     use Exception;
     use DateTime;
     

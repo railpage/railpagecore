@@ -26,7 +26,7 @@
          * @return string
          */
         
-        static public function generateUrlSlug($text, $maxlength = 200) {
+        public static function generateUrlSlug($text, $maxlength = 200) {
             $find = array(
                 "(",
                 ")",
@@ -68,7 +68,7 @@
          * @param string $format
          */
         
-        static public function relativeTime($timestamp, $now = false, $format = false) {
+        public static function relativeTime($timestamp, $now = false, $format = false) {
             
             if ($timestamp instanceof DateTime) {
                 $timestamp = $timestamp->getTimestamp(); 
@@ -235,12 +235,12 @@
         
         public static function FixJSONEncode_UTF8($json) {
             
-            $json = array_map(function($row) {
+            $json = array_map(function ($row) {
                 if (!is_array($row)) {
                     return iconv('UTF-8', 'UTF-8//IGNORE', utf8_encode($row)); 
                 }
                 
-                return array_map(function($sub) {
+                return array_map(function ($sub) {
                     if (!is_array($sub)) {
                         return iconv('UTF-8', 'UTF-8//IGNORE', utf8_encode($sub)); 
                     } 

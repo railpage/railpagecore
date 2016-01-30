@@ -13,6 +13,13 @@ engines:
     enabled: true
   phpmd:
     enabled: true
+    checks:
+      Controversial/CamelCasePropertyName:
+        enabled: false
+      Controversial/CamelCaseVariableName:
+        enabled: false
+      Naming/ShortVariable:
+        enabled: false
     exclude_fingerprints:
     - 37367e07341e303228020476e7d1ee07
     - 490620276980d014bc6c5c4ad93a1094
@@ -23,9 +30,15 @@ engines:
     checks:
       Generic PHP LowerCaseConstant Found:
         enabled: false
+      PSR1 Files SideEffects FoundWithSymbols:
+        enabled: false
+      PSR1 Methods CamelCapsMethodName NotCamelCaps:
+        enabled: false
       PSR2 Classes ClassDeclaration OpenBraceNewLine:
         enabled: false
       PSR2 Classes ClassDeclaration CloseBraceNewLine:
+        enabled: false
+      PSR2 Classes ClassDeclaration CloseBraceAfterBody:
         enabled: false
       PSR2 ControlStructures SwitchDeclaration SpaceBeforeColonCASE:
         enabled: false
@@ -53,3 +66,5 @@ exclude_paths:
 - composer.json
 - lib/**/*.tpl
 - lib/bootstrap.php
+- lib/SessionHandler/MemcachedSessionHandler.php
+- lib/SessionHandler/RedisSessionHandler.php

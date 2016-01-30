@@ -499,7 +499,7 @@
          * @throws \Exception if no suitable AV library is available
          */
         
-        static public function getAVLib() {
+        public static function getAVLib() {
             if (file_exists("/usr/bin/avconv")) {
                 $avlib = "/usr/bin/avconv";
             } else {

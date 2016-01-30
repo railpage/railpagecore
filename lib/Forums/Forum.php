@@ -15,6 +15,7 @@
     use Railpage\Users\User;
     use Railpage\Users\Factory as UserFactory;
     use Zend_Acl;
+    use Zend_Db_Expr;
     
     use DateTime;
     use Exception;
@@ -359,16 +360,22 @@
                 return false;
             }
             
+            /*
             if ($this->db instanceof \sql_db) {
                 if ($postID != null) {
-                    if ($this->db->query("UPDATE nuke_bbforums SET forum_posts=forum_posts+1, forum_last_post_id='".$this->db->real_escape_string($postID)."' WHERE forum_id = '".$this->id."'") === true) { return true; } else { return false; }
+                    if ($this->db->query("UPDATE nuke_bbforums SET forum_posts=forum_posts+1, forum_last_post_id='".$this->db->real_escape_string($postID)."' WHERE forum_id = '".$this->id."'") === true) { 
+                        return true; 
+                    } else { 
+                        return false; 
+                    }
                 } else {
                     trigger_error("PhpBB_forum: Class has no data to add post.", E_USER_NOTICE); 
                     return false;
                 }
             } else {
+            */
                 $data = array(
-                    "forum_posts" => new \Zend_Db_Expr("forum_posts + 1"),
+                    "forum_posts" => new Zend_Db_Expr("forum_posts + 1"),
                     "forum_last_post_id" => $postID
                 );
                 
@@ -377,7 +384,7 @@
                 );
                 
                 return $this->db->update("nuke_bbforums", $data, $where); 
-            }
+            //}
         }
         
         
@@ -391,19 +398,15 @@
         
         
         function addTopic() {
-            if ($this->db instanceof \sql_db) {
-                if ($this->db->query("UPDATE nuke_bbforums SET forum_topics=forum_topics+1 WHERE forum_id = '".$this->id."'") === true) { return true; } else { return false; }
-            } else {
-                $data = array(
-                    "forum_topics" => new \Zend_Db_Expr("forum_topics + 1"),
-                );
-                
-                $where = array(
-                    "forum_id = ?" => $this->id
-                );
-                
-                return $this->db->update("nuke_bbforums", $data, $where); 
-            }
+            $data = array(
+                "forum_topics" => new Zend_Db_Expr("forum_topics + 1"),
+            );
+            
+            $where = array(
+                "forum_id = ?" => $this->id
+            );
+            
+            return $this->db->update("nuke_bbforums", $data, $where); 
         }
         
         /**
@@ -549,61 +552,61 @@
                     }
                     
                     return $topics;
-                } else {
-                    trigger_error("phpBB Forum : Unable to fetch topic list for forum id ".$this->id);
-                    trigger_error($this->db->error);
-                    trigger_error($query);
-                    
-                    return false;
-                }
-            } else {
-                $query = "SELECT 
-                                SQL_CALC_FOUND_ROWS 
-                                t.*, 
-                                ufirst.username AS first_post_username, 
-                                ufirst.user_id AS first_post_user_id, 
-                                ulast.username AS last_post_username, 
-                                ulast.user_id AS last_post_user_id,
-                                pfirst_text.post_text AS first_post_text,
-                                pfirst_text.bbcode_uid AS first_post_bbcode_uid,
-                                pfirst.post_time AS first_post_time,
-                                plast_text.post_text AS last_post_text,
-                                plast_text.bbcode_uid AS last_post_bbcode_uid,
-                                plast.post_time AS last_post_time
-                                
-                            FROM nuke_bbtopics AS t
-                            
-                            LEFT JOIN nuke_bbposts AS pfirst ON pfirst.post_id = t.topic_first_post_id
-                            LEFT JOIN nuke_bbposts AS plast ON plast.post_id = t.topic_last_post_id
-                            LEFT JOIN nuke_bbposts_text AS pfirst_text ON pfirst.post_id = pfirst_text.post_id
-                            LEFT JOIN nuke_bbposts_text AS plast_text ON plast.post_id = plast_text.post_id
-                            LEFT JOIN nuke_users AS ufirst ON ufirst.user_id = pfirst.poster_id
-                            LEFT JOIN nuke_users AS ulast ON ulast.user_id = plast.poster_id
-                            
-                            WHERE t.forum_id = ?
-                            ORDER BY t.topic_type DESC, plast.post_time " . $sort . "
-                            LIMIT ?, ?";
-                
-                $params = array(
-                    $this->id,
-                    ($page_num - 1) * $items_per_page,
-                    $items_per_page
-                );
-                
-                $result = $this->db->fetchAll($query, $params);
-                
-                $topics = array();
-                $topics['total_topics'] = $this->db->fetchOne("SELECT FOUND_ROWS() AS total"); 
-                $topics['total_pages'] = ceil($total['total'] / $items_per_page);
-                $topics['page_num'] = $page_num;
-                $topics['items_per_page'] = $items_per_page;
-                
-                foreach ($result as $row) {
-                    $topics['topics'][$row['topic_id']] = $row;
                 }
                 
-                return $topics;
+                trigger_error("phpBB Forum : Unable to fetch topic list for forum id ".$this->id);
+                trigger_error($this->db->error);
+                trigger_error($query);
+                
+                return false;
             }
+            
+            $query = "SELECT 
+                            SQL_CALC_FOUND_ROWS 
+                            t.*, 
+                            ufirst.username AS first_post_username, 
+                            ufirst.user_id AS first_post_user_id, 
+                            ulast.username AS last_post_username, 
+                            ulast.user_id AS last_post_user_id,
+                            pfirst_text.post_text AS first_post_text,
+                            pfirst_text.bbcode_uid AS first_post_bbcode_uid,
+                            pfirst.post_time AS first_post_time,
+                            plast_text.post_text AS last_post_text,
+                            plast_text.bbcode_uid AS last_post_bbcode_uid,
+                            plast.post_time AS last_post_time
+                            
+                        FROM nuke_bbtopics AS t
+                        
+                        LEFT JOIN nuke_bbposts AS pfirst ON pfirst.post_id = t.topic_first_post_id
+                        LEFT JOIN nuke_bbposts AS plast ON plast.post_id = t.topic_last_post_id
+                        LEFT JOIN nuke_bbposts_text AS pfirst_text ON pfirst.post_id = pfirst_text.post_id
+                        LEFT JOIN nuke_bbposts_text AS plast_text ON plast.post_id = plast_text.post_id
+                        LEFT JOIN nuke_users AS ufirst ON ufirst.user_id = pfirst.poster_id
+                        LEFT JOIN nuke_users AS ulast ON ulast.user_id = plast.poster_id
+                        
+                        WHERE t.forum_id = ?
+                        ORDER BY t.topic_type DESC, plast.post_time " . $sort . "
+                        LIMIT ?, ?";
+            
+            $params = array(
+                $this->id,
+                ($page_num - 1) * $items_per_page,
+                $items_per_page
+            );
+            
+            $result = $this->db->fetchAll($query, $params);
+            
+            $topics = array();
+            $topics['total_topics'] = $this->db->fetchOne("SELECT FOUND_ROWS() AS total"); 
+            $topics['total_pages'] = ceil($total['total'] / $items_per_page);
+            $topics['page_num'] = $page_num;
+            $topics['items_per_page'] = $items_per_page;
+            
+            foreach ($result as $row) {
+                $topics['topics'][$row['topic_id']] = $row;
+            }
+            
+            return $topics;
         }
         
         /**
