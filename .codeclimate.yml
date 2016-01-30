@@ -16,6 +16,8 @@ engines:
     checks:
       Controversial/CamelCasePropertyName:
         enabled: false
+      Controversial/CamelCaseMethodName:
+        enabled: false
       Controversial/CamelCaseVariableName:
         enabled: false
       Naming/ShortVariable:
@@ -29,6 +31,8 @@ engines:
     enabled: true
     checks:
       Generic PHP LowerCaseConstant Found:
+        enabled: false
+      Generic Files LineEndings InvalidEOLChar:
         enabled: false
       PSR1 Files SideEffects FoundWithSymbols:
         enabled: false

@@ -907,8 +907,17 @@
             }
             
             if ($detailed) {
-                $query = "SELECT AVG(rating) as dec_avg, COUNT(rating) AS number_votes, SUM(rating) AS total_points FROM rating_loco WHERE loco_id = ?"; 
+                $query = "SELECT 
+                            COALESCE(AVG(rating), 0) as dec_avg, 
+                            COALESCE(ROUND(AVG(rating)), 0) AS whole_avg,
+                            COALESCE(COUNT(rating), 0) AS number_votes, 
+                            COALESCE(SUM(rating), 0) AS total_points 
+                            FROM rating_loco 
+                            WHERE loco_id = ?"; 
                 
+                return $this->db->fetchRow($query, $this->id); 
+                
+                /*
                 $row = array(
                     "dec_avg" => 0,
                     "whole_avg" => 0,
@@ -924,12 +933,18 @@
                 $row['whole_avg'] = round($row['dec_avg']);
                 
                 return $row;
+                */
             }
             
-            $query = "SELECT AVG(rating) as average_rating FROM rating_loco WHERE loco_id = ?"; 
+            $query = "SELECT COALESCE(AVG(rating), '2.5') as average_rating FROM rating_loco WHERE loco_id = ?"; 
+            
+            return $this->db->fetchOne($query, $this->id); 
+            
+            /*
             $row = $this->db->fetchRow($query, $this->id);
             
             return isset($row['average_rating']) ? $row['average_rating'] : floatval("2.5"); 
+            */
         }
         
         /**
