@@ -110,7 +110,7 @@
          * @param boolean $reloadFirst
          */
         
-        public function cacheAll($reloadFirst = false) {
+        public function cacheAll($reloadFirst = null) {
             if ($reloadFirst) {
                 $this->loadUsers($reloadFirst); 
                 $this->loadIPs($reloadFirst);
@@ -144,7 +144,7 @@
          * @param boolean $skipCache
          */
         
-        public function loadUsers($skipCache = false) {
+        public function loadUsers($skipCache = null) {
             $mckey = "railpage:bancontrol.users;v5"; 
             
             if ($skipCache || !$this->Memcached->contains($mckey) || !$this->users = json_decode(gzuncompress($this->Memcached->Fetch($mckey)), true)) {
@@ -177,7 +177,7 @@
          * @param boolean skipCache
          */
         
-        public function loadIPs($skipCache = false) {
+        public function loadIPs($skipCache = null) {
             $mckey = "railpage:bancontrol.ips;v4"; 
             
             if ($skipCache || !$this->Memcached->contains($mckey) || !$this->ip_addresses = json_decode(gzuncompress($this->Memcached->Fetch($mckey)), true)) {
@@ -233,13 +233,18 @@
          * @return boolean
          */
         
-        public function banUser($user_id = false, $reason = false, $expiry = false, $admin_user_id = false) {
-            if (!$user_id || !$reason || !$admin_user_id) {
-                return false;
+        public function banUser($user_id = null, $reason = null, $expiry = "0", $admin_user_id = null) {
+            
+            if (!filter_var($user_id, FILTER_VALIDATE_INT)) {
+                throw new InvalidArgumentException("No user ID supplied"); 
             }
-                
-            if (!$expiry) {
-                $expiry = "0";
+            
+            if (is_null($reason)) {
+                throw new InvalidArgumentException("No reason was supplied"); 
+            }
+            
+            if (!filter_var($admin_user_id, FILTER_VALIDATE_INT)) {
+                throw new InvalidArgumentException("No administrative user ID was supplied");
             }
             
             /**
@@ -347,13 +352,18 @@
          * @return boolean
          */
         
-        public function banIP($ip_addr = false, $reason = false, $expiry = false, $admin_user_id = false) {
-            if (!$ip_addr || !$reason || !$admin_user_id) {
-                return false;
+        public function banIP($ip_addr = null, $reason = null, $expiry = "0", $admin_user_id = null) {
+            
+            if (is_null($ip_addr)) {
+                throw new InvalidArgumentException("No IP address supplied"); 
             }
-                
-            if (!$expiry) {
-                $expiry = "0";
+            
+            if (is_null($reason)) {
+                throw new InvalidArgumentException("No reason was supplied"); 
+            }
+            
+            if (!filter_var($admin_user_id, FILTER_VALIDATE_INT)) {
+                throw new InvalidArgumentException("No administrative user ID was supplied");
             }
             
             /**
@@ -395,6 +405,7 @@
             $this->cacheAll(true);
             
             return true;
+            
         }
         
         /**
@@ -615,6 +626,7 @@
          */
         
         public function lookupIP($ip = false, $activeOnly = true) {
+            
             if (!$ip) {
                 throw new Exception("Cannot peform IP ban lookup - no IP address given"); 
                 return false;
@@ -634,6 +646,7 @@
          */
         
         public function lookupUser($user_id = false, $activeOnly = true) {
+            
             if (!$user_id) {
                 throw new Exception("Cannot peform user ban lookup - no user ID given"); 
                 return false;
