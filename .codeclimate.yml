@@ -16,6 +16,8 @@ engines:
     exclude_fingerprints:
     - 37367e07341e303228020476e7d1ee07
     - 490620276980d014bc6c5c4ad93a1094
+    - 78231709437e6debb3e3dd1881580178
+    - 70b99f7bb9b30fac610788c25e599beb
   phpcodesniffer:
     enabled: true
     checks:
@@ -46,3 +48,8 @@ exclude_paths:
 - .git/**/*
 - etc/**/*
 - lib/ISO/ISO_3166.php
+- LICENSE
+- README.md
+- composer.json
+- lib/**/*.tpl
+- lib/bootstrap.php
