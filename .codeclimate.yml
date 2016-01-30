@@ -13,8 +13,24 @@ engines:
     enabled: true
   phpmd:
     enabled: true
+    exclude_fingerprints:
+    - 37367e07341e303228020476e7d1ee07
+    - 490620276980d014bc6c5c4ad93a1094
   phpcodesniffer:
     enabled: true
+    checks:
+      Generic PHP LowerCaseConstant Found:
+        enabled: false
+      PSR2 Classes ClassDeclaration OpenBraceNewLine:
+        enabled: false
+      PSR2 Classes ClassDeclaration CloseBraceNewLine:
+        enabled: false
+      PSR2 ControlStructures SwitchDeclaration SpaceBeforeColonCASE:
+        enabled: false
+      Squiz WhiteSpace SuperfluousWhitespace EndLine:
+        enabled: false
+      Squiz Functions MultiLineFunctionDeclaration BraceOnSameLine:
+        enabled: false
   radon:
     enabled: false
 ratings:
@@ -29,3 +45,4 @@ exclude_paths:
 - db.dist/**/*
 - .git/**/*
 - etc/**/*
+- lib/ISO/ISO_3166.php

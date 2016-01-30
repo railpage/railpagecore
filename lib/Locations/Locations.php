@@ -96,57 +96,69 @@
             $return = false;
             $mckey  = ($country) ? "railpage:locations.regions.country=" . $country : "railpage:locations.regions";
             
-            if (!$return = $this->Memcached->fetch($mckey)) {
-                $return = array(); 
-                
-                if ($country) {
-                    foreach ($this->db->fetchAll("SELECT DISTINCT region FROM location WHERE country = ? AND active = 1 ORDER BY region ASC", $country) as $row) {
-                                
-                        $woe = Place::getWOEData($country);
-                        if (isset($woe['places']['place'][0])) {
-                            $return[$country]['woe'] = $woe['places']['place'][0];
-                        }
-                        
-                        $datarow = array(
-                            "region" => $row['region'],
-                            "url" => $this->makeRegionPermalink($country, $row['region']),
-                            "count" => $this->db->fetchOne("SELECT COUNT(id) FROM location WHERE country = ? AND region = ?", array($country, $row['region'])),
-                        );
-                        
-                        $woe = Place::getWOEData($row['region'] . "," . $country); 
-                        if (isset($woe['places']['place'][0])) {
-                            $datarow['woe'] = $woe['places']['place'][0];
-                        }
-                        
-                        $return[$country]['children'][] = $datarow;
+            if ($return = $this->Memcached->fetch($mckey)) {
+                return $return;
+            }
+            
+            $return = array(); 
+            
+            if ($country) {
+                foreach ($this->db->fetchAll("SELECT DISTINCT region FROM location WHERE country = ? AND active = 1 ORDER BY region ASC", $country) as $row) {
+                            
+                    $woe = Place::getWOEData($country);
+                    if (isset($woe['places']['place'][0])) {
+                        $return[$country]['woe'] = $woe['places']['place'][0];
                     }
-                } else {
                     
-                    #$query = "SELECT DISTINCT region, country FROM location WHERE country IN (SELECT DISTINCT country FROM location ORDER BY country) AND active = 1 ORDER BY region desc";
-                    $query = "SELECT DISTINCT l.region, l.country, g.country_name, g.region_name FROM location AS l LEFT JOIN geoplace AS g ON l.geoplace = g.id WHERE l.active = 1 GROUP BY l.country ORDER BY l.region DESC";
+                    $datarow = array(
+                        "region" => $row['region'],
+                        "url" => $this->makeRegionPermalink($country, $row['region']),
+                        "count" => $this->db->fetchOne("SELECT COUNT(id) FROM location WHERE country = ? AND region = ?", array($country, $row['region'])),
+                    );
                     
-                    foreach ($this->db->fetchAll($query) as $row) {
-                        if (!empty($row['country'])) {
-                            
-                            $return[$row['country']]['woe'] = array(
-                                "country" => $row['country_name']
-                            );
-                            
-                            if (empty($return[$row['country']]['woe']['country'])) {
-                                $woe = Place::getWOEData(strtoupper($row['region']));
-                                $return[$row['country']]['woe'] = array(
-                                    "country" => $woe['places']['place'][0]['country']
-                                );
-                            }
-                            
-                            $return[$row['country']]['children'][] = $row['region']; 
-                        }
+                    $woe = Place::getWOEData($row['region'] . "," . $country); 
+                    if (isset($woe['places']['place'][0])) {
+                        $datarow['woe'] = $woe['places']['place'][0];
                     }
+                    
+                    $return[$country]['children'][] = $datarow;
                 }
                 
-                // Cache it
                 $this->Memcached->save($mckey, $return, strtotime("+1 day"));
+                
+                Debug::LogEvent(__METHOD__ . "(" . $country . ")", $timer);
+                
+                return $return;
             }
+                
+            $query = "SELECT DISTINCT l.region, l.country, g.country_name, g.region_name 
+                FROM location AS l 
+                LEFT JOIN geoplace AS g ON l.geoplace = g.id 
+                WHERE l.active = 1 
+                GROUP BY l.country 
+                ORDER BY l.region DESC";
+            
+            foreach ($this->db->fetchAll($query) as $row) {
+                if (empty($row['country'])) {
+                    continue;
+                }
+                
+                $return[$row['country']]['woe'] = array(
+                    "country" => $row['country_name']
+                );
+                
+                if (empty($return[$row['country']]['woe']['country'])) {
+                    $woe = Place::getWOEData(strtoupper($row['region']));
+                    $return[$row['country']]['woe'] = array(
+                        "country" => $woe['places']['place'][0]['country']
+                    );
+                }
+                
+                $return[$row['country']]['children'][] = $row['region']; 
+            }
+            
+            // Cache it
+            $this->Memcached->save($mckey, $return, strtotime("+1 day"));
             
             Debug::LogEvent(__METHOD__ . "(" . $country . ")", $timer);
             
@@ -162,6 +174,7 @@
          */
          
         public function getLocations($region = false, $country = false) {
+            
             if (!$region || !$country) {
                 return false;
             }
@@ -172,11 +185,14 @@
             if ($country) $mckey .= ".country=" . $country;
             if ($region) $mckey .= ".region=" . $region; 
             
-            $return = $this->db->fetchAll("SELECT * FROM location WHERE country = ? AND region = ? AND active = 1 ORDER BY locality, neighbourhood", array($country, $region));
+            $query = "SELECT * FROM location WHERE country = ? AND region = ? AND active = 1 ORDER BY locality, neighbourhood";
+            
+            $return = $this->db->fetchAll($query, array($country, $region));
             
             Debug::LogEvent(__METHOD__, $timer);
             
             return $return; 
+            
         }
         
         /**
@@ -186,7 +202,14 @@
          */
          
         public function getPending() {
-            return $this->db->fetchAll("SELECT l.*, u.username FROM location AS l INNER JOIN nuke_users AS u ON u.user_id = l.user_id WHERE l.active = 0 ORDER BY l.date_added");
+            
+            $query = "SELECT l.*, u.username 
+                    FROM location AS l 
+                    INNER JOIN nuke_users AS u ON u.user_id = l.user_id 
+                    WHERE l.active = 0 
+                    ORDER BY l.date_added";
+            return $this->db->fetchAll($query);
+            
         }
         
         /**
@@ -270,7 +293,24 @@
             $mckey = "rp-locations-geolookup-lat:" . $lat . "-lon:" . $lon . "-dist:" . $distance . "-num:" . $num;
             
             if (!$return = $this->Memcached->fetch($mckey)) {
-                $query = "SELECT location.*, 3956 * 2 * ASIN(SQRT(POWER(SIN((" . $lat . " - location.lat) * pi() / 180 / 2), 2) + COS(" . $lat . " * pi() / 180) * COS(location.lat * pi() / 180) * POWER(SIN((" . $lon . " - location.long) * pi() / 180 / 2), 2))) AS distance 
+                $query = "SELECT location.*, 
+                    3956 * 2 * ASIN(
+                        SQRT(
+                            POWER(
+                            SIN(
+                                (" . $lat . " - location.lat) * pi() / 180 / 2
+                            ), 2
+                            ) + COS(
+                                " . $lat . " * pi() / 180
+                            ) * COS(
+                                location.lat * pi() / 180
+                            ) * POWER(
+                                SIN(
+                                    (" . $lon . " - location.long) * pi() / 180 / 2
+                                ), 2
+                            )
+                        )
+                    ) AS distance 
                     FROM location 
                     WHERE 
                         location.long BETWEEN (
@@ -396,7 +436,8 @@
          * Make a permalink for this location
          * @since Version 3.7.5
          * @return string
-         * @param int $id Optional location ID - inherited by Railpage\Locations\Location so will attempt to use $this->id if none provided
+         * @param int $id Optional location ID - inherited by 
+         *    Railpage\Locations\Location so will attempt to use $this->id if none provided
          */
         
         public function makePermalink($id = false) {
@@ -421,8 +462,14 @@
                     $data['slug'] = $this->slug; 
                 }
                 
-                #$string = "/locations/" . strtolower(str_replace(" ", "-", $data['country'])) . "/" . strtolower(str_replace(" ", "-", $data['region'])) . "/" . $data['slug'];
-                $string = strtolower(sprintf("%s/%s/%s/%s", $this->Module->url, str_replace(" ", "-", $data['country']), str_replace(" ", "-", $data['region']), $data['slug']));
+                $params = [ 
+                    $this->Module->url, 
+                    str_replace(" ", "-", $data['country']), 
+                    str_replace(" ", "-", $data['region']), 
+                    $data['slug']
+                ];
+                
+                $string = strtolower(vsprintf("%s/%s/%s/%s", $params));
                 
                 $this->Memcached->save($mckey, $string, strtotime("+1 year"));
             }
@@ -512,7 +559,12 @@
         
         public function getOpenCorrections() {
             
-            $query = "SELECT l.name AS location_name, u.username, c.* FROM location_corrections AS c LEFT JOIN location AS l ON c.location_id = l.id LEFT JOIN nuke_users AS u ON u.user_id = c.user_id WHERE c.status = ? ORDER BY c.date_added DESC";
+            $query = "SELECT l.name AS location_name, u.username, c.* 
+                    FROM location_corrections AS c 
+                    LEFT JOIN location AS l ON c.location_id = l.id 
+                    LEFT JOIN nuke_users AS u ON u.user_id = c.user_id 
+                    WHERE c.status = ? 
+                    ORDER BY c.date_added DESC";
             
             $return = array(); 
             

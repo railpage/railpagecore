@@ -34,7 +34,6 @@
     use Doctrine\Common\Cache\RedisCache;
     use Railpage\Debug;
     
-    
     if (!defined("RP_SITE_ROOT")) {
         define("RP_SITE_ROOT", "");
     }
@@ -625,22 +624,21 @@
             }
             
             try {
-                $cacheDriver = $Registry->get("memcache");
+                $memcache = $Registry->get("memcache");
             } catch (Exception $e) {
+                
+                $memcache = false;
 
                 Debug::logEvent(__METHOD__ . " -- Looking for memcache.php");
                 
                 if (file_exists(__DIR__ . DIRECTORY_SEPARATOR . "memcache.php")) {
                     require(__DIR__ . DIRECTORY_SEPARATOR . "memcache.php"); 
-                
-                    $Registry->set("memcache", $memcache);
-                    
-                    return $memcache;
                 } 
                 
-                $Registry->set("memcache", false); 
-                return false;
+                $Registry->set("memcache", $memcache); 
             }
+            
+            return $memcache;
             
         }
         
@@ -694,16 +692,13 @@
                 "-"
             );
             
-            $replace = array(); 
-            
-            foreach ($find as $item) {
-                $replace[] = "";
-            }
+            $replace = array_fill(0, count($find), ""); 
             
             $string = str_replace($find, $replace, $string);
                 
             $slug = strtolower(preg_replace('/[^A-Za-z0-9-]+/', '-', trim($string)));
             return $slug;
+            
         }
         
         /**
@@ -813,8 +808,6 @@
             
             $Registry = Registry::getInstance();
             
-            $Config = self::getConfig();
-            
             try {
                 $Monolog = $Registry->get("alerter"); 
             } catch (Exception $e) {
@@ -906,4 +899,3 @@
         }
         
     }
-    

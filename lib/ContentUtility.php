@@ -45,11 +45,7 @@
                 "\""
             );
             
-            $replace = array(); 
-            
-            foreach ($find as $item) {
-                $replace[] = "";
-            }
+            $replace = array_fill(0, count($find), ""); 
             
             $text = str_replace($find, $replace, strtolower(trim($text)));
                 
@@ -168,6 +164,8 @@
             // Too slow
             return true;
             
+            /*
+            
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
             $response = curl_exec($ch);
@@ -185,6 +183,7 @@
             }
             
             return true;
+            */
             
         }
         
@@ -236,6 +235,19 @@
         
         public static function FixJSONEncode_UTF8($json) {
             
+            $json = array_map(function($row) {
+                if (!is_array($row)) {
+                    return iconv('UTF-8', 'UTF-8//IGNORE', utf8_encode($row)); 
+                }
+                
+                return array_map(function($sub) {
+                    if (!is_array($sub)) {
+                        return iconv('UTF-8', 'UTF-8//IGNORE', utf8_encode($sub)); 
+                    } 
+                }, $row); 
+            }, $json);
+            
+            /*
             foreach ($json as $key => $val) {
                 if (!is_array($val)) {
                     $json[$key] = iconv('UTF-8', 'UTF-8//IGNORE', utf8_encode($val));
@@ -247,6 +259,7 @@
                     }
                 }
             }
+            */
             
             $json = json_encode($json);
             

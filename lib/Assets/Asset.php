@@ -18,7 +18,6 @@
     use Railpage\Users\Factory as UserFactory;
     use Exception;
     use DateTime;
-    
 
     /**
      * Asset class
