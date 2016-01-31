@@ -11,14 +11,13 @@
      */
 
     namespace Railpage\Assets;
-	
-	use Railpage\AppCore;
-	use Railpage\Url;
-	use Railpage\Users\User;
-	use Railpage\Users\Factory as UserFactory;
-	use Exception;
-	use DateTime;
-	
+    
+    use Railpage\AppCore;
+    use Railpage\Url;
+    use Railpage\Users\User;
+    use Railpage\Users\Factory as UserFactory;
+    use Exception;
+    use DateTime;
 
     /**
      * Asset class
@@ -284,4 +283,4 @@
             return true;
         }
     }
-	
+    

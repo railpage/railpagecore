@@ -3079,13 +3079,13 @@
                     return array(
                         'regions_label' => self::_('Province'),
                         'regions'       => array(
-                            /*			'ENG' => array( 'name' => self::_( 'England' ) ),
-				'SCT' => array( 'name' => self::_( 'Scotland' ) ),
-				'NIR' => array( 'name' => self::_( 'Northern Ireland' ) ),
-				'WLS' => array( 'name' => self::_( 'Wales' ) ),
-				'EAW' => array( 'name' => self::_( 'England and Wales' ) ),
-				'GBN' => array( 'name' => self::_( 'Great Britain' ) ),
-				'UKM' => array( 'name' => self::_( 'United Kingdom' ) ), */
+                            /*          'ENG' => array( 'name' => self::_( 'England' ) ),
+                'SCT' => array( 'name' => self::_( 'Scotland' ) ),
+                'NIR' => array( 'name' => self::_( 'Northern Ireland' ) ),
+                'WLS' => array( 'name' => self::_( 'Wales' ) ),
+                'EAW' => array( 'name' => self::_( 'England and Wales' ) ),
+                'GBN' => array( 'name' => self::_( 'Great Britain' ) ),
+                'UKM' => array( 'name' => self::_( 'United Kingdom' ) ), */
                             'BKM' => array( 'name' => self::_('Buckinghamshire') ),
                             'CAM' => array( 'name' => self::_('Cambridgeshire') ),
                             'CMA' => array( 'name' => self::_('Cumbria') ),

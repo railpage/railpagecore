@@ -79,4 +79,4 @@
             return $this->db->fetchOne($query, $name);
         }
     }
-	
+    

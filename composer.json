@@ -1,7 +1,7 @@
 {
 	"extra" : {
         "branch-alias": {
-            "dev-master": "1.0.x-dev"
+            "dev-master": "1.4.x-dev"
         }
     },
 	"name" : "railpage/railpagecore",
@@ -45,8 +45,11 @@
 			"Railpage\\Downloads\\" : "lib/Downloads/",
 			"Railpage\\Events\\" : "lib/Events/",
 			"Railpage\\Feedback\\" : "lib/Feedback/",
+			"Railpage\\Formatting\\" : "lib/Formatting/",
 			"Railpage\\Forums\\" : "lib/Forums/",
+			"Railpage\\Forums\\Utility\\" : "lib/Forums/Utility/",
 			"Railpage\\Gallery\\" : "lib/Gallery/",
+			"Railpage\\Gallery\\Utility\\" : "lib/Gallery/Utility/",
 			"Railpage\\Glossary\\" : "lib/Glossary/",
 			"Railpage\\Graphite\\" : "lib/Graphite/",
 			"Railpage\\GTFS\\" : "lib/GTFS/",
@@ -64,22 +67,30 @@
 			"Railpage\\Images\\" : "lib/Images/",
 			"Railpage\\Images\\Utility\\" : "lib/Images/Utility/",
 			"Railpage\\Images\\Provider\\" : "lib/Images/Provider/",
+			"Railpage\\ISO\\" : "lib/ISO/",
 			"Railpage\\Jobs\\" : "lib/Jobs/",
 			"Railpage\\Jobs\\Utility\\" : "lib/Jobs/Utility/",
 			"Railpage\\Links\\" : "lib/Links/",
 			"Railpage\\Locations\\" : "lib/Locations/",
+			"Railpage\\Locations\\Utility\\" : "lib/Locations/Utility/",
 			"Railpage\\Locos\\" : "lib/Locos/",
 			"Railpage\\Locos\\Liveries\\" : "lib/Locos/Liveries/",
 			"Railpage\\Locos\\Utility\\" : "lib/Locos/Utility/",
 			"Railpage\\Modules\\" : "lib/Modules/",
 			"Railpage\\News\\" : "lib/News/",
 			"Railpage\\News\\Utility\\" : "lib/News/Utility/",
+			"Railpage\\Newsletters\\" : "lib/Newsletters/",
+			"Railpage\\Newsletters\\Utility\\" : "lib/Newsletters/Utility/",
+			"Railpage\\Notifications\\" : "lib/Notifications/",
+			"Railpage\\Notifications\\Transport\\" : "lib/Notifications/Transport/",
 			"Railpage\\Organisations\\" : "lib/Organisations/",
-			"Railpage\\RSS\\" : "lib/RSS/",
 			"Railpage\\PrivateMessages\\" : "lib/PrivateMessages/",
+			"Railpage\\Radar\\" : "lib/Radar/",
+			"Railpage\\Radar\\Utility\\" : "lib/Radar/Utility/",
 			"Railpage\\Railcams\\" : "lib/Railcams/",
 			"Railpage\\Railcams\\Provider\\" : "lib/Railcams/Provider/",
 			"Railpage\\Reminders\\" : "lib/Reminders/",
+			"Railpage\\RSS\\" : "lib/RSS/",
 			"Railpage\\SessionHandler\\" : "lib/SessionHandler/",
 			"Railpage\\Sightings\\" : "lib/Sightings/",
 			"Railpage\\SiteEvent\\" : "lib/SiteEvent/",
@@ -126,7 +137,8 @@
 		"nilportugues/sphinx-search": "dev-master",
 		"leg/simhash-php": "1.0",
 		"lusitanian/oauth": "~0.3",
-		"lcobucci/jwt": "^3.1"
+        "lcobucci/jwt": "^3.1",
+        "textalk/websocket": "^1.2"
 	},
 	"require-dev" : {
 		"codeclimate/php-test-reporter": "dev-master",

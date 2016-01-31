@@ -167,7 +167,7 @@
                 "href" => $href,
                 "text" => $current_page ? sprintf("%s of %s", $increment, $this->getParam("total_pages")) : $increment,
                 "current" => $current_page,
-				"class" => $current_page ? "current" : ""
+                "class" => $current_page ? "current" : ""
             ];
             
             $this->setParam("links", $links);
@@ -232,10 +232,10 @@
                     for ($x = $current_page -1; $x <= $current_page + 1; $x++) {
                         $this->addLink($x, $x == $current_page); 
                     }
-					
-					$links = $this->getParam("links"); 
-					ksort($links); 
-					$this->setParam("links", $links);
+                    
+                    $links = $this->getParam("links"); 
+                    ksort($links); 
+                    $this->setParam("links", $links);
                     
                     break;
                 }
@@ -244,102 +244,102 @@
             return $this;
             
         }
-		
-		/**
-		 * Add dividers between page number blocks
-		 * @since Version 3.10.0
-		 * @return \Railpage\Pagination
-		 */
-		
-		private function addDividers() {
-			
-			$links = $this->getParam("links");
-			
-			end($links); 
-			$last = key($links); 
-			
-			foreach ($links as $i => $link) {
-				
-				if ($i == $last) {
-					continue;
-				}
-				
-				if (!isset($links[$i + 1])) {
-					$links[$i + 1] = [
-						"text" => "...",
-						"current" => false,
-						"class" => "other"
-					];
-				}
-				
-			}
-			
-			ksort($links);
-			
-			$this->setParam("links", $links); 
-			
-			return $this;
-			
-		}
-		
-		/**
-		 * Add navigation (left, right) elements
-		 * @since Version 3.10.0
-		 * @return \Railpage\Pagniation
-		 */
-		
-		private function addNavigation() {
-			
-			$links = $this->getParam("links"); 
-			$current = $this->getParam("current_page");
-			$first = key($links); 
-			
-			end($links); 
-			$last = key($links); 
-			
-			if ($current !== $first) {
-				
-				$links[$first - 1] = [
-					"href" => sprintf($this->getParam("url_format"), $current - 1),
-					"text" => $this->getParam("nav_left"),
-					"current" => false,
-					"class" => "navigation"
-				];
-			}
-			
-			if ($this->getParam("current_page") !== $last) {
-				$links[$last + 1] = [
-					"href" => sprintf($this->getParam("url_format"), $current + 1),
-					"text" => $this->getParam("nav_right"),
-					"current" => false,
-					"class" => "navigation"
-				];
-			}
-			
-			ksort($links);
-			
-			$this->setParam("links", $links); 
-			
-			return $this;
-			
-		}
+        
+        /**
+         * Add dividers between page number blocks
+         * @since Version 3.10.0
+         * @return \Railpage\Pagination
+         */
+        
+        private function addDividers() {
+            
+            $links = $this->getParam("links");
+            
+            end($links); 
+            $last = key($links); 
+            
+            foreach ($links as $i => $link) {
+                
+                if ($i == $last) {
+                    continue;
+                }
+                
+                if (!isset($links[$i + 1])) {
+                    $links[$i + 1] = [
+                        "text" => "...",
+                        "current" => false,
+                        "class" => "other"
+                    ];
+                }
+                
+            }
+            
+            ksort($links);
+            
+            $this->setParam("links", $links); 
+            
+            return $this;
+            
+        }
+        
+        /**
+         * Add navigation (left, right) elements
+         * @since Version 3.10.0
+         * @return \Railpage\Pagniation
+         */
+        
+        private function addNavigation() {
+            
+            $links = $this->getParam("links"); 
+            $current = $this->getParam("current_page");
+            $first = key($links); 
+            
+            end($links); 
+            $last = key($links); 
+            
+            if ($current !== $first) {
+                
+                $links[$first - 1] = [
+                    "href" => sprintf($this->getParam("url_format"), $current - 1),
+                    "text" => $this->getParam("nav_left"),
+                    "current" => false,
+                    "class" => "navigation"
+                ];
+            }
+            
+            if ($this->getParam("current_page") !== $last) {
+                $links[$last + 1] = [
+                    "href" => sprintf($this->getParam("url_format"), $current + 1),
+                    "text" => $this->getParam("nav_right"),
+                    "current" => false,
+                    "class" => "navigation"
+                ];
+            }
+            
+            ksort($links);
+            
+            $this->setParam("links", $links); 
+            
+            return $this;
+            
+        }
         
         /**
          * Echo the created HTML
          * @since Version 3.10.0
          * @return string
-		 * @todo Caching? Speed up the generation of this crap?
+         * @todo Caching? Speed up the generation of this crap?
          */
         
         public function __toString() {
             
             $this->validate();
-			
+            
             $this->buildStartLinks()
                  ->buildEndLinks()
                  ->buildCurrentPage()
-				 ->addDividers()
-				 ->addNavigation(); 
+                 ->addDividers()
+                 ->addNavigation(); 
             
             $tpl = $this->Smarty->ResolveTemplate($this->params['template']);
             

@@ -375,9 +375,9 @@
             if (!$return = $this->Memcached->fetch($this->mckey)) {
 
                 $query = "SELECT s.*, t.topicname, t.topicimage, t.topictext, t.topicid
-							FROM nuke_stories AS s 
-							LEFT JOIN nuke_topics AS t ON s.topic = t.topicid
-							WHERE s.sid = ?";
+                            FROM nuke_stories AS s 
+                            LEFT JOIN nuke_topics AS t ON s.topic = t.topicid
+                            WHERE s.sid = ?";
 
                 $return = $this->db_readonly->fetchRow($query, $this->id);
                 $this->Memcached->save($this->mckey, $return);
@@ -692,10 +692,10 @@
             if (!empty( $this->username ) || $this->Author instanceof User) {
                 $dataArray['informant'] = $this->Author instanceof User ? $this->Author->username : $this->username;
             }
-			
-			foreach ($dataArray as $key => $val) {
-				$dataArray[$key] = trim($val); 
-			}
+            
+            foreach ($dataArray as $key => $val) {
+                $dataArray[$key] = trim($val); 
+            }
 
             /**
              * Save changes
@@ -781,10 +781,10 @@
             if (is_null($this->source)) {
                 $this->source = "";
             }
-			
-			if (empty($this->unique_id)) {
-				$this->unique_id = md5($this->title); 
-			}
+            
+            if (empty($this->unique_id)) {
+                $this->unique_id = md5($this->title); 
+            }
             
             if (!is_bool($this->queued)) {
                 $this->queued = false;
@@ -948,29 +948,29 @@
          */
 
         public function getRelatedArticles($num = 5) {
-			
-			$SphinxQL = $this->getSphinx(); 
+            
+            $SphinxQL = $this->getSphinx(); 
             
             $title = preg_replace("/[^[:alnum:][:space:]]/u", '', $this->title);
             $title = trim($title);
             $title = str_replace(" ", "|", $title);
-			
-			$query = $SphinxQL->select("*")
-							  ->from("idx_news_article")
-							  ->match(array("story_title", "story_paragraphs"), $title, true)
-							  ->where("story_id", "!=", $this->id)
-							  ->where("story_time_unix", "BETWEEN", array(strtotime("1 year ago", time()), time()))
-							  ->limit($num)
-							  ->option("ranker", "proximity_BM25");
-			
-			$matches = $query->execute(); 
-			
-			if (count($matches)) {
-				return $matches;
-			}
-			
-			return array(); 
-			
+            
+            $query = $SphinxQL->select("*")
+                              ->from("idx_news_article")
+                              ->match(array("story_title", "story_paragraphs"), $title, true)
+                              ->where("story_id", "!=", $this->id)
+                              ->where("story_time_unix", "BETWEEN", array(strtotime("1 year ago", time()), time()))
+                              ->limit($num)
+                              ->option("ranker", "proximity_BM25");
+            
+            $matches = $query->execute(); 
+            
+            if (count($matches)) {
+                return $matches;
+            }
+            
+            return array(); 
+            
 
             $Sphinx = AppCore::getSphinxAPI();
 
@@ -1131,22 +1131,22 @@
         public function getChangelog() {
 
             $query = "SELECT u.username, u.user_id, u.user_avatar, s.time AS timestamp, 'Article created' AS title, '' AS args
-						FROM nuke_stories AS s
-						LEFT JOIN nuke_users AS u ON u.user_id = s.user_id
-						WHERE s.sid = ?
-					UNION 
-					SELECT u.username, l.user_id, u.user_avatar, l.timestamp, l.title, l.args 
-						FROM log_staff AS l 
-						LEFT JOIN nuke_users AS u ON u.user_id = l.user_id
-						WHERE `key` = 'article_id' 
-						AND key_val = ? 
-					UNION 
-					SELECT u.username, l.user_id, u.user_avatar, l.timestamp, l.title, l.args 
-						FROM log_general AS l 
-						LEFT JOIN nuke_users AS u ON u.user_id = l.user_id
-						WHERE `key` = 'article_id' 
-						AND value = ? 
-					ORDER BY UNIX_TIMESTAMP(`timestamp`) DESC";
+                        FROM nuke_stories AS s
+                        LEFT JOIN nuke_users AS u ON u.user_id = s.user_id
+                        WHERE s.sid = ?
+                    UNION 
+                    SELECT u.username, l.user_id, u.user_avatar, l.timestamp, l.title, l.args 
+                        FROM log_staff AS l 
+                        LEFT JOIN nuke_users AS u ON u.user_id = l.user_id
+                        WHERE `key` = 'article_id' 
+                        AND key_val = ? 
+                    UNION 
+                    SELECT u.username, l.user_id, u.user_avatar, l.timestamp, l.title, l.args 
+                        FROM log_general AS l 
+                        LEFT JOIN nuke_users AS u ON u.user_id = l.user_id
+                        WHERE `key` = 'article_id' 
+                        AND value = ? 
+                    ORDER BY UNIX_TIMESTAMP(`timestamp`) DESC";
 
             $params = [
                 $this->id,

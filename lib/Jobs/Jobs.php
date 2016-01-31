@@ -65,10 +65,10 @@
             // Assume Zend_Db
 
             $query = "SELECT j.*, jc.jn_classification_name AS job_classification_name, o.organisation_name , jl.jn_location_name AS job_location_name
-				FROM jn_jobs AS j 
-					INNER JOIN jn_classifications AS jc ON j.job_classification_id = jc.jn_classification_id
-					INNER JOIN organisation AS o ON j.organisation_id = o.organisation_id
-					INNER JOIN jn_locations AS jl ON j.job_location_id = jl.jn_location_id ";
+                FROM jn_jobs AS j 
+                    INNER JOIN jn_classifications AS jc ON j.job_classification_id = jc.jn_classification_id
+                    INNER JOIN organisation AS o ON j.organisation_id = o.organisation_id
+                    INNER JOIN jn_locations AS jl ON j.job_location_id = jl.jn_location_id ";
 
             $where = array();
             $params = array();
@@ -212,4 +212,4 @@
             return $return;
         }
     }
-	
+    

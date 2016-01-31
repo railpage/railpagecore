@@ -1505,7 +1505,7 @@
             #$result = $this->Memcached->fetch($key);
 
             #if ($result !== NULL) {
-            #	return $result;
+            #   return $result;
             #}
 
             if (!defined("RP_GROUP_ADMINS")) {
@@ -2200,21 +2200,21 @@
             }
 
             $query = "SELECT SQL_CALC_FOUND_ROWS '1' AS unread, t.topic_id, t.topic_title, t.topic_poster, t.topic_time, t.topic_views, t.topic_replies, t.topic_first_post_id, t.topic_last_post_id,
-						f.forum_id, f.forum_name,
-						ufirst.username AS topic_first_post_username, ufirst.user_id AS topic_first_post_user_id,
-						ulast.username AS topic_last_post_username, ulast.user_id AS topic_last_post_user_id,
-						pfirst.post_time AS topic_first_post_date,
-						plast.post_time AS topic_last_post_date
-						FROM nuke_bbtopics_watch AS tw
-						LEFT JOIN nuke_bbtopics AS t ON t.topic_id = tw.topic_id
-						LEFT JOIN nuke_bbforums AS f ON t.forum_id = f.forum_id
-						LEFT JOIN nuke_bbposts AS pfirst ON pfirst.post_id = t.topic_last_post_id
-						LEFT JOIN nuke_bbposts AS plast ON plast.post_id = t.topic_last_post_id
-						LEFT JOIN nuke_users AS ufirst ON ufirst.user_id = t.topic_poster
-						LEFT JOIN nuke_users AS ulast ON ulast.user_id = plast.poster_id
-						WHERE tw.user_id = ? 
-						ORDER BY plast.post_time DESC
-						LIMIT ?, ?";
+                        f.forum_id, f.forum_name,
+                        ufirst.username AS topic_first_post_username, ufirst.user_id AS topic_first_post_user_id,
+                        ulast.username AS topic_last_post_username, ulast.user_id AS topic_last_post_user_id,
+                        pfirst.post_time AS topic_first_post_date,
+                        plast.post_time AS topic_last_post_date
+                        FROM nuke_bbtopics_watch AS tw
+                        LEFT JOIN nuke_bbtopics AS t ON t.topic_id = tw.topic_id
+                        LEFT JOIN nuke_bbforums AS f ON t.forum_id = f.forum_id
+                        LEFT JOIN nuke_bbposts AS pfirst ON pfirst.post_id = t.topic_last_post_id
+                        LEFT JOIN nuke_bbposts AS plast ON plast.post_id = t.topic_last_post_id
+                        LEFT JOIN nuke_users AS ufirst ON ufirst.user_id = t.topic_poster
+                        LEFT JOIN nuke_users AS ulast ON ulast.user_id = plast.poster_id
+                        WHERE tw.user_id = ? 
+                        ORDER BY plast.post_time DESC
+                        LIMIT ?, ?";
 
             if (!$result = $this->db->fetchAll($query, array( $this->id, ( $page - 1 ) * $limit, $limit ))) {
                 return false;
@@ -2867,11 +2867,11 @@
         public function findDuplicates() {
 
             $query = "SELECT
-	u.user_id, u.username, u.user_active, u.user_regdate, u.user_regdate_nice, u.user_email, u.user_lastvisit, 
-	(SELECT COUNT(p.post_id) AS num_posts FROM nuke_bbposts AS p WHERE p.poster_id = u.user_id) AS num_posts,
-	(SELECT MAX(pt.post_time) AS post_time FROM nuke_bbposts AS pt WHERE pt.poster_id = u.user_id) AS last_post_time
-	FROM nuke_users AS u 
-	WHERE u.username = ? OR u.user_email = ?";
+    u.user_id, u.username, u.user_active, u.user_regdate, u.user_regdate_nice, u.user_email, u.user_lastvisit, 
+    (SELECT COUNT(p.post_id) AS num_posts FROM nuke_bbposts AS p WHERE p.poster_id = u.user_id) AS num_posts,
+    (SELECT MAX(pt.post_time) AS post_time FROM nuke_bbposts AS pt WHERE pt.poster_id = u.user_id) AS last_post_time
+    FROM nuke_users AS u 
+    WHERE u.username = ? OR u.user_email = ?";
 
             $params = array(
                 $this->username,
@@ -2948,20 +2948,20 @@
                 $params[] = $this->id;
 
                 $query['forums'] = "SELECT
-					'Forums' AS module, 'Subscribed thread' AS subtitle, '<i class=\"fa fa-comment-o\"></i>' AS icon, COUNT(*) AS num, '/account/watchedthreads' AS url, NULL AS extra 
-					FROM (
-						SELECT t.topic_title
-						FROM nuke_bbtopics AS t
-						LEFT JOIN nuke_bbposts AS p ON t.topic_last_post_id = p.post_id
-						LEFT JOIN nuke_bbtopics_view AS v ON t.topic_id = v.topic_id
-						WHERE t.topic_id IN (
-							SELECT topic_id FROM nuke_bbtopics_watch WHERE user_id = ?
-						)
-						AND p.post_time > UNIX_TIMESTAMP(v.viewed)
-						AND v.user_id = ?
-						GROUP BY t.topic_id
-						ORDER BY p.post_time DESC
-					) AS topics";
+                    'Forums' AS module, 'Subscribed thread' AS subtitle, '<i class=\"fa fa-comment-o\"></i>' AS icon, COUNT(*) AS num, '/account/watchedthreads' AS url, NULL AS extra 
+                    FROM (
+                        SELECT t.topic_title
+                        FROM nuke_bbtopics AS t
+                        LEFT JOIN nuke_bbposts AS p ON t.topic_last_post_id = p.post_id
+                        LEFT JOIN nuke_bbtopics_view AS v ON t.topic_id = v.topic_id
+                        WHERE t.topic_id IN (
+                            SELECT topic_id FROM nuke_bbtopics_watch WHERE user_id = ?
+                        )
+                        AND p.post_time > UNIX_TIMESTAMP(v.viewed)
+                        AND v.user_id = ?
+                        GROUP BY t.topic_id
+                        ORDER BY p.post_time DESC
+                    ) AS topics";
                 $params[] = $this->id;
                 $params[] = $this->id;
 

@@ -1,14 +1,75 @@
 ---
 engines:
-  phpcodesniffer:
+  csslint:
+    enabled: false
+  duplication:
+    enabled: true
+    config:
+      languages:
+      - php
+  eslint:
+    enabled: false
+  fixme:
     enabled: true
   phpmd:
     enabled: true
+    checks:
+      Controversial/CamelCasePropertyName:
+        enabled: false
+      Controversial/CamelCaseMethodName:
+        enabled: false
+      Controversial/CamelCaseVariableName:
+        enabled: false
+      Naming/ShortVariable:
+        enabled: false
+    exclude_fingerprints:
+    - 37367e07341e303228020476e7d1ee07
+    - 490620276980d014bc6c5c4ad93a1094
+    - 78231709437e6debb3e3dd1881580178
+    - 70b99f7bb9b30fac610788c25e599beb
+  phpcodesniffer:
+    enabled: true
+    checks:
+      Generic PHP LowerCaseConstant Found:
+        enabled: false
+      Generic Files LineEndings InvalidEOLChar:
+        enabled: false
+      PSR1 Files SideEffects FoundWithSymbols:
+        enabled: false
+      PSR1 Methods CamelCapsMethodName NotCamelCaps:
+        enabled: false
+      PSR2 Classes ClassDeclaration OpenBraceNewLine:
+        enabled: false
+      PSR2 Classes ClassDeclaration CloseBraceNewLine:
+        enabled: false
+      PSR2 Classes ClassDeclaration CloseBraceAfterBody:
+        enabled: false
+      PSR2 ControlStructures SwitchDeclaration SpaceBeforeColonCASE:
+        enabled: false
+      Squiz WhiteSpace SuperfluousWhitespace EndLine:
+        enabled: false
+      Squiz Functions MultiLineFunctionDeclaration BraceOnSameLine:
+        enabled: false
+  radon:
+    enabled: false
 ratings:
   paths:
   - "**.php"
-  - "**.module"
-  - "**.inc"
 exclude_paths:
 - lib/vendor/**/*
+- config/**/*
 - tests/**/*
+- smarty/**/*
+- build/**/*
+- db.dist/**/*
+- .git/**/*
+- etc/**/*
+- lib/ISO/ISO_3166.php
+- LICENSE
+- README.md
+- composer.json
+- lib/**/*.tpl
+- lib/autoload.php
+- lib/bootstrap.php
+- lib/SessionHandler/MemcachedSessionHandler.php
+- lib/SessionHandler/RedisSessionHandler.php

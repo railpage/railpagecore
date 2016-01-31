@@ -12,7 +12,7 @@
     use Railpage\Debug;
     use Exception;
     use InvalidArgumentException;
-	use GuzzleHttp\Client as GuzzleClient;
+    use GuzzleHttp\Client as GuzzleClient;
     
     /**
      * Cache

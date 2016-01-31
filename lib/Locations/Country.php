@@ -24,14 +24,14 @@
      */
     
     class Country extends Locations {
-		
-		/**
-		 * Registry/Redis/Memcached cache identifier
-		 * @since Version 3.10.0
-		 * @const string CACHE_KEY
-		 */
-		
-		const CACHE_KEY = "railpage.country=%s";
+        
+        /**
+         * Registry/Redis/Memcached cache identifier
+         * @since Version 3.10.0
+         * @const string CACHE_KEY
+         */
+        
+        const CACHE_KEY = "railpage.country=%s";
 
         /**
          * Country name
@@ -165,12 +165,12 @@
             if (!$row = $this->Memcached->fetch($mckey) && !$row = $this->Redis->fetch($mckey)) {
 
                 $query = "SELECT *, X(point) AS centroid_lat, Y(point) AS centroid_lon,
-					X(bb_southwest) AS bb_southwest_lat, Y(bb_southwest) AS bb_southwest_lon,
-					X(bb_northeast) AS bb_northeast_lat, Y(bb_northeast) AS bb_northeast_lon
-				 FROM geoplace 
-				 WHERE country_code = ? 
-					AND region_code IS NULL 
-					AND neighbourhood IS NULL
+                    X(bb_southwest) AS bb_southwest_lat, Y(bb_southwest) AS bb_southwest_lon,
+                    X(bb_northeast) AS bb_northeast_lat, Y(bb_northeast) AS bb_northeast_lon
+                 FROM geoplace 
+                 WHERE country_code = ? 
+                    AND region_code IS NULL 
+                    AND neighbourhood IS NULL
                     LIMIT 0, 1";
 
                 $row = $this->db->fetchRow($query, strtoupper($this->code));
@@ -215,12 +215,12 @@
 
         public function getRegions($country = false) {
             $query = "SELECT COUNT(l.id) AS count, l.region_slug AS slug,
-				g.region_name AS name, g.region_code, g.timezone
-				FROM location AS l 
-					LEFT JOIN geoplace AS g ON l.geoplace = g.id 
-				WHERE l.country = ? 
-				GROUP BY l.region 
-				ORDER BY l.region ASC";
+                g.region_name AS name, g.region_code, g.timezone
+                FROM location AS l 
+                    LEFT JOIN geoplace AS g ON l.geoplace = g.id 
+                WHERE l.country = ? 
+                GROUP BY l.region 
+                ORDER BY l.region ASC";
 
             $regions = array();
 
@@ -385,4 +385,4 @@
 
         }
     }
-	
+    

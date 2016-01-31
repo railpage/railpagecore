@@ -1,478 +1,476 @@
 <?php
-	/**
-	 * Locomotive utility class
-	 * @since Version 3.9.1
-	 * @package Railpage
-	 * @author Michael Greenhill
-	 */
-
-	namespace Railpage\Locos\Utility;
-
-	use Railpage\Url;
-	use Railpage\AppCore;
-	use Railpage\Module;
-	use Railpage\Locos\Locomotive;
-	use Railpage\Locos\Date;
-	use Railpage\Debug;
-	use Railpage\Assets\Asset;
-	use Railpage\ContentUtility;
-	use DateTime;
-	use Exception;
-	use InvalidArgumentException;
-
-	class LocomotiveUtility {
-
-		/**
-		 * Fetch locomotive data from Memcached/Redis/Database
-		 * @since Version 3.9.1
-		 * @param \Railpage\Locos\Locomotive $Loco
-		 * @return array
-		 */
-
-		public static function fetchLocomotive(Locomotive $Loco) {
-
-			$AppCore = new AppCore;
-
-			$Memcached = AppCore::getMemcached();
-			$Database = $AppCore->getDatabaseConnection();
-
-			if (!$row = $Memcached->fetch($Loco->mckey)) {
-
-				$timer = Debug::getTimer();
-
-				$query = "SELECT l.*, s.name AS loco_status, ow.operator_name AS owner_name, op.operator_name AS operator_name
-							FROM loco_unit AS l
-							LEFT JOIN loco_status AS s ON l.loco_status_id = s.id
-							LEFT JOIN operators AS ow ON ow.operator_id = l.owner_id
-							LEFT JOIN operators AS op ON op.operator_id = l.operator_id
-							WHERE l.loco_id = ?";
-
-				$row = $Database->fetchRow($query, $Loco->id);
-
-				Debug::logEvent("Zend_DB: Fetch loco ID", $timer);
-
-				$Memcached->save($Loco->mckey, $row, strtotime("+1 year"));
-			}
-
-			return $row;
-
-		}
-
-		/**
-		 * Prepare the locomotive object for updating
-		 * @since Version 3.9.1
-		 * @param \Railpage\Locos\Locomotive $Loco
-		 * @return array
-		 */
-
-		public static function getSubmitData(Locomotive $Loco) {
-
-			// Drop whitespace from loco numbers of all types except steam
-			if (in_array($Loco->class_id, array(2, 3, 4, 5, 6)) ||
-					($Loco->Class instanceof LocoClass && in_array($Loco->Class->type_id, array(2, 3, 4, 5, 6))) ||
-					($Loco->class instanceof LocoClass && in_array($Loco->class->type_id, array(2, 3, 4, 5, 6)))) {
-				$Loco->number = str_replace(" ", "", $Loco->number);
-			}
-
-			$data = array(
-				"loco_num" => $Loco->number,
-				"loco_gauge_id" => $Loco->gauge_id,
-				"loco_status_id" => $Loco->status_id,
-				"class_id" => $Loco->class_id,
-				"owner_id" => $Loco->owner_id,
-				"operator_id" => $Loco->operator_id,
-				"entered_service" => $Loco->entered_service,
-				"withdrawn" => $Loco->withdrawal_date,
-				"builders_number" => $Loco->builders_num,
-				"photo_id" => $Loco->photo_id,
-				"manufacturer_id" => $Loco->manufacturer_id,
-				"loco_name" => $Loco->name,
-				"meta" => json_encode($Loco->meta),
-				"asset_id" => $Loco->Asset instanceof Asset ? $Loco->Asset->id : 0
-			);
-
-			if (empty($Loco->date_added)) {
-				$data['date_added'] = time();
-			} else {
-				$data['date_modified'] = time();
-			}
-
-			return $data;
-
-		}
 
-		/**
-		 * Generate description: get dates
-		 * @since Version 3.9.1
-		 * @param \Railpage\Locos\Locomotive $Loco
-		 * @param array $bits
-		 * @return array
-		 */
+/**
+ * Locomotive utility class
+ * @since Version 3.9.1
+ * @package Railpage
+ * @author Michael Greenhill
+ */
+
+namespace Railpage\Locos\Utility;
+
+use Railpage\Url;
+use Railpage\AppCore;
+use Railpage\Module;
+use Railpage\Locos\Locomotive;
+use Railpage\Locos\Date;
+use Railpage\Debug;
+use Railpage\Assets\Asset;
+use Railpage\ContentUtility;
+use DateTime;
+use Exception;
+use InvalidArgumentException;
+
+class LocomotiveUtility {
+
+    /**
+     * Fetch locomotive data from Memcached/Redis/Database
+     * @since Version 3.9.1
+     * @param \Railpage\Locos\Locomotive $Loco
+     * @return array
+     */
+
+    public static function fetchLocomotive(Locomotive $Loco) {
+
+        $AppCore = new AppCore;
+
+        $Memcached = AppCore::getMemcached();
+        $Database = $AppCore->getDatabaseConnection();
+
+        if (!$row = $Memcached->fetch($Loco->mckey)) {
+
+            $timer = Debug::getTimer();
+
+            $query = "SELECT l.*, s.name AS loco_status, ow.operator_name AS owner_name, op.operator_name AS operator_name
+                        FROM loco_unit AS l
+                        LEFT JOIN loco_status AS s ON l.loco_status_id = s.id
+                        LEFT JOIN operators AS ow ON ow.operator_id = l.owner_id
+                        LEFT JOIN operators AS op ON op.operator_id = l.operator_id
+                        WHERE l.loco_id = ?";
+
+            $row = $Database->fetchRow($query, $Loco->id);
+
+            Debug::logEvent("Zend_DB: Fetch loco ID", $timer);
+
+            $Memcached->save($Loco->mckey, $row, strtotime("+1 year"));
+        }
+
+        return $row;
+
+    }
+
+    /**
+     * Prepare the locomotive object for updating
+     * @since Version 3.9.1
+     * @param \Railpage\Locos\Locomotive $Loco
+     * @return array
+     */
+
+    public static function getSubmitData(Locomotive $Loco) {
 
-		public static function getDescriptionBits_Dates(Locomotive $Loco, $bits) {
+        // Drop whitespace from loco numbers of all types except steam
+        if (in_array($Loco->class_id, array(2, 3, 4, 5, 6)) ||
+                ($Loco->Class instanceof LocoClass && in_array($Loco->Class->type_id, array(2, 3, 4, 5, 6))) ||
+                ($Loco->class instanceof LocoClass && in_array($Loco->class->type_id, array(2, 3, 4, 5, 6)))) {
+            $Loco->number = str_replace(" ", "", $Loco->number);
+        }
 
-			$dates = $Loco->loadDates();
-			$dates = array_reverse($dates);
+        $data = array(
+            "loco_num" => $Loco->number,
+            "loco_gauge_id" => $Loco->gauge_id,
+            "loco_status_id" => $Loco->status_id,
+            "class_id" => $Loco->class_id,
+            "owner_id" => $Loco->owner_id,
+            "operator_id" => $Loco->operator_id,
+            "entered_service" => $Loco->entered_service,
+            "withdrawn" => $Loco->withdrawal_date,
+            "builders_number" => $Loco->builders_num,
+            "photo_id" => $Loco->photo_id,
+            "manufacturer_id" => $Loco->manufacturer_id,
+            "loco_name" => $Loco->name,
+            "meta" => json_encode($Loco->meta),
+            "asset_id" => $Loco->Asset instanceof Asset ? $Loco->Asset->id : 0
+        );
 
-			$inservice = NULL;
+        if (empty($Loco->date_added)) {
+            $data['date_added'] = time();
+        } else {
+            $data['date_modified'] = time();
+        }
 
-			foreach ($dates as $row) {
-				$Date = new Date($row['date_id']);
+        return $data;
 
-				if (!isset($bits['inservice']) && $row['date_type_id'] == 1) {
-					$bits['inservice'] = sprintf("%s entered service %s. ", $Loco->number, $Date->Date->format("F j, Y"));
-					if (is_null($inservice)) {
-						$inservice = $Date->Date;
-					}
-				}
+    }
 
-				if ($row['date_type_id'] == 7) {
-					$bits[] = sprintf("On %s, it was withdrawn for preservation. ", $Date->Date->format("F j, Y"));
-				}
+    /**
+     * Generate description: get dates
+     * @since Version 3.9.1
+     * @param \Railpage\Locos\Locomotive $Loco
+     * @param array $bits
+     * @return array
+     */
 
-				if ($row['date_type_id'] == 5) {
-					$bits[] = sprintf("It was scrapped on %s", $Date->Date->format("F j, Y"));
+    public static function getDescriptionBits_Dates(Locomotive $Loco, $bits) {
 
-					if (!is_null($inservice)) {
-						$age = ContentUtility::getDateDifference($inservice, $Date->Date);
+        $dates = $Loco->loadDates();
+        $dates = array_reverse($dates);
 
-						$bits[] = sprintf(", %s after it entered service", $age);
-					}
+        $inservice = NULL;
 
-					$bits[] = ".";
-				}
-			}
+        foreach ($dates as $row) {
+            $Date = new Date($row['date_id']);
 
-			return $bits;
+            if (!isset($bits['inservice']) && $row['date_type_id'] == 1) {
+                $bits['inservice'] = sprintf("%s entered service %s. ", $Loco->number, $Date->Date->format("F j, Y"));
+                if (is_null($inservice)) {
+                    $inservice = $Date->Date;
+                }
+            }
 
-		}
+            if ($row['date_type_id'] == 7) {
+                $bits[] = sprintf("On %s, it was withdrawn for preservation. ", $Date->Date->format("F j, Y"));
+            }
 
-		/**
-		 * Generate description: get manufacturer
-		 * @since Version 3.9.1
-		 * @param \Railpage\Locos\Locomotive $Loco
-		 * @param array $bits
-		 * @return array
-		 */
+            if ($row['date_type_id'] == 5) {
+                $bits[] = sprintf("It was scrapped on %s", $Date->Date->format("F j, Y"));
 
-		public static function getDescriptionBits_Manufacturer(Locomotive $Loco, $bits) {
+                if (!is_null($inservice)) {
+                    $age = ContentUtility::getDateDifference($inservice, $Date->Date);
 
-			$bits[] = "Built ";
+                    $bits[] = sprintf(", %s after it entered service", $age);
+                }
 
-			if (!empty($Loco->builders_num)) {
-				$bits[] = sprintf("as %s ", $Loco->builders_num);
-			}
+                $bits[] = ".";
+            }
+        }
 
-			$bits[] = sprintf("by %s, ", (string) $Loco->getManufacturer());
+        return $bits;
 
-			return $bits;
+    }
 
-		}
+    /**
+     * Generate description: get manufacturer
+     * @since Version 3.9.1
+     * @param \Railpage\Locos\Locomotive $Loco
+     * @param array $bits
+     * @return array
+     */
 
-		/**
-		 * Generate description: get status
-		 * @since Version 3.9.1
-		 * @param \Railpage\Locos\Locomotive $Loco
-		 * @param array $bits
-		 * @return array
-		 */
+    public static function getDescriptionBits_Manufacturer(Locomotive $Loco, $bits) {
 
-		public static function getDescriptionBits_Status(Locomotive $Loco, $bits) {
+        $bits[] = "Built ";
 
-			switch ($Loco->status_id) {
-				case 4: // Preserved - static
-					$bits[] = sprintf("\n%s is preserved statically", $Loco->number);
-					break;
+        if (!empty($Loco->builders_num)) {
+            $bits[] = sprintf("as %s ", $Loco->builders_num);
+        }
 
-				case 5: // Preserved - operational
-					$bits[] = sprintf("\n%s is preserved in operational condition", $Loco->number);
+        $bits[] = sprintf("by %s, ", (string) $Loco->getManufacturer());
 
-					// Get the latest operator
-					if (!empty($Loco->operator)) {
-						$bits[] = sprintf(" and can be seen on trains operated by %s", $Loco->operator);
-					}
+        return $bits;
 
-					break;
+    }
 
-				case 9: // Under restoration
-					$bits[] = sprintf("\n%s is currently under restoration.", $Loco->number);
-					break;
-			}
+    /**
+     * Generate description: get status
+     * @since Version 3.9.1
+     * @param \Railpage\Locos\Locomotive $Loco
+     * @param array $bits
+     * @return array
+     */
 
-			return $bits;
+    public static function getDescriptionBits_Status(Locomotive $Loco, $bits) {
 
-		}
+        switch ($Loco->status_id) {
+            case 4: // Preserved - static
+                $bits[] = sprintf("\n%s is preserved statically", $Loco->number);
+                break;
 
-		/**
-		 * Get the loco class ID from a URL slug
-		 * @since Version 3.9.1
-		 * @param string $slug
-		 * @return int
-		 */
+            case 5: // Preserved - operational
+                $bits[] = sprintf("\n%s is preserved in operational condition", $Loco->number);
 
-		private static function getClassIDFromSlug($slug) {
+                // Get the latest operator
+                if (!empty($Loco->operator)) {
+                    $bits[] = sprintf(" and can be seen on trains operated by %s", $Loco->operator);
+                }
 
-			$Memcached = AppCore::getMemcached();
-			$Database = (new AppCore)->getDatabaseConnection();
-			$slug_mckey = sprintf("railpage:loco.id;fromslug=%s;v2", $slug);
+                break;
 
-			if (!$result = $Memcached->fetch($slug_mckey)) {
-				$result = $Database->fetchOne("SELECT id FROM loco_class WHERE slug = ?", $slug);
+            case 9: // Under restoration
+                $bits[] = sprintf("\n%s is currently under restoration.", $Loco->number);
+                break;
+        }
 
-				$Memcached->save($slug_mckey, $result, strtotime("+1 year"));
-			}
+        return $bits;
 
-			return $result;
+    }
 
-		}
+    /**
+     * Get the loco class ID from a URL slug
+     * @since Version 3.9.1
+     * @param string $slug
+     * @return int
+     */
 
-		/**
-		 * Get the locomotive ID from a given class ID and locomotive number
-		 * @since Version 3.9.1
-		 * @param int $class_id
-		 * @param string $loco_num
-		 * @return int
-		 */
+    private static function getClassIDFromSlug($slug) {
 
-		private static function getLocoIDFromClassIDAndLocoNumber($class_id, $loco_num) {
+        $Memcached = AppCore::getMemcached();
+        $Database = (new AppCore)->getDatabaseConnection();
+        $slug_mckey = sprintf("railpage:loco.id;fromslug=%s;v2", $slug);
 
-			$Memcached = AppCore::getMemcached();
-			$Database = (new AppCore)->getDatabaseConnection();
+        if (!$result = $Memcached->fetch($slug_mckey)) {
+            $result = $Database->fetchOne("SELECT id FROM loco_class WHERE slug = ?", $slug);
 
-			// We are searching by loco number - we need to find it first
-			if (!$loco_id = $Memcached->fetch(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id, $loco_num))) {
+            $Memcached->save($slug_mckey, $result, strtotime("+1 year"));
+        }
 
-				$params = array(
-					$class_id,
-					$loco_num
-				);
+        return $result;
 
-				$query = "SELECT loco_id FROM loco_unit WHERE class_id = ? AND loco_num = ?";
+    }
 
-				if (preg_match("/_/", $loco_num)) {
-					$params[1] = str_replace("_", " ", $loco_num);
-				} else {
-					if (strlen($loco_num) === 5 && preg_match("/([a-zA-Z]{1})([0-9]{4})/", $loco_num)) {
-						$params[] = sprintf("%s %s", substr($loco_num, 0, 2), substr($loco_num, 2, 3));
-						$query = "SELECT loco_id FROM loco_unit WHERE class_id = ? AND (loco_num = ? OR loco_num = ?)";
-					}
-				}
+    /**
+     * Get the locomotive ID from a given class ID and locomotive number
+     * @since Version 3.9.1
+     * @param int $class_id
+     * @param string $loco_num
+     * @return int
+     */
 
-				$loco_id = $Database->fetchOne($query, $params);
+    private static function getLocoIDFromClassIDAndLocoNumber($class_id, $loco_num) {
 
-				$Memcached->save(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id, $loco_num), $loco_id, strtotime("+1 year"));
-			}
+        $Memcached = AppCore::getMemcached();
+        $Database = (new AppCore)->getDatabaseConnection();
 
-			return $loco_id;
+        // We are searching by loco number - we need to find it first
+        if (!$loco_id = $Memcached->fetch(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id, $loco_num))) {
 
-		}
+            $params = array(
+                $class_id,
+                $loco_num
+            );
 
-		/**
-		 * Get the ID of this locomotive from class and loco number
-		 * @since Version 3.9.1
-		 * @param string $class
-		 * @param string $number
-		 * @return int|bool
-		 */
+            $query = "SELECT loco_id FROM loco_unit WHERE class_id = ? AND loco_num = ?";
 
-		public static function getLocoId($class, $number) {
+            if (preg_match("/_/", $loco_num)) {
+                $params[1] = str_replace("_", " ", $loco_num);
+            } else {
+                if (strlen($loco_num) === 5 && preg_match("/([a-zA-Z]{1})([0-9]{4})/", $loco_num)) {
+                    $params[] = sprintf("%s %s", substr($loco_num, 0, 2), substr($loco_num, 2, 3));
+                    $query = "SELECT loco_id FROM loco_unit WHERE class_id = ? AND (loco_num = ? OR loco_num = ?)";
+                }
+            }
 
-			$Memcached = AppCore::getMemcached();
-			$Database = (new AppCore)->getDatabaseConnection();
+            $loco_id = $Database->fetchOne($query, $params);
 
-			$timer = Debug::getTimer();
+            $Memcached->save(sprintf("railpage:loco.id;fromclass=%s;fromnumber=%s", $class_id, $loco_num), $loco_id, strtotime("+1 year"));
+        }
 
-			if (!filter_var($class, FILTER_VALIDATE_INT) && is_string($class)) {
-				$class = self::getClassIDFromSlug($class);
-			}
+        return $loco_id;
 
-			$loco_id = self::getLocoIDFromClassIDAndLocoNumber($class, $number);
+    }
 
-			Debug::logEvent(__METHOD__, $timer);
+    /**
+     * Get the ID of this locomotive from class and loco number
+     * @since Version 3.9.1
+     * @param string $class
+     * @param string $number
+     * @return int|bool
+     */
 
-			if ($loco_id = filter_var($loco_id, FILTER_VALIDATE_INT)) {
-				return $loco_id;
-			}
+    public static function getLocoId($class, $number) {
 
-			return false;
-		}
+        $timer = Debug::getTimer();
 
-		/**
-		 * Get the ID of the locomotive class slug
-		 * @since Version 3.9.1
-		 * @param string $slug
-		 * @return int
-		 */
+        if (!filter_var($class, FILTER_VALIDATE_INT) && is_string($class)) {
+            $class = self::getClassIDFromSlug($class);
+        }
 
-		public static function getClassId($slug) {
+        $loco_id = self::getLocoIDFromClassIDAndLocoNumber($class, $number);
 
-			$Memcached = AppCore::getMemcached();
-			$Database = (new AppCore)->getDatabaseConnection();
+        Debug::logEvent(__METHOD__, $timer);
 
-			$timer = Debug::getTimer();
+        if ($loco_id = filter_var($loco_id, FILTER_VALIDATE_INT)) {
+            return $loco_id;
+        }
 
-			$slugkey = sprintf("railpage:locos.class.id;fromslug=%s", $slug);
+        return false;
+    }
 
-			if (!$id = $Memcached->fetch($slugkey)) {
-				$id = $Database->fetchOne("SELECT id FROM loco_class WHERE slug = ?", $slug);
+    /**
+     * Get the ID of the locomotive class slug
+     * @since Version 3.9.1
+     * @param string $slug
+     * @return int
+     */
 
-				$Memcached->save($slugkey, $id, strtotime("+1 year"));
-			}
+    public static function getClassId($slug) {
 
-			Debug::logEvent(__METHOD__, $timer);
+        $Memcached = AppCore::getMemcached();
+        $Database = (new AppCore)->getDatabaseConnection();
 
-			return $id;
+        $timer = Debug::getTimer();
 
-		}
+        $slugkey = sprintf("railpage:locos.class.id;fromslug=%s", $slug);
 
-		/**
-		 * Get liveries tagged in photos of a locomotive or loco class
-		 * @since Version 3.9.1
-		 * @param array $params
-		 * @return array
-		 */
+        if (!$id = $Memcached->fetch($slugkey)) {
+            $id = $Database->fetchOne("SELECT id FROM loco_class WHERE slug = ?", $slug);
 
-		private static function getLiveriesFromObject($params) {
+            $Memcached->save($slugkey, $id, strtotime("+1 year"));
+        }
 
-			$Database = (new AppCore)->getDatabaseConnection();
+        Debug::logEvent(__METHOD__, $timer);
 
-			$query = "SELECT DISTINCT l.livery_id, l.livery AS name, l.photo_id AS livery_photo_id
-						FROM loco_livery AS l
-						LEFT JOIN image_link AS il ON il.namespace_key = l.livery_id
-						WHERE il.namespace = 'railpage.locos.liveries.livery'
-						AND il.image_id IN (
-							SELECT image_id FROM image_link WHERE namespace = '" . $params['namespace'] . "' AND namespace_key = ?
-						)
-						ORDER BY l.livery";
+        return $id;
 
-			$return = array();
+    }
 
-			foreach ($Database->fetchAll($query, $params['namespace_key']) as $row) {
-				$return[$row['livery_id']] = array(
-					"id" => $row['livery_id'],
-					"name" => $row['name'],
-					"photo" => array(
-						"id" => $row['livery_photo_id'],
-						"provider" => "flickr"
-					)
-				);
-			}
+    /**
+     * Get liveries tagged in photos of a locomotive or loco class
+     * @since Version 3.9.1
+     * @param array $params
+     * @return array
+     */
 
-			return $return;
+    private static function getLiveriesFromObject($params) {
 
-		}
+        $Database = AppCore::GetDatabase();
 
-		/**
-		 * Get liveries for a locomotive
-		 * @since Version 3.9.1
-		 * @return array
-		 * @param \Railpage\Locos\Locomotive|int $Loco
-		 */
+        $query = "SELECT DISTINCT l.livery_id, l.livery AS name, l.photo_id AS livery_photo_id
+                    FROM loco_livery AS l
+                    LEFT JOIN image_link AS il ON il.namespace_key = l.livery_id
+                    WHERE il.namespace = 'railpage.locos.liveries.livery'
+                    AND il.image_id IN (
+                        SELECT image_id FROM image_link WHERE namespace = '" . $params['namespace'] . "' AND namespace_key = ?
+                    )
+                    ORDER BY l.livery";
 
-		public static function getLiveriesForLocomotive($Loco) {
+        $return = array();
 
-			if ($Loco instanceof Locomotive) {
-				$Loco = $Loco->id;
-			}
+        foreach ($Database->fetchAll($query, $params['namespace_key']) as $row) {
+            $return[$row['livery_id']] = array(
+                "id" => $row['livery_id'],
+                "name" => $row['name'],
+                "photo" => array(
+                    "id" => $row['livery_photo_id'],
+                    "provider" => "flickr"
+                )
+            );
+        }
 
-			if (!filter_var($Loco, FILTER_VALIDATE_INT)) {
-				throw new InvalidArgumentException("No instance of Railpage\\Locos\\Locomotive or a valid loco ID were found");
-			}
+        return $return;
 
-			$params = [
-				"namespace" => "railpage.locos.loco",
-				"namespace_key" => $Loco
-			];
+    }
 
-			return self::getLiveriesFromObject($params);
+    /**
+     * Get liveries for a locomotive
+     * @since Version 3.9.1
+     * @return array
+     * @param \Railpage\Locos\Locomotive|int $Loco
+     */
 
-		}
+    public static function getLiveriesForLocomotive($Loco) {
 
-		/**
-		 * Get liveries for a locomotive class
-		 * @since Version 3.9.1
-		 * @return array
-		 * @param \Railpage\Locos\LocoClass|int $LocoClass
-		 */
+        if ($Loco instanceof Locomotive) {
+            $Loco = $Loco->id;
+        }
 
-		public static function getLiveriesForLocomotiveClass($LocoClass) {
+        if (!filter_var($Loco, FILTER_VALIDATE_INT)) {
+            throw new InvalidArgumentException("No instance of Railpage\\Locos\\Locomotive or a valid loco ID were found");
+        }
 
-			if ($LocoClass instanceof LocoClass) {
-				$LocoClass = $LocoClass->id;
-			}
+        $params = [
+            "namespace" => "railpage.locos.loco",
+            "namespace_key" => $Loco
+        ];
 
-			if (!filter_var($LocoClass, FILTER_VALIDATE_INT)) {
-				throw new InvalidArgumentException("No instance of Railpage\\Locos\\LocoClass or a valid class ID were found");
-			}
+        return self::getLiveriesFromObject($params);
 
-			$params = [
-				"namespace" => "railpage.locos.class",
-				"namespace_key" => $LocoClass
-			];
+    }
 
-			return self::getLiveriesFromObject($params);
-		}
+    /**
+     * Get liveries for a locomotive class
+     * @since Version 3.9.1
+     * @return array
+     * @param \Railpage\Locos\LocoClass|int $LocoClass
+     */
 
-		/**
-		 * Get locomotives from a given livery
-		 * @since Version 3.9.1
-		 * @return array
-		 * @param \Railpage\Locos\Liveries\Livery|int $Livery
-		 */
+    public static function getLiveriesForLocomotiveClass($LocoClass) {
 
-		public static function getLocosFromLivery($Livery) {
+        if ($LocoClass instanceof LocoClass) {
+            $LocoClass = $LocoClass->id;
+        }
 
-			if ($Livery instanceof Livery) {
-				$Livery = $Livery->id;
-			}
+        if (!filter_var($LocoClass, FILTER_VALIDATE_INT)) {
+            throw new InvalidArgumentException("No instance of Railpage\\Locos\\LocoClass or a valid class ID were found");
+        }
 
-			if (!filter_var($Livery, FILTER_VALIDATE_INT)) {
-				throw new InvalidArgumentException("No instance of Railpage\\Locos\\Liveries\\Livery or a valid livery ID were found");
-			}
+        $params = [
+            "namespace" => "railpage.locos.class",
+            "namespace_key" => $LocoClass
+        ];
 
-			$Database = (new AppCore)->getDatabaseConnection();
+        return self::getLiveriesFromObject($params);
+    }
 
-			$query = "SELECT DISTINCT l.loco_id, l.loco_num AS number
-						FROM loco_unit AS l
-						LEFT JOIN image_link AS il ON il.namespace_key = l.loco_id
-						WHERE il.namespace = 'railpage.locos.loco'
-						AND il.image_id IN (
-							SELECT image_id FROM image_link WHERE namespace = 'railpage.locos.liveries.livery' AND namespace_key = ?
-						)
-						ORDER BY l.loco_num";
+    /**
+     * Get locomotives from a given livery
+     * @since Version 3.9.1
+     * @return array
+     * @param \Railpage\Locos\Liveries\Livery|int $Livery
+     */
 
-			$return = array();
+    public static function getLocosFromLivery($Livery) {
 
-			foreach ($Database->fetchAll($query, $Livery) as $row) {
-				$return[$row['loco_id']] = array(
-					"id" => $row['loco_id'],
-					"name" => $row['number']
-				);
-			}
+        if ($Livery instanceof Livery) {
+            $Livery = $Livery->id;
+        }
 
-			return $return;
-		}
+        if (!filter_var($Livery, FILTER_VALIDATE_INT)) {
+            throw new InvalidArgumentException("No instance of Railpage\\Locos\\Liveries\\Livery or a valid livery ID were found");
+        }
 
-		/**
-		 * Get construction or in service date
-		 * @since Version 3.9.1
-		 * @param \Railpage\Locos\Locomotive $Loco
-		 * @return \DateTime
-		 */
+        $Database = (new AppCore)->getDatabaseConnection();
 
-		public static function getConstructionDate(Locomotive $Loco) {
+        $query = "SELECT DISTINCT l.loco_id, l.loco_num AS number
+                    FROM loco_unit AS l
+                    LEFT JOIN image_link AS il ON il.namespace_key = l.loco_id
+                    WHERE il.namespace = 'railpage.locos.loco'
+                    AND il.image_id IN (
+                        SELECT image_id FROM image_link WHERE namespace = 'railpage.locos.liveries.livery' AND namespace_key = ?
+                    )
+                    ORDER BY l.loco_num";
 
-			$dates = $Loco->loadDates();
-			$dates = array_reverse($dates, true);
+        $return = array();
 
-			$types = [ 1, 17 ];
+        foreach ($Database->fetchAll($query, $Livery) as $row) {
+            $return[$row['loco_id']] = array(
+                "id" => $row['loco_id'],
+                "name" => $row['number']
+            );
+        }
 
-			foreach ($dates as $row) {
-				if (in_array($row['date_type_id'], $types)) {
-					return new DateTime("@" . $row['date']);
-				}
-			}
+        return $return;
+    }
 
-		}
+    /**
+     * Get construction or in service date
+     * @since Version 3.9.1
+     * @param \Railpage\Locos\Locomotive $Loco
+     * @return \DateTime
+     */
 
-	}
+    public static function getConstructionDate(Locomotive $Loco) {
+
+        $dates = $Loco->loadDates();
+        $dates = array_reverse($dates, true);
+
+        $types = [ 1, 17 ];
+
+        foreach ($dates as $row) {
+            if (in_array($row['date_type_id'], $types)) {
+                return new DateTime("@" . $row['date']);
+            }
+        }
+
+    }
+
+}

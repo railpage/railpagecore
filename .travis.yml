@@ -16,7 +16,7 @@ before_script:
   - mysql < tests/data/travis/db.structure.sql
 
 after_script:
-  - ./lib/vendor/bin/test-reporter
+#  - ./lib/vendor/bin/test-reporter
 
 script: 
   - composer install

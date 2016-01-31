@@ -12,7 +12,7 @@
     use Railpage\Users\User;
     use Railpage\Users\Factory as UserFactory;
     use Railpage\Users\Utility\UserUtility;
-	use Railpage\Images\Utility\ImageUtility;
+    use Railpage\Images\Utility\ImageUtility;
     use Railpage\API;
     use Railpage\AppCore;
     use Railpage\Place;
@@ -1399,14 +1399,14 @@
              */
 
             $query = "SELECT l.loco_id, l.loco_num, l.class_id, c.name AS class_name, s.name AS status_name, s.id AS status_id, t.id AS type_id, t.title AS type_name, g.gauge_id, CONCAT(g.gauge_name, ' ', g.gauge_imperial) AS gauge_formatted, o.operator_id, o.operator_name
-				FROM loco_unit AS l 
-					LEFT JOIN loco_class AS c ON l.class_id = c.id 
-					LEFT JOIN loco_type AS t ON c.loco_type_id = t.id
-					LEFT JOIN loco_status AS s ON l.loco_status_id = s.id
-					LEFT JOIN loco_gauge AS g ON g.gauge_id = l.loco_gauge_id
-					LEFT JOIN operators AS o ON l.operator_id = o.operator_id
-				WHERE l.loco_num IN ('" . implode("','", $locolookup) . "') 
-					AND l.loco_status_id NOT IN (2)";
+                FROM loco_unit AS l 
+                    LEFT JOIN loco_class AS c ON l.class_id = c.id 
+                    LEFT JOIN loco_type AS t ON c.loco_type_id = t.id
+                    LEFT JOIN loco_status AS s ON l.loco_status_id = s.id
+                    LEFT JOIN loco_gauge AS g ON g.gauge_id = l.loco_gauge_id
+                    LEFT JOIN operators AS o ON l.operator_id = o.operator_id
+                WHERE l.loco_num IN ('" . implode("','", $locolookup) . "') 
+                    AND l.loco_status_id NOT IN (2)";
 
             /**
              * Remove existing tags from our DB query
@@ -1458,27 +1458,27 @@
         public function suggestLiveries() {
 
             $query = '
-				SELECT livery.livery_id AS id, livery.livery AS name, livery.photo_id
-				FROM loco_livery AS livery
-					LEFT JOIN image_link AS link ON link.namespace_key = livery.livery_id
-				WHERE link.namespace = "railpage.locos.liveries.livery"
-					AND image_id IN (
-						SELECT image_id 
-						FROM image_link 
-						WHERE namespace = ? 
-							AND namespace_key IN (
-								SELECT namespace_key AS class_id 
-								FROM image_link 
-								WHERE namespace = ? 
-									AND image_id = ?
-									AND ignored = 0
-							)
-					)
-					AND livery_id NOT IN (
-						SELECT namespace_key FROM image_link WHERE namespace = "railpage.locos.liveries.livery" AND image_id = ?
-					)
-				GROUP BY livery.livery_id
-				ORDER BY link.id DESC';
+                SELECT livery.livery_id AS id, livery.livery AS name, livery.photo_id
+                FROM loco_livery AS livery
+                    LEFT JOIN image_link AS link ON link.namespace_key = livery.livery_id
+                WHERE link.namespace = "railpage.locos.liveries.livery"
+                    AND image_id IN (
+                        SELECT image_id 
+                        FROM image_link 
+                        WHERE namespace = ? 
+                            AND namespace_key IN (
+                                SELECT namespace_key AS class_id 
+                                FROM image_link 
+                                WHERE namespace = ? 
+                                    AND image_id = ?
+                                    AND ignored = 0
+                            )
+                    )
+                    AND livery_id NOT IN (
+                        SELECT namespace_key FROM image_link WHERE namespace = "railpage.locos.liveries.livery" AND image_id = ?
+                    )
+                GROUP BY livery.livery_id
+                ORDER BY link.id DESC';
 
             $params = [
                 "railpage.locos.loco",
@@ -1693,4 +1693,4 @@
 
         }
     }
-	
+    
