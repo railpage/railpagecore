@@ -69,6 +69,7 @@ exclude_paths:
 - README.md
 - composer.json
 - lib/**/*.tpl
+- lib/autoload.php
 - lib/bootstrap.php
 - lib/SessionHandler/MemcachedSessionHandler.php
 - lib/SessionHandler/RedisSessionHandler.php
