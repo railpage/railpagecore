@@ -22,6 +22,8 @@ engines:
         enabled: false
       Naming/ShortVariable:
         enabled: false
+      CleanCode/StaticAccess:
+        enabled: false
     exclude_fingerprints:
     - 37367e07341e303228020476e7d1ee07
     - 490620276980d014bc6c5c4ad93a1094

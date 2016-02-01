@@ -995,13 +995,13 @@
          * @version 3.0.1
          * @return boolean
          *
-         * @param int $user_id
+         * @param int $userId
          */
 
-        public function load($user_id = false) {
+        public function load($userId = false) {
 
-            if (filter_var($user_id, FILTER_VALIDATE_INT)) {
-                $this->id = $user_id;
+            if (filter_var($userId, FILTER_VALIDATE_INT)) {
+                $this->id = $userId;
             }
 
             // Get out early
@@ -1493,60 +1493,26 @@
          * @since   Version 3.0.1
          * @version 3.9.1
          *
-         * @param int|bool $group_id
+         * @param int|bool $groupId
          *
          * @return boolean
          */
 
-        public function inGroup($group_id = false) {
-
-            #$key = sprintf("railpage;user=%d;group=%d;ismember", $this->id, $group_id);
-
-            #$result = $this->Memcached->fetch($key);
-
-            #if ($result !== NULL) {
-            #   return $result;
-            #}
+        public function inGroup($groupId = false) {
 
             if (!defined("RP_GROUP_ADMINS")) {
                 define("RP_GROUP_ADMINS", "michaelisawesome");
             }
 
-            if ($group_id == RP_GROUP_ADMINS && $this->level == 2) {
+            if ($groupId == RP_GROUP_ADMINS && $this->level == 2) {
                 return true;
             }
 
-            $Group = new Group($group_id);
+            $Group = new Group($groupId);
 
             $return = $Group->userInGroup($this);
 
-            #$this->Memcached->save($key, $return);
-
             return $return;
-
-            /*
-            if ($this->groups === false) {
-                $this->getGroups(true);
-            }
-
-            if (is_array($this->groups) && in_array($group_id, $this->groups)) {
-                return true;
-            }
-
-            return false;
-            */
-
-            /*
-            $query = "SELECT group_id FROM nuke_bbuser_group USE INDEX (user_id) WHERE group_id = ? AND user_id = ? AND user_pending = 0";
-
-            if ($result = $this->db->fetchOne($query, array($group_id, $this->id))) {
-                if ($result == $group_id) {
-                    return true;
-                }
-            }
-
-            return false;
-            */
         }
 
         /**
@@ -1611,48 +1577,6 @@
 
             return $this;
 
-            /*
-            if (!$user_id && filter_var($this->id, FILTER_VALIDATE_INT)) {
-                $user_id = $this->id;
-            }
-
-            if (!filter_var($user_id, FILTER_VALIDATE_INT)) {
-                return;
-            }
-
-            if (!$time) {
-                $time = $this->db->fetchOne("SELECT user_session_time FROM nuke_users WHERE user_id = ?", $user_id);
-            }
-
-            $data = array(
-                "user_lastvisit" => $time
-            );
-
-            $this->db->update("nuke_users", $data, array("user_id = ?" => $user_id));
-
-            /**
-             * Update values stored in Memcached
-             *#/
-
-            if (!isset($this->mckey)) {
-                $this->mckey = sprintf("railpage:user_id=%d", $user_id);
-            }
-
-            if (is_object($this->Redis)) {
-                $this->Redis->delete(sprintf("railpage:users.user=%d", $this->id));
-
-                $result = $this->Redis->fetch($this->mckey);
-                $result['user_lastvisit'] = $time;
-
-                $this->Redis->save($this->mckey, $result);
-            }
-
-            if ($result = $this->Memcached->fetch($this->mckey)) {
-                $result['user_lastvisit'] = $time;
-                $this->Memcached->save($this->mckey, $result);
-            }
-            */
-
         }
 
         /**
@@ -1661,10 +1585,10 @@
          * @version 3.10.0
          * @return boolean
          *
-         * @param string|bool $remote_addr
+         * @param string $remoteAddr
          */
 
-        public function updateSessionTime($remote_addr = false) {
+        public function updateSessionTime($remoteAddr = null) {
 
             $timer = Debug::GetTimer();
 
@@ -1678,8 +1602,8 @@
 
             $this->session_time = time();
 
-            if ($remote_addr) {
-                $this->session_ip = $remote_addr;
+            if (is_null($remoteAddr)) {
+                $this->session_ip = $remoteAddr;
             }
 
             $this->commit();
@@ -1745,10 +1669,10 @@
          * @return boolean
          *
          * @param string $text
-         * @param int    $admin_user_id
+         * @param int    $adminUserId
          */
 
-        public function addNote($text = false, $admin_user_id = 0) {
+        public function addNote($text = false, $adminUserId = 0) {
 
             if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
                 return false;
@@ -1760,7 +1684,7 @@
 
             $data = array(
                 "uid"      => !filter_var($this->id, FILTER_VALIDATE_INT) ? "0" : $this->id,
-                "aid"      => $admin_user_id,
+                "aid"      => $adminUserId,
                 "datetime" => time(),
                 "data"     => $text
             );
@@ -1774,33 +1698,33 @@
          * @version 3.2
          * @return boolean
          *
-         * @param int $cookie_expire
+         * @param int $cookieExpire
          */
 
-        public function setAutoLogin($cookie_expire) {
+        public function setAutoLogin($cookieExpire) {
 
-            if (empty( $cookie_expire )) {
-                $cookie_expire = RP_AUTOLOGIN_EXPIRE;
+            if (empty( $cookieExpire )) {
+                $cookieExpire = RP_AUTOLOGIN_EXPIRE;
             }
 
             if (!is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-                $client_addr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR'];
+                $clientAddr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR'];
             } else {
-                $client_addr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
+                $clientAddr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
             }
 
             $data = array(
                 "user_id"            => $this->id,
                 "autologin_token"    => get_random_string("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", 16),
-                "autologin_expire"   => $cookie_expire,
-                "autologin_ip"       => $client_addr,
+                "autologin_expire"   => $cookieExpire,
+                "autologin_ip"       => $clientAddr,
                 "autologin_hostname" => filter_input(INPUT_SERVER, "REMOTE_HOST", FILTER_SANITIZE_STRING),
                 "autologin_last"     => time(),
                 "autologin_time"     => time()
             );
 
             if (is_null($data['autologin_hostname'])) {
-                $data['autologin_hostname'] = $client_addr;
+                $data['autologin_hostname'] = $clientAddr;
             }
 
             $autologin = array(
@@ -1809,7 +1733,7 @@
             );
 
             if ($this->db->insert("nuke_users_autologin", $data)) {
-                setcookie("rp_autologin", base64_encode(implode(":", $autologin)), $cookie_expire, RP_AUTOLOGIN_PATH, RP_AUTOLOGIN_DOMAIN, RP_SSL_ENABLED, true);
+                setcookie("rp_autologin", base64_encode(implode(":", $autologin)), $cookieExpire, RP_AUTOLOGIN_PATH, RP_AUTOLOGIN_DOMAIN, RP_SSL_ENABLED, true);
 
                 $this->addNote("Autologin token set");
 
@@ -1905,12 +1829,12 @@
          * @since   Version 3.2
          * @version 3.2
          *
-         * @param int $token_id
+         * @param int $tokenId
          *
          * @return boolean
          */
 
-        public function deleteAutoLogin($token_id = false) {
+        public function deleteAutoLogin($tokenId) {
 
             if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
                 return false;
@@ -1920,8 +1844,8 @@
                 "user_id" => $this->id
             );
 
-            if ($token_id) {
-                $clause['autologin_id'] = $token_id;
+            if (filter_var($tokenId, FILTER_VALIDATE_INT)) {
+                $clause['autologin_id'] = $tokenId;
             }
 
             return $this->db->delete("nuke_users_autologin", $clause);
@@ -1933,25 +1857,25 @@
          * @version 3.2
          * @return boolean
          *
-         * @param string $client_addr
+         * @param string $clientAddr
          */
 
-        public function recordLogin($client_addr = false) {
+        public function recordLogin($clientAddr = false) {
 
             if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
                 return false;
             }
 
-            if ($client_addr === false && !is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-                $client_addr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR'];
-            } elseif ($client_addr === false) {
-                $client_addr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
+            if ($clientAddr === false && !is_null(filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING))) {#!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+                $clientAddr = filter_input(INPUT_SERVER, "HTTP_X_FORWARDED_FOR", FILTER_SANITIZE_STRING); #$_SERVER['HTTP_X_FORWARDED_FOR'];
+            } elseif ($clientAddr === false) {
+                $clientAddr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
             }
 
             $data = array(
                 "user_id"        => $this->id,
                 "login_time"     => time(),
-                "login_ip"       => $client_addr,
+                "login_ip"       => $clientAddr,
                 "login_hostname" => filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING),
                 "server"         => filter_input(INPUT_SERVER, "HTTP_HOST", FILTER_SANITIZE_STRING)
             );
@@ -1975,11 +1899,11 @@
          * @version 3.2
          * @return mixed
          *
-         * @param int $items_per_page
+         * @param int $itemsPerPage
          * @param int $page
          */
 
-        public function getLogins($items_per_page = 25, $page = 1) {
+        public function getLogins($itemsPerPage = 25, $page = 1) {
 
             if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
                 return false;
@@ -1987,14 +1911,14 @@
 
             $logins = array();
 
-            $key = sprintf("railpage:user=%d;logins;perpage=%d;page=%d", $this->id, $items_per_page, $page);
+            $key = sprintf("railpage:user=%d;logins;perpage=%d;page=%d", $this->id, $itemsPerPage, $page);
 
             $query = "SELECT * FROM log_logins WHERE user_id = ? ORDER BY login_time DESC LIMIT ?,?"; # Dropped USE_INDEX - negatively impacted query performance when zero results were found
 
             $args = array(
                 $this->id,
-                ( $page - 1 ) * $items_per_page,
-                $items_per_page
+                ( $page - 1 ) * $itemsPerPage,
+                $itemsPerPage
             );
 
             if ($result = $this->db->fetchAll($query, $args)) {
@@ -2122,17 +2046,17 @@
          * Fetch the users' timeline
          * @since Version 3.5
          *
-         * @param object $date_start
-         * @param object $date_end
+         * @param object $dateStart
+         * @param object $dateEnd
          *
          * @return array
          */
 
-        public function timeline($date_start, $date_end) {
+        public function timeline($dateStart, $dateEnd) {
 
             $timer = Debug::GetTimer();
 
-            $timezzz = (new Timeline)->setUser($this)->generateTimeline($date_start, $date_end);
+            $timezzz = (new Timeline)->setUser($this)->generateTimeline($dateStart, $dateEnd);
 
             Debug::LogEvent(__METHOD__, $timer);
 
@@ -2262,13 +2186,13 @@
          * Get this user's ACL role
          * @since Version 3.8.7
          *
-         * @param int    $group_id A forums group ID
+         * @param int    $groupId A forums group ID
          * @param string $role     The default ACL role to return if a group ID is provided
          *
          * @return string
          */
 
-        public function aclRole($group_id = NULL, $role = "maintainer") {
+        public function aclRole($groupId = NULL, $role = "maintainer") {
 
             if (defined("RP_GROUP_ADMINS") && $this->inGroup(RP_GROUP_ADMINS)) {
                 return "administrator";
@@ -2278,7 +2202,7 @@
                 return "moderator";
             }
 
-            if (filter_var($group_id, FILTER_VALIDATE_INT) && $this->inGroup($group_id)) {
+            if (filter_var($groupId, FILTER_VALIDATE_INT) && $this->inGroup($groupId)) {
                 return $role;
             }
 
@@ -2812,7 +2736,7 @@
          * Log user activity
          * @since Version 3.9.1
          *
-         * @param int    $module_id
+         * @param int    $moduleId
          * @param string $url
          * @param string $pagetitle
          * @param string $ip
@@ -2820,35 +2744,35 @@
          * @return \Railpage\Users\User
          */
 
-        public function logUserActivity($module_id = false, $url = false, $pagetitle = false, $ipaddr = false) {
+        public function logUserActivity($moduleId, $url = null, $pagetitle = null, $ipaddr = null) {
 
             // Temporarily commented out for performance
             return $this;
 
-            if (!filter_var($module_id, FILTER_VALIDATE_INT)) {
+            if (!filter_var($moduleId, FILTER_VALIDATE_INT)) {
                 throw new Exception("Cannot log user activity because no module ID was provided");
             }
 
-            if (!$url) {
+            if (is_null($url)) {
                 throw new Exception("Cannot log user activity because no URL was provided");
             }
 
-            if (!$pagetitle) {
+            if (is_null($pagetitle)) {
                 throw new Exception("Cannot log user activity because no pagetitle was provided");
             }
 
-            if (!$ipaddr) {
+            if (is_null($ipaddr)) {
                 $ipaddr = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL);
             }
 
-            if (!$ipaddr || is_null($ipaddr)) {
+            if (is_null($ipaddr)) {
                 throw new Exception("Cannot log user activity because no remote IP was provided");
             }
 
             $data = array(
                 "user_id"   => $this->id,
                 "ip"        => $ipaddr,
-                "module_id" => $module_id,
+                "module_id" => $moduleId,
                 "url"       => $url,
                 "pagetitle" => $pagetitle
             );

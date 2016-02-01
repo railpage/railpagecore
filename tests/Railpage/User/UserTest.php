@@ -789,7 +789,7 @@
             
             $User->setUserAccountStatus(User::STATUS_ACTIVE);
             
-            $this->assertEquals(1, count($Base->getNumRegistrationsByMonth($From, $To))); 
+            $this->assertEquals(2, count($Base->getNumRegistrationsByMonth($From, $To))); 
             
         }
         
