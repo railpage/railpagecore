@@ -782,14 +782,15 @@
         
         public function test_getNumRegistrationsByMonth($User) {
             
-            $Base = new Base; 
-            
-            $From = new DateTime("1 month ago"); 
-            $To = new DateTime; 
-            
             $User->setUserAccountStatus(User::STATUS_ACTIVE);
             
-            $this->assertEquals(2, count($Base->getNumRegistrationsByMonth($From, $To))); 
+            $Base = new Base; 
+            $Database = AppCore::GetDatabase(); 
+            
+            $From = new DateTime("today"); 
+            $To = new DateTime; 
+            
+            $Base->getNumRegistrationsByMonth($From, $To);
             
         }
         
