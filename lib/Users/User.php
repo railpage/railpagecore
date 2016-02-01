@@ -1048,24 +1048,7 @@ class User extends Base {
          */
 
         $data = Utility\UserUtility::normaliseAvatarPath($data);
-        
-        // Fix a dodgy timezone
-        if ($data['timezone'] == "America/Kentucky") {
-            $data['timezone'] = "America/Kentucky/Louisville";
-            
-            $update['timezone'] = $data['timezone'];
-
-            $this->db->update("nuke_users", $update, array( "user_id = ?" => $this->id ));
-        }
-
-        // Backwards compatibility
-        if ($data['timezone']) {
-            $timezone = new DateTime(null, new DateTimeZone($data['timezone']));
-            $data['user_timezone'] = str_pad(( $timezone->getOffset() / 60 / 60 ), 5, ".00");
-        }
-
-        // Nice time
-        $data['user_lastvisit_nice'] = date($data['user_dateformat'], $data['user_lastvisit']);
+        $data = Utility\UserUtility::setDefaults($data); 
 
         /**
          * Start setting the class vars
@@ -1073,16 +1056,16 @@ class User extends Base {
 
         $this->getGroups();
 
-        $this->provider = isset( $data['provider'] ) ? $data['provider'] : "railpage";
+        $this->provider = $data['provider'];
         $this->preferences = json_decode($data['user_opts']);
         $this->guest = false;
         $this->theme = ( !is_null($data['theme']) ) ? $data['theme'] : ( isset( $this->default_theme ) && !empty( $this->default_theme ) ? $this->default_theme : self::DEFAULT_THEME );
         $this->rank_id = $data['user_rank'];
-        $this->rank_text = isset( $data['rank_title'] ) && !empty( $data['rank_title'] ) ? $data['rank_title'] : NULL;
-        $this->timezone = isset( $data['timezone'] ) && !empty( $data['timezone'] ) ? $data['timezone'] : "Australia/Melbourne";
+        $this->rank_text = $data['rank_title'];
+        $this->timezone = $data['timezone'];
         $this->website = $data['user_website'];
         $this->hide = $data['user_allow_viewonline'];
-        $this->meta = isset( $data['meta'] ) ? json_decode($data['meta'], true) : array();
+        $this->meta = json_decode($data['meta'], true);
 
         if (json_last_error() != JSON_ERROR_NONE || !is_array($this->meta)) {
             $this->meta = array();

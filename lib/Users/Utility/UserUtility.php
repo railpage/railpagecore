@@ -338,4 +338,43 @@ class UserUtility {
         
     }
     
+    /**
+     * Set some default values for the user data array
+     * @since Version 3.10.0
+     * @param array $data
+     * @return array
+     */
+    
+    public static function setDefaults($data) {
+        
+        $defaults = [
+            "provider" => "railpage",
+            "rank_title" => null,
+            "timezone" => "Australia/Melbourne",
+            "meta" => []
+        ];
+        
+        $data = array_merge($defaults, $data); 
+        
+        $data['user_lastvisit_nice'] = date($data['user_dateformat'], $data['user_lastvisit']);
+        
+        // Fix a dodgy timezone
+        if ($data['timezone'] == "America/Kentucky") {
+            $data['timezone'] = "America/Kentucky/Louisville";
+            
+            $update['timezone'] = $data['timezone'];
+
+            $this->db->update("nuke_users", $update, array( "user_id = ?" => $this->id ));
+        }
+
+        // Backwards compatibility
+        if ($data['timezone']) {
+            $timezone = new DateTime(null, new DateTimeZone($data['timezone']));
+            $data['user_timezone'] = str_pad(( $timezone->getOffset() / 60 / 60 ), 5, ".00");
+        }
+        
+        return $data;
+        
+    }
+    
 }
