@@ -20,6 +20,8 @@ engines:
         enabled: false
       Controversial/CamelCaseVariableName:
         enabled: false
+      Controversial/Superglobals:
+        enabled: false
       Naming/ShortVariable:
         enabled: false
       CleanCode/StaticAccess:
@@ -39,6 +41,10 @@ engines:
       PSR1 Files SideEffects FoundWithSymbols:
         enabled: false
       PSR1 Methods CamelCapsMethodName NotCamelCaps:
+        enabled: false
+      PSR2 Methods FunctionCallSignature SpaceBeforeCloseBracket:
+        enabled: false
+      PSR2 Methods FunctionCallSignature SpaceAfterOpenBracket:
         enabled: false
       PSR2 Classes ClassDeclaration OpenBraceNewLine:
         enabled: false
