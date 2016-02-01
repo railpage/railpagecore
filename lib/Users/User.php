@@ -1048,7 +1048,7 @@ class User extends Base {
          */
 
         $data = Utility\UserUtility::normaliseAvatarPath($data);
-        $data = Utility\UserUtility::setDefaults($data); 
+        $data = Utility\UserUtility::setDefaults($data, $this); 
 
         /**
          * Start setting the class vars
@@ -1077,10 +1077,9 @@ class User extends Base {
 
         $this->session_last_nice = date($this->date_format, $this->lastvisit);
         $this->contact_email_public = (bool)$this->contact_email_public ? $this->contact_email : $data['femail'];
-
-        if (intval($this->wheat) === 0) {
-            $this->reputation = '100% (+' . $this->wheat . '/' . $this->chaff . '-)';
-        } else {
+        $this->reputation = '100% (+' . $this->wheat . '/' . $this->chaff . '-)';
+        
+        if (intval($this->wheat) > 0) {
             $this->reputation = number_format(( ( ( $this->chaff / $this->wheat ) / 2 ) * 100 ), 1) . '% (+' . $this->wheat . '/' . $this->chaff . '-)';
         }
 
@@ -1097,19 +1096,8 @@ class User extends Base {
         /**
          * Update the user registration date if required
          */
-
-        if (empty( $data['user_regdate_nice'] ) || $data['user_regdate_nice'] == "0000-00-00") {
-            if ($data['user_regdate'] == 0) {
-                $data['user_regdate'] = date("Y-m-d");
-            }
-
-            $datetime = new DateTime($data['user_regdate']);
-
-            $data['user_regdate_nice'] = $datetime->format("Y-m-d");
-            $update['user_regdate_nice'] = $data['user_regdate_nice'];
-
-            $this->db->update("nuke_users", $update, array( "user_id = ?" => $this->id ));
-        }
+        
+        Utility\UserMaintenance::checkUserRegdate($data); 
 
         $this->RegistrationDate = new DateTime($data['user_regdate_nice']);
 
@@ -1117,15 +1105,7 @@ class User extends Base {
          * Fetch the last IP address from the login logs
          */
 
-        $lastlogin = $this->getLogins(1);
-
-        if (count($lastlogin)) {
-            $this->session_ip = $lastlogin[key($lastlogin)]['login_ip'];
-
-            if ($this->lastvisit == 0) {
-                $this->lastvisit = $lastlogin[key($lastlogin)]['login_time'];
-            }
-        }
+        $this->getLogins(1);
 
         $this->warning_level_colour = Utility\UserUtility::getWarningBarColour($this->warning_level);
 
@@ -1911,6 +1891,14 @@ class User extends Base {
             }
         }
 
+        if (count($logins)) {
+            $this->session_ip = $logins[key($logins)]['login_ip'];
+
+            if ($this->lastvisit == 0) {
+                $this->lastvisit = $logins[key($logins)]['login_time'];
+            }
+        }
+
         return $logins;
     }
 
@@ -2429,8 +2417,7 @@ class User extends Base {
         }
 
         return false;
-
-        #return (boolean) $this->active;
+        
     }
 
     /**
@@ -2457,6 +2444,7 @@ class User extends Base {
         }
 
         throw new Exception("Cannot determine the status of this user account");
+        
     }
 
     /**

@@ -340,17 +340,19 @@ class UserUtility {
      * Set some default values for the user data array
      * @since Version 3.10.0
      * @param array $data
+     * @param \Railpage\Users\User $ThisUser
      * @return array
      */
     
-    public static function setDefaults($data) {
+    public static function setDefaults($data, User $ThisUser) {
         
         $defaults = [
             "provider" => "railpage",
             "rank_title" => null,
             "timezone" => "Australia/Melbourne",
             "theme" => User::DEFAULT_THEME,
-            "meta" => []
+            "meta" => [],
+            "user_id" => $ThisUser->id
         ];
         
         $data = array_merge($defaults, $data); 
@@ -363,7 +365,7 @@ class UserUtility {
             
             $update['timezone'] = $data['timezone'];
 
-            $this->db->update("nuke_users", $update, array( "user_id = ?" => $this->id ));
+            AppCore::GetDatabase()->update("nuke_users", $update, array( "user_id = ?" => $data['user_id'] ));
         }
 
         // Backwards compatibility

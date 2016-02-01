@@ -38,22 +38,6 @@
     class Locos extends AppCore {
         
         /**
-         * Find : Locos classes with no photos
-         * @since Version 3.9
-         * @const FIND_CLASS_NOPHOTO
-         */
-        
-        const FIND_CLASS_NOPHOTO = "class_nophoto";
-        
-        /**
-         * Find : Locos with no photos
-         * @since Version 3.9
-         * @const FIND_LOCO_NOPHOTO
-         */
-        
-        const FIND_LOCO_NOPHOTO = "loco_nophoto";
-        
-        /**
          * Status : Operational
          * @since Version 3.8.7
          * @const STATUS_OPERATIONAL
@@ -174,106 +158,9 @@
          */
         
         public function find($search_type = false, $args = false) {
-            if (!$search_type) {
-                throw new Exception("Cannot find data - no search type given");
-                return false;
-            }
             
+            throw new Exception(__METHOD__ . " has been replaced with \\Railpage\\Locos\\Maintainers\\Finder::find()"); 
             
-            /**
-             * Find loco classes without a cover photo
-             */
-            
-            if ($search_type === LOCOS_FIND_CLASS_NOPHOTO || $search_type === self::FIND_CLASS_NOPHOTO) {
-                
-                $return = array(); 
-                
-                $classes = $this->listClasses();
-                
-                foreach ($classes['class'] as $row) {
-                    
-                    $LocoClass = new LocoClass($row['class_id']);
-                    
-                    if (!$LocoClass->hasCoverImage()) {
-                        $return[$LocoClass->id] = array(
-                            "id" => $LocoClass->id,
-                            "name" => $LocoClass->name,
-                            "flickr_tag" => $LocoClass->flickr_tag,
-                            "url" => $LocoClass->url->getURLs()
-                        );
-                    }
-                }
-                
-                return $return;
-            }
-            
-            /**
-             * Find locomotives without a cover photo
-             */
-            
-            if ($search_type === LOCOS_FIND_LOCO_NOPHOTO || $search_type === self::FIND_LOCO_NOPHOTO) {
-                // Locos without a photo
-                
-                $query = "SELECT l.loco_id, l.loco_num, l.loco_status_id, s.name AS loco_status, c.id AS class_id, c.name AS class_name 
-                            FROM loco_unit AS l
-                            LEFT JOIN loco_class AS c ON l.class_id = c.id
-                            LEFT JOIN loco_status AS s ON s.id = l.loco_status_id
-                            WHERE l.photo_id = 0
-                            ORDER BY c.name, l.loco_num";
-                
-                if ($this->db instanceof \sql_db) {
-                    if ($rs = $this->db->query($query)) {
-                        $return = array(); 
-                        
-                        while ($row = $rs->fetch_assoc()) {
-                            $return[$row['loco_id']] = $row;
-                        }
-                        
-                        return $return;
-                    } else {
-                        throw new Exception($this->db->error."\n".$query);
-                        return false;
-                    }
-                } else {
-                    $return = array(); 
-                    
-                    foreach ($this->db->fetchAll($query) as $row) {
-                        $return[$row['loco_id']] = $row; 
-                    }
-                    
-                    return $return;
-                }
-            }
-            
-            /**
-             * Find locomotives from a comma-separated list of numbers
-             */
-            
-            if ($search_type === LOCOS_FIND_FROM_NUMBERS && $args) {
-                // Find locomotives from a comma-separated list of numbers
-                
-                $numbers = explode(",", $args); 
-                foreach ($numbers as $id => $num) {
-                    $numbers[$id] = trim($num); 
-                }
-                
-                $query = "SELECT l.loco_id, l.loco_num, l.loco_status_id, s.name AS loco_status, l.loco_gauge_id, CONCAT(g.gauge_name, ' (', g.gauge_metric, ')') AS loco_gauge, c.loco_type_id, t.title AS loco_type, c.id AS class_id, c.name AS class_name 
-                            FROM loco_unit AS l
-                            LEFT JOIN loco_class AS c ON l.class_id = c.id
-                            LEFT JOIN loco_status AS s ON s.id = l.loco_status_id
-                            LEFT JOIN loco_gauge AS g ON g.gauge_id = l.loco_gauge_id
-                            LEFT JOIN loco_type AS t ON c.loco_type_id = t.id
-                            WHERE l.loco_num IN ('".implode("','", $numbers)."')
-                            ORDER BY l.loco_num, c.name";
-                
-                $return = array(); 
-                
-                foreach ($this->db->fetchAll($query) as $row) {
-                    $return[$row['loco_id']] = $row; 
-                }
-                
-                return $return;
-            }
         }
         
         /**
@@ -881,55 +768,7 @@
          */
         
         public function findFromTag($tags) {
-            if (!is_array($tags)) {
-                $tags = array($tags);
-            }
-            
-            $craptags = array("rp3");
-            
-            foreach ($tags as $id => $tag) {
-                if (in_array($tag, $craptags)) {
-                    unset($tags[$id]); 
-                }
-                
-                if (preg_match("@railpage\:class\=([0-9]+)@", $tag, $matches)) {
-                    $classes[] = $matches[1];
-                }
-                
-                if (preg_match("@railpage\:loco\=([a-zA-Z0-9\s\-]+)@", $tag, $matches)) {
-                    $locos[] = $matches[1];
-                }
-            }
-            
-            $return = array(); 
-            $liveries = array(); 
-            
-            // Load class tags from the database
-            $query = "SELECT REPLACE(flickr_tag, '-', '') AS flickr_tag, name, id FROM loco_class WHERE flickr_tag != ''";
-
-            $liveries = $this->db->fetchAll($query);
-            
-            foreach ($liveries as $row) {
-                if (@in_array($row['flickr_tag'], $tags) || @in_array($row['id'], $classes)) {
-                    // Back to lowercase, flickr is silly
-                    $row['flickr_tag'] = strtolower($row['flickr_tag']);
-                    foreach ($tags as $tag) {
-                        if (isset($locos) && is_array($locos) && count($locos) > 0) {
-                            if ($tag != $row['flickr_tag'] && stristr($tag, $row['flickr_tag']) && !@in_array($tag, $row['locos'])) {
-                                $row['locos'][] = strtoupper(str_replace($row['flickr_tag'], "", $tag));
-                            }
-                        }
-                    }
-                    
-                    if (isset($row['locos']) && is_array($row['locos'])) {
-                        natsort($row['locos']);
-                    }
-                    
-                    $return[$row['id']] = $row; 
-                }
-            }
-            
-            return $return;
+            return (new Maintainers\Finder)->find(Maintainers\Finder::FIND_FROM_TAGS, $tags); 
         }
         
         /**
