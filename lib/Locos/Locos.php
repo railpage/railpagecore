@@ -155,9 +155,10 @@
          * @param string $search_type
          * @param string $args
          * @return array
+         * @deprecated Deprecated since 3.10.1 in favour of Railpage\Locos\Maintainers\Finder::find()
          */
         
-        public function find($search_type = false, $args = false) {
+        public function find() {
             
             throw new Exception(__METHOD__ . " has been replaced with \\Railpage\\Locos\\Maintainers\\Finder::find()"); 
             
@@ -323,12 +324,13 @@
          * Locos by operator
          * @since Version 3.2
          * @version 3.2
-         * @param int $operator_id
+         * @param int $operatorId
          * @return array
          */
         
-        public function locosByOperator($operator_id = false) {
-            if (!$operator_id) {
+        public function locosByOperator($operatorId = null) {
+            
+            if (!filter_var($operatorId, FILTER_VALIDATE_INT)) {
                 return false;
             }
             
@@ -346,7 +348,7 @@
             
             $return = array("stat" => "ok", "count" => 0, "locos" => array()); 
             
-            foreach ($this->db->fetchAll($query, $operator_id) as $row) {
+            foreach ($this->db->fetchAll($query, $operatorId) as $row) {
                 if (!empty($row['class_flickr_tag'])) {
                     $row['flickr_tag'] = $row['class_flickr_tag']."-".$row['loco_num'];
                 }
@@ -358,18 +360,20 @@
             }
             
             return $return;
+            
         }
         
         /**
          * Locos by owner
          * @since Version 3.2
          * @version 3.2
-         * @param int $owner_id
+         * @param int $ownerId
          * @return array
          */
         
-        public function locosByOwner($owner_id = false) {
-            if (!$owner_id) {
+        public function locosByOwner($ownerId = false) {
+            
+            if (!filter_var($ownerId, FILTER_VALIDATE_INT)) {
                 return false;
             }
             
@@ -387,7 +391,7 @@
             
             $return = array("stat" => "ok", "count" => 0, "locos" => array()); 
             
-            foreach ($this->db->fetchAll($query, $owner_id) as $row) {
+            foreach ($this->db->fetchAll($query, $ownerId) as $row) {
                 if (!empty($row['class_flickr_tag'])) {
                     $row['flickr_tag'] = $row['class_flickr_tag']."-".$row['loco_num'];
                 
@@ -400,6 +404,7 @@
             }
             
             return $return;
+            
         }
         
         /**
@@ -410,13 +415,13 @@
          * @param boolean $force Ignore Memcached and force refresh this list
          */
         
-        public function listWheelArrangements($force = false) {
+        public function listWheelArrangements($force = null) {
             $query = "SELECT * FROM wheel_arrangements ORDER BY arrangement";
             $return = array();
             
             $mckey = "railpage:loco.wheelarrangements"; 
             
-            if ($force || !$return = $this->Memcached->fetch($mckey)) {
+            if ($force === true || !$return = $this->Memcached->fetch($mckey)) {
                 $return = Utility\LocosUtility::getLocosComponents($query, "wheels"); 
                 $this->Memcached->save($mckey, $return, strtotime("+1 month"));
             }
@@ -432,11 +437,11 @@
          * @param boolean $force Ignore Memcached and force refresh this list
          */
         
-        public function listManufacturers($force = false) {
+        public function listManufacturers($force = null) {
             $query = "SELECT *, manufacturer_id AS id FROM loco_manufacturer ORDER BY manufacturer_name";
             $mckey = Manufacturer::MEMCACHED_KEY_ALL;
             
-            if ($force || !$return = $this->Memcached->fetch($mckey)) {
+            if ($force === true || !$return = $this->Memcached->fetch($mckey)) {
                 $return = Utility\LocosUtility::getLocosComponents($query, "manufacturers"); 
                 $this->Memcached->save($mckey, $return, strtotime("+1 month"));
             }
@@ -639,58 +644,66 @@
         /**
          * Edit note
          * @since Version 3.2
-         * @version 3.2
-         * @param int $note_id
-         * @param string $note_text
+         * @param int $noteId
+         * @param string $noteText
          * @return boolean
          */
         
-        public function editNote($note_id = false, $note_text = false) {
-            if (!$note_id || empty($note_id) || !$note_text || empty($note_text)) {
-                return false;
-            } 
+        public function editNote($noteId = null, $noteText = null) {
+            
+            if (!filter_var($noteId, FILTER_VALIDATE_INT)) {
+                throw new InvalidArgumentException("No valid note ID was provided"); 
+            }
+            
+            if (is_null($noteText)) {
+                throw new InvalidArgumentException("No note text was provided"); 
+            }
             
             $data = array(
-                "note_text" => $note_text
+                "note_text" => $noteText
             ); 
             
             $where = array(
-                "note_id = ?" => $note_id
+                "note_id = ?" => $noteId
             );
             
             $this->db->update("loco_notes", $data, $where); 
+            
             return true;
+            
         }
         
         /**
          * Delete note
          * @since Version 3.2
-         * @version 3.2
-         * @param int $note_id
+         * @param int $noteId
          * @return boolean
          */
         
-        public function deleteNote($note_id = false) {
-            if (!filter_var($note_id, FILTER_VALIDATE_INT)) {
-                return false;
+        public function deleteNote($noteId = false) {
+            
+            if (!filter_var($noteId, FILTER_VALIDATE_INT)) {
+                throw new InvalidArgumentException("No valid note ID was provided"); 
             } 
             
             $where = array(
-                "note_id = ?" => $note_id
+                "note_id = ?" => $noteId
             );
             
             $this->db->delete("loco_notes", $where); 
+            
             return true;
+            
         }
         
         /**
          * Get the type of dates
          * @since Version 3.2
-         * @version 3.2
          * @return array
          */
         
         public function dateTypes() {
+            
             $query = "SELECT * FROM loco_date_type ORDER BY loco_date_text ASC";
             $return = array();
             
@@ -699,43 +712,40 @@
             }
             
             return $return;
+            
         }
         
         /**
          * Load a single date entry
          * @since Version 3.2
-         * @version 3.2
-         * @param int $date_id
+         * @param int $dateId
          * @return mixed
          */
         
-        public function loadDate($date_id = false) {
-            if (!$date_id) {
-                throw new Exception("Cannot load date - no date ID provided"); 
-                return false;
+        public function loadDate($dateId = false) {
+            if (!filter_var($dateId, FILTER_VALIDATE_INT)) {
+                throw new Exception("Cannot load date - no date ID provided");
             }
             
             $query = "SELECT * FROM loco_unit_date WHERE date_id = ?"; 
             
-            return $this->db->fetchRow($query, $date_id);
+            return $this->db->fetchRow($query, $dateId);
         }
         
         /**
          * Delete a date
          * @since Version 3.2
-         * @version 3.2
-         * @param int $date_id
+         * @param int $dateId
          * @return boolean
          */
         
-        public function deleteDate($date_id = false) {
-            if (!$date_id || empty($date_id)) {
+        public function deleteDate($dateId = false) {
+            if (!filter_var($dateId, FILTER_VALIDATE_INT)) {
                 throw new Exception("Cannot delete date - no date ID provided"); 
-                return false;
             }
             
             $where = array(
-                "date_id = ?" => $date_id
+                "date_id = ?" => $dateId
             );
             
             $this->db->delete("loco_unit_date", $where);
@@ -808,10 +818,10 @@
          * @return boolean
          * @throws \Exception if $LocoA is not an instance of \Railpage\Locos\Locomotive
          * @throws \Exception if $LocoB is not an instance of \Railpage\Locos\Locomotive
-         * @throws \Exception if $link_type_id is missing
+         * @throws \Exception if $linkTypeId is missing
          */
         
-        public function link(Locomotive $LocoA, Locomotive $LocoB, $link_type_id = false) {
+        public function link(Locomotive $LocoA, Locomotive $LocoB, $linkTypeId = null) {
             if (!$LocoA instanceof Locomotive) {
                 throw new Exception("Cannot establish link between locomotives - Paramter 1 (Loco A) missing");
             }
@@ -819,14 +829,14 @@
                 throw new Exception("Cannot establish link between locomotives - Paramter 2 (Loco B) missing");
             }
             
-            if ($link_type_id === false) {
+            if (!filter_var($linkTypeId, FILTER_VALIDATE_INT)) {
                 throw new Exception("Cannot establish link between locomotives - Parameter 3 (link type) missing");
             }
             
             $data = array(
                 "loco_id_a" => $LocoA->id,
                 "loco_id_b" => $LocoB->id,
-                "link_type_id" => $link_type_id
+                "link_type_id" => $linkTypeId
             );
             
             $this->db->insert("loco_link", $data);
@@ -907,37 +917,35 @@
         /**
          * Get latest owner of a locomotive
          * @since Version 3.4
-         * @param int $loco_id
+         * @param int $locoId
          * @return array
          */
         
-        public function getLastOwner($loco_id = false) {
-            if (!$loco_id) {
+        public function getLastOwner($locoId = false) {
+            if (!filter_var($locoId, FILTER_VALIDATE_INT)) {
                 throw new Exception("Could not get latest owner - no loco ID given"); 
-                return false;
             }
             
             $query = "SELECT l.*, o.operator_name FROM loco_org_link AS l LEFT JOIN operators AS o ON l.operator_id = o.operator_id WHERE l.loco_id = ? AND l.link_type = 1 ORDER BY l.link_weight DESC LIMIT 1";
             
-            return $this->db->fetchRow($query, $loco_id); 
+            return $this->db->fetchRow($query, $locoId); 
         }
         
         /**
          * Get latest operator of a locomotive
          * @since Version 3.4
-         * @param int $loco_id
+         * @param int $locoId
          * @return array
          */
         
-        public function getLastOperator($loco_id = false) {
-            if (!$loco_id) {
+        public function getLastOperator($locoId = false) {
+            if (!filter_var($locoId, FILTER_VALIDATE_INT)) {
                 throw new Exception("Could not get latest operator - no loco ID given"); 
-                return false;
             }
             
             $query = "SELECT l.*, o.operator_name FROM loco_org_link AS l LEFT JOIN operators AS o ON l.operator_id = o.operator_id WHERE l.loco_id = ? AND l.link_type = 2 ORDER BY l.link_weight DESC LIMIT 1";
             
-            return $this->db->fetchRow($query, $loco_id); 
+            return $this->db->fetchRow($query, $locoId); 
         }
         
         /**
@@ -969,14 +977,12 @@
          * Add a new locomotive group
          * @since Version 3.5
          * @param string $name
-         * @param string $date_start
          * @return int
          */
         
-        public function addGrouping($name = false, $date_start = false) {
-            if (!$name) {
+        public function addGrouping($name = null) {
+            if (is_null($name)) {
                 throw new Exception("Cannot add group - group name cannot be empty"); 
-                return false;
             }
             
             $data = array(
@@ -990,15 +996,14 @@
         /**
          * Get group membership for this loco
          * @since Version 3.5
-         * @param int $loco_unit_id
+         * @param int $locoUnitId
          * @param boolean $includeInactive
          * @return array
          */
         
-        public function getGroupsMembership($loco_unit_id = false, $includeInactive = false) {
-            if (!$loco_unit_id) {
+        public function getGroupsMembership($locoUnitId = false, $includeInactive = false) {
+            if (!filter_var($locoUnitId, FILTER_VALIDATE_INT)) {
                 throw new Exception("Could not fetch group membership - no loco ID given"); 
-                return false;
             }
 
             $query = "SELECT lg.* FROM loco_groups AS lg LEFT JOIN loco_groups_members AS lgm ON lgm.group_id = lg.group_id WHERE lgm.loco_unit_id = ?"; 
@@ -1009,7 +1014,7 @@
             
             $return = array(); 
             
-            foreach ($this->db->fetchAll($query, $loco_unit_id) as $row) {
+            foreach ($this->db->fetchAll($query, $locoUnitId) as $row) {
                 $return[$row['group_id']] = $row; 
             }
             
@@ -1019,20 +1024,19 @@
         /**
          * Get members of a group
          * @since Version 3.5
-         * @param int $group_id
+         * @param int $groupId
          */
          
-        public function getGroupMembers($group_id) {
-            if (!$group_id) {
+        public function getGroupMembers($groupId) {
+            if (!filter_var($groupId, FILTER_VALIDATE_INT)) {
                 throw new Exception("Cannot fetch group members - no group ID given"); 
-                return false;
             }
             
             $query = "SELECT loco_unit_id FROM loco_groups_members WHERE group_id = ?";
             
             $return = array(); 
             
-            foreach ($this->db->fetchAll($query, $group_id) as $row) {
+            foreach ($this->db->fetchAll($query, $groupId) as $row) {
                 $return[] = $row['loco_unit_id']; 
             }
             
@@ -1042,34 +1046,35 @@
         /** 
          * Log an event 
          * @since Version 3.5
-         * @param int $user_id
+         * @param int $userId
          * @param string $title
          * @param array $args
          */
         
-        public function logEvent($user_id = false, $title = false, $args = false) {
-            if (!$user_id) {
+        public function logEvent($userId = false, $title = false, $args = false) {
+            
+            if (!filter_var($userId, FILTER_VALIDATE_INT)) {
                 throw new Exception("Cannot log event, no User ID given"); 
-                return false;
             }
             
             if (!$title) {
                 throw new Exception("Cannot log event, no title given"); 
-                return false;
             }
             
             if (is_array($args)) {
                 $args = json_encode($args); 
             }
             
-            $dataArray = array(); 
-            $dataArray['user_id'] = $user_id; 
-            $dataArray['timestamp'] = "NOW()";
-            $dataArray['title'] = $title; 
-            $dataArray['args'] = $args; 
+            $dataArray = [
+                "user_id" => $userId,
+                "timestamp" => new \Zend_Db_Expr("NOW()"),
+                "title" => $title, 
+                "args" => $args
+            ];
             
             $this->db->insert("log_locos", $dataArray); 
             return true;
+            
         }
         
         /**
@@ -1086,14 +1091,16 @@
         /**
          * Make a loco URL
          * @since Version 3.8.7
-         * @param string $class_slug
-         * @param string $loco_number
+         * @param string $classSlug
+         * @param string $locoNumber
          * @return string
          */
         
-        public function makeLocoURL($class_slug, $loco_number) {
-            $loco_number = str_replace(" ", "_", $loco_number);
-            return sprintf("%s/%s/%s", $this->Module->url, $class_slug, $loco_number);
+        public function makeLocoURL($classSlug, $locoNumber) {
+            
+            $loco_number = str_replace(" ", "_", $locoNumber);
+            return sprintf("%s/%s/%s", $this->Module->url, $classSlug, $locoNumber);
+            
         }
         
         /**
@@ -1182,10 +1189,10 @@
          * @yield \Railpage\Locos\Date
          */
         
-        public function yieldDatesWithinRange(DateTime $From, DateTime $To) {
+        public function yieldDatesWithinRange(DateTime $dateFrom, DateTime $dateTo) {
             $query = "SELECT date_id FROM loco_unit_date WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp";
             
-            foreach ($this->db->fetchAll($query, array($From->format("Y-m-d"), $To->format("Y-m-d"))) as $row) {
+            foreach ($this->db->fetchAll($query, array($dateFrom->format("Y-m-d"), $dateTo->format("Y-m-d"))) as $row) {
                 yield new Date($row['date_id']);
             }
         }
