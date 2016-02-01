@@ -11,6 +11,7 @@ namespace Railpage\Users\Utility;
 
 use Exception;
 use DateTime;
+use DateTimeZone;
 use Railpage\ContentUtility;
 use Railpage\Users\User;
 use Railpage\AppCore;
@@ -39,9 +40,6 @@ class UserUtility {
          */
         
         if (empty($data['user_avatar']) || substr($data['user_avatar'], -9, 5) == "blank") {
-            #$data['user_avatar'] = function_exists("format_avatar") ? format_avatar("http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png", 120, 120) : "http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png";
-            #$data['user_avatar_filename'] = function_exists("format_avatar") ? format_avatar("http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png", 120, 120) : "http://static.railpage.com.au/modules/Forums/images/avatars/gallery/blank.png";
-            
             $data['user_avatar'] = AvatarUtility::Format(AvatarUtility::DEFAULT_AVATAR, 120, 120); 
             $data['user_avatar_filename'] = AvatarUtility::Format(AvatarUtility::DEFAULT_AVATAR, 120, 120); 
             
@@ -351,6 +349,7 @@ class UserUtility {
             "provider" => "railpage",
             "rank_title" => null,
             "timezone" => "Australia/Melbourne",
+            "theme" => User::DEFAULT_THEME,
             "meta" => []
         ];
         

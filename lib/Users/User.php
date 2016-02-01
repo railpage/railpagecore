@@ -1059,7 +1059,7 @@ class User extends Base {
         $this->provider = $data['provider'];
         $this->preferences = json_decode($data['user_opts']);
         $this->guest = false;
-        $this->theme = ( !is_null($data['theme']) ) ? $data['theme'] : ( isset( $this->default_theme ) && !empty( $this->default_theme ) ? $this->default_theme : self::DEFAULT_THEME );
+        $this->theme = $data['theme'];
         $this->rank_id = $data['user_rank'];
         $this->rank_text = $data['rank_title'];
         $this->timezone = $data['timezone'];
