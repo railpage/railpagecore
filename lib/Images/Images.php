@@ -175,7 +175,7 @@
          * @return boolean|\Railpage\Images\Image
          */
         
-        public function getImageFromUrl($url = false, $option = NULL) {
+        public function getImageFromUrl($url = null, $option = NULL) {
             
             /**
              * Flickr

@@ -42,6 +42,8 @@ engines:
         enabled: false
       PSR1 Files SideEffects FoundWithSymbols:
         enabled: false
+      PSR2 Files EndFileNewline NoneFound:
+        enabled: false
       PSR1 Methods CamelCapsMethodName NotCamelCaps:
         enabled: false
       PSR2 Methods FunctionCallSignature SpaceBeforeCloseBracket:

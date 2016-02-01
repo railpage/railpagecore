@@ -63,8 +63,8 @@ class Finder extends AppCore {
      * @return array
      */
     
-    public function find($search_type = false, $args = false) {
-        if (!$search_type) {
+    public function find($searchType = null, $args = null) {
+        if (is_null($searchType)) {
             throw new Exception("Cannot find data - no search type given");
             return false;
         }
@@ -73,7 +73,7 @@ class Finder extends AppCore {
          * Find loco classes without a cover photo
          */
         
-        if ($search_type === self::FIND_CLASS_NOPHOTO) {
+        if ($searchType === self::FIND_CLASS_NOPHOTO) {
             return $this->findClassNoPhotos(); 
         }
         
@@ -81,7 +81,7 @@ class Finder extends AppCore {
          * Find locomotives without a cover photo
          */
         
-        if ($search_type === self::FIND_LOCO_NOPHOTO) {
+        if ($searchType === self::FIND_LOCO_NOPHOTO) {
             return $this->findLocosNoPhotos();
         }
         
@@ -89,11 +89,11 @@ class Finder extends AppCore {
          * Find locomotives from a comma-separated list of numbers
          */
         
-        if ($search_type === self::FIND_LOCO_FROMNUMBERS && $args) {
+        if ($searchType === self::FIND_LOCO_FROMNUMBERS && !is_null($args)) {
             return $this->findLocosFromList($args); 
         }
         
-        if ($search_type == self::FIND_FROM_TAGS && $args) {
+        if ($searchType == self::FIND_FROM_TAGS && !is_null($args)) {
             return $this->findFromTags($args); 
         }
     }
@@ -111,14 +111,16 @@ class Finder extends AppCore {
             $numbers[$id] = trim($num); 
         }
         
-        $query = "SELECT l.loco_id, l.loco_num, l.loco_status_id, s.name AS loco_status, l.loco_gauge_id, CONCAT(g.gauge_name, ' (', g.gauge_metric, ')') AS loco_gauge, c.loco_type_id, t.title AS loco_type, c.id AS class_id, c.name AS class_name 
-                    FROM loco_unit AS l
-                    LEFT JOIN loco_class AS c ON l.class_id = c.id
-                    LEFT JOIN loco_status AS s ON s.id = l.loco_status_id
-                    LEFT JOIN loco_gauge AS g ON g.gauge_id = l.loco_gauge_id
-                    LEFT JOIN loco_type AS t ON c.loco_type_id = t.id
-                    WHERE l.loco_num IN ('".implode("','", $numbers)."')
-                    ORDER BY l.loco_num, c.name";
+        $query = "SELECT l.loco_id, l.loco_num, l.loco_status_id, s.name AS loco_status, l.loco_gauge_id, 
+                         CONCAT(g.gauge_name, ' (', g.gauge_metric, ')') AS loco_gauge, c.loco_type_id, 
+                         t.title AS loco_type, c.id AS class_id, c.name AS class_name 
+                  FROM loco_unit AS l
+                  LEFT JOIN loco_class AS c ON l.class_id = c.id
+                  LEFT JOIN loco_status AS s ON s.id = l.loco_status_id
+                  LEFT JOIN loco_gauge AS g ON g.gauge_id = l.loco_gauge_id
+                  LEFT JOIN loco_type AS t ON c.loco_type_id = t.id
+                  WHERE l.loco_num IN ('".implode("','", $numbers)."')
+                  ORDER BY l.loco_num, c.name";
         
         $return = array(); 
         
