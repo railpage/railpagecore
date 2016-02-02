@@ -86,10 +86,10 @@ class Groups extends AppCore {
      * @return array
      */
     
-    public function findWithAttribute($attribute = false, $value = false) {
-        if (!$attribute) {
+    public function findWithAttribute($attribute = null, $value = null) {
+        
+        if ($attribute == null) {
             throw new Exception("Cannot filter groups by attribute - no attribute given!"); 
-            return false;
         }
         
         $groups = $this->getGroups(); 
@@ -97,8 +97,12 @@ class Groups extends AppCore {
         foreach ($groups as $id => $group) {
             if (!isset($group['group_attrs'][$attribute])) {
                 unset($groups[$id]);
-            } elseif ($value && $group['group_attrs'][$attribute] != $value) {
+                continue;
+            }
+            
+            if ($value =! null && $group['group_attrs'][$attribute] != $value) {
                 unset($groups[$id]);
+                continue;
             }
         }
         

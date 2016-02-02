@@ -1261,129 +1261,6 @@ class User extends Base {
             $data[$key] = json_encode($data[$key]);
         }
 
-        #printArray($data);die;
-
-        /*
-        $dataArray = array();
-
-        $dataArray['provider'] = $this->provider;
-        $dataArray['meta'] = json_encode($this->meta);
-        $dataArray['user_opts'] = json_encode($this->preferences);
-        $dataArray['username'] = $this->username;
-        $dataArray['user_active'] = $this->active;
-        $dataArray['user_regdate'] = $this->regdate;
-        $dataArray['user_level'] = $this->level;
-        $dataArray['user_posts'] = $this->posts;
-        $dataArray['user_style'] = $this->style;
-        $dataArray['theme'] = $this->theme;
-        $dataArray['user_lang'] = $this->lang;
-        $dataArray['user_dateformat'] = $this->date_format;
-        $dataArray['user_rank'] = $this->rank_id;
-        $dataArray['user_from'] = $this->location;
-        $dataArray['user_occ'] = $this->occupation;
-        $dataArray['user_interests'] = $this->interests;
-        $dataArray['name'] = $this->real_name;
-        $dataArray['timezone'] = $this->timezone;
-        $dataArray['user_website'] = $this->website;
-        $dataArray['user_allow_viewonline'] = $this->hide;
-
-        $dataArray['uWheat'] = $this->wheat;
-        $dataArray['uChaff'] = $this->chaff;
-
-        $dataArray['api_key'] = $this->api_key;
-        $dataArray['api_secret'] = $this->api_secret;
-
-        $dataArray['user_report_optout'] = $this->report_optout;
-
-        $dataArray['user_warnlevel'] = $this->warning_level;
-        $dataArray['disallow_mod_warn'] = $this->warning_exempt;
-
-        $dataArray['user_group_cp'] = $this->group_cp;
-        $dataArray['user_group_list_cp'] = $this->group_list_cp;
-        $dataArray['user_active_cp'] = $this->active_cp;
-
-        $dataArray['user_forum_postsperpage'] = $this->items_per_page;
-
-        $dataArray['user_avatar'] = $this->avatar;
-        $dataArray['user_avatar_gravatar'] = $this->avatar_gravatar;
-        $dataArray['user_avatar_type'] = $this->avatar_type;
-        $dataArray['user_avatar_width'] = $this->avatar_width;
-        $dataArray['user_avatar_height'] = $this->avatar_height;
-
-        $dataArray['user_new_privmsg'] = $this->privmsg_new;
-        $dataArray['user_unread_privmsg'] = $this->privmsg_unread;
-        $dataArray['user_last_privmsg'] = $this->privmsg_last_id;
-
-        $dataArray['user_viewemail'] = $this->email_show;
-        $dataArray['storynum'] = $this->news_submissions;
-
-        $dataArray['user_notify'] = $this->notify;
-        $dataArray['user_notify_pm'] = $this->notify_privmsg;
-
-        $dataArray['user_email'] = $this->contact_email;
-        $dataArray['femail'] = $this->contact_email_public;
-        $dataArray['user_icq'] = $this->contact_icq;
-        $dataArray['user_aim'] = $this->contact_aim;
-        $dataArray['user_yim'] = $this->contact_yim;
-        $dataArray['user_msnm'] = $this->contact_msn;
-
-        $dataArray['user_sig'] = $this->signature;
-        $dataArray['user_attachsig'] = $this->signature_attach;
-        $dataArray['user_showsigs'] = $this->signature_showall;
-        $dataArray['user_sig_bbcode_uid'] = $this->signature_bbcode_uid;
-
-        $dataArray['user_password'] = $this->password;
-        $dataArray['user_password_bcrypt'] = $this->password_bcrypt;
-
-        $dataArray['user_lastvisit'] = $this->lastvisit;
-        $dataArray['user_session_time'] = $this->session_time;
-        $dataArray['user_session_page'] = $this->session_page;
-        $dataArray['user_current_visit'] = $this->session_current;
-        $dataArray['user_last_visit'] = $this->session_last;
-        $dataArray['last_session_ip'] = $this->session_ip;
-        $dataArray['last_session_cslh'] = $this->session_cslh;
-        $dataArray['last_session_ignore'] = $this->session_mu_ignore;
-
-        $dataArray['user_enablerte'] = $this->enable_rte;
-        $dataArray['user_enableglossary'] = $this->enable_glossary;
-        $dataArray['user_allowhtml'] = $this->enable_html;
-        $dataArray['user_allowbbcode'] = $this->enable_bbcode;
-        $dataArray['user_allowsmile'] = $this->enable_emoticons;
-        $dataArray['user_allowavatar'] = $this->enable_avatar;
-        $dataArray['user_allow_pm'] = $this->enable_privmsg;
-        $dataArray['user_popup_pm'] = $this->enable_privmsg_popup;
-
-        $dataArray['flickr_oauth_token'] = $this->flickr_oauth_token;
-        $dataArray['flickr_oauth_token_secret'] = $this->flickr_oauth_secret;
-        $dataArray['flickr_nsid'] = $this->flickr_nsid;
-        $dataArray['flickr_username'] = $this->flickr_username;
-
-        $dataArray['user_actkey'] = $this->act_key;
-
-        $dataArray['oauth_consumer_id'] = $this->oauth_id;
-        $dataArray['sidebar_type'] = $this->sidebar_type;
-        $dataArray['user_enableautologin'] = $this->enable_autologin;
-
-        $dataArray['user_enablessl'] = $this->ssl;
-
-        $dataArray['facebook_user_id'] = $this->facebook_user_id;
-        $dataArray['reported_to_sfs'] = $this->reported_to_sfs;
-
-        printArray(count($data));
-        printArray(count($dataArray));
-
-        foreach ($data as $key => $val)  {
-            if (!in_array($key, array_keys($dataArray))) {
-                printArray($key);
-            }
-        }
-        die;
-        */
-
-        #ob_end_flush(); echo "adfadf"; var_dump($data);die;
-        #ini_set('memory_limit','256M');
-        #file_put_contents("/srv/railpage.com.au/www/public_html/content/userdata.txt", var_export($data));die;
-
         if ($this->RegistrationDate instanceof DateTime) {
             $data['user_regdate_nice'] = $this->RegistrationDate->format("Y-m-d H:i:s");
         }
@@ -1875,7 +1752,7 @@ class User extends Base {
 
         $logins = array();
 
-        $key = sprintf("railpage:user=%d;logins;perpage=%d;page=%d", $this->id, $itemsPerPage, $page);
+        //$key = sprintf("railpage:user=%d;logins;perpage=%d;page=%d", $this->id, $itemsPerPage, $page);
 
         $query = "SELECT * FROM log_logins WHERE user_id = ? ORDER BY login_time DESC LIMIT ?,?"; # Dropped USE_INDEX - negatively impacted query performance when zero results were found
 

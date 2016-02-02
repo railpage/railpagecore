@@ -488,6 +488,7 @@ class Image extends AppCore {
             $data['lon'] = $this->Place->lon;
         }
 
+        // Update
         if (filter_var($this->id, FILTER_VALIDATE_INT)) {
             $this->Memcached->delete($this->mckey);
             $this->Redis->delete($this->mckey);
@@ -500,11 +501,16 @@ class Image extends AppCore {
             $data['modified'] = $Date->format("Y-m-d g:i:s");
 
             $this->db->update("image", $data, $where);
-        } else {
-            $this->db->insert("image", $data);
-            $this->id = $this->db->lastInsertId();
-            $this->url = Utility\Url::CreateFromImageID($this->id);
+
+            $this->getJSON();
+            
+            return $this;
         }
+        
+        // Insert
+        $this->db->insert("image", $data);
+        $this->id = $this->db->lastInsertId();
+        $this->url = Utility\Url::CreateFromImageID($this->id);
 
         $this->getJSON();
 
@@ -619,8 +625,10 @@ class Image extends AppCore {
             $data = $Provider->getImage($this->photo_id, $force);
         } catch (Exception $e) {
             $expected = array(
-                sprintf("Unable to fetch data from Flickr: Photo \"%s\" not found (invalid ID) (1)",
-                    $this->photo_id),
+                sprintf(
+                    "Unable to fetch data from Flickr: Photo \"%s\" not found (invalid ID) (1)",
+                    $this->photo_id
+                ),
                 "Unable to fetch data from Flickr: Photo not found (1)"
             );
 
@@ -635,8 +643,6 @@ class Image extends AppCore {
                 throw new Exception("Photo no longer available from " . $this->provider);
             }
         }
-
-        #ob_end_clean(); printArray($data['author']);die;
 
         if ($data) {
             $this->sizes = $data['sizes'];
@@ -708,16 +714,22 @@ class Image extends AppCore {
 
             case "picasaweb" :
 
-                if (empty( $this->meta ) && !is_null(filter_input(INPUT_SERVER, "HTTP_REFERER",
-                        FILTER_SANITIZE_URL)) && strpos(filter_input(INPUT_SERVER, "HTTP_REFERER",
-                        FILTER_SANITIZE_URL), "picasaweb.google.com")
+                if (
+                    empty( $this->meta ) && 
+                    !is_null(filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_URL)) && 
+                    strpos(filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_URL), "picasaweb.google.com")
                 ) {
-                    $album = preg_replace("@(http|https)://picasaweb.google.com/([a-zA-Z\-\.]+)/(.+)@", "$2",
-                        filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_URL));
+                    $album = preg_replace(
+                        "@(http|https)://picasaweb.google.com/([a-zA-Z\-\.]+)/(.+)@", "$2",
+                        filter_input(INPUT_SERVER, "HTTP_REFERER", FILTER_SANITIZE_URL)
+                    );
 
                     if (is_string($album)) {
-                        $update_url = sprintf("https://picasaweb.google.com/data/feed/api/user/%s/photoid/%s?alt=json",
-                            $album, $this->photo_id);
+                        $update_url = sprintf(
+                            "https://picasaweb.google.com/data/feed/api/user/%s/photoid/%s?alt=json",
+                            $album, 
+                            $this->photo_id
+                        );
                     }
                 }
 
@@ -819,8 +831,13 @@ class Image extends AppCore {
                     $response = $this->GuzzleClient->get($this->meta['source']);
 
                     if ($response->getStatusCode() != 200) {
-                        throw new Exception(sprintf("Failed to fetch image data from %s: HTTP error %s",
-                            $this->provider, $response->getStatusCode()));
+                        throw new Exception(
+                            sprintf(
+                                "Failed to fetch image data from %s: HTTP error %s",
+                                $this->provider, 
+                                $response->getStatusCode()
+                            )
+                        );
                     }
 
                     /**
@@ -871,8 +888,12 @@ class Image extends AppCore {
                                 if (preg_match("@Photo: @i", $line)) {
                                     $this->author = new stdClass;
                                     $this->author->realname = str_replace("Photo: ", "", $line);
-                                    $this->author->url = filter_input(INPUT_SERVER, "HTTP_REFERER",
-                                        FILTER_SANITIZE_STRING);
+                                    $this->author->url = filter_input(
+                                        INPUT_SERVER, 
+                                        "HTTP_REFERER",
+                                        FILTER_SANITIZE_STRING
+                                    );
+                                    
                                     unset( $text[$k] );
                                 }
 
@@ -899,8 +920,11 @@ class Image extends AppCore {
                             }
 
                             $this->links = new stdClass;
-                            $this->links->provider = filter_input(INPUT_SERVER, "HTTP_REFERER",
-                                FILTER_SANITIZE_STRING);
+                            $this->links->provider = filter_input(
+                                INPUT_SERVER, 
+                                "HTTP_REFERER",
+                                FILTER_SANITIZE_STRING
+                            );
 
                             $this->commit();
                         }
@@ -917,19 +941,8 @@ class Image extends AppCore {
          */
 
         if (RP_DEBUG) {
-            $site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : completed in " . round(microtime(true) - $debug_timer_start,
-                    5) . "s";
+            $site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : completed in " . round(microtime(true) - $debug_timer_start, 5) . "s";
         }
-
-        /**
-         * Find objects (locomotives, loco classes, liveries) in this picture
-         */
-
-        /*
-        $this->findObjects("railpage.locos.loco")
-             ->findObjects("railpage.locos.class")
-             ->findObjects("railpage.locos.liveries.livery");
-        */
 
         return $this;
     }
@@ -938,31 +951,33 @@ class Image extends AppCore {
      * Link this image to a loco, location, etc
      *
      * @param string     $namespace
-     * @param int|string $namespace_key
+     * @param int|string $namespaceKey
      *
      * @throws \Exception if $namespace is null
-     * @throws \Exception if $namespace_key is null
+     * @throws \Exception if $namespaceKey is null
      * @return \Railpage\Images\Image
      */
 
-    public function addLink($namespace = null, $namespace_key = null) {
+    public function addLink($namespace = null, $namespaceKey = null) {
 
         if (is_null($namespace)) {
             throw new Exception("Parameter 1 (namespace) cannot be empty");
         }
 
-        if (!filter_var($namespace_key, FILTER_VALIDATE_INT)) {
+        if (!filter_var($namespaceKey, FILTER_VALIDATE_INT)) {
             throw new Exception("Parameter 2 (namespace_key) cannot be empty");
         }
 
-        $id = $this->db->fetchOne("SELECT id FROM image_link WHERE namespace = ? AND namespace_key = ? AND image_id = ?",
-            array($namespace, $namespace_key, $this->id));
+        $id = $this->db->fetchOne(
+            "SELECT id FROM image_link WHERE namespace = ? AND namespace_key = ? AND image_id = ?",
+            array($namespace, $namespaceKey, $this->id))
+        ;
 
         if (!filter_var($id, FILTER_VALIDATE_INT)) {
             $data = array(
                 "image_id"      => $this->id,
                 "namespace"     => $namespace,
-                "namespace_key" => $namespace_key,
+                "namespace_key" => $namespaceKey,
                 "ignored"       => 0
             );
 
@@ -1108,9 +1123,7 @@ class Image extends AppCore {
                     }
 
                     foreach ($this->meta['tags'] as $tag) {
-                        if (isset( $LocoClass ) && $LocoClass instanceof LocoClass && preg_match("@railpage:loco=([a-zA-Z0-9]+)@",
-                                $tag, $matches)
-                        ) {
+                        if (isset( $LocoClass ) && $LocoClass instanceof LocoClass && preg_match("@railpage:loco=([a-zA-Z0-9]+)@", $tag, $matches) ) {
                             Debug::LogEvent(__METHOD__ . " :: #2 Instantating new LocoClass object with class ID " . $LocoClass->id . " and loco number " . $matches[1] . "  ");
                             $Loco = LocosFactory::CreateLocomotive(false, $LocoClass->id, $matches[1]);
 
@@ -1122,9 +1135,7 @@ class Image extends AppCore {
 
                     foreach ($this->db->fetchAll("SELECT id AS class_id, flickr_tag AS class_tag FROM loco_class") as $row) {
                         foreach ($this->meta['tags'] as $tag) {
-                            if (stristr($tag, $row['class_tag']) && strlen(str_replace($row['class_tag'] . "-", "",
-                                        $tag) > 0)
-                            ) {
+                            if (stristr($tag, $row['class_tag']) && strlen(str_replace($row['class_tag'] . "-", "", $tag) > 0) ) {
                                 $loco_num = str_replace($row['class_tag'] . "-", "", $tag);
                                 Debug::LogEvent(__METHOD__ . " :: #3 Instantating new LocoClass object with class ID " . $row['class_id'] . " and loco number " . $loco_num . "  ");
                                 $Loco = LocosFactory::CreateLocomotive(false, $row['class_id'], $loco_num);
@@ -1215,20 +1226,18 @@ class Image extends AppCore {
         $params = array(
             $this->id
         );
+        
+        $where_namespace = "";
 
         if (!is_null($namespace)) {
             $params[] = $namespace;
             $where_namespace = "AND namespace = ?";
-        } else {
-            $where_namespace = "";
         }
 
-        #printArray($params);
-
-        $rs = $this->db->fetchAll("SELECT * FROM image_link WHERE image_id = ? " . $where_namespace . " AND ignored = 0",
-            $params);
-
-        #printArray($rs);die;
+        $rs = $this->db->fetchAll(
+            "SELECT * FROM image_link WHERE image_id = ? " . $where_namespace . " AND ignored = 0",
+            $params
+        );
 
         return $rs;
     }
@@ -1243,7 +1252,7 @@ class Image extends AppCore {
      * @return boolean
      */
 
-    public function ignored($ignored = true, $link_id = 0) {
+    public function ignored($ignored = 1, $linkId = 0) {
 
         $data = array(
             "ignored" => intval($ignored)
@@ -1253,8 +1262,8 @@ class Image extends AppCore {
             "image_id = ?" => $this->id
         );
 
-        if (filter_var($link_id, FILTER_VALIDATE_INT) && $link_id > 0) {
-            $where['id = ?'] = $link_id;
+        if (filter_var($linkId, FILTER_VALIDATE_INT) && $linkId > 0) {
+            $where['id = ?'] = $linkId;
         }
 
         $this->db->update("image_link", $data, $where);
@@ -1354,8 +1363,8 @@ class Image extends AppCore {
                 }
             }
 
-            foreach ($matches as $area => $matched) {
-                foreach ($matched as $key => $array) {
+            foreach ($matches as $matched) {
+                foreach ($matched as $array) {
                     foreach ($array as $k => $v) {
                         if (!empty( $v ) && preg_match("/([0-9])/", $v) && !preg_match("/(and|to|or|for)/", $v)) {
                             if (!in_array(trim($v), $locolookup)) {

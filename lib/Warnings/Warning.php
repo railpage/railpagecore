@@ -215,8 +215,13 @@ class Warning extends AppCore {
         }
 
         if ($this->Recipient->warning_exempt === 1) {
-            throw new Exception(sprintf("Cannot add warning to this user (ID %d, Username %s). Disallowed by system policy.",
-                $this->Recipient->id, $this->Recipient->username));
+            throw new Exception(
+                sprintf(
+                    "Cannot add warning to this user (ID %d, Username %s). Disallowed by system policy.",
+                    $this->Recipient->id, 
+                    $this->Recipient->username
+                )
+            );
         }
 
         if (!$this->Date instanceof DateTime) {
