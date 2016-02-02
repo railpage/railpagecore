@@ -921,7 +921,7 @@
          * @return array
          */
         
-        public function getLastOwner($locoId = false) {
+        public function getLastOwner($locoId = null) {
             if (!filter_var($locoId, FILTER_VALIDATE_INT)) {
                 throw new Exception("Could not get latest owner - no loco ID given"); 
             }
@@ -938,7 +938,7 @@
          * @return array
          */
         
-        public function getLastOperator($locoId = false) {
+        public function getLastOperator($locoId = null) {
             if (!filter_var($locoId, FILTER_VALIDATE_INT)) {
                 throw new Exception("Could not get latest operator - no loco ID given"); 
             }
@@ -955,10 +955,9 @@
          * @return array
          */
         
-        public function getClassesByModel($model = false) {
-            if (!$model) {
+        public function getClassesByModel($model = null) {
+            if (is_null($model)) {
                 throw new Exception("Could not fetch list of classes - no production model given"); 
-                return false;
             }
             
             $query = "SELECT id, name, slug FROM loco_class WHERE Model = ? ORDER BY name";
