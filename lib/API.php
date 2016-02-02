@@ -4,7 +4,7 @@
  * Railpage API - End user implementation
  * @package Railpage_API
  * @since Version 1.0
- * @version 3.8.7
+ * @version 3.10.0
  * @author Michael Greenhill
  */
  
@@ -90,10 +90,12 @@ class API {
     
     public function __construct($apiKey = null, $apiSecret = null, $apiFormat = "json", $apiEndpoint = "https://api.railpage.com.au") {
         if (is_null($apiKey)) { 
+            return false;
             throw new Exception("Cannot instantiate " . __CLASS__ . " because no API key was provided");
         }
         
         if (is_null($api_secret)) {
+            return false;
             throw new Exception("Cannot instantiate " . __CLASS__ . " because no API secret was provided");
         }
         

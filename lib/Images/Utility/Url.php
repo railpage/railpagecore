@@ -9,6 +9,7 @@
     namespace Railpage\Images\Utility;
     
     use Railpage\Url as RealUrl;
+    use Railpage\Images\Competition;
     
     class Url {
         
@@ -30,5 +31,41 @@
             
             return $Url;
             
+        }
+        
+        /**
+         * Create competition URLs
+         * @since Version 3.10.0
+         * @param \Railpage\Images\Competition $competitionObject
+         * @return \Railpage\Url
+         */
+        
+        public static function makeCompetitionUrls(Competition $competitionObject) {
+            
+            $Url = new RealUrl(sprintf("/gallery/comp/%s", $competitionObject->slug));
+            $Url->submitphoto = sprintf("%s/submit", $Url->url);
+            $Url->edit = sprintf("/gallery?mode=competitions.new&id=%d", $competitionObject->id);
+            $Url->pending = sprintf("/gallery?mode=competition.pendingphotos&id=%d", $competitionObject->id);
+            $Url->suggestsubject = sprintf("/gallery?mode=competition.nextsubject&id=%d", $competitionObject->id);
+            $Url->tied = sprintf("/gallery?mode=competition.tied&id=%d", $competitionObject->id);
+            
+            /**
+             * Get the UTM email campaign link
+             */
+            
+            $joiner = strpos($Url->canonical, "?") !== false ? "&" : "?";
+            
+            $parts = array(
+                "utm_medium" => "email",
+                "utm_source" => "Newsletter",
+                "utm_campaign" => str_replace(" ", "+", $competitionObject->title)
+            );
+            
+            $url = $Url->canonical . $joiner . http_build_query($parts);
+            
+            $Url->email = $url;
+            
+            return $Url;
+
         }
     }

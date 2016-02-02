@@ -173,11 +173,13 @@ class Warning extends AppCore {
         $Message->setRecipient($this->Recipient);
         $Message->setAuthor($this->Issuer);
         $Message->subject = "You have received an official warning from Railpage";
-        $Message->body = sprintf("%s,\n\nYou have been issued a warning for breaching our Terms of Use or Rules for Posting.\n\n[b]Reason[/b]\n%s\n\n[b]Action taken[/b]\n%s\n\nRegards,\n%s\n\nRailpage Moderator Team.",
-                                $this->Recipient->username, 
-                                $this->reason, 
-                                $this->action, 
-                                $this->Issuer->username);
+        $Message->body = sprintf(
+            "%s,\n\nYou have been issued a warning for breaching our Terms of Use or Rules for Posting.\n\n[b]Reason[/b]\n%s\n\n[b]Action taken[/b]\n%s\n\nRegards,\n%s\n\nRailpage Moderator Team.",
+            $this->Recipient->username, 
+            $this->reason, 
+            $this->action, 
+            $this->Issuer->username
+        );
         $Message->send();
         
     }
