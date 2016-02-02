@@ -50,10 +50,10 @@ class Vicsig extends AppCore implements ProviderInterface {
      * Save the changes to this image
      * @since Version 3.9.1
      * @return self
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      */
     
-    public function setImage(Image $Image) {
+    public function setImage(Image $imageObject) {
         
     }
     
@@ -61,11 +61,11 @@ class Vicsig extends AppCore implements ProviderInterface {
      * Get a list of images
      * @since Version 3.9.1
      * @param int $page
-     * @param \Railpage\Images\Image $Image
+     * @param int $itemsPerPage
      * @return array
      */
     
-    public function getImages($page, $items_per_page) {
+    public function getImages($page, $itemsPerPage) {
         
     }
     
@@ -83,10 +83,10 @@ class Vicsig extends AppCore implements ProviderInterface {
      * Return the context of the supplied image
      * @since Version 3.9.1
      * @return array
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      */
     
-    public function getImageContext(Image $Image) {
+    public function getImageContext(Image $imageObject) {
         
     }
     
@@ -94,10 +94,10 @@ class Vicsig extends AppCore implements ProviderInterface {
      * Delete this image
      * @since Version 3.9.1
      * @return boolean
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      */
     
-    public function deleteImage(Image $Image) {
+    public function deleteImage(Image $imageObject) {
         
     }
     

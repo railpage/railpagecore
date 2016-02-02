@@ -27,20 +27,20 @@
          * Save the changes to this photo
          * @since Version 3.9
          * @return self
-         * @param \Railpage\Railcams\Photo $Photo
+         * @param \Railpage\Railcams\Photo $photoObject
          */
         
-        public function setPhoto(Photo $Photo);
+        public function setPhoto(Photo $photoObject);
         
         /**
          * Get a list of photos
          * @since Version 3.9
          * @param int $page
-         * @param int $items_per_page
+         * @param int $itemsPerPage
          * @return array
          */
         
-        public function getPhotos($page, $items_per_page);
+        public function getPhotos($page, $itemsPerPage);
         
         /**
          * Return the name of this provider
@@ -54,18 +54,19 @@
          * Return the context of the supplied photo
          * @since Version 3.9
          * @return array
+         * @param \Railpage\Railcams\Photo $photoObject
          */
         
-        public function getPhotoContext(Photo $Photo);
+        public function getPhotoContext(Photo $photoObject);
         
         /**
          * Delete this photo
          * @since Version 3.9.1
          * @return boolean
-         * @param \Railpage\Railcams\Photo $Photo
+         * @param \Railpage\Railcams\Photo $photoObject
          */
         
-        public function deletePhoto(Photo $Photo);
+        public function deletePhoto(Photo $photoObject);
         
     }
     

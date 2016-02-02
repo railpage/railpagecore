@@ -296,26 +296,26 @@ class Flickr extends AppCore implements ProviderInterface {
      * Save the changes to this photo
      * @since Version 3.9
      * @return self
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      */
     
-    public function setImage(Image $Image) {
+    public function setImage(Image $imageObject) {
         
         /** 
          * Flush Memcache
          */
         
-        $mckey = sprintf("railpage:image.provider=%s;image=%d", self::PROVIDER_NAME, $Image->id);
+        $mckey = sprintf("railpage:image.provider=%s;image=%d", self::PROVIDER_NAME, $imageObject->id);
         
         /**
          * Check if the title and/or description have changed
          */
         
-        if ($Image->title != $this->photo['title'] || $Image->description != $this->photo['description']) {
-            $result = $this->cn->photos_setMeta($Image->id, $Image->title, $Image->description);
+        if ($imageObject->title != $this->photo['title'] || $imageObject->description != $this->photo['description']) {
+            $result = $this->cn->photos_setMeta($imageObject->id, $imageObject->title, $imageObject->description);
             
-            $this->photo['title'] = $Image->title;
-            $this->photo['description'] = $Image->description;
+            $this->photo['title'] = $imageObject->title;
+            $this->photo['description'] = $imageObject->description;
             
             if (!$result) {
                 throw new Exception(sprintf("Could not update photo. The error returned from %s is: (%d) %s", self::PROVIDER_NAME, $this->cn->getErrorCode(), $this->cn->getErrorMsg()));
@@ -328,8 +328,8 @@ class Flickr extends AppCore implements ProviderInterface {
     }
     
     /**
-     * Get a list of photos
-     * @since Version 3.9
+     * Get a list of images
+     * @since Version 3.9.1
      * @param int $page
      * @param int $itemsPerPage
      * @return array
@@ -355,9 +355,9 @@ class Flickr extends AppCore implements ProviderInterface {
      * @return array
      */
     
-    public function getImageContext(Image $Image) {
-        #$rs = $this->cn->photos_getContext($Image->id);
-        $rs = $this->execute("flickr.photos.getContext", array("photo_id" => $Image->id));
+    public function getImageContext(Image $imageObject) {
+        #$rs = $this->cn->photos_getContext($imageObject->id);
+        $rs = $this->execute("flickr.photos.getContext", array("photo_id" => $imageObject->id));
         
         $return = array(
             "previous" => false,
@@ -385,17 +385,17 @@ class Flickr extends AppCore implements ProviderInterface {
      * Delete this photo
      * @since Version 3.9.1
      * @return boolean
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      */
     
-    public function deleteImage(Image $Image) {
-        #return $this->cn->photos_delete($Image->id);
+    public function deleteImage(Image $imageObject) {
+        #return $this->cn->photos_delete($imageObject->id);
         
-        if (is_null(filter_var($Image->photo_id, FILTER_SANITIZE_STRING))) {
+        if (is_null(filter_var($imageObject->photo_id, FILTER_SANITIZE_STRING))) {
             throw new InvalidArgumentException("The supplied instance of Railpage\\Images\\Image does not provide a valid photo ID");
         }
         
-        $result = $this->execute("flickr.photos.delete", array("photo_id" => $Image->photo_id));
+        $result = $this->execute("flickr.photos.delete", array("photo_id" => $imageObject->photo_id));
         
         if ($result['stat'] == "ok") {
             return true;

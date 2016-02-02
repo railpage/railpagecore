@@ -36,10 +36,10 @@
         /**
          * Flickr OAuth token
          * @since Version 3.9
-         * @var string $oauth_token
+         * @var string $oauthToken
          */
         
-        private $oauth_token;
+        private $oauthToken;
         
         /**
          * Flickr OAuth secret
@@ -52,10 +52,10 @@
         /**
          * Flickr API key
          * @since Version 3.9
-         * @var string $flickr_api_key
+         * @var string $flickrApiKey
          */
         
-        private $flickr_api_key;
+        private $flickrApiKey;
         
         /**
          * Object representing the connection to Flickr
@@ -84,12 +84,12 @@
             parent::__construct(); 
             
             if (is_array($params) && isset($params['oauth_token']) && isset($params['oauth_secret']) && isset($params['api_key'])) {
-                $this->oauth_token = $params['oauth_token'];
+                $this->oauthToken = $params['oauth_token'];
                 $this->oauth_secret = $params['oauth_secret'];
-                $this->flickr_api_key = $params['api_key'];
+                $this->flickrApiKey = $params['api_key'];
                 
-                $this->cn = new flickr_railpage($this->flickr_api_key);
-                $this->cn->oauth_token = $this->oauth_token;
+                $this->cn = new flickr_railpage($this->flickrApiKey);
+                $this->cn->oauth_token = $this->oauthToken;
                 $this->cn->oauth_secret = $this->oauth_secret;
                 $this->cn->cache = false;
             }
@@ -157,26 +157,26 @@
          * Save the changes to this photo
          * @since Version 3.9
          * @return self
-         * @param \Railpage\Railcams\Photo $Photo
+         * @param \Railpage\Railcams\Photo $photoObject
          */
         
-        public function setPhoto(Photo $Photo) {
+        public function setPhoto(Photo $photoObject) {
             
             /** 
              * Flush Memcache
              */
             
-            $mckey = sprintf("railpage:railcam.provider=%s;railcam.image=%d", self::PROVIDER_NAME, $Photo->id);
+            $mckey = sprintf("railpage:railcam.provider=%s;railcam.image=%d", self::PROVIDER_NAME, $photoObject->id);
             
             /**
              * Check if the title and/or description have changed
              */
             
-            if ($Photo->title != $this->photo['title'] || $Photo->description != $this->photo['description']) {
-                $result = $this->cn->photos_setMeta($Photo->id, $Photo->title, $Photo->description);
+            if ($photoObject->title != $this->photo['title'] || $photoObject->description != $this->photo['description']) {
+                $result = $this->cn->photos_setMeta($photoObject->id, $photoObject->title, $photoObject->description);
                 
-                $this->photo['title'] = $Photo->title;
-                $this->photo['description'] = $Photo->description;
+                $this->photo['title'] = $photoObject->title;
+                $this->photo['description'] = $photoObject->description;
                 
                 if (!$result) {
                     throw new Exception(sprintf("Could not update photo. The error returned from %s is: (%d) %s", self::PROVIDER_NAME, $this->cn->getErrorCode(), $this->cn->getErrorMsg()));
@@ -192,11 +192,11 @@
          * Get a list of photos
          * @since Version 3.9
          * @param int $page
-         * @param int $items_per_page
+         * @param int $itemsPerPage
          * @return array
          */
         
-        public function getPhotos($page, $items_per_page) {
+        public function getPhotos($page, $itemsPerPage) {
             
         }
         
@@ -216,8 +216,8 @@
          * @return array
          */
         
-        public function getPhotoContext(Photo $Photo) {
-            $rs = $this->cn->photos_getContext($Photo->id);
+        public function getPhotoContext(Photo $photoObject) {
+            $rs = $this->cn->photos_getContext($photoObject->id);
             
             $return = array(
                 "previous" => false,
@@ -245,11 +245,11 @@
          * Delete this photo
          * @since Version 3.9.1
          * @return boolean
-         * @param \Railpage\Railcams\Photo $Photo
+         * @param \Railpage\Railcams\Photo $photoObject
          */
         
-        public function deletePhoto(Photo $Photo) {
-            return $this->cn->photos_delete($Photo->id);
+        public function deletePhoto(Photo $photoObject) {
+            return $this->cn->photos_delete($photoObject->id);
         }
         
         /**
@@ -259,8 +259,8 @@
          */
         
         public function isAuthenticated() {
-            if (empty($this->oauth_token) || empty($this->oauth_secret) || empty($this->flickr_api_key) ||
-                is_null($this->oauth_token) || is_null($this->oauth_secret) || is_null($this->flickr_api_key)) {
+            if (empty($this->oauthToken) || empty($this->oauth_secret) || empty($this->flickrApiKey) ||
+                is_null($this->oauthToken) || is_null($this->oauth_secret) || is_null($this->flickrApiKey)) {
                 return false;
             }
             

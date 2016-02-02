@@ -48,20 +48,20 @@ class RPOldGallery extends AppCore implements ProviderInterface {
     
     public function getImage($id, $force = false) {
         
-        $Image = new G1Image($id); 
+        $imageObject = new G1Image($id); 
         
         /**
          * Transform into our standard data format
          */
         
-        $Author = $Image->getOwner(); 
+        $Author = $imageObject->getOwner(); 
         
         $this->photo = array(
             "provider" => self::PROVIDER_NAME,
             "id" => $id,
             "dates" => array(
-                "taken" => $Image->DateTaken,
-                "uploaded" => $Image->DateUploaded,
+                "taken" => $imageObject->DateTaken,
+                "uploaded" => $imageObject->DateUploaded,
                 "updated" => ""
             ),
             "author" => array(
@@ -70,10 +70,10 @@ class RPOldGallery extends AppCore implements ProviderInterface {
                 "realname" => $Author instanceof User ? $Author->realname : "",
                 "url" => $Author instanceof User ? $Author->url->url : "",
             ),
-            "title" => $Image->title,
+            "title" => $imageObject->title,
             "description" => "",
             "tags" => "",
-            "sizes" => $Image->sizes,
+            "sizes" => $imageObject->sizes,
             "urls" => "",
             "location" => "",
         );
@@ -86,10 +86,10 @@ class RPOldGallery extends AppCore implements ProviderInterface {
      * Save the changes to this image
      * @since Version 3.9.1
      * @return self
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      */
     
-    public function setImage(Image $Image) {
+    public function setImage(Image $imageObject) {
         
     }
     
@@ -97,11 +97,11 @@ class RPOldGallery extends AppCore implements ProviderInterface {
      * Get a list of images
      * @since Version 3.9.1
      * @param int $page
-     * @param \Railpage\Images\Image $Image
+     * @param int $itemsPerPage
      * @return array
      */
     
-    public function getImages($page, $items_per_page) {
+    public function getImages($page, $itemsPerPage) {
         
     }
     
@@ -119,10 +119,10 @@ class RPOldGallery extends AppCore implements ProviderInterface {
      * Return the context of the supplied image
      * @since Version 3.9.1
      * @return array
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      */
     
-    public function getImageContext(Image $Image) {
+    public function getImageContext(Image $imageObject) {
         
     }
     
@@ -130,10 +130,10 @@ class RPOldGallery extends AppCore implements ProviderInterface {
      * Delete this image
      * @since Version 3.9.1
      * @return boolean
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      */
     
-    public function deleteImage(Image $Image) {
+    public function deleteImage(Image $imageObject) {
         
     }
     

@@ -34,19 +34,19 @@
         /**
          * Send a push notification to all image screeners when a photo has been submitted to a competition
          * @since Version 3.10.0
-         * @param \Railpage\Images\Competition $Competition
-         * @param \Railpage\Images\Image $Image
-         * @param \Railpage\Users\User $User
+         * @param \Railpage\Images\Competition $compObject
+         * @param \Railpage\Images\Image $imageObject
+         * @param \Railpage\Users\User $userObject
          * @return void
          * @todo finish it!
          */
         
-        public static function photoAwaitingApproval(Competition $Competition, Image $Image, User $User) {
+        public static function photoAwaitingApproval(Competition $compObject, Image $imageObject, User $userObject) {
             
             $Push = new Notification;
-            $Push->subject = sprintf("%s photo comp - new submission", $Competition->title);
-            $Push->body = sprintf("A photo has been submitted to the %s photo competition by %s. Please review this photo!", $Competition->title, $User->username); 
-            $Push->setActionUrl($Competition->url->pending); 
+            $Push->subject = sprintf("%s photo comp - new submission", $compObject->title);
+            $Push->body = sprintf("A photo has been submitted to the %s photo competition by %s. Please review this photo!", $compObject->title, $userObject->username); 
+            $Push->setActionUrl($compObject->url->pending); 
             $Push->transport = Notifications::TRANSPORT_PUSH;
             
             return;
