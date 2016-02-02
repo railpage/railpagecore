@@ -1,121 +1,121 @@
 <?php
+
+/**
+ * Glossary of railway terms, acronyms and codes
+ * @since Version 3.8.7
+ * @package Railpage
+ * @author Michael Greenhill
+ */
+
+namespace Railpage\Glossary;
+
+use Railpage\AppCore;
+use Railpage\Module;
+use Railpage\Url;
+use Exception;
+use DateTime;
+use stdClass;
+
+/**
+ * Glossary
+ */
+
+class Glossary extends AppCore {
+    
     /**
-     * Glossary of railway terms, acronyms and codes
+     * Constructor
+     */
+    
+    public function __construct() {
+        parent::__construct();
+        
+        /**
+         * Record this in the debug log
+         */
+        
+        if (function_exists("debug_recordInstance")) {
+            debug_recordInstance(__CLASS__);
+        }
+        
+        /**
+         * Load the Module object
+         */
+        
+        $this->Module = new Module("glossary");
+    }
+    
+    /**
+     * Get a list of new glossary entries
      * @since Version 3.8.7
-     * @package Railpage
-     * @author Michael Greenhill
+     * @yield \Railpage\Glossary\Entry
+     * @param int $num Number of glossary entries to return
      */
     
-    namespace Railpage\Glossary;
-    
-    use Railpage\AppCore;
-    use Railpage\Module;
-    use Railpage\Url;
-    use Exception;
-    use DateTime;
-    use stdClass;
+    public function getNewEntries($num = 10) {
+        
+        $query = "SELECT id FROM glossary WHERE status = ? ORDER BY date DESC LIMIT 0, ?";
+        
+        foreach ($this->db->fetchAll($query, array(Entry::STATUS_APPROVED, $num)) as $row) {
+            yield new Entry($row['id']);
+        }
+        
+    }
     
     /**
-     * Glossary
+     * Get a list of pending glossary entries
+     * @since Version 3.8.7
+     * @yield \Railpage\Glossary\Entry
+     * @param int $num Number of glossary entries to return
      */
     
-    class Glossary extends AppCore {
+    public function getPendingEntries($num = 100) {
         
-        /**
-         * Constructor
-         */
+        $query = "SELECT id FROM glossary WHERE status = ? ORDER BY date DESC LIMIT 0, ?";
         
-        public function __construct() {
-            parent::__construct();
-            
-            /**
-             * Record this in the debug log
-             */
-            
-            if (function_exists("debug_recordInstance")) {
-                debug_recordInstance(__CLASS__);
-            }
-            
-            /**
-             * Load the Module object
-             */
-            
-            $this->Module = new Module("glossary");
+        foreach ($this->db->fetchAll($query, array(Entry::STATUS_UNAPPROVED, $num)) as $row) {
+            yield new Entry($row['id']);
         }
         
-        /**
-         * Get a list of new glossary entries
-         * @since Version 3.8.7
-         * @yield \Railpage\Glossary\Entry
-         * @param int $num Number of glossary entries to return
-         */
+    }
+    
+    /**
+     * Lookup something in the glossary
+     * @since Version 3.9.1
+     * @return \Railpage\Glossary\Entry
+     */
+    
+    public function lookupText($text) {
         
-        public function getNewEntries($num = 10) {
-            
-            $query = "SELECT id FROM glossary WHERE status = ? ORDER BY date DESC LIMIT 0, ?";
-            
-            foreach ($this->db->fetchAll($query, array(Entry::STATUS_APPROVED, $num)) as $row) {
-                yield new Entry($row['id']);
-            }
-            
-        }
+        $cachekey = sprintf("railpage:glossary.lookup.text=%s", md5($text)); 
         
-        /**
-         * Get a list of pending glossary entries
-         * @since Version 3.8.7
-         * @yield \Railpage\Glossary\Entry
-         * @param int $num Number of glossary entries to return
-         */
-        
-        public function getPendingEntries($num = 100) {
+        if ($id = $this->Redis->fetch($cachekey)) {
+            $Sphinx = AppCore::getSphinx(); 
             
-            $query = "SELECT id FROM glossary WHERE status = ? ORDER BY date DESC LIMIT 0, ?";
+            $query = $Sphinx->select("*")
+                    ->from("idx_glossary")
+                    ->match("short", $text);
             
-            foreach ($this->db->fetchAll($query, array(Entry::STATUS_UNAPPROVED, $num)) as $row) {
-                yield new Entry($row['id']);
-            }
+            $matches = $query->execute();
             
-        }
-        
-        /**
-         * Lookup something in the glossary
-         * @since Version 3.9.1
-         * @return \Railpage\Glossary\Entry
-         */
-        
-        public function lookupText($text) {
-            
-            $cachekey = sprintf("railpage:glossary.lookup.text=%s", md5($text)); 
-            
-            if ($id = $this->Redis->fetch($cachekey)) {
-                $Sphinx = AppCore::getSphinx(); 
-                
+            if (count($matches) === 0 && strpos($text, "-") !== false) {
                 $query = $Sphinx->select("*")
                         ->from("idx_glossary")
-                        ->match("short", $text);
+                        ->match("short", str_replace("-", "", $text));
                 
                 $matches = $query->execute();
                 
-                if (count($matches) === 0 && strpos($text, "-") !== false) {
-                    $query = $Sphinx->select("*")
-                            ->from("idx_glossary")
-                            ->match("short", str_replace("-", "", $text));
-                    
-                    $matches = $query->execute();
-                    
-                }
-            
-                if (count($matches) === 1) {
-                    $id = $matches[0]['entry_id']; 
-                    $this->Redis->save($cachekey, $id, strtotime("+1 year")); 
-                }
             }
-            
-            if (isset($id) && filter_var($id, FILTER_VALIDATE_INT)) {
-                return new Entry($id); 
+        
+            if (count($matches) === 1) {
+                $id = $matches[0]['entry_id']; 
+                $this->Redis->save($cachekey, $id, strtotime("+1 year")); 
             }
-            
-            return;
         }
+        
+        if (isset($id) && filter_var($id, FILTER_VALIDATE_INT)) {
+            return new Entry($id); 
+        }
+        
+        return;
     }
-    
+}

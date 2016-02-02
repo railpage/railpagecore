@@ -103,8 +103,6 @@ class Thread extends Forums {
     
     public $status = 0;
     
-    //Voting not implemented.
-    
     /**
      * Thread type
      * @since Version 3.0.1
@@ -263,77 +261,6 @@ class Thread extends Forums {
                 $this->url->developers = sprintf("/%s/d/%s", "developers", $this->url_slug);
             }
             
-            /**
-             * Get highlighted posts within this thread
-             */
-            
-            /*
-            if (!$highlights = getMemcacheObject(sprintf("railpage.highlighted.thread=%d", $this->id))) {
-                $query = "SELECT post_id FROM nuke_bbposts WHERE topic_id = ? AND post_rating > 0";
-                
-                $highlights = $this->db->fetchAll($query, $this->id);
-                
-                if (!is_array($highlights)) {
-                    $highlights = array();
-                }
-                
-                @setMemcacheObject(sprintf("railpage.highlighted.thread=%d", $this->id), $highlights);
-            }
-                
-            foreach ($highlights as $row) {
-                $this->highlights[] = $row['post_id']; 
-            }
-            
-            if (count($this->highlights)) { 
-                $this->highlighted = true; 
-            }
-            */
-            
-            /**
-             * Get poll data from this thread
-             * So totally deprecated. Let's just comment out this code and see what breaks... 6/09/2014 MGH
-             */
-            
-            /**
-            if ($this->db instanceof \sql_db) {
-                // Poll data
-                $query = "SELECT v.vote_id, v.vote_text, v.vote_start, v.vote_length, vr.vote_option_id, vr.vote_option_text, vr.vote_result, vt.vote_user_id
-                            FROM nuke_bbvote_desc AS v 
-                            LEFT JOIN nuke_bbvote_results AS vr ON vr.vote_id = v.vote_id
-                            LEFT JOIN nuke_bbvote_voters AS vt ON vt.vote_id = v.vote_id
-                            WHERE v.topic_id = ".$this->id;
-                
-                if ($rs = $this->db->query($query)) {
-                    if ($rs->num_rows > 0) {
-                        // We have a poll!
-                        
-                        $polldata = array(); 
-                        
-                        while ($row = $rs->fetch_assoc()) {
-                            $polldata['id']         = $row['vote_id'];
-                            $polldata['question']   = $row['vote_text'];
-                            $polldata['start']      = $row['vote_start']; 
-                            $polldata['finish']     = $row['vote_start'] + $row['vote_length'];
-                            
-                            if (is_array($polldata['voters'])) {
-                                if (!in_array($row['vote_user_id'], $polldata['voters'])) {
-                                    $polldata['voters'][] = $row['vote_user_id'];
-                                }
-                            }
-                            
-                            $polldata['options'][$row['vote_option_id']]['option']  = $row['vote_option_text'];
-                            $polldata['options'][$row['vote_option_id']]['votes']   = $row['vote_result'];
-                        }
-                        
-                        $this->polldata = $polldata;
-                    }
-                } else {
-                    throw new Exception($this->db->error);
-                }
-            } else {
-                // Complete this later
-            }
-            */
         }
         
         if (RP_DEBUG) {
@@ -422,12 +349,13 @@ class Thread extends Forums {
             );
             
             $this->db->update("nuke_bbtopics", $data, $where); 
-        } else {
-            $this->db->insert("nuke_bbtopics", $data); 
-            $this->id = $this->db->lastInsertId(); 
-            
-            $this->url = new Url(sprintf("/f-t%d.htm", $this->id));
+            return true;
         }
+        
+        $this->db->insert("nuke_bbtopics", $data); 
+        $this->id = $this->db->lastInsertId(); 
+        
+        $this->url = new Url(sprintf("/f-t%d.htm", $this->id));
         
         return true;
     }
@@ -437,150 +365,89 @@ class Thread extends Forums {
      * @since Version 3.2
      * @version 3.2
      * @return array
-     * @param int $items_per_page
-     * @param int $page_num
+     * @param int $itemsPerPage
+     * @param int $pageNum
      * @param string $sort
      */
     
-    public function posts($items_per_page = 25, $page_num = 1, $sort = "ASC", $highlights = false) {
-        if ($highlights) {
+    public function posts($itemsPerPage = 25, $pageNum = 1, $sort = "ASC", $highlights = null) {
+        
+        $highlight_sql = "";
+        
+        if (!is_null($highlights)) {
             $highlight_sql = " AND p.post_rating > 0 ";
-        } else {
-            $highlight_sql = "";
         }
         
-        if ($this->db instanceof \sql_db) {
-            $query = "SELECT 
-                            SQL_CALC_FOUND_ROWS
-                            u.username, 
-                            u.user_id, 
-                            u.user_lastvisit,
-                            u.user_posts,
-                            u.user_warnlevel,
-                            u.user_rank,
-                            u.user_sig,
-                            u.user_avatar,
-                            u.user_avatar_width,
-                            u.user_avatar_height,
-                            u.uWheat,
-                            u.uChaff,
-                            u.user_from,
-                            u.user_level,
-                            pt.bbcode_uid,
-                            pt.post_text,
-                            r.rank_title AS special_rank,
-                            p.* 
-                        FROM nuke_bbposts p
-                        
-                        LEFT JOIN nuke_bbposts_text AS pt ON pt.post_id = p.post_id
-                        LEFT JOIN nuke_users AS u ON p.poster_id = u.user_id
-                        LEFT JOIN nuke_bbranks AS r ON r.rank_id = u.user_rank
-                        
-                        WHERE p.topic_id = ".$this->db->real_escape_string($this->id)." 
-                        ".$highlight_sql."
-                        ORDER BY p.post_time ".$sort." 
-                        LIMIT ".$this->db->real_escape_string(($page_num - 1) * $items_per_page).", ".$this->db->real_escape_string($items_per_page);
-            
-            if ($rs = $this->db->query($query)) {
-                $total = $this->db->query("SELECT FOUND_ROWS() AS total"); 
-                $total = $total->fetch_assoc(); 
+        $query = "SELECT 
+                    SQL_CALC_FOUND_ROWS
+                    u.username, 
+                    u.user_id, 
+                    u.user_lastvisit,
+                    u.user_posts,
+                    u.user_warnlevel,
+                    u.user_rank,
+                    u.user_sig,
+                    u.user_avatar,
+                    u.user_avatar_width,
+                    u.user_avatar_height,
+                    u.uWheat,
+                    u.uChaff,
+                    u.user_from,
+                    u.user_level,
+                    pt.bbcode_uid,
+                    pt.post_text,
+                    r.rank_title AS special_rank,
+                    p.* 
+                FROM nuke_bbposts p
                 
-                $topics = array();
-                $topics['total_posts'] = $total['total'];
-                $topics['total_pages'] = ceil($total['total'] / $items_per_page);
-                $topics['page_num'] = $page_num;
-                $topics['items_per_page'] = $items_per_page;
+                LEFT JOIN nuke_bbposts_text AS pt ON pt.post_id = p.post_id
+                LEFT JOIN nuke_users AS u ON p.poster_id = u.user_id
+                LEFT JOIN nuke_bbranks AS r ON r.rank_id = u.user_rank
                 
-                while ($row = $rs->fetch_assoc()) {
-                    
-                    $row['post_text'] = stripslashes($row['post_text']);
-                    $topics['posts'][$row['post_id']] = $row;
-                }
-                
-                return $topics;
-            } else {
-                trigger_error("phpBB Thread : Unable to fetch posts topic id ".$this->id);
-                trigger_error($this->db->error);
-                trigger_error($query);
-                
-                return false;
-            }
-        } else {
-            $query = "SELECT 
-                            SQL_CALC_FOUND_ROWS
-                            u.username, 
-                            u.user_id, 
-                            u.user_lastvisit,
-                            u.user_posts,
-                            u.user_warnlevel,
-                            u.user_rank,
-                            u.user_sig,
-                            u.user_avatar,
-                            u.user_avatar_width,
-                            u.user_avatar_height,
-                            u.uWheat,
-                            u.uChaff,
-                            u.user_from,
-                            u.user_level,
-                            pt.bbcode_uid,
-                            pt.post_text,
-                            r.rank_title AS special_rank,
-                            p.* 
-                        FROM nuke_bbposts p
-                        
-                        LEFT JOIN nuke_bbposts_text AS pt ON pt.post_id = p.post_id
-                        LEFT JOIN nuke_users AS u ON p.poster_id = u.user_id
-                        LEFT JOIN nuke_bbranks AS r ON r.rank_id = u.user_rank
-                        
-                        WHERE p.topic_id = ? 
-                        ".$highlight_sql."
-                        ORDER BY p.post_time ? 
-                        LIMIT ?, ?";
-            
-            $params = array(
-                $this->id,
-                $sort,
-                ($page_num - 1) * $items_per_page,
-                $items_per_page
-            );
-            
-            $result = $this->db->fetchAll($query); 
-            
-            $topics = array();
-            $topics['total_posts'] = $this->db->fetchOne("SELECT FOUND_ROWS() AS total");
-            $topics['total_pages'] = ceil($total['total'] / $items_per_page);
-            $topics['page_num'] = $page_num;
-            $topics['items_per_page'] = $items_per_page;
-            
-            foreach ($result as $row) {
-                $row['post_text'] = stripslashes($row['post_text']);
-                $topics['posts'][$row['post_id']] = $row;
-            }
-            
-            return $topics;
+                WHERE p.topic_id = ? 
+                ".$highlight_sql."
+                ORDER BY p.post_time ? 
+                LIMIT ?, ?";
+        
+        $params = array(
+            $this->id,
+            $sort,
+            ($pageNum - 1) * $itemsPerPage,
+            $itemsPerPage
+        );
+        
+        $result = $this->db->fetchAll($query); 
+        
+        $topics = array();
+        $topics['total_posts'] = $this->db->fetchOne("SELECT FOUND_ROWS() AS total");
+        $topics['total_pages'] = ceil($total['total'] / $itemsPerPage);
+        $topics['page_num'] = $pageNum;
+        $topics['items_per_page'] = $itemsPerPage;
+        
+        foreach ($result as $row) {
+            $row['post_text'] = stripslashes($row['post_text']);
+            $topics['posts'][$row['post_id']] = $row;
         }
+        
+        return $topics;
     }
     
     /**
      * Mark this topic as viewed
      * @since Version 3.2
-     * @version 3.8.7
+     * @version 3.10.0
      * @author Michael Greenhill
-     * @param int $user_id
+     * @param int $userId
      * @return \Railpage\Forums\Thread
      */
     
-    public function viewed($user_id = false) {
+    public function viewed($userId = false) {
         if (!filter_var($this->id)) {
             throw new Exception("Can't mark this thread as viewed because no thread ID exists");
         }
         
-        #if (isset($this->Viewer) && $this->Viewer instanceof User && !$user_id) {
-        #   $user_id = $this->Viewer->id;
-        #}
-        
-        if (filter_var($user_id, FILTER_VALIDATE_INT)) {
-            $this->Viewer = UserFactory::CreateUser($user_id);
+        if (filter_var($userId, FILTER_VALIDATE_INT)) {
+            $this->Viewer = UserFactory::CreateUser($userId);
         }
         
         if ($this->Viewer instanceof User) {
@@ -589,11 +456,12 @@ class Thread extends Forums {
         
         return;
         
-        if (filter_var($user_id, FILTER_VALIDATE_INT) && $user_id > 0) {
+        /*
+        if (filter_var($userId, FILTER_VALIDATE_INT) && $userId > 0) {
             $query = "CALL update_viewed_thread(?, ?)";
             $params = array(
                 $this->id,
-                $user_id
+                $userId
             );
             
             $result = $this->db->query($query, $params); 
@@ -602,6 +470,7 @@ class Thread extends Forums {
         }
         
         return $this;
+        */
     }
     
     /**
@@ -614,6 +483,9 @@ class Thread extends Forums {
      */
     
     public function vote($user_id = false, $option_id = false) {
+        throw new Exception("Voting on forum posts has been abandoned"); 
+        /*
+        
         if (!$user_id || !$option_id || !$this->id || empty($this->polldata)) {
             return false;
         }
@@ -643,6 +515,7 @@ class Thread extends Forums {
         } else {
             // Ehhh 
         }
+        */
     }
     
     /**
@@ -680,16 +553,16 @@ class Thread extends Forums {
     /**
      * Get posts within this thread
      * @since Version 3.8.7
-     * @param int $items_per_page
+     * @param int $itemsPerPage
      * @param int $page
      * @yield \Railpage\Forums\Post
      * @return \Railpage\Forums\Post
      */
      
-    public function getPosts($items_per_page = 25, $page = 1) {
+    public function getPosts($itemsPerPage = 25, $page = 1) {
         $query = "SELECT post_id FROM nuke_bbposts WHERE topic_id = ? LIMIT ?, ?";
         
-        foreach ($this->db->fetchAll($query, array($this->id, ($page - 1) * $items_per_page, $items_per_page)) as $row) {
+        foreach ($this->db->fetchAll($query, array($this->id, ($page - 1) * $itemsPerPage, $itemsPerPage)) as $row) {
             yield new Post($row['post_id']);
         }
     }

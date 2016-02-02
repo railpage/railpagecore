@@ -30,35 +30,37 @@ class AvatarUtility {
      * Format an avatar
      * @since Version 3.9.1
      * @return string
+     * @param string $userAvatar
+     * @param int $width
+     * @param width $height
      */
 
-    public static function Format($user_avatar = false, $width = 100, $height = 100) {
-        if (!$user_avatar) {
+    public static function format($userAvatar = null, $width = 100, $height = 100) {
+        if (is_null($userAvatar)) {
             return false;
         }
         
-        
-        $Memcached = AppCore::getMemcached(); 
+        $cacheHandler = AppCore::getMemcached(); 
         
         $timer = Debug::getTimer(); 
         
-        if ($user_avatar == "http://www.railpage.com.au/modules/Forums/images/avatars/https://static.railpage.com.au/image_resize") {
-            $user_avatar = self::DEFAULT_AVATAR;
+        if ($userAvatar == "http://www.railpage.com.au/modules/Forums/images/avatars/https://static.railpage.com.au/image_resize") {
+            $userAvatar = self::DEFAULT_AVATAR;
         }
         
-        if (empty($user_avatar) || stristr($user_avatar, "blank.gif") || stristr($user_avatar, "blank.png")) {
-            $user_avatar = self::DEFAULT_AVATAR;
-            return $user_avatar;
+        if (empty($userAvatar) || stristr($userAvatar, "blank.gif") || stristr($userAvatar, "blank.png")) {
+            $userAvatar = self::DEFAULT_AVATAR;
+            return $userAvatar;
         }
         
-        $parts = parse_url($user_avatar);
+        $parts = parse_url($userAvatar);
         
         if (isset($parts['host']) && $parts['host'] == "static.railpage.com.au" && isset($parts['query'])) {
             parse_str($parts['query'], $query);
         
             if (isset($query['w']) && isset($query['h']) && isset($query['image'])) {
                 if ($query['w'] == $width && $query['h'] == $height) {
-                    return $user_avatar;
+                    return $userAvatar;
                 }
                 
                 return sprintf("http://static.railpage.com.au/image_resize.php?w=%d&h=%d&image=%s", $width, $height, $query['image']); 
@@ -75,17 +77,17 @@ class AvatarUtility {
                 $bits[] = sprintf("%s=%s", $key, $val); 
             }
             
-            $user_avatar = sprintf("%s://%s%s?%s", $parts['scheme'], $parts['host'], $parts['path'], implode("&", $bits));
-            return self::GravatarHTTPS($user_avatar); 
+            $userAvatar = sprintf("%s://%s%s?%s", $parts['scheme'], $parts['host'], $parts['path'], implode("&", $bits));
+            return self::GravatarHTTPS($userAvatar); 
         }
         
-        $mckey = sprintf("railpage.user:avatar=%s;width=%s;height=%s", $user_avatar, $width, $height);
+        $mckey = sprintf("railpage.user:avatar=%s;width=%s;height=%s", $userAvatar, $width, $height);
         
         /**
          * Check if this shit is in Memcache first
          */
         
-        if ($result = $Memcached->fetch($mckey)) {
+        if ($result = $cacheHandler->fetch($mckey)) {
             return self::GravatarHTTPS($result);
         }
         
@@ -93,13 +95,13 @@ class AvatarUtility {
          * It's not in Memcached, so let's process and cache it
          */
         
-        parse_str(parse_url($user_avatar, PHP_URL_QUERY), $args);
+        parse_str(parse_url($userAvatar, PHP_URL_QUERY), $args);
         
         if (isset($args['base64_args'])) {
             if (!@unserialize(base64_decode($args['base64_args']))) {
                 // Malformed string!
                 
-                $user_avatar = self::DEFAULT_AVATAR;
+                $userAvatar = self::DEFAULT_AVATAR;
             } else {
                 // Do other stuff...
                 
@@ -107,16 +109,16 @@ class AvatarUtility {
             }
         }
         
-        if (preg_match("@modules/Forums/images/avatars/(http\:\/\/|https\:\/\/)@", $user_avatar)) {
-            $user_avatar = self::DEFAULT_AVATAR;
+        if (preg_match("@modules/Forums/images/avatars/(http\:\/\/|https\:\/\/)@", $userAvatar)) {
+            $userAvatar = self::DEFAULT_AVATAR;
         }
         
-        if (!preg_match("@(http\:\/\/|https\:\/\/)@", $user_avatar)) {
-            $user_avatar = "http://static.railpage.com.au/modules/Forums/images/avatars/".$user_avatar;
+        if (!preg_match("@(http\:\/\/|https\:\/\/)@", $userAvatar)) {
+            $userAvatar = "http://static.railpage.com.au/modules/Forums/images/avatars/".$userAvatar;
         }
         
-        if (!ContentUtility::url_exists($user_avatar)) {
-            $user_avatar = self::DEFAULT_AVATAR;
+        if (!ContentUtility::url_exists($userAvatar)) {
+            $userAvatar = self::DEFAULT_AVATAR;
         }
         
         if ($width && !$height) {
@@ -124,17 +126,17 @@ class AvatarUtility {
         }
         
         // Is this an anigif?
-        if (substr($user_avatar, -4, 4) == ".gif") {
+        if (substr($userAvatar, -4, 4) == ".gif") {
             // Fetch the dimensions
             
-            $mckey = "railpage:avatar.size=" . md5($user_avatar); 
+            $mckey = "railpage:avatar.size=" . md5($userAvatar); 
             
-            if ($dimensions = $Memcached->fetch($mckey)) {
+            if ($dimensions = $cacheHandler->fetch($mckey)) {
                 // Do nothing
             } else {
-                $dimensions = @getimagesize($user_avatar); 
+                $dimensions = @getimagesize($userAvatar); 
                 
-                $Memcached->save($mckey, $dimensions);
+                $cacheHandler->save($mckey, $dimensions);
             }
             
             if (isset($dimensions['mime']) && $dimensions['mime'] == "image/gif") {
@@ -142,37 +144,37 @@ class AvatarUtility {
                 if ($width && $height) {
                     if ($dimensions[0] <= $width && $dimensions[1] <= $height) {
                         // It fits within the width and height - return it as-is
-                        return self::GravatarHTTPS($user_avatar);
+                        return self::GravatarHTTPS($userAvatar);
                     }
                 }
             }
         }
         
         // Assume that all avatars created on dev.railpage.com.au are shit and should be re-directed to static.railpage.com.au
-        $user_avatar = str_replace("dev.railpage.com.au", "static.railpage.com.au", $user_avatar);
+        $userAvatar = str_replace("dev.railpage.com.au", "static.railpage.com.au", $userAvatar);
         
         if ($width && $height) {
             $args['width']  = $width;
             $args['height'] = $height;
-            $args['url']    = $user_avatar;
+            $args['url']    = $userAvatar;
             
-            if (empty($user_avatar)) {
+            if (empty($userAvatar)) {
                 $args['url'] = self::DEFAULT_AVATAR; 
             }
             
-            #$user_avatar = "https://static.railpage.com.au/image_resize.php?base64_args=".base64_encode(serialize($args)); 
-            $user_avatar = sprintf("https://static.railpage.com.au/image_resize.php?w=%d&h=%d&image=%s", $args['width'], $args['height'], $args['url']);
+            #$userAvatar = "https://static.railpage.com.au/image_resize.php?base64_args=".base64_encode(serialize($args)); 
+            $userAvatar = sprintf("https://static.railpage.com.au/image_resize.php?w=%d&h=%d&image=%s", $args['width'], $args['height'], $args['url']);
             
             if ($width == $height) {
-                $user_avatar .= "&square=true";
+                $userAvatar .= "&square=true";
             }
         }
         
-        $Memcached->save($mckey, $user_avatar, 0);
+        $cacheHandler->save($mckey, $userAvatar, 0);
         
         Debug::logEvent(__METHOD__, $timer) ;
         
-        return self::GravatarHTTPS($user_avatar);
+        return self::GravatarHTTPS($userAvatar);
     }
     
     /**
@@ -200,7 +202,7 @@ class AvatarUtility {
      * @return string
      */
     
-    public static function GravatarHTTPS($avatar) {
+    public static function gravatarHTTPS($avatar) {
         
         if (!preg_match("/gravatar.com/i", $avatar)) {
             return $avatar; 

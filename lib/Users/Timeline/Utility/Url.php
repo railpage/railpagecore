@@ -18,7 +18,7 @@ class Url {
      * @return string
      */
     
-    static public function createUrl($row) {
+    public static function createUrl($row) {
         switch ($row['key']) {
             
             case "post_id" : 

@@ -25,16 +25,16 @@ class PasswordUtility {
      * parameters are correct
      * @param string $username
      * @param string $password
-     * @param \Railpage\Users\User $ThisUser
+     * @param \Railpage\Users\User $userObject
      */
     
-    public static function validateParameters($username, $password, User $ThisUser) {
+    public static function validateParameters($username = null, $password = null, User $userObject) {
         
         /**
          * Check for a valid password
          */
 
-        if (!$password || empty( $password )) {
+        if ($password == null) { // use == null to catch empty and NULL values - http://stackoverflow.com/a/15607549
             throw new Exception("Cannot validate password - no password was provided");
         }
 
@@ -42,7 +42,7 @@ class PasswordUtility {
          * Check for a supplied userame or if this object is populated
          */
 
-        if (( !$username || empty( $username ) ) && ( !filter_var($ThisUser->id, FILTER_VALIDATE_INT) || $ThisUser->id < 1 )) {
+        if ($username == null && ( !filter_var($userObject->id, FILTER_VALIDATE_INT) || $userObject->id < 1 )) {
             throw new Exception("Cannot validate password for user because we don't know which user this is");
         }
 
@@ -50,7 +50,7 @@ class PasswordUtility {
          * Check if a supplied username matches the username in this populated object
          */
 
-        if ($username && !empty( $username ) && !empty( $ThisUser->username ) && $ThisUser->username != $username) {
+        if ($username != null && !empty($userObject->username) && $userObject->username != $username) {
             throw new Exception("The supplied username does not match the username given for this account. Something dodgy's going on...");
         }
         
@@ -61,11 +61,11 @@ class PasswordUtility {
      * @since Version 3.10.0
      * @param string $password
      * @param string $storedPassword
-     * @param string $storedBcryptedPassword
+     * @param string $storedBcrypt
      * @return boolean
      */
     
-    public static function validatePassword($password = null, $storedPassword = null, $storedBcryptedPassword = null) {
+    public static function validatePassword($password = null, $storedPassword = null, $storedBcrypt = null) {
         
         if (is_null($password)) {
             throw new InvalidArgumentException("No password supplied"); 
@@ -75,7 +75,7 @@ class PasswordUtility {
             throw new InvalidArgumentException("Encrypted password missing"); 
         }
         
-        if (is_null($storedBcryptedPassword)) {
+        if (is_null($storedBcrypt)) {
             throw new InvalidArgumentException("BCrypted password missing"); 
         }
         
@@ -87,7 +87,7 @@ class PasswordUtility {
             return true;
         }
         
-        if (password_verify($password, $storedBcryptedPassword)) {
+        if (password_verify($password, $storedBcrypt)) {
             return true;
         }
         

@@ -138,25 +138,25 @@ class UserUtility {
      * @return void
      */
     
-    public static function clearCache(User $User) {
+    public static function clearCache(User $userObject) {
         
-        if (empty($User->mckey)) {
+        if (empty($userObject->mckey)) {
             return; 
         }
         
-        $Memcached = AppCore::GetMemcached(); 
+        $cacheHandler = AppCore::GetMemcached(); 
         $Redis = AppCore::GetRedis(); 
         
-        $Memcached->delete($User->mckey);
+        $cacheHandler->delete($userObject->mckey);
         
         try {
-            $Redis->delete(sprintf("railpage:users.user=%d", $User->id));
+            $Redis->delete(sprintf("railpage:users.user=%d", $userObject->id));
         } catch (Exception $e) {
             // throw it away
         }
         
         try {
-            $Redis->delete($User->mckey);
+            $Redis->delete($userObject->mckey);
         } catch (Exception $e) {
             // throw it away
         }
@@ -201,13 +201,13 @@ class UserUtility {
             return $data;
         }
         
-        $Database = (new AppCore)->getDatabaseConnection(); 
+        $dataBase = (new AppCore)->getDatabaseConnection(); 
         
         $data['organisations'] = array(); 
         
         $query = "SELECT o.* FROM organisation o, organisation_member om WHERE o.organisation_id = om.organisation_id AND om.user_id = ?"; 
         
-        if ($orgs = $Database->fetchAll($query, $data['user_id'])) {
+        if ($orgs = $dataBase->fetchAll($query, $data['user_id'])) {
             foreach ($orgs as $row) {
                 $data['organisations'][$row['organisation_id']] = $row;
             }
@@ -230,11 +230,11 @@ class UserUtility {
             return $data;
         }
         
-        $Database = (new AppCore)->getDatabaseConnection(); 
+        $dataBase = (new AppCore)->getDatabaseConnection(); 
         
         $query = "SELECT oc.* FROM oauth_consumer AS oc LEFT JOIN nuke_users AS u ON u.oauth_consumer_id = oc.id WHERE u.user_id = ?";
                     
-        if ($row = $Database->fetchRow($query, $data['user_id'])) {
+        if ($row = $dataBase->fetchRow($query, $data['user_id'])) {
             $data['oauth_key']      = $row['consumer_key'];
             $data['oauth_secret']   = $row['consumer_secret'];
         }
@@ -250,15 +250,15 @@ class UserUtility {
      * @return array
      */
     
-    public static function fetchFromDatabase(User $User) {
+    public static function fetchFromDatabase(User $userObject) {
         
-        $Database = (new AppCore)->getDatabaseConnection();
+        $dataBase = (new AppCore)->getDatabaseConnection();
         
         $data = array();
         
         $query = "SELECT u.*, COALESCE(SUM((SELECT COUNT(*) FROM nuke_bbprivmsgs WHERE privmsgs_to_userid= ? AND (privmsgs_type='5' OR privmsgs_type='1'))), 0) AS unread_pms FROM nuke_users u WHERE u.user_id = ?";
         
-        if ($data = $Database->fetchRow($query, array($User->id, $User->id))) {
+        if ($data = $dataBase->fetchRow($query, array($userObject->id, $userObject->id))) {
             $data['session_logged_in'] = true;
             $data['session_start'] = $data['user_session_time'];
             
@@ -279,11 +279,11 @@ class UserUtility {
     
     public static function findFromFlickrNSID($nsid) {
         
-        $Database = (new AppCore)->getDatabaseConnection(); 
+        $dataBase = (new AppCore)->getDatabaseConnection(); 
         
         $query = "SELECT user_id FROM nuke_users WHERE flickr_nsid = ?"; 
         
-        return $Database->fetchOne($query, $nsid); 
+        return $dataBase->fetchOne($query, $nsid); 
         
     }
     
@@ -296,18 +296,18 @@ class UserUtility {
     
     public static function getUserId($username) {
         
-        $Database = (new AppCore)->getDatabaseConnection(); 
-        $Memcached = AppCore::GetMemcached(); 
+        $dataBase = (new AppCore)->getDatabaseConnection(); 
+        $cacheHandler = AppCore::GetMemcached(); 
         
         $user_id = false;
         
         $mckey = sprintf("railpage:username=%s;user_id", $username); 
         
-        if (!$user_id = $Memcached->fetch($mckey)) {
+        if (!$user_id = $cacheHandler->fetch($mckey)) {
             $query = "SELECT user_id FROM nuke_users WHERE username = ? LIMIT 0, 1";
             
-            $user_id = $Database->fetchOne($query, $username); 
-            $Memcached->save($mckey, $user_id, strtotime("+1 year")); 
+            $user_id = $dataBase->fetchOne($query, $username); 
+            $cacheHandler->save($mckey, $user_id, strtotime("+1 year")); 
         }
         
         return $user_id; 
@@ -321,7 +321,7 @@ class UserUtility {
      * @return array
      */
     
-    public static function getUserRank(User $User) {
+    public static function getUserRank(User $userObject) {
         
         $query = "SELECT COALESCE(c.rank_id, r.rank_id) AS rank_id, COALESCE(c.rank_title, r.rank_title) AS rank_title
                     FROM nuke_users AS u 
@@ -330,9 +330,9 @@ class UserUtility {
                     WHERE u.user_id = ?
                     LIMIT 1";
         
-        $Database = AppCore::GetDatabase(); 
+        $dataBase = AppCore::GetDatabase(); 
         
-        return $Database->fetchRow($query, $User->id); 
+        return $dataBase->fetchRow($query, $userObject->id); 
         
     }
     
@@ -344,7 +344,7 @@ class UserUtility {
      * @return array
      */
     
-    public static function setDefaults($data, User $ThisUser) {
+    public static function setDefaults($data, User $userObject) {
         
         $defaults = [
             "provider" => "railpage",
@@ -352,7 +352,7 @@ class UserUtility {
             "timezone" => "Australia/Melbourne",
             "theme" => User::DEFAULT_THEME,
             "meta" => [],
-            "user_id" => $ThisUser->id
+            "user_id" => $userObject->id
         ];
         
         $data = array_merge($defaults, $data); 

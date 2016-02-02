@@ -72,11 +72,11 @@ class fwlink extends AppCore {
      * @param int|string $id
      */
     
-    public function __construct($id = false) {
+    public function __construct($id = null) {
         
         parent::__construct();
         
-        if ($id !== false && !filter_var($id, FILTER_VALIDATE_INT)) {
+        if ($id !== null && !filter_var($id, FILTER_VALIDATE_INT)) {
             $query = "SELECT id FROM fwlink WHERE url = ?";
             $newid = $this->db->fetchOne($query, $id);
             
@@ -175,6 +175,7 @@ class fwlink extends AppCore {
      */
      
     public function commit() {
+        
         $this->validate(); 
         
         $data = array(
@@ -184,20 +185,26 @@ class fwlink extends AppCore {
         
         $this->Memcached->delete($this->mckey); 
         
+        // Insert
         if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
             $this->db->insert("fwlink", $data); 
             $this->id = $this->db->lastInsertId(); 
-        } else {
-            $where = array(
-                "id = ?" => $this->id
-            );
             
-            $this->db->update("fwlink", $data, $where); 
+            $this->makeURLs(); 
+            return true;
         }
+        
+        // Update
+        $where = array(
+            "id = ?" => $this->id
+        );
+        
+        $this->db->update("fwlink", $data, $where); 
         
         $this->makeURLs(); 
         
         return true;
+        
     }
     
 }
