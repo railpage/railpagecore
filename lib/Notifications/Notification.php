@@ -490,7 +490,7 @@
          */
         
         public function getRecipients() {
-            $query = "SELECT * FROM notification_recipients WHERE notification_id = ?";
+            $query = "SELECT * FROM notifications_recipients WHERE notification_id = ?";
             
             $recipients = array(); 
             

@@ -97,7 +97,7 @@
                 throw new Exception("\$this->Recipient is not an instance of \\Railpage\\Users\\User");
             }
             
-            $query = "SELECT * FROM notifications WHERE recipient = ?";
+            $query = "SELECT * FROM notifications WHERE id IN (SELECT id FROM notifications_recipients WHERE user_id = ?)";
             
             return $this->db->fetchAll($query, $this->Recipient->id);
         }
@@ -226,7 +226,7 @@
              * Unsubscribe
              */
             
-            if (!$enabled) {
+            if ($enabled == false) {
                 $where = [ "registration_id = ?" => $subscription ];
                 
                 $Database->delete("nuke_user_push", $where); 
