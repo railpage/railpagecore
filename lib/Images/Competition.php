@@ -86,7 +86,7 @@ class Competition extends AppCore {
      * @since Version 3.9.1
      * @var array $meta
      */
-    
+     
     public $meta;
     
     /**

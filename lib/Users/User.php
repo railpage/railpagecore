@@ -2294,7 +2294,7 @@ class User extends Base {
         }
 
         return false;
-        
+
     }
 
     /**
@@ -2321,7 +2321,7 @@ class User extends Base {
         }
 
         throw new Exception("Cannot determine the status of this user account");
-        
+
     }
 
     /**
