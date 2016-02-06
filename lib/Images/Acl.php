@@ -25,7 +25,7 @@
          * @var array $showRunners
          */
         
-        public $showRunners = [ 45, 28, 13666 ];
+        public $showRunners = [ 45, 28, 13666, 11437 ];
         
         /**
          * Constructor

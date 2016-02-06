@@ -2507,18 +2507,6 @@
                 return true;
             }
 
-            /*
-            if (strtolower($username) == "aussieman") {
-                printArray($username);
-                printArray($password);
-                printArray($stored_pass);
-                printArray($stored_pass_bcrypt);
-                printArray(md5($password) === $stored_pass);
-                printArray(password_verify($password, $stored_pass));
-                printArray(password_verify($password, $stored_pass_bcrypt));die;
-            }
-            */
-
             /**
              * Unsuccessful login attempt - bump up the invalid auth counter
              */
