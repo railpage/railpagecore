@@ -357,140 +357,126 @@ class LocoClass extends Locos {
             $this->Memcached->save($this->mckey, $row, strtotime("+1 year")); 
         }
         
-        if (isset($row) && is_array($row)) {
-            
-            $timer = Debug::getTimer(); 
-            
-            if (isset($row['id'])) {
-                $this->id = $row['id'];
-            }
-            
-            if (!isset($row['id'])) {
-                deleteMemcacheObject($this->mckey);
-            }
-            
-            // Populate the class objects
-            $this->slug     = $row['slug']; 
-            $this->name     = $row['class_name']; 
-            $this->desc     = $row['class_desc'];
-            $this->type     = $row['loco_type'];
-            $this->type_id  = $row['loco_type_id'];
-            
-            $this->introduced   = $row['class_introduced'];
-            
-            $this->manufacturer     = $row['class_manufacturer'];
-            $this->manufacturer_id  = $row['class_manufacturer_id'];
-            
-            $this->wheel_arrangement    = $row['wheel_arrangement'];
-            $this->wheel_arrangement_id = $row['wheel_arrangement_id'];
-            
-            $this->flickr_tag       = $row['flickr_tag'];
-            $this->flickr_image_id  = $row['flickr_image_id'];
-            
-            $this->axle_load = $row['axle_load'];
-            $this->tractive_effort = $row['tractive_effort'];
-            $this->weight   = $row['weight'];
-            $this->length   = $row['length'];
-            $this->model    = $row['model'];
-            
-            $this->date_added       = $row['date_added'];
-            $this->date_modified    = $row['date_modified'];
-            
-            $this->download_id      = $row['download_id']; 
-            
-            if (empty($this->slug) || $this->slug === "1") {
-                $this->createSlug();
-                
-                if (RP_DEBUG) {
-                    global $site_debug; 
-                    $site_debug[] = __CLASS__ . "::" . __FUNCTION__ . "() : Creating url slug for loco class ID " . $this->id;
-                }
-                
-                $this->commit();  
-            }
-            
-            $this->url = new Url($this->makeClassURL($this->slug));
-            $this->url->photos = sprintf("/photos/search?class_id=%d", $this->id);
-            $this->url->view = $this->url->url;
-            $this->url->edit = sprintf("%s?mode=class.edit&id=%d", $this->Module->url, $this->id);
-            $this->url->addLoco = sprintf("%s?mode=loco.edit&class_id=%d", $this->Module->url, $this->id);
-            $this->url->sightings = sprintf("%s/sightings", $this->url->url);
-            $this->url->bulkadd = sprintf("%s?mode=loco.bulkadd&class_id=%d", $this->Module->url, $this->id);
-            $this->url->bulkedit = sprintf("%s?mode=class.bulkedit&id=%d", $this->Module->url, $this->id);
-            $this->url->bulkedit_operators = sprintf("%s?mode=class.bulkedit.operators&id=%d", $this->Module->url, $this->id);
-            $this->url->bulkedit_buildersnumbers = sprintf("%s?mode=class.bulkedit.buildersnumbers&id=%d", $this->Module->url, $this->id);
-            $this->url->bulkedit_status = sprintf("%s?mode=class.bulkedit.status&id=%d", $this->Module->url, $this->id);
-            $this->url->bulkedit_gauge = sprintf("%s?mode=class.bulkedit.gauge&id=%d", $this->Module->url, $this->id);
-            
-            /**
-             * Set the meta data
-             */
-            
-            $this->meta = array(); 
-            
-            if (isset($row['meta'])) {
-                $this->meta = json_decode($row['meta'], true); 
-            }
-            
-            /**
-             * If an asset ID exists and is greater than 0, create the asset object
-             */
-             
-            if (isset($row['asset_id']) && $row['asset_id'] > 0) {
-                try {
-                    $this->Asset = new Asset($row['asset_id']);
-                } catch (Exception $e) {
-                    global $Error; 
-                    $Error->save($e); 
-                }
-            }
-            
-            /** 
-             * Create the fwlink object
-             */
-            
-            try {
-                #var_dump($this->url);die;
-                $this->fwlink = new fwlink($this->url);
-                
-                if (empty($this->fwlink->url) && !empty(trim($this->name))) {
-                    $this->fwlink->url = $this->url;
-                    $this->fwlink->title = $this->name;
-                    $this->fwlink->commit();
-                }
-            } catch (Exception $e) {
-                // Do nothing
-            }
-            
-            // Parent object
-            if ($row['parent_class_id'] > 0) {
-                try {
-                    $this->parent = new LocoClass($row['parent_class_id'], false);
-                } catch (Exception $e) {
-                    // Re-throw the error
-                    throw new Exception($e->getMessage()); 
-                }
-            }
-            
-            // Data source object
-            if ($row['source'] > 0 && class_exists("Source")) {
-                try {
-                    $this->source = new \Source($row['source']);
-                } catch (Exception $e) {
-                    // Re-throw the error
-                    throw new Exception($e->getMessage());
-                }
-            }
-            
-            /**
-             * Set the StatsD namespaces
-             */
-            
-            $this->StatsD->target->view = sprintf("%s.%d.view", $this->namespace, $this->id);
-            $this->StatsD->target->edit = sprintf("%s.%d.view", $this->namespace, $this->id);
-            
-            Debug::logEvent(__METHOD__, $timer);
+        // Get out early if we don't have a valid data source
+        if (!isset($row) || !is_array($row)) {
+            return;
         }
+            
+        $timer = Debug::getTimer(); 
+        
+        if (isset($row['id'])) {
+            $this->id = $row['id'];
+        }
+        
+        if (!isset($row['id'])) {
+            deleteMemcacheObject($this->mckey);
+        }
+        
+        // Populate the class objects
+        $this->slug     = $row['slug']; 
+        $this->name     = $row['class_name']; 
+        $this->desc     = $row['class_desc'];
+        $this->type     = $row['loco_type'];
+        $this->type_id  = $row['loco_type_id'];
+        
+        $this->introduced   = $row['class_introduced'];
+        
+        $this->manufacturer     = $row['class_manufacturer'];
+        $this->manufacturer_id  = $row['class_manufacturer_id'];
+        
+        $this->wheel_arrangement    = $row['wheel_arrangement'];
+        $this->wheel_arrangement_id = $row['wheel_arrangement_id'];
+        
+        $this->flickr_tag       = $row['flickr_tag'];
+        $this->flickr_image_id  = $row['flickr_image_id'];
+        
+        $this->axle_load = $row['axle_load'];
+        $this->tractive_effort = $row['tractive_effort'];
+        $this->weight   = $row['weight'];
+        $this->length   = $row['length'];
+        $this->model    = $row['model'];
+        
+        $this->date_added       = $row['date_added'];
+        $this->date_modified    = $row['date_modified'];
+        
+        $this->download_id      = $row['download_id']; 
+        
+        if (empty($this->slug) || $this->slug === "1") {
+            $this->createSlug();
+            $this->commit();  
+        }
+        
+        $this->url = Utility\LocoClassUtility::buildUrls($this); 
+        
+        /**
+         * Set the meta data
+         */
+        
+        $this->meta = array(); 
+        
+        if (isset($row['meta'])) {
+            $this->meta = json_decode($row['meta'], true); 
+        }
+        
+        /**
+         * If an asset ID exists and is greater than 0, create the asset object
+         */
+         
+        if (isset($row['asset_id']) && $row['asset_id'] > 0) {
+            try {
+                $this->Asset = new Asset($row['asset_id']);
+            } catch (Exception $e) {
+                global $Error; 
+                $Error->save($e); 
+            }
+        }
+        
+        /** 
+         * Create the fwlink object
+         */
+        
+        try {
+            $this->fwlink = new fwlink($this->url);
+            
+            if (empty($this->fwlink->url) && !empty(trim($this->name))) {
+                $this->fwlink->url = $this->url;
+                $this->fwlink->title = $this->name;
+                $this->fwlink->commit();
+            }
+        } catch (Exception $e) {
+            // Do nothing
+        }
+        
+        /*
+        // Parent object
+        if ($row['parent_class_id'] > 0) {
+            try {
+                $this->parent = new LocoClass($row['parent_class_id'], false);
+            } catch (Exception $e) {
+                // Re-throw the error
+                throw new Exception($e->getMessage()); 
+            }
+        }
+        
+        // Data source object
+        if ($row['source'] > 0 && class_exists("Source")) {
+            try {
+                $this->source = new \Source($row['source']);
+            } catch (Exception $e) {
+                // Re-throw the error
+                throw new Exception($e->getMessage());
+            }
+        }
+        */
+        
+        /**
+         * Set the StatsD namespaces
+         */
+        
+        $this->StatsD->target->view = sprintf("%s.%d.view", $this->namespace, $this->id);
+        $this->StatsD->target->edit = sprintf("%s.%d.view", $this->namespace, $this->id);
+        
+        Debug::logEvent(__METHOD__, $timer);
     }
     
     /**
@@ -548,7 +534,7 @@ class LocoClass extends Locos {
             
         // Sort by loco number
         if (isset($return['locos']) && count($return['locos'])) {
-            uasort($return['locos'], function($a, $b) {
+            uasort($return['locos'], function ($a, $b) {
                 return strnatcmp($a['loco_num'], $b['loco_num']); 
             });
         }
@@ -683,11 +669,10 @@ class LocoClass extends Locos {
      * Get liveries carried by this loco class
      * Based on tagged Flickr photos
      * @since Version 3.2
-     * @param object $f
      * @return array|boolean
      */
     
-    public function getLiveries($f = false) {
+    public function getLiveries() {
         
         return Utility\LocomotiveUtility::getLiveriesForLocomotiveClass($this->id); 
         
@@ -829,7 +814,7 @@ class LocoClass extends Locos {
      * @return boolean
      */
     
-    public function addAsset($data = false) {
+    public function addAsset($data = null) {
         
         return Utility\LocosUtility::addAsset($this->namespace, $this->id, $data); 
         
@@ -1051,7 +1036,7 @@ class LocoClass extends Locos {
      * @param int $linkWeight
      */
     
-    public function addOrganisation($organisationId = false, $linkType = false, $linkWeight = false) {
+    public function addOrganisation($organisationId = null, $linkType = null, $linkWeight = null) {
         
         if (!filter_var($organisationId, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot add organisation to class members because no organisation ID was specified");

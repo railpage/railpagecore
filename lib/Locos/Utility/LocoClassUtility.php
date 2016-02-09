@@ -14,6 +14,7 @@ use InvalidArgumentException;
 use DateTime;
 use Railpage\AppCore;
 use Railpage\Debug;
+use Railpage\Url;
 use Railpage\Locos\Locomotive;
 use Railpage\Locos\LocoClass;
 use Railpage\Locos\Factory as LocosFactory;
@@ -71,6 +72,32 @@ UNION ALL
         $Class->flushMemcached(); 
         
         return;
+        
+    }
+    
+    /**
+     * Create loco class URLs
+     * @since Version 3.10.0
+     * @param \Railpage\Locos\LocoClass $locoClass
+     * @return \Railpage\Url
+     */
+    
+    public static function buildUrls(LocoClass $locoClass) {
+        
+        $url = new Url($locoClass->makeClassURL($locoClass->slug));
+        $url->photos = sprintf("/photos/search?class_id=%d", $locoClass->id);
+        $url->view = $url->url;
+        $url->edit = sprintf("%s?mode=class.edit&id=%d", $locoClass->Module->url, $locoClass->id);
+        $url->addLoco = sprintf("%s?mode=loco.edit&class_id=%d", $locoClass->Module->url, $locoClass->id);
+        $url->sightings = sprintf("%s/sightings", $url->url);
+        $url->bulkadd = sprintf("%s?mode=loco.bulkadd&class_id=%d", $locoClass->Module->url, $locoClass->id);
+        $url->bulkedit = sprintf("%s?mode=class.bulkedit&id=%d", $locoClass->Module->url, $locoClass->id);
+        $url->bulkedit_operators = sprintf("%s?mode=class.bulkedit.operators&id=%d", $locoClass->Module->url, $locoClass->id);
+        $url->bulkedit_buildersnumbers = sprintf("%s?mode=class.bulkedit.buildersnumbers&id=%d", $locoClass->Module->url, $locoClass->id);
+        $url->bulkedit_status = sprintf("%s?mode=class.bulkedit.status&id=%d", $locoClass->Module->url, $locoClass->id);
+        $url->bulkedit_gauge = sprintf("%s?mode=class.bulkedit.gauge&id=%d", $locoClass->Module->url, $locoClass->id);
+        
+        return $url;
         
     }
     
