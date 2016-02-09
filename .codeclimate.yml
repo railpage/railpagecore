@@ -6,7 +6,8 @@ engines:
     enabled: true
     config:
       languages:
-      - php
+        php:
+          mass_threshold: 20
     exclude_fingerprints:
     - ef6b6d629ee11545e83da83a422559c8
   eslint:
