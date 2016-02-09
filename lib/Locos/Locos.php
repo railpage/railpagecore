@@ -173,7 +173,7 @@ class Locos extends AppCore {
      * @param array $types
      */
     
-    public function listClasses($types = false) {
+    public function listClasses($types = null) {
         $params = array(); 
         $return = array(); 
         
@@ -411,235 +411,166 @@ class Locos extends AppCore {
     /**
      * List wheel arrangements
      * @since Version 3.2
-     * @version 3.2
+     * @version 3.10.0
      * @return array
      * @param boolean $force Ignore Memcached and force refresh this list
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listWheelArrangements()
      */
     
     public function listWheelArrangements($force = null) {
-        $query = "SELECT * FROM wheel_arrangements ORDER BY arrangement";
-        $return = array();
         
-        $mckey = "railpage:loco.wheelarrangements"; 
+        return Lister::listWheelArrangements($force); 
         
-        if ($force === true || !$return = $this->Memcached->fetch($mckey)) {
-            $return = Utility\LocosUtility::getLocosComponents($query, "wheels"); 
-            $this->Memcached->save($mckey, $return, strtotime("+1 month"));
-        }
-            
-        return $return;
     }
     
     /**
      * List manufacturers
      * @since Version 3.2
-     * @version 3.2
+     * @version 3.10.0
      * @return array
      * @param boolean $force Ignore Memcached and force refresh this list
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listManufacturers()
      */
     
     public function listManufacturers($force = null) {
-        $query = "SELECT *, manufacturer_id AS id FROM loco_manufacturer ORDER BY manufacturer_name";
-        $mckey = Manufacturer::MEMCACHED_KEY_ALL;
         
-        if ($force === true || !$return = $this->Memcached->fetch($mckey)) {
-            $return = Utility\LocosUtility::getLocosComponents($query, "manufacturers"); 
-            $this->Memcached->save($mckey, $return, strtotime("+1 month"));
-        }
-            
-        return $return;
+        return Lister::listManufacturers($force); 
+        
     }
     
     /**
      * List loco types
      * @since Version 3.2
-     * @version 3.2
+     * @version 3.10.0
      * @return array
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listTypes()
      */
     
     public function listTypes() {
-        $query = "SELECT * FROM loco_type ORDER BY title";
         
-        return Utility\LocosUtility::getLocosComponents($query, "types"); 
+        return Lister::listTypes(); 
         
     }
     
     /**
      * List loco status types
      * @since Version 3.2
-     * @version 3.2
+     * @version 3.10.0
      * @return array
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listStatus()
      */
     
     public function listStatus() {
-        $query = "SELECT * FROM loco_status ORDER BY name";
         
-        return Utility\LocosUtility::getLocosComponents($query, "status"); 
+        return Lister::listStatus(); 
         
     }
     
     /**
      * List years and the classes in each year
      * @since Version 3.2
-     * @version 3.2
+     * @version 3.10.0
      * @return array
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listYears()
      */
     
     public function listyears() {
-        $classes = $this->listClasses();
-        $return = array(
-            "stat" => "err"
-        );
         
-        if ($classes['stat'] === "ok") {
-            $return['stat'] = "ok";
-            
-            foreach ($classes['class'] as $id => $data) {
-                $data['loco_type_url'] = sprintf("%s/type/%s", $this->Module->url, $data['loco_type_slug']);
-
-                $return['years'][$data['class_introduced']][$id] = $data;
-            }
-            
-            ksort($return['years']);
-        }
+        return Lister::listYears(); 
         
-        return $return;
     }
     
     /**
      * List operators
      * @since Version 3.2
-     * @version 3.2
+     * @version 3.10.0
      * @return array
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listOperators()
      */
     
     public function listOperators() {
-        $query = "SELECT * FROM operators ORDER BY operator_name";
-        $return = array(); 
         
-        $return['stat'] = "ok"; 
-        $return['count'] = 0; 
+        return Lister::listOperators(); 
         
-        foreach ($this->db->fetchAll($query) as $row) {
-            $return['operators'][$row['operator_id']] = $row;
-            $return['count']++; 
-        }
-        
-        return $return;
     }
             
     /** 
      * List all locos
      * @since Version 3.2
-     * @version 3.2
+     * @version 3.10.0
      * @return array
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listOperators()
      */
     
     public function listAllLocos() {
-        $query = "SELECT * FROM loco_unit ORDER BY loco_id DESC";
         
-        $return = array(); 
+        return Lister::listAllLocos(); 
         
-        $return['stat'] = "ok";
-        
-        foreach ($this->db->fetchAll($query) as $row) {
-            $return['locos'][$row['loco_id']] = $row; 
-        }
-        
-        return $return;
     }
     
     /**
      * List all liveries
      * @since Version 3.2
-     * @author Michael Greenhill
      * @return array
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listLiveries()
      */
     
     public function listLiveries() {
-        $query = "SELECT * FROM loco_livery ORDER BY livery";
         
-        $return = array(); 
+        return Lister::listLiveries(); 
         
-        foreach ($this->db->fetchAll($query) as $row) {
-            $return[$row['livery_id']] = $row['livery']; 
-        }
-        
-        return $return;
     }
     
     /**
      * Get loco gauges
      * @since Version 3.4
      * @return array
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listGauges()
      */
     
     public function listGauges() {
-        $query = "SELECT * FROM loco_gauge ORDER BY gauge_name, gauge_imperial";
+       
+        return Lister::listGauges(); 
         
-        $return = array(); 
-        
-        foreach ($this->db->fetchAll($query) as $row) {
-            $return[$row['gauge_id']] = $row; 
-        }
-        
-        return $return;
     }
     
     /**
-     * List all organisation  types
+     * List all organisation types
      * @since Version 3.4
      * @return array
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listOrgLinkTypes()
      */
     
     public function listOrgLinkTypes() {
-        $query = "SELECT * FROM loco_org_link_type ORDER BY name";
         
-        $return = array(); 
+        return Lister::listOrgLinkTypes(); 
         
-        foreach ($this->db->fetchAll($query) as $row) {
-            $return[$row['id']] = $row; 
-        }
-        
-        return $return;
     }
     
     /**
      * List production models
      * @since Version 3.4
      * @return array
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listModels()
      */
     
     public function listModels() {
-        $query = "SELECT DISTINCT Model from loco_class ORDER BY Model";
         
-        $return = array(); 
+        return Lister::listModels(); 
         
-        foreach ($this->db->fetchAll($query) as $row) {
-            if (trim($row['Model']) != "") {
-                $return[] = $row['Model'];
-            }
-        }
-        
-        return $return;
     }
     
     /**
      * List locomotive groupings
      * @since Version 3.5
      * @return array
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listGroupings()
      */
     
     public function listGroupings() {
-        $query = "SELECT * FROM loco_groups ORDER BY group_name"; 
         
-        $return = array("stat" => "ok"); 
+        return Lister::listGroupings(); 
         
-        foreach ($this->db->fetchAll($query) as $row) {
-            $return['groups'][$row['group_id']] = $row; 
-        }
-        
-        return $return;
     }
     
     /**
@@ -724,6 +655,10 @@ class Locos extends AppCore {
      */
     
     public function loadDate($dateId = null) {
+        
+        throw new Exception("Deprecated function: use \Railpage\Locos\Date"); 
+        
+        /*
         if (!filter_var($dateId, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot load date - no date ID provided");
         }
@@ -731,6 +666,7 @@ class Locos extends AppCore {
         $query = "SELECT * FROM loco_unit_date WHERE date_id = ?"; 
         
         return $this->db->fetchRow($query, $dateId);
+        */
     }
     
     /**
@@ -741,6 +677,10 @@ class Locos extends AppCore {
      */
     
     public function deleteDate($dateId = null) {
+        
+        throw new Exception("Deprecated function: use \Railpage\Locos\Date"); 
+        
+        /*
         if (!filter_var($dateId, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot delete date - no date ID provided"); 
         }
@@ -751,6 +691,7 @@ class Locos extends AppCore {
         
         $this->db->delete("loco_unit_date", $where);
         return true;
+        */
     }
     
     /**
@@ -789,9 +730,10 @@ class Locos extends AppCore {
      * @param string $livery
      */
     
-    public function liveryID($livery = false) {
-        if (!$livery || empty($livery)) {
-            return false;
+    public function liveryID($livery = null) {
+        
+        if ($livery == null) {
+            throw new InvalidArgumentException("No livery name was provided"); 
         }
         
         $query = "SELECT livery_id FROM loco_livery WHERE livery = ?";
@@ -805,9 +747,10 @@ class Locos extends AppCore {
             
             $this->db->insert("loco_livery", $data); 
             return $this->db->lastInsertId(); 
-        } else {
-            return $result['livery_id']; 
         }
+        
+        return $result['livery_id'];
+        
     }
     
     /**
