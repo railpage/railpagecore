@@ -37,8 +37,6 @@ class Exif extends AppCore {
     
     public static function makeCameraUrlSlug($make, $model) {
         
-        $Database = AppCore::GetDatabase(); 
-        
         $prop = ContentUtility::generateUrlSlug(sprintf("%s %s", $make, $model), 30); 
         
         return $prop;
@@ -48,36 +46,36 @@ class Exif extends AppCore {
     /**
      * Get EXIF data from an image
      * @since Version 3.10.0
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      * @param boolean $force
      * @return array
      */
     
-    public function getImageExif(Image $Image, $force = false) {
+    public function getImageExif(Image $imageObject, $force = false) {
         
-        Debug::LogCLI("Fetching EIXF data for image ID " . $Image->id);
+        Debug::LogCLI("Fetching EIXF data for image ID " . $imageObject->id);
         
-        if (!$force && isset($Image->meta['exif']) && $Image->meta['exif_format_version'] >= self::EXIF_FORMAT_VERSION) {
-            $Image->meta['exif']['camera_make'] = self::normaliseCameraMake($Image->meta['exif']['camera_make']); 
-            $Image->meta['exif']['camera_model'] = self::normaliseCameraModel($Image->meta['exif']['camera_model']); 
+        if (!$force && isset($imageObject->meta['exif']) && $imageObject->meta['exif_format_version'] >= self::EXIF_FORMAT_VERSION) {
+            $imageObject->meta['exif']['camera_make'] = self::normaliseCameraMake($imageObject->meta['exif']['camera_make']); 
+            $imageObject->meta['exif']['camera_model'] = self::normaliseCameraModel($imageObject->meta['exif']['camera_model']); 
             
-            $Image->meta['exif']['camera'] = ImageFactory::CreateCamera($Image->meta['exif']['camera_id'])->getArray();
+            $imageObject->meta['exif']['camera'] = ImageFactory::CreateCamera($imageObject->meta['exif']['camera_id'])->getArray();
             
-            return $Image->meta['exif'];
+            return $imageObject->meta['exif'];
         }
         
         /**
          * Fetch EXIF from the image provider API
          */
         
-        $Provider = $Image->getProvider(); 
+        $Provider = $imageObject->getProvider(); 
         
-        $exif = $Provider->getExif($Image->photo_id);
+        $exif = $Provider->getExif($imageObject->photo_id);
         
         $exif_formatted = $this->getExifIDs($exif);
-        $Image->meta['exif'] = $exif_formatted;
-        $Image->meta['exif_format_version'] = self::EXIF_FORMAT_VERSION;
-        $Image->commit(); 
+        $imageObject->meta['exif'] = $exif_formatted;
+        $imageObject->meta['exif_format_version'] = self::EXIF_FORMAT_VERSION;
+        $imageObject->commit(); 
         
         /**
          * Insert into our database
@@ -98,8 +96,9 @@ class Exif extends AppCore {
                       focal_length = VALUES(focal_length), iso = VALUES(iso), 
                       white_balance_id = VALUES(white_balance_id)";
         
-        $query = sprintf($query, 
-            $this->db->quote($Image->id), 
+        $query = sprintf(
+            $query, 
+            $this->db->quote($imageObject->id), 
             $this->db->quote($exif_formatted['camera_id']),
             $this->db->quote($exif_formatted['lens_id']), 
             $this->db->quote($exif_formatted['lens_sn_id']),
@@ -110,9 +109,6 @@ class Exif extends AppCore {
             $this->db->quote($exif_formatted['iso_speed']), 
             $this->db->quote($exif_formatted['white_balance_id'])
         );
-        
-        #printArray($query);
-        #printArray($exif_formatted);die;
         
         $this->db->query($query); 
         
@@ -194,7 +190,7 @@ class Exif extends AppCore {
     
     private static function normaliseCameraMake($make) {
         
-        $find = [ 
+        $findTheseMakes = [ 
             "NIKON CORPORATION",
             "NIKON",
             "EASTMAN KODAK COMPANY",
@@ -212,7 +208,7 @@ class Exif extends AppCore {
             "Fujifilm Corporation",
         ];
         
-        $replace = [
+        $replaceWith = [
             "Nikon",
             "Nikon",
             "Kodak",
@@ -231,7 +227,7 @@ class Exif extends AppCore {
         ];
         
         $make = preg_replace("/([0-9]+)(D DIGITAL)/", "$1D", $make);
-        $make = str_replace($find, $replace, $make); 
+        $make = str_replace($findTheseMakes, $replaceWith, $make); 
         
         return trim($make);
         
@@ -418,14 +414,14 @@ class Exif extends AppCore {
      * @return void
      */
     
-    public function queueExifScreening(Image $Image) {
+    public function queueExifScreening(Image $imageObject) {
         
         $data = [
             "exifqueue" => "1"
         ];
         
         $where = [ 
-            "image_id = ?" => $Image->id
+            "image_id = ?" => $imageObject->id
         ];
         
         $this->db->update("image_flags", $data, $where); 
@@ -451,11 +447,11 @@ class Exif extends AppCore {
         $exif = new Exif;
         $ids = [];
         
-        foreach ($Database->fetchAll($query) as $k => $row) {
-            $Image = new Image($row['image_id']); 
+        foreach ($Database->fetchAll($query) as $row) {
+            $imageObject = new Image($row['image_id']); 
             
-            $exif->getImageExif($Image); 
-            $ids[] = $Image->id;
+            $exif->getImageExif($imageObject); 
+            $ids[] = $imageObject->id;
             
             if (count($ids) == $break) {
                 Debug::LogCLI("Updating " . $break . " records");
@@ -464,7 +460,6 @@ class Exif extends AppCore {
                 $Database->query($query);
                 $ids = [];
                 
-                #Debug::LogCLI("Waiting " . $sleep . "s for the next batch");
                 break;
                 sleep($sleep);
             }
