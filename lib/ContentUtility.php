@@ -28,29 +28,11 @@ class ContentUtility {
      */
     
     public static function generateUrlSlug($text, $maxLength = 200) {
-        $find = array(
-            "(",
-            ")",
-            "-",
-            "?",
-            "!",
-            "#",
-            "$",
-            "%",
-            "^",
-            "&",
-            "*",
-            "+",
-            "=",
-            "'",
-            "\""
-        );
         
-        $replace = array_fill(0, count($find), ""); 
+        $text = strtolower($trim($text)); 
+        $text = preg_replace("/\s/u", "-", $text); 
+        $text = preg_replace("/[^[:alnum:][:space:]-]/u", "$1", $text); 
         
-        $text = str_replace($find, $replace, strtolower(trim($text)));
-            
-        $text = strtolower(preg_replace('/[^A-Za-z0-9-]+/', '-', trim($text)));
         $text = substr($text, 0, $maxLength); 
         
         if (substr($text, -1) === "-") {
@@ -58,6 +40,7 @@ class ContentUtility {
         }
         
         return $text;
+        
     }
     
     /**
