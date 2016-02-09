@@ -32,10 +32,9 @@ class Factory {
      * @param int|string $id
      */
     
-    public static function CreateEvent($id = false) {
+    public static function CreateEvent($id = null) {
         
-        $Memcached = AppCore::getMemcached(); 
-        $Redis = AppCore::getRedis(); 
+        $CacheDriver = AppCore::getRedis(); 
         $Registry = Registry::getInstance(); 
         
         if (!filter_var($id, FILTER_VALIDATE_INT)) {
@@ -58,11 +57,11 @@ class Factory {
         } catch (Exception $e) {
             $cachekey = sprintf(Event::CACHE_KEY, $id); 
             
-            if (!self::USE_REDIS || !$Event = $Redis->fetch($cachekey)) {
+            if (!self::USE_REDIS || !$Event = $CacheDriver->fetch($cachekey)) {
                 $Event = new Event($id);
                 
                 if (self::USE_REDIS) {
-                    $Redis->save($cachekey, $Event); 
+                    $CacheDriver->save($cachekey, $Event); 
                 }
             }
             
@@ -80,10 +79,9 @@ class Factory {
      * @param int|string $id
      */
     
-    public static function CreateEventCategory($id = false) {
+    public static function CreateEventCategory($id = null) {
         
-        $Memcached = AppCore::getMemcached(); 
-        $Redis = AppCore::getRedis(); 
+        $CacheDriver = AppCore::getRedis(); 
         $Registry = Registry::getInstance(); 
         
         $regkey = sprintf(EventCategory::REGISTRY_KEY, $id); 
@@ -93,11 +91,11 @@ class Factory {
         } catch (Exception $e) {
             $cachekey = sprintf(EventCategory::CACHE_KEY, $id); 
             
-            if (!self::USE_REDIS || !$Event = $Redis->fetch($cachekey)) {
+            if (!self::USE_REDIS || !$Event = $CacheDriver->fetch($cachekey)) {
                 $EventCategory = new EventCategory($id); 
                 
                 if (self::USE_REDIS) {
-                    $Redis->save($cachekey, $EventCategory); 
+                    $CacheDriver->save($cachekey, $EventCategory); 
                 }
             }
             
