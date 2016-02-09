@@ -393,13 +393,13 @@ class AppCore {
     /**
      * Set the user for this object
      * @since Version 3.8.7
-     * @param \Railpage\Users\User $User
+     * @param \Railpage\Users\User $userObject
      * @return $this
      */
     
-    public function setUser(User $User) {
+    public function setUser(User $userObject) {
         
-        $this->User = $User;
+        $this->User = $userObject;
         
         return $this;
         
@@ -408,13 +408,13 @@ class AppCore {
     /**
      * Set the author for this object
      * @since Version 3.8.7
-     * @param \Railpage\Users\User $User
+     * @param \Railpage\Users\User $userObject
      * @return $this
      */
     
-    public function setAuthor(User $User) {
+    public function setAuthor(User $userObject) {
         
-        $this->Author = $User;
+        $this->Author = $userObject;
         
         return $this;
         
@@ -423,13 +423,13 @@ class AppCore {
     /**
      * Set the staff user object for this object
      * @since Version 3.8.7
-     * @param \Railpage\Users\User $User
+     * @param \Railpage\Users\User $userObject
      * @return $this
      */
     
-    public function setStaff(User $User) {
+    public function setStaff(User $userObject) {
         
-        $this->Staff = $User;
+        $this->Staff = $userObject;
         
         return $this;
         
@@ -455,13 +455,13 @@ class AppCore {
     /**
      * Set the guest user for this object
      * @since Version 3.8.7
-     * @param \Railpage\Users\User $Guest
+     * @param \Railpage\Users\User $userObject
      * @return $this
      */
     
-    public function setGuest(User $Guest) {
+    public function setGuest(User $userObject) {
         
-        $this->Guest = $Guest;
+        $this->Guest = $userObject;
         
         return $this;
         
@@ -470,13 +470,13 @@ class AppCore {
     /**
      * Set the recipient for this object
      * @since Version 3.8.7
-     * @param \Railpage\Users\User $Recipient
+     * @param \Railpage\Users\User $userObject
      * @return $this
      */
     
-    public function setRecipient(User $Recipient) {
+    public function setRecipient(User $userObject) {
         
-        $this->Recipient = $Recipient;
+        $this->Recipient = $userObject;
         
         return $this;
         
@@ -507,14 +507,11 @@ class AppCore {
     
     public static function getSphinxAPI() {
         
-        #require_once(RP_SITE_ROOT . DS . "vendor" . DS . "nilportugues" . DS . "sphinx-search" . DS . "src" . DS . "NilPortugues" . DS . "Sphinx" . DS . "SphinxClient.php"); 
-        
         $Config = self::getConfig(); 
+        $Sphinx = new NilPortuguesSphinxClient;
         
         if (class_exists("SphinxClient")) {
             $Sphinx = new SphinxClient;
-        } else {
-            $Sphinx = new NilPortuguesSphinxClient;
         }
         
         $Sphinx->setServer($Config->Sphinx->Host, 9306);
