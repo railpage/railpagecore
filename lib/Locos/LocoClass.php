@@ -263,11 +263,11 @@ class LocoClass extends Locos {
     /**
      * Constructor
      * @since Version 3.2
-     * @param int|string $id_or_slug
+     * @param int|string $idOrSlug
      * @param boolean $recurse
      */
     
-    public function __construct($id_or_slug = false, $recurse = true) {
+    public function __construct($idOrSlug = null, $recurse = null) {
         
         parent::__construct(); 
         
@@ -283,9 +283,13 @@ class LocoClass extends Locos {
         
         $this->namespace = sprintf("%s.%s", $this->Module->namespace, "class");
         
+        if ($recurse == null) {
+            $recurse = false;
+        }
+        
         // Set the ID
-        if (filter_var($id_or_slug, FILTER_VALIDATE_INT) || is_string($id_or_slug)) {
-            $this->id = $id_or_slug;
+        if (filter_var($idOrSlug, FILTER_VALIDATE_INT) || $idOrSlug != null) {
+            $this->id = $idOrSlug;
             $this->fetch($recurse);
         }
         
@@ -357,10 +361,12 @@ class LocoClass extends Locos {
             
             $timer = Debug::getTimer(); 
             
+            if (isset($row['id'])) {
+                $this->id = $row['id'];
+            }
+            
             if (!isset($row['id'])) {
                 deleteMemcacheObject($this->mckey);
-            } else {
-                $this->id = $row['id'];
             }
             
             // Populate the class objects
@@ -420,10 +426,10 @@ class LocoClass extends Locos {
              * Set the meta data
              */
             
+            $this->meta = array(); 
+            
             if (isset($row['meta'])) {
                 $this->meta = json_decode($row['meta'], true); 
-            } else {
-                $this->meta = array(); 
             }
             
             /**
@@ -616,7 +622,9 @@ class LocoClass extends Locos {
         
         if (empty($this->date_added)) {
             $data['date_added'] = time(); 
-        } else {
+        }
+        
+        if (!empty($this->date_added)) {
             $data['date_modified'] = time(); 
         }
         
@@ -630,7 +638,9 @@ class LocoClass extends Locos {
             }
         }
         
-        if ($this->id) {
+        // Update
+        
+        if (filter_var($this->id, FILTER_VALIDATE_INT)) {
             // Update
             $where = array(
                 "id = ?" => $this->id
@@ -639,7 +649,11 @@ class LocoClass extends Locos {
             $this->db->update("loco_class", $data, $where); 
             $verb = "Update";
             
-        } else {
+        }
+        
+        // Insert
+        
+        if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
             $this->db->insert("loco_class", $data); 
             $this->id = intval($this->db->lastInsertId()); 
             
@@ -682,33 +696,31 @@ class LocoClass extends Locos {
     /** 
      * Log an event 
      * @since Version 3.5
-     * @param int $user_id
+     * @param int $userId
      * @param string $title
      * @param array $args
-     * @param int $class_id
+     * @param int $classId
      */
     
-    public function logEvent($user_id = false, $title = false, $args = false, $class_id = false) {
-        if (!$user_id) {
+    public function logEvent($userId = null, $title = null, $args = null, $classId = null) {
+        if (!filter_var($userId, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot log event, no User ID given"); 
-            return false;
         }
         
         if (!$title) {
             throw new Exception("Cannot log event, no title given"); 
-            return false;
         }
         
-        if (!$class_id) {
-            $class_id = $this->id; 
+        if (!filter_var($classId, FILTER_VALIDATE_INT)) {
+            $classId = $this->id; 
         }
         
         $Event = new \Railpage\SiteEvent; 
-        $Event->user_id = $user_id; 
+        $Event->user_id = $userId; 
         $Event->title = $title;
         $Event->args = $args; 
         $Event->key = "class_id";
-        $Event->value = $class_id;
+        $Event->value = $classId;
         $Event->module_name = "locos";
         
         if ($title == "Photo tagged") {
@@ -849,8 +861,6 @@ class LocoClass extends Locos {
                 );
             }
             
-            #$Loco = Factory::CreateLocomotive($row['id']); #new Locomotive($row['id']);
-            #$row['url'] = $Loco->url;
             $row['url'] = Utility\LocosUtility::CreateUrl("loco", array($this->slug, $row['number'])); 
             
             $return['status'][$row['status_id']]['num']++;
@@ -858,7 +868,7 @@ class LocoClass extends Locos {
         }
         
         foreach ($return['status'] as $id => $row) {
-            usort($return['status'][$id]['units'], function($a, $b) {
+            usort($return['status'][$id]['units'], function ($a, $b) {
                 return strnatcmp($a['number'], $b['number']);
             });
         }
@@ -918,10 +928,10 @@ class LocoClass extends Locos {
             
             if (isset($row['meta']['position']['lat']) && isset($row['meta']['position']['lon'])) {
                 try {
-                    $Image = new \Railpage\Images\MapImage($row['meta']['position']['lat'], $row['meta']['position']['lon']);
-                    $data['asset']['media'] = $Image->sizes['thumb']['source'];
-                    $data['asset']['thumbnail'] = $Image->sizes['thumb']['source'];
-                    $data['asset']['caption'] = "<a href='/place?lat=" . $Image->Place->lat . "&lon=" . $Image->Place->lon . "'>" . $Image->Place->name . ", " . $Image->Place->Country->name . "</a>";
+                    $imageObject = new \Railpage\Images\MapImage($row['meta']['position']['lat'], $row['meta']['position']['lon']);
+                    $data['asset']['media'] = $imageObject->sizes['thumb']['source'];
+                    $data['asset']['thumbnail'] = $imageObject->sizes['thumb']['source'];
+                    $data['asset']['caption'] = "<a href='/place?lat=" . $imageObject->Place->lat . "&lon=" . $imageObject->Place->lon . "'>" . $imageObject->Place->name . ", " . $imageObject->Place->Country->name . "</a>";
                     
                 } catch (Exception $e) {
                     // Throw it away. Throw. It. Away. NOW!
@@ -935,13 +945,13 @@ class LocoClass extends Locos {
             if (isset($row['meta']['livery']['id'])) {
                 try {
                     $Images = new \Railpage\Images\Images;
-                    $Image = $Images->findLocoImage($row['loco_unit_id'], $row['meta']['livery']['id']);
+                    $imageObject = $Images->findLocoImage($row['loco_unit_id'], $row['meta']['livery']['id']);
                     
-                    if ($Image instanceof \Railpage\Images\Image) {
-                        $data['asset']['media'] = $Image->sizes['thumb']['source'];
-                        $data['asset']['thumbnail'] = $Image->sizes['thumb']['source'];
-                        $data['asset']['caption'] = "<a href='/image?id=" . $Image->id . "'>" . $Image->title . "</a>";
-                        $data['asset']['credit'] = $Image->author->username;
+                    if ($imageObject instanceof \Railpage\Images\Image) {
+                        $data['asset']['media'] = $imageObject->sizes['thumb']['source'];
+                        $data['asset']['thumbnail'] = $imageObject->sizes['thumb']['source'];
+                        $data['asset']['caption'] = "<a href='/image?id=" . $imageObject->id . "'>" . $imageObject->title . "</a>";
+                        $data['asset']['credit'] = $imageObject->author->username;
                     }
                 } catch (Exception $e) {
                     // Throw it away. Throw. It. Away. NOW!
@@ -957,60 +967,60 @@ class LocoClass extends Locos {
     /**
      * Bulk add locomotives to this class
      * @since Version 3.8.7
-     * @param int|string $first_loco
-     * @param int|string $last_loco
-     * @param int $gauge_id
-     * @param int $status_id
-     * @param int $manufacturer_id
+     * @param int|string $firstLoco
+     * @param int|string $lastLoco
+     * @param int $gaugeId
+     * @param int $statusId
+     * @param int $manufacturerId
      */
     
-    public function bulkAddLocos($first_loco = false, $last_loco = false, $gauge_id = false, $status_id = false, $manufacturer_id = false, $prefix = "") {
-        if ($first_loco === false) {
+    public function bulkAddLocos($firstLoco = null, $lastLoco = null, $gaugeId = null, $statusId = null, $manufacturerId = null, $prefix = "") {
+        if ($firstLoco == null) {
             throw new Exception("Cannot add locomotives to class - first loco number was not provided");
         }
         
-        if (preg_match("@([a-zA-Z]+)@", $first_loco)) {
+        if (preg_match("@([a-zA-Z]+)@", $firstLoco)) {
             throw new Exception("The first locomotive number provided has letters in it - the bulk add loco code doesn't support this yet");
         }
         
-        if ($last_loco === false) {
+        if ($lastLoco == null) {
             throw new Exception("Cannot add locomotives to class - last loco number was not provided");
         }
         
-        if (preg_match("@([a-zA-Z]+)@", $last_loco)) {
+        if (preg_match("@([a-zA-Z]+)@", $lastLoco)) {
             throw new Exception("The last locomotive number provided has letters in it - the bulk add loco code doesn't support this yet");
         }
         
-        if ($gauge_id === false || !filter_var($gauge_id, FILTER_VALIDATE_INT)) {
+        if (!filter_var($gaugeId, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot add locomotives to class - no gauge ID provided");
         }
         
-        if ($status_id === false || !filter_var($status_id, FILTER_VALIDATE_INT)) {
+        if (!filter_var($statusId, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot add locomotives to class - no status ID provided");
         }
         
-        if ($manufacturer_id === false || !filter_var($manufacturer_id, FILTER_VALIDATE_INT)) {
+        if (!filter_var($manufacturerId, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot add locomotives to class - no manufacturer ID was provided");
         }
         
-        $first_loco = trim($first_loco);
-        $last_loco = trim($last_loco);
-        $gauge_id = trim($gauge_id);
-        $status_id = trim($status_id);
-        $manufacturer_id = trim($manufacturer_id);
+        $firstLoco = trim($firstLoco);
+        $lastLoco = trim($lastLoco);
+        $gaugeId = trim($gaugeId);
+        $statusId = trim($statusId);
+        $manufacturerId = trim($manufacturerId);
         $prefix = trim($prefix);
         
-        $currentLocoNum = $first_loco;
+        $currentLocoNum = $firstLoco;
         
-        while ($currentLocoNum <= $last_loco) {
+        while ($currentLocoNum <= $lastLoco) {
             // Check if this loco already exists
             if (!$this->db->fetchOne("SELECT loco_id FROM loco_unit WHERE loco_num = ? AND class_id = ?", array(sprintf("%s%d", $prefix, $currentLocoNum), $this->id))) {
                 $data = [
                     "loco_num" => sprintf("%s%d", $prefix, $currentLocoNum),
                     "loco_name" => '',
                     "loco_gauge" => '',
-                    "loco_gauge_id" => intval($gauge_id),
-                    "loco_status_id" => intval($status_id),
+                    "loco_gauge_id" => intval($gaugeId),
+                    "loco_status_id" => intval($statusId),
                     "class_id" => intval($this->id),
                     "owner_id" => 0,
                     "operator_id" => 0,
@@ -1020,7 +1030,7 @@ class LocoClass extends Locos {
                     "withdrawn" => 0,
                     "builders_number" => "",
                     "photo_id" => 0,
-                    "manufacturer_id" => intval($manufacturer_id)
+                    "manufacturer_id" => intval($manufacturerId)
                 ];
                 
                 $this->db->insert("loco_unit", $data); 
@@ -1031,41 +1041,35 @@ class LocoClass extends Locos {
         
         return $this;
         
-        printArray(func_get_args());die;
-        
-        $this->db->query("CALL PopulateLocoClass(?, ?, ?, ?, ?, ?, ?)", array($first_loco, $last_loco, $this->id, $gauge_id, $status_id, $manufacturer_id, $prefix));
-        
-        $this->flushMemcached();
-        
-        return $this;
     }
     
     /**
      * Add an organisation to the class members
      * @since Version 3.8.7
-     * @param int $organisation_id
-     * @param int $link_type
-     * @param int $link_weight
+     * @param int $organisationId
+     * @param int $linkType
+     * @param int $linkWeight
      */
     
-    public function addOrganisation($organisation_id = false, $link_type = false, $link_weight = false) {
-        if (!$organisation_id) {
+    public function addOrganisation($organisationId = false, $linkType = false, $linkWeight = false) {
+        
+        if (!filter_var($organisationId, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot add organisation to class members because no organisation ID was specified");
         }
         
-        if (!$link_type) {
+        if (!filter_var($linkType, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot add organisation to class members because no link type ID was specified");
         }
         
-        if (!$link_weight) {
+        if (!filter_var($linkWeight, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot add organisation to class members because no link weight was specified");
         }
         
-        $organisation_id = trim($organisation_id);
-        $link_type = trim($link_type);
-        $link_weight = trim($link_weight);
+        $organisationId = trim($organisationId);
+        $linkType = trim($linkType);
+        $linkWeight = trim($linkWeight);
         
-        $this->db->query("CALL PopulateLocoOrgs(?, ?, ?, ?)", array($this->id, $organisation_id, $link_weight, $link_type));
+        $this->db->query("CALL PopulateLocoOrgs(?, ?, ?, ?)", array($this->id, $organisationId, $linkWeight, $linkType));
         
         $this->flushMemcached();
         
@@ -1131,11 +1135,11 @@ class LocoClass extends Locos {
     /**
      * Set the cover photo for this locomotive class
      * @since Version 3.9
-     * @param $Image Either an instance of \Railpage\Images\Image or \Railpage\Assets\Asset
+     * @param $imageObject Either an instance of \Railpage\Images\Image or \Railpage\Assets\Asset
      * @return $this
      */
     
-    public function setCoverImage($Image) {
+    public function setCoverImage($imageObject) {
         
         $mckey = sprintf("railpage:locos.class.coverimage;id=%d", $this->id);
         
@@ -1153,11 +1157,11 @@ class LocoClass extends Locos {
         }
         
         /**
-         * $Image is a Flickr image
+         * $imageObject is a Flickr image
          */
         
-        if ($Image instanceof Image && $Image->provider == "flickr") {
-            $this->flickr_image_id = $Image->photo_id;
+        if ($imageObject instanceof Image && $imageObject->provider == "flickr") {
+            $this->flickr_image_id = $imageObject->photo_id;
             $this->commit(); 
             
             return $this;
@@ -1167,8 +1171,8 @@ class LocoClass extends Locos {
          * Image is a site asset
          */
         
-        if ($Image instanceof Asset) {
-            $this->Asset = clone $Image;
+        if ($imageObject instanceof Asset) {
+            $this->Asset = clone $imageObject;
             $this->commit(); 
             
             return $this;
@@ -1179,10 +1183,10 @@ class LocoClass extends Locos {
          */
         
         $this->meta['coverimage'] = array(
-            "id" => $Image->id,
-            "title" => $Image->title,
-            "sizes" => $Image->sizes,
-            "url" => $Image->url->getURLs()
+            "id" => $imageObject->id,
+            "title" => $imageObject->title,
+            "sizes" => $imageObject->sizes,
+            "url" => $imageObject->url->getURLs()
         );
         
         $this->commit(); 
@@ -1219,13 +1223,13 @@ class LocoClass extends Locos {
     /**
      * Set the manufacturer
      * @since Version 3.9.1
-     * @param \Railpage\Locos\Manufacturer $Manufacturer
+     * @param \Railpage\Locos\Manufacturer $manufacturer
      * @return \Railpage\Locos\LocoClass
      */
     
-    public function setManufacturer(Manufacturer $Manufacturer) {
-        $this->manufacturer_id = $Manufacturer->id;
-        $this->manufacturer = $Manufacturer->name;
+    public function setManufacturer(Manufacturer $manufacturer) {
+        $this->manufacturer_id = $manufacturer->id;
+        $this->manufacturer = $manufacturer->name;
         
         return $this;
     }
@@ -1233,13 +1237,13 @@ class LocoClass extends Locos {
     /**
      * Set the wheel arrrangement
      * @since Version 3.9.1
-     * @param \Railpage\Locos\WheelArrangement $WheelArrangement
+     * @param \Railpage\Locos\WheelArrangement $wheelArrangement
      * @return \Railpage\Locos\LocoClass
      */
     
-    public function setWheelArrangement(WheelArrangement $WheelArrangement) {
-        $this->wheel_arrangement_id = $WheelArrangement->id;
-        $this->wheel_arrangement = $WheelArrangement->arrangement;
+    public function setWheelArrangement(WheelArrangement $wheelArrangement) {
+        $this->wheel_arrangement_id = $wheelArrangement->id;
+        $this->wheel_arrangement = $wheelArrangement->arrangement;
         
         return $this;
     }
@@ -1247,13 +1251,13 @@ class LocoClass extends Locos {
     /**
      * Set the type
      * @since Version 3.9.1
-     * @param \Railpage\Locos\Type $Type
+     * @param \Railpage\Locos\Type $locoType
      * @return \Railpage\Locos\LocoClass
      */
     
-    public function setType(Type $Type) {
-        $this->type_id = $Type->id;
-        $this->type = $Type->name;
+    public function setType(Type $locoType) {
+        $this->type_id = $locoType->id;
+        $this->type = $locoType->name;
         
         return $this;
     }
