@@ -67,6 +67,7 @@ class ContentUtility {
         }
         
         $diff = $now - $timestamp;
+        $format = $format; // to shut up CodeClimate
     
         if ($diff < 60) {
             return sprintf($diff > 1 ? '%s seconds ago' : 'a second ago', $diff);
@@ -231,20 +232,6 @@ class ContentUtility {
             }, $row); 
         }, $json);
         
-        /*
-        foreach ($json as $key => $val) {
-            if (!is_array($val)) {
-                $json[$key] = iconv('UTF-8', 'UTF-8//IGNORE', utf8_encode($val));
-            } else {
-                foreach ($json[$key][$val] as $k => $v) {
-                    if (!is_array($v)) {
-                        $json[$key][$val][$k] = iconv('UTF-8', 'UTF-8//IGNORE', utf8_encode($v));
-                    }
-                }
-            }
-        }
-        */
-        
         $json = json_encode($json);
         
         return $json;
@@ -267,30 +254,24 @@ class ContentUtility {
         
         $Client = new Client;
         
-        if ($dateObject->format("Y") <= 1966) {
+        $data = [
+            "body" => [ 
+                "annualStartYear" => $dateObject->format("Y"),
+                "annualEndYear" => (date("Y") - 1)
+            ]
+        ];
         
-            $lookup = "#calculatedAnnualDollarValue";
-            
-            $url = "http://www.rba.gov.au/calculator/annualPreDecimal.html";
-            $data = [
-                "body" => [ 
-                    "annualPound" => $amount,
-                    "annualStartYear" => $dateObject->format("Y"),
-                    "annualEndYear" => (date("Y") - 1)
-                ]
-            ];
+        $lookup = "#calculatedAnnualDollarValue";
+        $url = $url = "http://www.rba.gov.au/calculator/";
+        
+        if ($dateObject->format("Y") <= 1966) {
+            $url .= "annualPreDecimal.html";
+            $data['body']['annualPound'] = $amount;
         }
         
         if ($dateObject->format("Y") > 1966) {
-            $url = "http://www.rba.gov.au/calculator/annualDecimal.html";
-            
-            $data = [
-                "body" => [
-                    "annualDollar" => $amount,
-                    "annualStartYear" => $dateObject->format("Y"),
-                    "annualEndYear" => (date("Y") - 1)
-                ]
-            ];
+            $url .= "annualDecimal.html";
+            $data['body']['annualDollar'] = $amount;
         }
         
         $response = $Client->post($url, $data); 
@@ -343,7 +324,7 @@ class ContentUtility {
         $port     = isset($parsedUrl['port']) ? ':' . $parsedUrl['port'] : ''; 
         #$user     = isset($parsedUrl['user']) ? $parsedUrl['user'] : ''; 
         $pass     = isset($parsedUrl['pass']) ? ':' . $parsedUrl['pass']  : ''; 
-        $pass     = ($user || $pass) ? $pass . "@" : ''; 
+        $pass     = ($parsedUrl['user'] || $pass) ? $pass . "@" : ''; 
         #$path     = isset($parsedUrl['path']) ? $parsedUrl['path'] : ''; 
         $query    = isset($parsedUrl['query']) ? '?' . $parsedUrl['query'] : ''; 
         $fragment = isset($parsedUrl['fragment']) ? '#' . $parsedUrl['fragment'] : ''; 
