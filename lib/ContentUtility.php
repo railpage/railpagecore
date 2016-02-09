@@ -29,7 +29,7 @@ class ContentUtility {
     
     public static function generateUrlSlug($text, $maxLength = 200) {
         
-        $text = strtolower($trim($text)); 
+        $text = strtolower(trim($text)); 
         $text = preg_replace("/\s/u", "-", $text); 
         $text = preg_replace("/[^[:alnum:][:space:]-]/u", "$1", $text); 
         
