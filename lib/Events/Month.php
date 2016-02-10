@@ -15,6 +15,8 @@ use Railpage\Module;
 use DateTime;
 use DateTimeZone;
 use Railpage\Organisations\Organisation;
+use Exception;
+use InvalidArgumentException;
 
 /**
  * Month
@@ -53,7 +55,16 @@ class Month extends AppCore {
      * @param int $month
      */
     
-    public function __construct($year = false, $month = false) {
+    public function __construct($year = null, $month = null) {
+        
+        if ($month == null) {
+            throw new InvalidArgumentException("Parameter \$year cannot be null"); 
+        }
+        
+        if ($month == null) {
+            throw new InvalidArgumentException("Parameter \$month cannot be null"); 
+        }
+        
         parent::__construct();
         
         $this->month = $month;
@@ -63,7 +74,7 @@ class Month extends AppCore {
         $firstDayOfMonth = mktime(0, 0, 0, $this->month, 1, $this->year);
         
         // How many days does this month contain?
-        $numberDays = date('t', $firstDayOfMonth);
+        //$numberDays = date('t', $firstDayOfMonth);
         
         // Retrieve some information about the first day of the month in question
         $dateComponents = getdate($firstDayOfMonth);

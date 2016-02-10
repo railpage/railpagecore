@@ -136,7 +136,7 @@ class Event extends AppCore {
      * @uses \Railpage\Place The geographic place (latitude & longitude) of this event
      */
     
-    public function __construct($id = false) {
+    public function __construct($id = null) {
         
         parent::__construct();
         
@@ -147,7 +147,7 @@ class Event extends AppCore {
         $this->Module = new Module("events");
         $this->namespace = $this->Module->namespace;
         
-        if ($id !== false) {
+        if ($id != null) {
             $this->populate($id); 
         }
         
@@ -315,13 +315,15 @@ class Event extends AppCore {
             if (isset($this->mckey)) {
                 $this->Memcached->delete($this->mckey);
             }
-
-        } else {
-            $this->db->insert("event", $data);
-            $this->id = $this->db->lastInsertId(); 
             
-            $this->createUrls();
+            return true;
+            
         }
+        
+        $this->db->insert("event", $data);
+        $this->id = $this->db->lastInsertId(); 
+        
+        $this->createUrls();
         
         return true;
     }
@@ -329,12 +331,12 @@ class Event extends AppCore {
     /**
      * Get event dates (instances)
      * @return array
-     * @param DateTime $Start DateTime instance representing the date to limit searches from 
-     * @param DateTime $End DateTme instance representing the date to limit searches to
+     * @param DateTime $dateFrom DateTime instance representing the date to limit searches from 
+     * @param DateTime $dateTo DateTme instance representing the date to limit searches to
      * @param $status Only show dates with this status flag
      */
     
-    public function getDates(DateTime $Start, DateTime $End = NULL, $status = Events::STATUS_APPROVED) {
+    public function getDates(DateTime $dateFrom, DateTime $dateTo = NULL, $status = Events::STATUS_APPROVED) {
         
         if (RP_DEBUG) {
             global $site_debug;
@@ -348,14 +350,14 @@ class Event extends AppCore {
             $status
         );
         
-        if ($Start instanceof DateTime) {
+        if ($dateFrom instanceof DateTime) {
             $query .= " AND date >= ?";
-            $params[] = $Start->format("Y-m-d");
+            $params[] = $dateFrom->format("Y-m-d");
         }
         
-        if ($End instanceof DateTime) {
+        if ($dateTo instanceof DateTime) {
             $query .= " AND date <= ?";
-            $params[] = $End->format("Y-m-d");
+            $params[] = $dateTo->format("Y-m-d");
         }
         
         $rs = $this->db->fetchAll($query, $params);
@@ -370,11 +372,11 @@ class Event extends AppCore {
     /**
      * Find an instance of this event on a given date
      * @return mixed
-     * @param DateTime $Date DateTime instance to search for
-     * @throws Exception if $Date is not a valid instance of DateTime
+     * @param DateTime $dateObject DateTime instance to search for
+     * @throws Exception if $dateObject is not a valid instance of DateTime
      */
     
-    public function findDate(DateTime $Date) {
+    public function findDate(DateTime $dateObject) {
         
         if (RP_DEBUG) {
             global $site_debug;
@@ -383,7 +385,7 @@ class Event extends AppCore {
         
         $query = "SELECT id FROM event_dates WHERE event_id = ? AND date = ? AND status = ?";
         
-        if (!$Date instanceof DateTime) {
+        if (!$dateObject instanceof DateTime) {
             throw new Exception("Cannot find dates for this event - no DateTime object given");
         }
         
@@ -393,7 +395,7 @@ class Event extends AppCore {
         
         $where = array(
             $this->id, 
-            $Date->format("Y-m-d"),
+            $dateObject->format("Y-m-d"),
             Events::STATUS_APPROVED
         );
         

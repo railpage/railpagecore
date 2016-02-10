@@ -25,7 +25,8 @@ use Railpage\Images\Image;
 /**
  * EventDate
  *
- * Describes an instance of an event. For example, Puffing Billy operate regular Dinner & Dance trains so instead of having individual events for each night it operates we have one event with multiple EventDate instances.
+ * Describes an instance of an event. For example, Puffing Billy operate regular Dinner & Dance trains so instead of 
+ * having individual events for each night it operates we have one event with multiple EventDate instances.
  * @since Version 3.8.7
  */
 
@@ -139,63 +140,63 @@ class EventDate extends AppCore {
         $this->Module = new Module("events");
         $this->namespace = $this->Module->namespace;
         
-        if (filter_var($id, FILTER_VALIDATE_INT)) {
-            if ($row = $this->db->fetchRow("SELECT * FROM event_dates WHERE id = ?", $id)) {
+        if (!filter_var($id, FILTER_VALIDATE_INT)) {
+            return;
+        }
+        
+        if (!$row = $this->db->fetchRow("SELECT * FROM event_dates WHERE id = ?", $id)) {
+            return;
+        }
                 
-                $this->id = $id;
-                $this->Event = Factory::CreateEvent($row['event_id']);
-                $this->Date = new DateTime($row['date']);
-                $this->meta = json_decode($row['meta'], true);
-                $this->status = $row['status'];
+        $this->id = $id;
+        $this->Event = Factory::CreateEvent($row['event_id']);
+        $this->Date = new DateTime($row['date']);
+        $this->meta = json_decode($row['meta'], true);
+        $this->status = $row['status'];
+        
+        $this->url = new Url("/events?mode=event.date&event_id=" . $this->Event->id . "&date_id=" . $this->id);
+        $this->url->approve = sprintf("/events?mode=event.date.setstatus&date_id=%d&status=%d", $this->id, self::STATUS_RUNNING);
+        $this->url->reject = sprintf("/events?mode=event.date.setstatus&date_id=%d&status=%d", $this->id, self::STATUS_REJECTED);
+        $this->url->cancel = sprintf("/events?mode=event.date.setstatus&date_id=%d&status=%d", $this->id, self::STATUS_CANCELLED);
+        $this->url->export = sprintf("/events/export/date/%d.ics", $this->id); 
+        
+        $this->setAuthor(UserFactory::CreateUser($row['user_id']));
+        
+        if ($row['start'] != "00:00:00") {
+            $this->Start = new DateTime($row['date'] . " " . $row['start']);
+        }
+        
+        if ($row['end'] != "00:00:00") {
+            $this->End = new DateTime($row['date'] . " " . $row['end']);
+        }
+        
+        if (isset($this->meta['lat']) && empty($this->meta['lat'])) {
+            unset($this->meta['lat']);
+        }
+        
+        if (isset($this->meta['lon']) && empty($this->meta['lon'])) {
+            unset($this->meta['lon']);
+        }
+        
+        if (isset($this->meta['lat']) && isset($this->meta['lon'])) {
+            $this->Place = Place::Factory($this->meta['lat'], $this->meta['lon']);
+        }
+        
+        try {
+            if ($this->Event->Place instanceof Place && !empty($this->Event->Place->Region->timezone)) {
+                $this->Date->setTimezone(new DateTimeZone($this->Event->Place->Region->timezone));
                 
-                $this->url = new Url("/events?mode=event.date&event_id=" . $this->Event->id . "&date_id=" . $this->id);
-                $this->url->approve = sprintf("/events?mode=event.date.setstatus&date_id=%d&status=%d", $this->id, self::STATUS_RUNNING);
-                $this->url->reject = sprintf("/events?mode=event.date.setstatus&date_id=%d&status=%d", $this->id, self::STATUS_REJECTED);
-                $this->url->cancel = sprintf("/events?mode=event.date.setstatus&date_id=%d&status=%d", $this->id, self::STATUS_CANCELLED);
-                $this->url->export = sprintf("/events/export/date/%d.ics", $this->id); 
-                
-                $this->setAuthor(UserFactory::CreateUser($row['user_id']));
-                
-                if ($row['start'] != "00:00:00") {
-                    $this->Start = new DateTime($row['date'] . " " . $row['start']);
+                if ($this->Start instanceof DateTime) {
+                    $this->Start->setTimezone(new DateTimeZone($this->Event->Place->Region->timezone));
                 }
                 
-                if ($row['end'] != "00:00:00") {
-                    $this->End = new DateTime($row['date'] . " " . $row['end']);
-                }
-                
-                if (isset($this->meta['lat']) && empty($this->meta['lat'])) {
-                    unset($this->meta['lat']);
-                }
-                
-                if (isset($this->meta['lon']) && empty($this->meta['lon'])) {
-                    unset($this->meta['lon']);
-                }
-                
-                if (isset($this->meta['lat']) && isset($this->meta['lon'])) {
-                    $this->Place = Place::Factory($this->meta['lat'], $this->meta['lon']);
-                }
-                
-                #var_dump(get_class(Factory::CreateEvent($row['event_id'])));
-                #var_dump($this->id);
-                
-                try {
-                    if ($this->Event->Place instanceof Place && !empty($this->Event->Place->Region->timezone)) {
-                        $this->Date->setTimezone(new DateTimeZone($this->Event->Place->Region->timezone));
-                        
-                        if ($this->Start instanceof DateTime) {
-                            $this->Start->setTimezone(new DateTimeZone($this->Event->Place->Region->timezone));
-                        }
-                        
-                        if ($this->End instanceof DateTime) {
-                            $this->End->setTimezone(new DateTimeZone($this->Event->Place->Region->timezone));
-                        }
-                    }
-                } catch (Exception $e) {
-                    printArray($e->getMessage());
-                    printArray($this->Event->Place->Region->timezone);
+                if ($this->End instanceof DateTime) {
+                    $this->End->setTimezone(new DateTimeZone($this->Event->Place->Region->timezone));
                 }
             }
+        } catch (Exception $e) {
+            printArray($e->getMessage());
+            printArray($this->Event->Place->Region->timezone);
         }
     }
     
@@ -264,10 +265,12 @@ class EventDate extends AppCore {
             );
             
             $this->db->update("event_dates", $data, $where);
-        } else {
-            $this->db->insert("event_dates", $data);
-            $this->id = $this->db->lastInsertId(); 
+            
+            return true;
         }
+        
+        $this->db->insert("event_dates", $data);
+        $this->id = $this->db->lastInsertId(); 
         
         return true;
     }

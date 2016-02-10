@@ -68,17 +68,17 @@ class Events extends AppCore {
     
     /**
      * Get events for a given DateTime object
-     * @param \DateTime $Date An optional DateTime instance to search for. Will default to today if not provided
+     * @param \DateTime $dateObject An optional DateTime instance to search for. Will default to today if not provided
      * @return array
      */
     
-    public function getEventsForDate(DateTime $Date = NULL) {
-        if (!$Date instanceof DateTime) {
-            $Date = new DateTime;
+    public function getEventsForDate(DateTime $dateObject = NULL) {
+        if (!$dateObject instanceof DateTime) {
+            $dateObject = new DateTime;
         }
         
         $args = array(
-            $Date->format("Y-m-d"), 
+            $dateObject->format("Y-m-d"), 
             self::STATUS_APPROVED, 
             EventDate::STATUS_RUNNING
         );
@@ -88,12 +88,12 @@ class Events extends AppCore {
     
     /**
      * Get upcoming events
-     * @param int $items_per_page The number of events to return
+     * @param int $itemsPerPage The number of events to return
      * @param int $page The "page" number of events
      * @return array
      */
     
-    public function getUpcomingEvents($items_per_page = 25, $page = 1) {
+    public function getUpcomingEvents($itemsPerPage = 25, $page = 1) {
         
         $Now = new DateTime;
         
@@ -101,8 +101,8 @@ class Events extends AppCore {
             $Now->format("Y-m-d"),
             self::STATUS_APPROVED, 
             EventDate::STATUS_RUNNING,
-            ($page - 1) * $items_per_page, 
-            $items_per_page
+            ($page - 1) * $itemsPerPage, 
+            $itemsPerPage
         ); 
         
         return $this->db->fetchAll("SELECT ed.* FROM event_dates AS ed LEFT JOIN event AS e ON e.id = ed.event_id WHERE ed.date >= ? AND e.status = ? AND ed.status = ? ORDER BY ed.date LIMIT ?, ?", $args);
@@ -123,10 +123,11 @@ class Events extends AppCore {
      * Get upcoming events for an organisation
      * @since Version 3.8.7
      * @return array
+     * @param \Railpage\Organisations\Organisation $orgObject
      */
     
-    public function getUpcomingEventsForOrganisation(Organisation $Org) {
-        if (!filter_var($Org->id, FILTER_VALIDATE_INT)) {
+    public function getUpcomingEventsForOrganisation(Organisation $orgObject) {
+        if (!filter_var($orgObject->id, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot fetch upcoming events because the specified organisation is invalid or doesn't exist");
         }
         
@@ -134,7 +135,7 @@ class Events extends AppCore {
         
         $return = array(); 
         
-        foreach ($this->db->fetchAll($query, array(date("Y-m-d"), $Org->id)) as $row) {
+        foreach ($this->db->fetchAll($query, array(date("Y-m-d"), $orgObject->id)) as $row) {
             $Event = new Event($row['event_id']);
             $return[$row['date']][] = array(
                 "id" => $Event->id,

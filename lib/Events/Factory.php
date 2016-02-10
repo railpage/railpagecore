@@ -91,7 +91,7 @@ class Factory {
         } catch (Exception $e) {
             $cachekey = sprintf(EventCategory::CACHE_KEY, $id); 
             
-            if (!self::USE_REDIS || !$Event = $CacheDriver->fetch($cachekey)) {
+            if (!self::USE_REDIS || !$EventCategory = $CacheDriver->fetch($cachekey)) {
                 $EventCategory = new EventCategory($id); 
                 
                 if (self::USE_REDIS) {
@@ -106,4 +106,3 @@ class Factory {
 
     }
 }
-
