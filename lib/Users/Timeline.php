@@ -252,7 +252,7 @@ class Timeline extends AppCore {
      * @return array
      */
     
-    function processGrammar($row) {
+    private function processGrammar($row) {
         
         $row['event']['action'] = ""; 
         $row['event']['article'] = ""; 

@@ -8,6 +8,7 @@
  */
 
 namespace Railpage\Users;
+
 use Railpage\AppCore;
 use Exception;
 use DateTime;
@@ -122,13 +123,13 @@ class Base extends AppCore {
                 
                 if ($this->db->query($query)) {
                     return count($users); 
-                } else {
-                    throw new Exception($this->db->error); 
                 }
+                
+                throw new Exception($this->db->error); 
             }
-        } else {
-            throw new Exception($this->db->error); 
         }
+        
+        throw new Exception($this->db->error); 
     }
     
     /**
@@ -170,8 +171,8 @@ class Base extends AppCore {
      * @author Michael Greenhill
      */
     
-    public function getUserFromEmail($email = false, $provider = "railpage") {
-        if (!$email || empty($email)) {
+    public function getUserFromEmail($email = null, $provider = "railpage") {
+        if ($email == null) {
             throw new Exception("Can't find user - no email address provided");
         }
         
@@ -198,12 +199,12 @@ class Base extends AppCore {
     /**
      * Get user registrations per day between given dates
      * @since Version 3.9
-     * @param \DateTime $From
-     * @param \Datetime $To
+     * @param \DateTime $dateFrom
+     * @param \Datetime $dateTo
      * @return array
      */
     
-    public function getNumRegistrationsByMonth(DateTime $From, DateTime $To) {
+    public function getNumRegistrationsByMonth(DateTime $dateFrom, DateTime $dateTo) {
         
         $BanControl = new BanControl;
         $BanControl->loadUsers();
@@ -221,7 +222,7 @@ class Base extends AppCore {
                     " . $bancontrol_sql . "
                     GROUP BY YEAR(user_regdate_nice), MONTH(user_regdate_nice)";
         
-        return $this->db->fetchAll($query, array($From->format("Y-m-d"), $To->format("Y-m-d")));
+        return $this->db->fetchAll($query, array($dateFrom->format("Y-m-d"), $dateTo->format("Y-m-d")));
     }
     
     /**
@@ -242,8 +243,8 @@ class Base extends AppCore {
      * @param string $rank
      */
     
-    public function addCustomRank($rank = false, $image = false) {
-        if (!is_string($rank) || empty($rank)) {
+    public function addCustomRank($rank = null, $image = null) {
+        if ($rank == null) {
             throw new Exception("No rank text given");
         }
         
@@ -288,7 +289,12 @@ ORDER BY u.username, u.user_id";
      * @param int $id
      */
     
-    public function getUserFromFacebookID($id = false) {
+    public function getUserFromFacebookID($id = null) {
+        
+        if (!filter_var($id, FILTER_VALIDATE_INT)) {
+            throw new InvalidArgumentException("No valid Facebook user ID was found"); 
+        }
+        
         $query = "SELECT user_id FROM nuke_users WHERE facebook_user_id = ?"; 
         
         $user_id = $this->db->fetchOne($query, $id); 
@@ -303,39 +309,44 @@ ORDER BY u.username, u.user_id";
     /**
      * Check username availability
      * @since Version 3.9.1
-     * @version 3.9.1
+     * @version 3.10.0
      * @author Michael Greenhill
      * @return boolean
      * @param string $username
      */
     
-    public function username_available($username = false) {
+    public function username_available($username = null) {
+        
+        if ($username == null) {
+            return false;
+        }
+        
         $username = str_replace("_", "\_", $username); 
         
         $query = "SELECT * FROM nuke_users WHERE username = ?"; 
         
         $count = $this->db->fetchAll($query, $username);
         
-        if (is_array($count) && count($count) > 0) {
-            return false;
-        } else {
+        if (!is_array($count) || count($count) == 0 || $count == false) {
             return true;
         }
         
         return false;
+        
     }
     
     /**
      * Check email address availability
      * @since Version 3.9.1
-     * @version 3.9.1
+     * @version 3.10.0
      * @author Michael Greenhill
      * @return boolean
      * @param string $email
      */
     
-    public function email_available($email = false) {
-        if (!$email) {
+    public function email_available($email = null) {
+        
+        if ($email == null) {
             return false;
         }
         
@@ -345,10 +356,11 @@ ORDER BY u.username, u.user_id";
         
         $count = $this->db->fetchAll($query, $email);
         
-        if (is_array($count) && count($count) > 0) {
-            return false;
-        } else {
+        if (!is_array($count) || count($count) == 0 || $count == false) {
             return true;
         }
+        
+        return false;
+        
     }
 }

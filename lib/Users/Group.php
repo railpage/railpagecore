@@ -199,13 +199,13 @@ class Group extends Groups {
      * Set the organisation associated to this group
      * @since Version 3.9.1
      * @return \Railpage\Users\Group
-     * @param \Railpage\Organisations\Organisation $Org
+     * @param \Railpage\Organisations\Organisation $orgObject
      */
     
-    public function setOrganisation(Organisation $Org) {
+    public function setOrganisation(Organisation $orgObject) {
         
-        $this->organisation_id = $Org->id;
-        $this->organisation = $Org->name;
+        $this->organisation_id = $orgObject->id;
+        $this->organisation = $orgObject->name;
         
         return $this;
     }
@@ -227,19 +227,19 @@ class Group extends Groups {
     /**
      * Get member list
      * @since Version 3.5
-     * @param int $items_per_page
+     * @param int $itemsPerPage
      * @param int $page
      * @return array
      */
     
-    public function members($items_per_page = 25, $page = 1) {
+    public function members($itemsPerPage = 25, $page = 1) {
         if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot fetch group - group ID cannot be empty");
         }
         
-        $thispage = ($page - 1) * $items_per_page;
+        $thispage = ($page - 1) * $itemsPerPage;
         
-        $params = [ $this->id, $thispage, $items_per_page ];
+        $params = [ $this->id, $thispage, $itemsPerPage ];
         
         $query = "SELECT SQL_CALC_FOUND_ROWS u.user_id, u.username, u.user_from AS user_location, u.name AS user_realname 
                 FROM nuke_bbuser_group AS gm 
@@ -254,7 +254,7 @@ class Group extends Groups {
         $return = array(); 
         $return['total'] = $total['total']; 
         $return['page'] = $page; 
-        $return['perpage'] = $items_per_page; 
+        $return['perpage'] = $itemsPerPage; 
 
         
         foreach ($result as $row) {
@@ -267,12 +267,12 @@ class Group extends Groups {
     /**
      * Alias of members()
      * @since Version 3.6
-     * @param int $items_per_page
+     * @param int $itemsPerPage
      * @param int $page
      */
     
-    public function getMembers($items_per_page = 25, $page = 1) {
-        return $this->members($items_per_page, $page); 
+    public function getMembers($itemsPerPage = 25, $page = 1) {
+        return $this->members($itemsPerPage, $page); 
     }
     
     /**

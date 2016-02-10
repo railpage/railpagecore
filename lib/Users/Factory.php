@@ -24,7 +24,7 @@ class Factory {
      * @param int|string $id
      */
     
-    public static function CreateUser($id = false) {
+    public static function CreateUser($id = null) {
         
         $Redis = AppCore::getRedis();
         $Registry = Registry::getInstance(); 
@@ -50,10 +50,10 @@ class Factory {
      * Create a user by their username
      * @since Version 3.9.1
      * @return \Railpage\Users\User
-     * @param int|string $id
+     * @param string $username
      */
     
-    public static function CreateUserFromUsername($username = false) {
+    public static function CreateUserFromUsername($username = null) {
         
         $id = Utility\UserUtility::getUserId($username); 
             
