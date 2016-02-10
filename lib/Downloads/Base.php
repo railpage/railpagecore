@@ -23,7 +23,7 @@ if (isset($RailpageConfig->Uploads->Directory)) {
 } else {
     if (defined("RP_SITE_ROOT")) {
         define("RP_DOWNLOAD_DIR", sprintf("%s%suploads%s", RP_SITE_ROOT, DS, DS));
-    } else{
+    } else {
         define("RP_DOWNLOAD_DIR", dirname(dirname(dirname(dirname(dirname(__DIR__))))). DS . "uploads" . DS); 
     }
 }
@@ -72,17 +72,18 @@ class Base extends AppCore {
      * @param string $dir The download directory to use. If null we'll use the preset one. 
      */
     
-    public function __construct($dir = NULL) {
+    public function __construct($dir = null) {
+        
         parent::__construct();
         
         $this->Module = new Module("Downloads");
-            
-        if (is_null($dir)) {
-            // Try to set the directory
-            $this->dir = RP_DOWNLOAD_DIR; 
-        } else {
-            $this->dir = $dir;
+        
+        if ($dir == null) {
+            $dir = RP_DOWNLOAD_DIR; 
         }
+        
+        $this->dir = $dir;
+        
     }
     
     /**
@@ -103,7 +104,9 @@ class Base extends AppCore {
         foreach ($this->db->fetchAll($query) as $row) {
             if ($row['category_parent_id'] == "0") {
                 $return['categories'][$row['category_id']] = $row;
-            } else {
+            }
+            
+            if ($row['category_parent_id'] != "0") {
                 $return['categories'][$row['category_parent_id']]['children'][$row['category_id']] = $row;
             }
         }

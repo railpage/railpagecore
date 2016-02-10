@@ -76,11 +76,7 @@ class Category extends Base {
         parent::__construct();
             
         if (!empty($this->id)) {
-            try {
-                $this->fetch(); 
-            } catch (Exception $e) {
-                throw new \Exception($e->getMessage()); 
-            }
+            $this->fetch(); 
         }
     }
     
@@ -177,7 +173,9 @@ class Category extends Base {
             );
             
             $this->db->update("download_categories", $data, $where); 
-        } else {
+        }
+        
+        if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
             $this->db->insert("download_categories", $data);
             $this->id = $this->db->lastInsertId();
         }

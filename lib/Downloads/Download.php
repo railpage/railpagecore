@@ -120,7 +120,7 @@ class Download extends Base {
      * @var array $extra_data Any extra data about this download
      */
     
-    public $extra_data;
+    public $extra_data = [];
     
     /**
      * Active ("deleted")
@@ -176,13 +176,14 @@ class Download extends Base {
         
         parent::__construct();
         
-        if (!empty($this->id)) {
-            
-            $this->mckey = sprintf("railpage:downloads.download=%d", $this->id);
-            
-            // Populate the object vars
-            $this->fetch(); 
+        if (empty($this->id)) {
+            return;
         }
+            
+        $this->mckey = sprintf("railpage:downloads.download=%d", $this->id);
+        
+        // Populate the object vars
+        $this->fetch(); 
     }
     
     /**
@@ -195,9 +196,6 @@ class Download extends Base {
         if (empty($this->id)) {
             throw new Exception("Cannot fetch download object - no download ID given"); 
         }
-        
-        $this->url = new Url(sprintf("%s?mode=download.view&id=%d", $this->Module->url, $this->id));
-        $this->url->download = sprintf("https://www.railpage.com.au/downloads/%s/get", $this->id);
         
         $query = "SELECT d.*, UNIX_TIMESTAMP(d.date) AS date_unix FROM download_items AS d WHERE d.id = ?";
         
@@ -265,6 +263,9 @@ class Download extends Base {
             $this->mime = finfo_file($finfo, RP_DOWNLOAD_DIR . $this->filepath);
             $this->commit(); 
         }
+        
+        $this->url = Utility\DownloadUtility::buildUrls($this); 
+        
     }
     
     /**
@@ -281,7 +282,7 @@ class Download extends Base {
             throw new Exception("Verification failed - download must have a name");
         }
         
-        if (empty($this->Date) || !$this->Date instanceof DateTime) {
+        if (!$this->Date instanceof DateTime) {
             $this->Date = new DateTime;
         }
         
@@ -305,10 +306,6 @@ class Download extends Base {
             $this->hits = 0;
         }
         
-        if (empty($this->extra_data)) {
-            $this->extra_data = array();
-        }
-        
         if ($this->Author instanceof User) {
             $this->user_id = $this->Author->id;
         }
@@ -328,11 +325,8 @@ class Download extends Base {
      */
     
     public function commit() {
-        $this->validate();
         
-        if (is_array($this->extra_data)) {
-            $this->extra_data = json_encode($this->extra_data); 
-        }
+        $this->validate();
         
         $data = array(
             "category_id" => $this->Category instanceof Category ? $this->Category->id : 10,
@@ -348,7 +342,7 @@ class Download extends Base {
             "object_id" => filter_var($this->object_id, FILTER_VALIDATE_INT) ? $this->object_id : 0,
             "approved" => $this->approved,
             "active" => $this->active,
-            "extra_data" => $this->extra_data,
+            "extra_data" => json_encode($this->extra_data),
             "url" => $this->approved ? str_replace(dirname(dirname(__FILE__)), RP_PROTOCOL."://" . RP_HOST, $this->filepath) : ""
         );
         
@@ -363,34 +357,44 @@ class Download extends Base {
             
             $this->db->insert("download_items", $data);
             $this->id = $this->db->lastInsertId();
+        
+            $this->url = Utility\DownloadUtility::buildUrls($this); 
             
             return $this->id;
-        } else {
-            $where = array(
-                "id = ?" => $this->id
-            );
-            
-            $this->db->update("download_items", $data, $where);
         }
+        
+        $where = array(
+            "id = ?" => $this->id
+        );
+        
+        $this->db->update("download_items", $data, $where);
+        
+        $this->url = Utility\DownloadUtility::buildUrls($this); 
+        
     }
     
     /**
      * Log to the database when this file has been downloaded
      * @since Version 3.5
      * @param string $ip The client IP address
-     * @param int $user_id The user that downloaded this file
+     * @param int $userId The user that downloaded this file
      * @param string $username The username of the user that downloaded this file
      */
     
-    public function log($ip = false, $user_id = false, $username = false) {
+    public function log($ip = null, $userId = null, $username = null) {
+        
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            return false;
+        }
+        
         $data = array(
             "download_id" => $this->id,
             "date" => "NOW()",
             "ip" => $ip
         );
         
-        if ($user_id && $username) {
-            $data['user_id'] = $user_id;
+        if ($userId != null && $username != null) {
+            $data['user_id'] = $userId;
             $data['username'] = $username;
         }
         
@@ -427,9 +431,6 @@ class Download extends Base {
         $mime = explode("/", $this->mime); 
         $thumbnail = sprintf("%s.thumbnail.jpg", $this->filepath);
         
-        #var_dump($thumbnail);
-        #var_dump($this->filepath);
-        
         if (file_exists(RP_DOWNLOAD_DIR . $thumbnail)) {
             $info = getimagesize(RP_DOWNLOAD_DIR . $thumbnail);
             
@@ -455,8 +456,6 @@ class Download extends Base {
                     "height" => $info[1],
                     "size" => filesize(RP_DOWNLOAD_DIR . $thumbnail)
                 );
-                
-                break;
             
             case "image" :
                 $info = getimagesize(RP_DOWNLOAD_DIR . $this->filepath);
@@ -467,15 +466,22 @@ class Download extends Base {
                     "height" => $info[1],
                     "size" => filesize(RP_DOWNLOAD_DIR . $this->filepath)
                 );
-                
-                break;
         }
         
         switch ($this->mime) {
             
             case "application/pdf" :
             case "application/x-pdf" : 
-                exec (sprintf("convert -thumbnail 800 -background white -alpha remove '%s%s'[0] %s%s", RP_DOWNLOAD_DIR, $this->filepath, RP_DOWNLOAD_DIR, $thumbnail), $return); 
+                exec(
+                    sprintf(
+                        "convert -thumbnail 800 -background white -alpha remove '%s%s'[0] %s%s", 
+                        RP_DOWNLOAD_DIR, 
+                        $this->filepath, 
+                        RP_DOWNLOAD_DIR, 
+                        $thumbnail
+                    ), 
+                    $return
+                ); 
                 
                 $info = getimagesize(RP_DOWNLOAD_DIR . $thumbnail);
             
@@ -485,8 +491,6 @@ class Download extends Base {
                     "height" => $info[1],
                     "size" => filesize(RP_DOWNLOAD_DIR . $thumbnail)
                 );
-                
-                break;
             
         }
         
@@ -537,9 +541,13 @@ class Download extends Base {
      */
     
     public static function getAVLib() {
+        $avlib = false;
+        
         if (file_exists("/usr/bin/avconv")) {
             $avlib = "/usr/bin/avconv";
-        } else {
+        }
+        
+        if (!$avlib) {
             throw new Exception("No video library (libav or ffmpeg) was found");
         }
         
