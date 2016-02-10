@@ -51,14 +51,16 @@ class LookupUtility {
                 
                 $row['ban_time_nice'] = $row['ban_time']->format("F j, Y");
                 
+                if (!filter_var($row['ban_expire'], FILTER_VALIDATE_INT)) {
+                    $row['ban_expire'] = 0;
+                }
+                
                 if ($row['ban_expire'] > 0) {
                     if (!$row['ban_expire'] instanceof DateTime) {
                         $row['ban_expire'] = new DateTime("@" . $row['ban_expire']); 
                     }
                     
                     $row['ban_expire_nice'] = $row['ban_expire']->format("F j, Y");
-                } else {
-                    $row['ban_expire'] = 0; 
                 }
                 
                 $return[$row['id']] = $row; 
@@ -75,7 +77,7 @@ class LookupUtility {
      * @return array
      */
     
-    public static function recent($activeOnly = true) {
+    public static function recent($activeOnly = null) {
         
         $Database = (new AppCore)->getDatabaseConnection(); 
         
@@ -90,12 +92,16 @@ class LookupUtility {
         $return = array(); 
         
         foreach ($Database->fetchAll($query) as $row) {
-            if ($activeOnly === false || ($activeOnly === true && $row['ban_active'] == 1)) {
+            if ($activeOnly !== true || ($activeOnly === true && $row['ban_active'] == 1)) {
                 if (!$row['ban_time'] instanceof DateTime) {
                     $row['ban_time'] = new DateTime("@" . $row['ban_time']); 
                 }
                 
                 $row['ban_time_nice'] = $row['ban_time']->format("F j, Y");
+                
+                if (!filter_var($row['ban_expire'], FILTER_VALIDATE_INT)) {
+                    $row['ban_expire'] = 0;
+                }
                 
                 if ($row['ban_expire'] > 0) {
                     if (!$row['ban_expire'] instanceof DateTime) {
@@ -103,8 +109,6 @@ class LookupUtility {
                     }
                     
                     $row['ban_expire_nice'] = $row['ban_expire']->format("F j, Y");
-                } else {
-                    $row['ban_expire'] = 0; 
                 }
                 
                 $return[$row['id']] = $row; 

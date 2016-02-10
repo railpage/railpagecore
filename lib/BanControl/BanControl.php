@@ -227,16 +227,16 @@ class BanControl extends AppCore {
      * Ban user
      * @since Version 3.2
      * @version 3.2
-     * @param int|boolean $user_id
+     * @param int|boolean $userId
      * @param string|boolean $reason
      * @param int|boolean $expiry
-     * @param int|boolean $admin_user_id
+     * @param int|boolean $adminUserId
      * @return boolean
      */
     
-    public function banUser($user_id = null, $reason = null, $expiry = "0", $admin_user_id = null) {
+    public function banUser($userId = null, $reason = null, $expiry = "0", $adminUserId = null) {
         
-        if (!filter_var($user_id, FILTER_VALIDATE_INT)) {
+        if (!filter_var($userId, FILTER_VALIDATE_INT)) {
             throw new InvalidArgumentException("No user ID supplied"); 
         }
         
@@ -244,7 +244,7 @@ class BanControl extends AppCore {
             throw new InvalidArgumentException("No reason was supplied"); 
         }
         
-        if (!filter_var($admin_user_id, FILTER_VALIDATE_INT)) {
+        if (!filter_var($adminUserId, FILTER_VALIDATE_INT)) {
             throw new InvalidArgumentException("No administrative user ID was supplied");
         }
         
@@ -273,17 +273,17 @@ class BanControl extends AppCore {
         }
         
         $data = array(
-            "user_id"       => $user_id,
+            "user_id"       => $userId,
             "ban_active"    => 1,
             "ban_time"      => time(),
             "ban_reason"    => $reason,
-            "banned_by"     => $admin_user_id,
+            "banned_by"     => $adminUserId,
             "ban_expire"    => $expiry
         );
         
         $this->db->insert("bancontrol", $data);
         
-        $cachekey_user = sprintf(self::CACHE_KEY_USER, $user_id);
+        $cachekey_user = sprintf(self::CACHE_KEY_USER, $userId);
         
         $expire = $expiry > 0 ? $expiry : 0; 
         $this->Memcached->save($cachekey_user, true, $expire); 
@@ -299,7 +299,7 @@ class BanControl extends AppCore {
          * Tell the world that they've been naughty
          */
         
-        $ThisUser = UserFactory::CreateUser($user_id);
+        $ThisUser = UserFactory::CreateUser($userId);
         $ThisUser->active       = 0;
         $ThisUser->location     = "Banned"; 
         $ThisUser->signature    = "Banned";
@@ -308,9 +308,8 @@ class BanControl extends AppCore {
         $ThisUser->occupation   = "";
         
         $ThisUser->commit(true); 
-        $return = true;
         
-        $ThisUser->addNote("Banned", $admin_user_id);
+        $ThisUser->addNote("Banned", $adminUserId);
         
         $Smarty = AppCore::GetSmarty(); 
     
@@ -322,14 +321,11 @@ class BanControl extends AppCore {
             $Smarty->Assign("ban_expire_nice", date($ThisUser->date_format, $expiry));
         }
         
-        $email_body = $Smarty->Fetch($Smarty->ResolveTemplate("email.ban"));
-        
         // Send the confirmation email
-        
         $Notification = new Notification;
         
-        if ($admin_user_id !== false) {
-            $Notification->setAuthor(UserFactory::CreateUser($admin_user_id));
+        if ($adminUserId !== false) {
+            $Notification->setAuthor(UserFactory::CreateUser($adminUserId));
         }
         
         $Notification->addRecipient($ThisUser->id, $ThisUser->username, $ThisUser->contact_email);
@@ -346,16 +342,16 @@ class BanControl extends AppCore {
      * Ban IP address
      * @since Version 3.2
      * @version 3.2
-     * @param string|bool $ip_addr
+     * @param string|bool $ipAddress
      * @param string|bool $reason
      * @param int|bool $expiry
-     * @param int|bool $admin_user_id
+     * @param int|bool $adminUserId
      * @return boolean
      */
     
-    public function banIP($ip_addr = null, $reason = null, $expiry = "0", $admin_user_id = null) {
+    public function banIP($ipAddress = null, $reason = null, $expiry = "0", $adminUserId = null) {
         
-        if (is_null($ip_addr)) {
+        if (is_null($ipAddress)) {
             throw new InvalidArgumentException("No IP address supplied"); 
         }
         
@@ -363,7 +359,7 @@ class BanControl extends AppCore {
             throw new InvalidArgumentException("No reason was supplied"); 
         }
         
-        if (!filter_var($admin_user_id, FILTER_VALIDATE_INT)) {
+        if (!filter_var($adminUserId, FILTER_VALIDATE_INT)) {
             throw new InvalidArgumentException("No administrative user ID was supplied");
         }
         
@@ -385,17 +381,17 @@ class BanControl extends AppCore {
         }
         
         $data = array(
-            "ip"            => $ip_addr,
+            "ip"            => $ipAddress,
             "ban_active"    => 1,
             "ban_time"      => time(),
             "ban_reason"    => $reason,
-            "banned_by"     => $admin_user_id,
+            "banned_by"     => $adminUserId,
             "ban_expire"    => $expiry
         );
         
         $this->db->insert("bancontrol", $data);
         
-        $cachekey_ip = sprintf(self::CACHE_KEY_IP, $ip_addr);
+        $cachekey_ip = sprintf(self::CACHE_KEY_IP, $ipAddress);
         $expire = $expiry > 0 ? $expiry : 0; 
         $this->Memcached->save($cachekey_ip, true, $expire); 
         
@@ -413,12 +409,12 @@ class BanControl extends AppCore {
      * Unban user
      * @since Version 3.2
      * @version 3.2
-     * @param int $ban_id
-     * @param int|bool $user_id
+     * @param int $banId
+     * @param int|bool $userId
      * @return boolean
      */
     
-    public function unBanUser($ban_id, $user_id = false) {
+    public function unBanUser($banId, $userId = null) {
         $success = false;
         
         /**
@@ -438,35 +434,35 @@ class BanControl extends AppCore {
             // throw it away
         }
         
-        if ($ban_id instanceof User) {
-            $user_id = $ban_id->id;
+        if ($banId instanceof User) {
+            $userId = $banId->id;
         }
         
-        if (!$user_id) {
+        if ($userId == null) {
             $query = "SELECT user_id FROM bancontrol WHERE id = ?"; 
         
-            $user_id = $this->db->fetchOne($query, $ban_id);
+            $userId = $this->db->fetchOne($query, $banId);
         }
         
-        if ($user_id > 0) {
+        if ($userId > 0) {
             $data = array(
                 "ban_active" => 0
             );
             
             $where = array(
-                "user_id = " . $user_id
+                "user_id = " . $userId
             );
             
             $this->db->update("bancontrol", $data, $where);
             $success = true;
         
-            $cachekey_user = sprintf(self::CACHE_KEY_USER, $user_id);
+            $cachekey_user = sprintf(self::CACHE_KEY_USER, $userId);
             $this->Memcached->save($cachekey_user, false, strtotime("+5 weeks")); 
         }
         
         if ($success) {
             // Tell the world that they've been unbanned
-            $ThisUser = UserFactory::CreateUser($user_id);
+            $ThisUser = UserFactory::CreateUser($userId);
             $ThisUser->active       = 1;
             $ThisUser->location     = ""; 
             $ThisUser->signature    = "";
@@ -482,10 +478,7 @@ class BanControl extends AppCore {
                 // Send the ban email
                 $Smarty->Assign("userdata_username", $ThisUser->username);
                 
-                $email_body = $Smarty->Fetch($Smarty->ResolveTemplate("email_unban"));
-                
                 // Send the confirmation email
-                
                 $Notification = new Notification;
                 
                 $Notification->addRecipient($ThisUser->id, $ThisUser->username, $ThisUser->contact_email);
@@ -513,12 +506,12 @@ class BanControl extends AppCore {
     /**
      * Unban IP address
      * @since Version 3.5
-     * @param int $ban_id
-     * @param string|bool $ip_addr
+     * @param int $banId
+     * @param string|bool $ipAddress
      * @return boolean
      */
     
-    public function unBanIp($ban_id, $ip_addr = false) {
+    public function unBanIp($banId, $ipAddress = null) {
         
         /**
          * Empty the cache
@@ -541,23 +534,25 @@ class BanControl extends AppCore {
             "ban_active" => "0"
         );
         
-        if ($ip_addr === false) {
+        if ($ipAddress == null) {
             $where = array(
-                "id = ?" => $ban_id
+                "id = ?" => $banId
             );
         
             $query = "SELECT ip FROM bancontrol WHERE id = ?"; 
-            $ip_addr = $this->db->fetchOne($query, $ban_id);
+            $ipAddress = $this->db->fetchOne($query, $banId);
             
-        } else {
+        }
+        
+        if ($ipAddress != null) {
             $where = array(
-                "ip = ?" => $ip_addr
+                "ip = ?" => $ipAddress
             );
         }
         
         $this->db->update("bancontrol", $data, $where);
         
-        $cachekey_ip = sprintf(self::CACHE_KEY_IP, $ip_addr);
+        $cachekey_ip = sprintf(self::CACHE_KEY_IP, $ipAddress);
         $this->Memcached->delete($cachekey_ip);
         $this->Memcached->save($cachekey_ip, false, strtotime("+5 weeks")); 
         
@@ -569,16 +564,15 @@ class BanControl extends AppCore {
     /**
      * Edit a ban 
      * @since Version 3.4
-     * @param int|bool $ban_id
+     * @param int|bool $banId
      * @param int|bool $expire
      * @return bool
      * @throws \Exception if no ban ID is given
      */
     
-    public function editUserBan($ban_id = false, $expire = false) {
-        if (!$ban_id) {
+    public function editUserBan($banId = null, $expire = null) {
+        if (!filter_var($banId, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot change user ban - no ban ID given"); 
-            return false;
         }
         
         /**
@@ -598,7 +592,7 @@ class BanControl extends AppCore {
             // throw it away
         }
         
-        if (!$expire) {
+        if ($expire != null) {
             $expire = "0"; 
         }
         
@@ -607,10 +601,10 @@ class BanControl extends AppCore {
         );
         
         $where = array(
-            "id = ?" => $ban_id
+            "id = ?" => $banId
         );
         
-        $cachekey_user = sprintf(self::CACHE_KEY_USER, $ban_id);
+        $cachekey_user = sprintf(self::CACHE_KEY_USER, $banId);
         $this->Memcached->save($cachekey_user, false, $expire); 
         
         $this->db->update("bancontrol", $data, $where);
@@ -626,34 +620,33 @@ class BanControl extends AppCore {
      * @returns bool
      */
     
-    public function lookupIP($ip = false, $activeOnly = true) {
+    public function lookupIP($ipAddress = null, $activeOnly = null) {
         
-        if (!$ip) {
+        if (!filter_var($ipAddress, FILTER_VALIDATE_IP)) {
             throw new Exception("Cannot peform IP ban lookup - no IP address given"); 
             return false;
         }
         
-        return LookupUtility::lookup("ip", $ip, $activeOnly); 
+        return LookupUtility::lookup("ip", $ipAddress, $activeOnly); 
         
     }
     
     /**
      * Lookup IP user
      * @since Version 3.6
-     * @param string|bool $user_id
+     * @param string|bool $userId
      * @param boolean $activeOnly
      * @returns bool
      * @throws \Exception if no user ID is given
      */
     
-    public function lookupUser($user_id = false, $activeOnly = true) {
+    public function lookupUser($userId = null, $activeOnly = null) {
         
-        if (!$user_id) {
+        if ($userId == null) {
             throw new Exception("Cannot peform user ban lookup - no user ID given"); 
-            return false;
         }
         
-        return LookupUtility::lookup("user", $user_id, $activeOnly); 
+        return LookupUtility::lookup("user", $userId, $activeOnly); 
         
     }
     
@@ -666,58 +659,62 @@ class BanControl extends AppCore {
      * @throws \Exception if no IP address is given
      */
     
-    public function isIPBanned($ipaddr = false, $force = false) {
+    public function isIPBanned($ipAddress = null, $force = null) {
         
-        if (!$ipaddr) {
+        if (!filter_var($ipAddress, FILTER_VALIDATE_IP)) {
             throw new Exception("Cannot check for banned IP address because no or an invaild IP address was given");
         }
         
-        if ($force || empty($this->ip_addresses)) {
+        if ($force == true || empty($this->ip_addresses)) {
             $this->loadAll(); 
         }
         
-        return isset($this->ip_addresses[$ipaddr]);
+        return isset($this->ip_addresses[$ipAddress]);
         
     }
     
     /**
      * Check if user ID is banned
      * @since Version 3.9
-     * @param string|\Railpage\Users\User $user
+     * @param string|\Railpage\Users\User $userObject
      * @return boolean
      */
     
-    public function isUserBanned($user = NULL) {
+    public function isUserBanned($userObject = null) {
         
-        if (is_null($user) || (!$user instanceof User && !filter_var($user, FILTER_VALIDATE_INT))) {
+        if (is_null($userObject) || (!$userObject instanceof User && !filter_var($userObject, FILTER_VALIDATE_INT))) {
             return false;
         }
         
-        if ($user instanceof User) {
-            $user = $user->id;
+        if ($userObject instanceof User) {
+            $userObject = $userObject->id;
         }
         
         if (empty($this->users)) {
             $this->loadAll(); 
         }
         
-        return isset($this->users[$user]);
+        return isset($this->users[$userObject]);
         
     }
     
     /**
      * Check if the client is banned
      * @since Version 3.9.1
-     * @param int $user_id
-     * @param string $remote_addr
+     * @param int $userId
+     * @param string $remoteAddr
      * @param boolean $force
      * @return boolean
      */
     
-    public static function isClientBanned($user_id, $remote_addr, $force = false) {
+    public static function isClientBanned($userId, $remoteAddr, $force = null) {
         
-        if ($remote_addr == "58.96.64.238" || $user_id == 71317) {
+        if ($remoteAddr == "58.96.64.238" || $userId == 71317) {
             $force = true;
+        }
+        
+        if ($force == null) {
+            $force = false;
         }
         
         if (!$force && isset($_SESSION['isClientBanned'])) {
@@ -733,8 +730,8 @@ class BanControl extends AppCore {
             "banned" => false
         );
         
-        $cachekey_user = sprintf(self::CACHE_KEY_USER, $user_id);
-        $cachekey_addr = sprintf(self::CACHE_KEY_IP, $remote_addr); 
+        $cachekey_user = sprintf(self::CACHE_KEY_USER, $userId);
+        $cachekey_addr = sprintf(self::CACHE_KEY_IP, $remoteAddr); 
         
         $Memcached = AppCore::getMemcached(); 
         
@@ -774,7 +771,7 @@ class BanControl extends AppCore {
             $BanControl = new BanControl;
         }
         
-        if ($BanControl->isUserBanned($user_id)) {
+        if ($BanControl->isUserBanned($userId)) {
             $Memcached->save($cachekey_user, 1, strtotime("+5 weeks"));
              
             $_SESSION['isClientBanned']['banned'] = true;
@@ -782,7 +779,7 @@ class BanControl extends AppCore {
             return true;
         }
         
-        if ($BanControl->isIPBanned($remote_addr)) {
+        if ($BanControl->isIPBanned($remoteAddr)) {
             $Memcached->save($cachekey_user, 0, strtotime("+5 weeks")); 
             $Memcached->save($cachekey_addr, 1, strtotime("+5 weeks")); 
              
