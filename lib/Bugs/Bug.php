@@ -40,7 +40,7 @@ class Bug extends Bugs {
      * @param int $bug_id
      */
     
-    public function __construct($bug_id = false) {
+    public function __construct($bug_id = bull) {
         
         parent::__construct();
         

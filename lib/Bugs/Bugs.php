@@ -47,6 +47,7 @@ class Bugs extends AppCore {
      */
     
     public function fetch($url) {
+        
         $config = array(
             'adapter' => 'Zend\Http\Client\Adapter\Curl',
             'curloptions' => array(CURLOPT_FOLLOWLOCATION => true),
@@ -65,9 +66,10 @@ class Bugs extends AppCore {
             $response = json_decode($response, true);
             
             return $response;
-        } else {
-            throw new Exception("Could not fetch current issues from the bug tracker");
         }
+        
+        throw new Exception("Could not fetch current issues from the bug tracker");
+        
     }
     
     /**
@@ -86,5 +88,6 @@ class Bugs extends AppCore {
             echo $row['id'];
             yield new Bug($row['id']);
         }
+        
     }
 }
