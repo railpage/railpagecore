@@ -57,7 +57,7 @@ class Submenu extends AppCore {
      * @param string $subtitle A subtitle to apply to this category
      */
     
-    public function AddGrouping($title = false, $subtitle = NULL) {
+    public function AddGrouping($title = null, $subtitle = null) {
         if (empty(filter_var($title, FILTER_SANITIZE_STRING))) {
             throw new InvalidArgumentException("Cannot add menu grouping - no title given"); 
         }
@@ -70,8 +70,6 @@ class Submenu extends AppCore {
             );
         }
         
-        #$this->section = $title;
-        
         return $this;
     }
     
@@ -82,11 +80,14 @@ class Submenu extends AppCore {
      * @param string $subtitle The subtitle to apply to ths grouping/category
      */
     
-    public function SetGroupingSubtitle($grouping = false, $subtitle = false) {
-        if ($grouping && $subtitle) {
-            if (isset($this->menu[$grouping])) {
-                $this->menu[$grouping]['subtitle'] = $subtitle;
-            }
+    public function SetGroupingSubtitle($grouping = null, $subtitle = null) {
+        
+        if ($grouping == null || $subtitle == null) {
+            return;
+        }
+        
+        if (isset($this->menu[$grouping])) {
+            $this->menu[$grouping]['subtitle'] = $subtitle;
         }
     }
     
@@ -99,14 +100,14 @@ class Submenu extends AppCore {
      * @param array $meta An optional array of parameters to apply to this menu item
      */
     
-    public function Add($title = false, $url = false, $grouping = false, $meta = false) {
+    public function Add($title = null, $url = null, $grouping = null, $meta = null) {
         if (empty(filter_var($title, FILTER_SANITIZE_STRING))) {
             throw new InvalidArgumentException("Cannot add item to menu - no title given"); 
         }
         
         $i = count($this->menu); 
         
-        if ($grouping || (isset($this->section) && !empty($this->section))) {
+        if ($grouping != null || (isset($this->section) && !empty($this->section))) {
             
             if (isset($this->section) && !empty($this->section)) {
                 $grouping = $this->section;
@@ -126,23 +127,26 @@ class Submenu extends AppCore {
             
             $this->menu[$grouping]['menu'][$i]['title'] = $title; 
             
-            if ($url) {
+            if ($url != null) {
                 $this->menu[$grouping]['menu'][$i]['url'] = $url;
             }
             
-            if ($meta) {
+            if ($meta != null) {
                 $this->menu[$grouping]['menu'][$i]['meta'] = $meta;
             }
-        } else {
-            $this->menu[$i]['title'] = $title; 
             
-            if ($url) {
-                $this->menu[$i]['url'] = $url;
-            }
+            return $this;
             
-            if ($meta) {
-                $this->menu[$i]['meta'] = $meta;
-            }
+        }
+        
+        $this->menu[$i]['title'] = $title; 
+        
+        if ($url != null) {
+            $this->menu[$i]['url'] = $url;
+        }
+        
+        if ($meta != null) {
+            $this->menu[$i]['meta'] = $meta;
         }
         
         return $this;
@@ -154,7 +158,7 @@ class Submenu extends AppCore {
      * @return string
      */
     
-    public function GetURL($title = false) {
+    public function GetURL($title = null) {
         if (empty(filter_var($title, FILTER_SANITIZE_STRING))) {
             throw new InvalidArgumentException("Cannot return submenu URL - no title provided to look for");
         }
@@ -186,13 +190,15 @@ class Submenu extends AppCore {
      * @param string $section
      */
     
-    public function Section($title = NULL) {
+    public function Section($title = null) {
         if (isset($this->menu[$title])) {
             $this->section = $title;
-        } else {
-            $this->section = $title;
-            $this->AddGrouping($title);
+            
+            return $this;
         }
+        
+        $this->section = $title;
+        $this->AddGrouping($title);
         
         return $this;
     }
@@ -203,7 +209,7 @@ class Submenu extends AppCore {
      * @param string $section
      */
     
-    public function AddSection($title = NULL) {
+    public function AddSection($title = null) {
         return $this->AddGrouping($title);
     }
     
@@ -238,9 +244,10 @@ class Submenu extends AppCore {
         
         if (isset($this->section) && !empty($this->section)) {
             $this->menu[$this->section]['html'][] = $html;
-        } else {
-            $this->menu['html'][] = $html;
+            return;
         }
+        
+        $this->menu['html'][] = $html;
         
     }
 }

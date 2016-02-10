@@ -147,14 +147,18 @@ class Template extends Smarty {
      * @param string $media
      */
     
-    public function addStylesheet($stylesheet = false, $media = "all") {
-        if (!empty($stylesheet) && $stylesheet) {
-            $this->stylesheets[] = array(
-                "href" => $stylesheet,
-                "rel" => "stylesheet", 
-                "media" => $media
-            );
+    public function addStylesheet($stylesheet = null, $media = "all") {
+        
+        if ($stylesheet == null) {
+            return;
         }
+        
+        $this->stylesheets[] = array(
+            "href" => $stylesheet,
+            "rel" => "stylesheet", 
+            "media" => $media
+        );
+        
     }
     
     /**
@@ -178,7 +182,7 @@ class Template extends Smarty {
      * @param string $content
      */
     
-    public function addOpenGraphTag($property = false, $content = false) {
+    public function addOpenGraphTag($property = null, $content = null) {
         return $this->addMetaTag($property, $content);
     }
     
@@ -189,10 +193,14 @@ class Template extends Smarty {
      * @param string $content
      */
     
-    public function addMetaTag($property = false, $content = false) {
-        if ($property && $content && !empty($content) && !is_null($content)) {
-            $this->rp_meta_tags[$property] = $content;
+    public function addMetaTag($property = null, $content = null) {
+        
+        if ($property == null || $content == null) {
+            return;
         }
+        
+        $this->rp_meta_tags[$property] = $content;
+        
     }
     
     /**
@@ -202,10 +210,13 @@ class Template extends Smarty {
      * @param string $href
      */
     
-    public function addMetaLink($rel = false, $href = false) {
-        if ($rel && $href && !empty($href) && !is_null($href)) {
-            $this->head_links[$rel] = $href;
+    public function addMetaLink($rel = null, $href = null) {
+        
+        if ($rel == null || $href == null) {
+            return;
         }
+        
+        $this->head_links[$rel] = $href;
     }
     
     /**
@@ -553,13 +564,16 @@ class Template extends Smarty {
      * @return $this;
      */
     
-    public function prerender($url = false, $first = false) {
-        if ($url && !in_array($url, $this->preload['prerender'])) {
-            if ($first) {
+    public function prerender($url = null, $first = null) {
+        
+        if ($url =! null && !in_array($url, $this->preload['prerender'])) {
+            if ($first != null) {
                 array_unshift($this->preload['prerender'], $url); 
-            } else {
-                $this->preload['prerender'][] = $url;
+                return $this;
             }
+            
+            $this->preload['prerender'][] = $url;
+            
         }
         
         return $this;
@@ -573,13 +587,17 @@ class Template extends Smarty {
      * @return $this;
      */
     
-    public function prefetch($url = false, $first = false) {
-        if ($url && !in_array($url, $this->preload['prefetch'])) {
-            if ($first) {
+    public function prefetch($url = null, $first = null) {
+        
+        if ($url != null && !in_array($url, $this->preload['prefetch'])) {
+            if ($first != null) {
                 array_unshift($this->preload['prefetch'], $url);
-            } else {
-                $this->preload['prefetch'][] = $url;
+                
+                return $this;
             }
+            
+            $this->preload['prefetch'][] = $url;
+            
         }
         
         return $this;
