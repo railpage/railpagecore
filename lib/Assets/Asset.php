@@ -141,58 +141,59 @@ class Asset extends AppCore {
 
     private function load() {
 
-        if ($row = $this->db->fetchRow("SELECT * FROM asset WHERE id = ?", $this->id)) {
-            $this->hash = $row['hash'];
-            $this->type_id = $row['type_id'];
-            $this->meta = json_decode($row['meta'], true);
+        if (!$row = $this->db->fetchRow("SELECT * FROM asset WHERE id = ?", $this->id)) {
+            return;
+        }
+        
+        $this->hash = $row['hash'];
+        $this->type_id = $row['type_id'];
+        $this->meta = json_decode($row['meta'], true);
 
-            if (function_exists("get_domain")) {
-                $this->meta['domain'] = get_domain($this->meta['url']);
+        if (function_exists("get_domain")) {
+            $this->meta['domain'] = get_domain($this->meta['url']);
+        }
+
+        $this->url = new Url("/assets?id=" . $this->id);
+
+        foreach ($this->meta as $key => $val) {
+            if (is_string($val)) {
+                $this->meta[$key] = trim($val);
             }
 
-            $this->url = new Url("/assets?id=" . $this->id);
-
-            foreach ($this->meta as $key => $val) {
-                if (is_string($val)) {
-                    $this->meta[$key] = trim($val);
-                }
-
-                if (is_array($val)) {
-                    foreach ($val as $k => $v) {
-                        if (is_string($v)) {
-                            $this->meta[$key][$k] = trim($v);
-                        }
+            if (is_array($val)) {
+                foreach ($val as $k => $v) {
+                    if (is_string($v)) {
+                        $this->meta[$key][$k] = trim($v);
                     }
                 }
             }
+        }
 
-            /**
-             * Update the unique hash if we need to
-             */
+        /**
+         * Update the unique hash if we need to
+         */
 
-            if (empty( $this->hash )) {
-                $data = array(
-                    "hash" => md5($this->meta['url'])
-                );
+        if (empty( $this->hash )) {
+            $data = array(
+                "hash" => md5($this->meta['url'])
+            );
 
-                $where = array(
-                    "id = ?" => $this->id
-                );
+            $where = array(
+                "id = ?" => $this->id
+            );
 
-                $this->db->update("asset", $data, $where);
-            }
+            $this->db->update("asset", $data, $where);
+        }
 
-            /**
-             * Get uses/instances from the database
-             */
+        /**
+         * Get uses/instances from the database
+         */
 
-            foreach ($this->db->fetchAll("SELECT * FROM asset_link WHERE asset_id = ? ORDER BY date DESC",
-                $this->id) as $row) {
-                $this->instances[$row['asset_link_id']] = $row;
+        foreach ($this->db->fetchAll("SELECT * FROM asset_link WHERE asset_id = ? ORDER BY date DESC", $this->id) as $row) {
+            $this->instances[$row['asset_link_id']] = $row;
 
-                $this->Date = new DateTime($row['date']);
-                $this->User = UserFactory::CreateUser($row['user_id']);
-            }
+            $this->Date = new DateTime($row['date']);
+            $this->User = UserFactory::CreateUser($row['user_id']);
         }
     }
 
@@ -223,36 +224,37 @@ class Asset extends AppCore {
             );
 
             return $this->db->update("asset", $data, $where);
-        } else {
-
-            /**
-             * Check if the hash already exists in the database. If it does, we're just adding a new link to an existing asset
-             */
-
-            $asset_id = $this->db->fetchOne("SELECT id FROM asset WHERE hash = ?", md5($this->meta['url']));
-
-            if (filter_var($asset_id) && $asset_id > 0) {
-                // Asset exists - just populate the ID of this object
-                $this->id = $asset_id;
-            } else {
-                // Can't find the asset, so go ahead and create one
-                $this->db->insert("asset", $data);
-                $this->id = $this->db->lastInsertId();
-            }
-
-            /**
-             * Insert the link
-             */
-
-            $data = array(
-                "namespace"     => $this->namespace,
-                "namespace_key" => $this->namespace_key,
-                "asset_id"      => $this->id,
-                "user_id"       => $this->User->id
-            );
-
-            $this->db->insert("asset_link", $data);
         }
+        
+        /**
+         * Check if the hash already exists in the database. If it does, we're just adding a new link to an existing asset
+         */
+
+        $asset_id = $this->db->fetchOne("SELECT id FROM asset WHERE hash = ?", md5($this->meta['url']));
+
+        // Asset exists - just populate the ID of this object
+        if (filter_var($asset_id, FILTER_VALIDATE_INT)) {
+            $this->id = $asset_id;
+        }
+        
+        // Can't find the asset, so go ahead and create one
+        if (!filter_var($asset_id, FILTER_VALIDATE_INT)) {
+            $this->db->insert("asset", $data);
+            $this->id = $this->db->lastInsertId();
+        }
+
+        /**
+         * Insert the link
+         */
+
+        $data = array(
+            "namespace"     => $this->namespace,
+            "namespace_key" => $this->namespace_key,
+            "asset_id"      => $this->id,
+            "user_id"       => $this->User->id
+        );
+
+        $this->db->insert("asset_link", $data);
 
         return true; // throws an exception if any SQl queries fail
     }
