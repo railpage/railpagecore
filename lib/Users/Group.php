@@ -291,37 +291,36 @@ class Group extends Groups {
         $mckey = sprintf("railpage:group=%d", intval($this->id)); 
         $this->Redis->delete($mckey); 
         
-        if ($username && !$userId) {
-            $query = "SELECT user_id, username FROM nuke_users WHERE username = ? AND user_active = 1"; 
+        if ($username != null && !filter_var($userId, FILTER_VALIDATE_INT)) {
+            $query = "SELECT user_id FROM nuke_users WHERE username = ? AND user_active = 1"; 
             $params = [ $username ];
             
-            if ($row = $this->db->fetchRow($query, $params)) {
-                
-                $userId = $row['user_id']; 
-                
-                $data = [
-                    "group_id" => $this->id,
-                    "user_id" => $userId
-                ];
-                
-                if ($orgRole && $orgContact && $orgPerms) {
-                    $data = [
-                        "group_id" => $this->id,
-                        "user_id" => $userId,
-                        "organisation_role" => $orgRole,
-                        "organisation_contact" => $orgContact,
-                        "organisation_privileges" => $orgPerms
-                    ];
-                }
-                    
-                $this->db->insert("nuke_bbuser_group", $data); 
-                    
-                $this->updateUserGroupMembership($userId);
-                
-                return true;
+            $userId = $this->db->fetchOne($query, $params);
+            
+            if (!filter_var($userId, FILTER_VALIDATE_INT)) {
+                return false;
             }
             
-            return false;
+            $data = [
+                "group_id" => $this->id,
+                "user_id" => $userId
+            ];
+            
+            if ($orgRole != null && $orgContact != null && $orgPerms != null) {
+                $data = [
+                    "group_id" => $this->id,
+                    "user_id" => $userId,
+                    "organisation_role" => $orgRole,
+                    "organisation_contact" => $orgContact,
+                    "organisation_privileges" => $orgPerms
+                ];
+            }
+                
+            $this->db->insert("nuke_bbuser_group", $data); 
+                
+            $this->updateUserGroupMembership($userId);
+            
+            return true;
             
         }
         
@@ -346,8 +345,12 @@ class Group extends Groups {
     
     private function updateUserGroupMembership($userObject) {
         
+        if (filter_var($userObject, FILTER_VALIDATE_INT)) {
+            $userObject = new User($userObject); 
+        }
+        
         if (!$userObject instanceof User) {
-            $userObject = Factory::CreateUser($userObject); 
+            throw new Exception("No instance of \\Railpage\\Users\\User provided"); 
         }
         
         $mckey = sprintf("railpage:group=%d.user_id=%d", $this->id, $userObject->id);

@@ -1274,6 +1274,8 @@ class User extends Base {
 
             $this->createUrls();
         }
+        
+        $this->id = intval($this->id); 
 
         // Update the registry
         $Registry = Registry::getInstance();
@@ -1923,7 +1925,7 @@ class User extends Base {
      * @param boolean $force
      */
 
-    public function getGroups($force = false) {
+    public function getGroups($force = null) {
 
         if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
             return false;
@@ -1933,7 +1935,7 @@ class User extends Base {
 
         $this->groups = array();
 
-        if ($force === false && $this->groups = $this->Redis->fetch($mckey)) {
+        if ($force != true && $this->groups = $this->Redis->fetch($mckey)) {
             return $this->groups;
         }
 
@@ -1941,7 +1943,7 @@ class User extends Base {
 
         $this->groups = array();
 
-        if ($result = $this->db->fetchAll($query, $this->id)) {
+        if ($result = $this->db->fetchAll($query, intval($this->id))) {
 
             foreach ($result as $row) {
                 #if (!in_array($row['group_id'], $this->groups)) {
@@ -1964,11 +1966,11 @@ class User extends Base {
      * @param int $limit
      */
 
-    public function getWatchedThreads($page = 1, $limit = false) {
+    public function getWatchedThreads($page = 1, $limit = null) {
 
         // Assume Zend_Db
 
-        if (!$limit) {
+        if (!filter_var($limit, FILTER_VALIDATE_INT)) {
             $limit = $this->items_per_page;
         }
 
