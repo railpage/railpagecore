@@ -1,68 +1,68 @@
 <?php
-    /** 
-     * An object representing a decade in the Chronicle
-     * @since Version 3.9
-     * @package Railpage
-     * @author Michael Greenhill
-     */
-    
-    namespace Railpage\Chronicle;
-    
-    use Railpage\Url;
-    use Railpage\Users\User;
-    use Railpage\Place;
-    use Railpage\Module;
-    use Exception;
-    use DateTime;
-    use Zend_Db_Expr;
+
+/** 
+ * An object representing a decade in the Chronicle
+ * @since Version 3.9
+ * @package Railpage
+ * @author Michael Greenhill
+ */
+
+namespace Railpage\Chronicle;
+
+use Railpage\Url;
+use Railpage\Users\User;
+use Railpage\Place;
+use Railpage\Module;
+use Exception;
+use DateTime;
+use Zend_Db_Expr;
+
+/**
+ * Decade
+ */
+
+class Decade extends Chronicle {
     
     /**
-     * Decade
+     * The starting year of this decade
+     * @since Version 3.9
+     * @var int $decade
      */
     
-    class Decade extends Chronicle {
+    public $decade;
+    
+    /**
+     * Constructor
+     * @since Version 3.9
+     * @param int $decade
+     */
+    
+    public function __construct($decade = false) {
         
-        /**
-         * The starting year of this decade
-         * @since Version 3.9
-         * @var int $decade
-         */
+        parent::__construct(); 
         
-        public $decade;
-        
-        /**
-         * Constructor
-         * @since Version 3.9
-         * @param int $decade
-         */
-        
-        public function __construct($decade = false) {
+        if ($decade != false) {
+            $decade = floor($decade / 10) * 10;
             
-            parent::__construct(); 
-            
-            if ($decade != false) {
-                $decade = floor($decade / 10) * 10;
-                
-                if (checkdate(1, 1, $decade)) {
-                    $this->decade = $decade;
-                }
-            }
-        }
-        
-        /**
-         * Get events from this decade
-         * @since Version 3.9
-         */
-        
-        public function yieldEntries() {
-            $query = "SELECT id FROM chronicle_item WHERE date BETWEEN ? AND ?";
-            
-            $decadeStart = $this->decade . "-01-01"; 
-            $decadeEnd = $this->decade + 9 . "-12-31";
-            
-            foreach ($this->db->fetchAll($query, array($decadeStart, $decadeEnd)) as $row) {
-                yield new Entry($row['id']);
+            if (checkdate(1, 1, $decade)) {
+                $this->decade = $decade;
             }
         }
     }
     
+    /**
+     * Get events from this decade
+     * @since Version 3.9
+     */
+    
+    public function yieldEntries() {
+        $query = "SELECT id FROM chronicle_item WHERE date BETWEEN ? AND ?";
+        
+        $decadeStart = $this->decade . "-01-01"; 
+        $decadeEnd = $this->decade + 9 . "-12-31";
+        
+        foreach ($this->db->fetchAll($query, array($decadeStart, $decadeEnd)) as $row) {
+            yield new Entry($row['id']);
+        }
+    }
+}
