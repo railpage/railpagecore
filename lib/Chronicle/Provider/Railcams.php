@@ -34,24 +34,32 @@ class Railcams extends Chronicle implements ProviderInterface {
     /**
      * Get events from a given date range
      * @since Version 3.9
-     * @param \DateTime $From
-     * @param \DateTime $To
+     * @param \DateTime $dateFrom
+     * @param \DateTime $dateTo
      * @return \Railpage\Chronicle\Entry
      * @yield \Railpage\Chronicle\Entry
      */
     
-    public function getEventsForDates($From = false, $To = false) {
+    public function getEventsForDates($dateFrom = null, $dateTo = null) {
         
         $events = array(); 
         
         $Railcams = new Module_Railcams;
         
+        if (!$dateFrom instanceof DateTime) {
+            throw new Exception("dateFrom is not an instance of \DateTime"); 
+        }
+        
+        if (!$dateTo instanceof DateTime) {
+            throw new Exception("dateTo is not an instance of \DateTime"); 
+        }
+        
         foreach ($Railcams->getTaggedPhotos() as $photo) {
             $Camera = new Camera($photo['railcam_id']);
             $Photo = $Camera->getPhoto($photo['photo_id']);
             
-            if ($From instanceof DateTime && $Photo->dates['taken'] >= $From &&
-                $To instanceof DateTime && $Photo->dates['taken'] <= $To) {
+            if ($dateFrom instanceof DateTime && $Photo->dates['taken'] >= $dateFrom &&
+                $dateTo instanceof DateTime && $Photo->dates['taken'] <= $dateTo) {
                     
                 $Loco = new Locomotive($photo['loco_id']);
                     
@@ -83,48 +91,48 @@ class Railcams extends Chronicle implements ProviderInterface {
     /**
      * Get events from a given date
      * @since Version 3.9
-     * @param \DateTime $Date
+     * @param \DateTime $dateObject
      * @return \Railpage\Chronicle\Entry
      * @yield \Railpage\Chronicle\Entry
      */
     
-    public function getEventsForDate($Date) {
+    public function getEventsForDate($dateObject) {
         
     }
     
     /**
      * Get events from the week surrounding the given date
      * @since Version 3.9
-     * @param \DateTime $Date
+     * @param \DateTime $dateObject
      * @return \Railpage\Chronicle\Entry
      * @yield \Railpage\Chronicle\Entry
      */
     
-    public function getEventsForWeek($Date) {
+    public function getEventsForWeek($dateObject) {
         
     }
     
     /**
      * Get events from the month surrounding the given date
      * @since Version 3.9
-     * @param \DateTime $Date
+     * @param \DateTime $dateObject
      * @return \Railpage\Chronicle\Entry
      * @yield \Railpage\Chronicle\Entry
      */
     
-    public function getEventsForMonth($Date) {
+    public function getEventsForMonth($dateObject) {
         
     }
     
     /**
      * Get events from the year surrounding the given date
      * @since Version 3.9
-     * @param \DateTime $Date
+     * @param \DateTime $dateObject
      * @return \Railpage\Chronicle\Entry
      * @yield \Railpage\Chronicle\Entry
      */
     
-    public function getEventsForYear($Date) {
+    public function getEventsForYear($dateObject) {
         
     }
 }

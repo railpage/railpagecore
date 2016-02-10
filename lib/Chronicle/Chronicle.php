@@ -71,13 +71,13 @@ class Chronicle extends AppCore {
      * Get events for a date
      * @since Version 3.8.7
      * @return array
-     * @param \DateTime $Date
+     * @param \DateTime $dateObject
      */
     
-    public function getEntriesForDate($Date = false) {
+    public function getEntriesForDate($dateObject = null) {
         
-        if (!$Date || !$Date instanceof DateTime) {
-            $Date = new DateTime;
+        if (!$dateObject instanceof DateTime) {
+            $dateObject = new DateTime;
         }
         
         $query = "
@@ -86,7 +86,7 @@ class Chronicle extends AppCore {
             ) AS items
             WHERE `date` = ?";
         
-        return $this->db->fetchAll($query, $Date->Format("Y-m-d")); 
+        return $this->db->fetchAll($query, $dateObject->Format("Y-m-d")); 
         
     }
     
@@ -96,7 +96,7 @@ class Chronicle extends AppCore {
      * @return array
      */
     
-    public function getEntriesForToday($limit = false) {
+    public function getEntriesForToday($limit = 100) {
         
         $Date = new DateTime;
         

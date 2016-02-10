@@ -37,14 +37,16 @@ class Year extends Chronicle {
      * @param int $year
      */
     
-    public function __construct($year = false) {
+    public function __construct($year = null) {
         
         parent::__construct(); 
         
-        if ($year != false) {
-            if (checkdate(1, 1, $year)) {
-                $this->year = $year;
-            }
+        if ($year == null) {
+            return;
+        }
+        
+        if (checkdate(1, 1, $year)) {
+            $this->year = $year;
         }
     }
     

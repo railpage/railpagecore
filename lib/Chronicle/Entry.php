@@ -133,35 +133,37 @@ class Entry extends Chronicle {
      * @param int $id
      */
     
-    public function __construct($id = false) {
+    public function __construct($id = null) {
         
         parent::__construct(); 
         
-        if (filter_var($id, FILTER_VALIDATE_INT)) {
-            $this->id = $id;
+        if (!filter_var($id, FILTER_VALIDATE_INT)) {
+            return;
+        }
+        
+        $this->id = $id;
+        
+        $query = "SELECT id, status, date, type_id, blurb, text, X(point) as lat, Y(point) AS lon, user_id, meta FROM chronicle_item WHERE id = ?";
+        
+        if ($row = $this->db->fetchRow($query, $this->id)) {
+            $this->status = $row['status'];
+            $this->blurb = $row['blurb'];
+            $this->text = $row['text'];
+            $this->Date = new DateTime($row['date']);
+            $this->lat = $row['lat'];
+            $this->lon = $row['lon'];
+            $this->Author = new User($row['user_id']);
+            $this->meta = json_decode($row['meta'], true);
             
-            $query = "SELECT id, status, date, type_id, blurb, text, X(point) as lat, Y(point) AS lon, user_id, meta FROM chronicle_item WHERE id = ?";
-            
-            if ($row = $this->db->fetchRow($query, $this->id)) {
-                $this->status = $row['status'];
-                $this->blurb = $row['blurb'];
-                $this->text = $row['text'];
-                $this->Date = new DateTime($row['date']);
-                $this->lat = $row['lat'];
-                $this->lon = $row['lon'];
-                $this->Author = new User($row['user_id']);
-                $this->meta = json_decode($row['meta'], true);
-                
-                if (filter_var($row['type_id']) && $row['type_id'] > 0) {
-                    $this->EntryType = new EntryType($row['type_id']);
-                }
-                
-                if (filter_var($this->lat, FILTER_VALIDATE_FLOAT) && filter_var($this->lon, FILTER_VALIDATE_FLOAT)) {
-                    $this->Place = new Place($this->lat, $this->lon);
-                }
-                
-                $this->makeURLs();
+            if (filter_var($row['type_id']) && $row['type_id'] > 0) {
+                $this->EntryType = new EntryType($row['type_id']);
             }
+            
+            if (filter_var($this->lat, FILTER_VALIDATE_FLOAT) && filter_var($this->lon, FILTER_VALIDATE_FLOAT)) {
+                $this->Place = new Place($this->lat, $this->lon);
+            }
+            
+            $this->makeURLs();
         }
     }
     
@@ -172,6 +174,7 @@ class Entry extends Chronicle {
      */
     
     public function makeURLs() {
+        
         $baseurl = sprintf("%s?id=%d", $this->Module->url, $this->id);
         
         $this->url = new Url(sprintf("%s&mode=%s", $baseurl, "entry.view"));
@@ -180,6 +183,7 @@ class Entry extends Chronicle {
         $this->url->delete = sprintf("%s&mode=%s", $baseurl, "entry.delete");
         $this->url->year = sprintf("%s?year=%d", $this->Module->url, $this->Date->format("Y"));
         $this->url->decade = sprintf("%s?decade=%d", $this->Module->url, substr($this->Date->format("Y"), 0, 3) . "0");
+        
     }
     
     /**
@@ -262,11 +266,13 @@ class Entry extends Chronicle {
             );
             
             $this->db->update("chronicle_item", $data, $where); 
-        } else {
-            $this->db->insert("chronicle_item", $data); 
-            $this->id = $this->db->lastInsertId(); 
-            $this->makeURLs();
+            
+            return $this;
         }
+        
+        $this->db->insert("chronicle_item", $data); 
+        $this->id = $this->db->lastInsertId(); 
+        $this->makeURLs();
         
         return $this;
     }
@@ -296,7 +302,7 @@ class Entry extends Chronicle {
         $query = "SELECT id FROM chronicle_link WHERE id = ? AND object = ? AND object_id = ?";
         $params = array($this->id, get_class($object), $object->id);
         
-        if (!$id = $this->db->fetchOne($query, $params)) {
+        if (!$this->db->fetchOne($query, $params)) {
             $data = array(
                 "object" => get_class($object),
                 "object_id" => $object->id,

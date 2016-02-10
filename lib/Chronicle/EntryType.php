@@ -73,20 +73,23 @@ class EntryType extends Chronicle {
      * @param int $id
      */
     
-    public function __construct($id = false) {
+    public function __construct($id = null) {
         
         parent::__construct(); 
         
-        if (filter_var($id, FILTER_VALIDATE_INT)) {
-            $this->id = $id;
-            
-            $query = "SELECT * FROM chronicle_type WHERE id = ?";
-            
-            if ($row = $this->db->fetchRow($query, $this->id)) {
-                $this->text = $row['text'];
-                $this->group = $row['grouping'];
-            }
+        if (!filter_var($id, FILTER_VALIDATE_INT)) {
+            return;
         }
+        
+        $this->id = $id;
+        
+        $query = "SELECT * FROM chronicle_type WHERE id = ?";
+        
+        if ($row = $this->db->fetchRow($query, $this->id)) {
+            $this->text = $row['text'];
+            $this->group = $row['grouping'];
+        }
+        
     }
     
     /**
@@ -128,10 +131,13 @@ class EntryType extends Chronicle {
             );
             
             $this->db->update("chronicle_type", $data, $where);
-        } else {
-            $this->db->insert("chronicle_type", $data);
-            $this->id = $this->db->lastInsertId();
+            
+            return $this;
+            
         }
+        
+        $this->db->insert("chronicle_type", $data);
+        $this->id = $this->db->lastInsertId();
         
         return $this;
     }

@@ -37,16 +37,18 @@ class Decade extends Chronicle {
      * @param int $decade
      */
     
-    public function __construct($decade = false) {
+    public function __construct($decade = null) {
         
         parent::__construct(); 
         
-        if ($decade != false) {
-            $decade = floor($decade / 10) * 10;
-            
-            if (checkdate(1, 1, $decade)) {
-                $this->decade = $decade;
-            }
+        if ($decade == null) {
+            return;
+        }
+        
+        $decade = floor($decade / 10) * 10;
+        
+        if (checkdate(1, 1, $decade)) {
+            $this->decade = $decade;
         }
     }
     
@@ -56,6 +58,7 @@ class Decade extends Chronicle {
      */
     
     public function yieldEntries() {
+        
         $query = "SELECT id FROM chronicle_item WHERE date BETWEEN ? AND ?";
         
         $decadeStart = $this->decade . "-01-01"; 
@@ -64,5 +67,6 @@ class Decade extends Chronicle {
         foreach ($this->db->fetchAll($query, array($decadeStart, $decadeEnd)) as $row) {
             yield new Entry($row['id']);
         }
+        
     }
 }
