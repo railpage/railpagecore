@@ -1,60 +1,60 @@
 <?php
+
+/**
+ * Bug reporting code
+ * @since Version 3.8.7
+ * @package Railpage
+ * @author Michael Greenhill
+ */
+
+namespace Railpage\Bugs;
+
+use Exception;
+use DateTime;
+
+/**
+ * Bug
+ */
+
+class Bug extends Bugs {
+    
     /**
-     * Bug reporting code
+     * Bug ID
      * @since Version 3.8.7
-     * @package Railpage
-     * @author Michael Greenhill
+     * @var int $id
      */
     
-    namespace Railpage\Bugs;
-    
-    use Exception;
-    use DateTime;
+    public $id;
     
     /**
-     * Bug
+     * Bug title
+     * @since Version 3.8.7
+     * @var string $title
      */
     
-    class Bug extends Bugs {
+    public $title;  
+    
+    /**
+     * Constructor
+     * @since Version 3.8.7
+     * @param int $bug_id
+     */
+    
+    public function __construct($bug_id = false) {
         
-        /**
-         * Bug ID
-         * @since Version 3.8.7
-         * @var int $id
-         */
+        parent::__construct();
         
-        public $id;
-        
-        /**
-         * Bug title
-         * @since Version 3.8.7
-         * @var string $title
-         */
-        
-        public $title;  
-        
-        /**
-         * Constructor
-         * @since Version 3.8.7
-         * @param int $bug_id
-         */
-        
-        public function __construct($bug_id = false) {
+        if (filter_var($bug_id, FILTER_VALIDATE_INT)) {
             
-            parent::__construct();
+            $url = self::REDMINE_URL . "/issues.json?id=" . $bug_id;
             
-            if (filter_var($bug_id, FILTER_VALIDATE_INT)) {
-                
-                $url = self::REDMINE_URL . "/issues.json?id=" . $bug_id;
-                
-                echo $url;
-                
-                #$response = $this->fetch($url);
-                
-                #printArray($response);
-                
-            }
+            echo $url;
+            
+            #$response = $this->fetch($url);
+            
+            #printArray($response);
             
         }
+        
     }
-    
+}
