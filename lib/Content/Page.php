@@ -103,7 +103,7 @@ class Page extends Content {
      * @param int|string $id
      */
     
-    public function __construct($id = false) {
+    public function __construct($id = null) {
         
         parent::__construct();
         
@@ -129,7 +129,6 @@ class Page extends Content {
     public function fetch() {
         if (!$this->id) {
             throw new Exception("Cannot fetch page - no page ID given"); 
-            return false;
         }
         
         if (!$row = getMemcacheObject($this->mckey)) {
