@@ -51,9 +51,10 @@ class Groups extends AppCore {
     /**
      * List all groups
      * @since Version 3.5
+     * @param int $maxLevel
      */
     
-    public function getGroups($max_level = 0) {
+    public function getGroups($maxLevel = 0) {
         $query = "SELECT g.group_id AS id, g.organisation_id, g.group_name AS name, g.group_type AS type, g.group_description AS description, 
                     g.group_attrs, g.group_moderator AS owner_user_id, u.username AS owner_username 
                 FROM nuke_bbgroups AS g 
@@ -63,7 +64,7 @@ class Groups extends AppCore {
         
         $return = array(); 
         
-        foreach ($this->db->fetchAll($query, $max_level) as $row) {
+        foreach ($this->db->fetchAll($query, $maxLevel) as $row) {
             $row['group_attrs'] = !empty($row['group_attrs']) ? json_decode($row['group_attrs'], true) : array();
             
             if (filter_var($row['organisation_id'], FILTER_VALIDATE_INT)) {

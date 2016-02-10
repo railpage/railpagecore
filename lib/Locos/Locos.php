@@ -414,12 +414,12 @@ class Locos extends AppCore {
      * @version 3.10.0
      * @return array
      * @param boolean $force Ignore Memcached and force refresh this list
-     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listWheelArrangements()
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::getWheelArrangements()
      */
     
     public function listWheelArrangements($force = null) {
         
-        return Lister::listWheelArrangements($force); 
+        return Lister::getWheelArrangements($force); 
         
     }
     
@@ -429,12 +429,12 @@ class Locos extends AppCore {
      * @version 3.10.0
      * @return array
      * @param boolean $force Ignore Memcached and force refresh this list
-     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listManufacturers()
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::getManufacturers()
      */
     
     public function listManufacturers($force = null) {
         
-        return Lister::listManufacturers($force); 
+        return Lister::getManufacturers($force); 
         
     }
     
@@ -443,12 +443,12 @@ class Locos extends AppCore {
      * @since Version 3.2
      * @version 3.10.0
      * @return array
-     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listTypes()
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::getTypes()
      */
     
     public function listTypes() {
         
-        return Lister::listTypes(); 
+        return Lister::getTypes(); 
         
     }
     
@@ -457,12 +457,12 @@ class Locos extends AppCore {
      * @since Version 3.2
      * @version 3.10.0
      * @return array
-     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listStatus()
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::getStatus()
      */
     
     public function listStatus() {
         
-        return Lister::listStatus(); 
+        return Lister::getStatus(); 
         
     }
     
@@ -471,12 +471,12 @@ class Locos extends AppCore {
      * @since Version 3.2
      * @version 3.10.0
      * @return array
-     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listYears()
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::getYears()
      */
     
     public function listyears() {
         
-        return Lister::listYears(); 
+        return Lister::getYears(); 
         
     }
     
@@ -485,12 +485,12 @@ class Locos extends AppCore {
      * @since Version 3.2
      * @version 3.10.0
      * @return array
-     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listOperators()
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::getOperators()
      */
     
     public function listOperators() {
         
-        return Lister::listOperators(); 
+        return Lister::getOperators(); 
         
     }
             
@@ -499,12 +499,12 @@ class Locos extends AppCore {
      * @since Version 3.2
      * @version 3.10.0
      * @return array
-     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listOperators()
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::getOperators()
      */
     
     public function listAllLocos() {
         
-        return Lister::listAllLocos(); 
+        return Lister::getAllLocos(); 
         
     }
     
@@ -512,12 +512,12 @@ class Locos extends AppCore {
      * List all liveries
      * @since Version 3.2
      * @return array
-     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listLiveries()
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::getLiveries()
      */
     
     public function listLiveries() {
         
-        return Lister::listLiveries(); 
+        return Lister::getLiveries(); 
         
     }
     
@@ -525,12 +525,12 @@ class Locos extends AppCore {
      * Get loco gauges
      * @since Version 3.4
      * @return array
-     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listGauges()
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::getGauges()
      */
     
     public function listGauges() {
        
-        return Lister::listGauges(); 
+        return Lister::getGauges(); 
         
     }
     
@@ -538,12 +538,12 @@ class Locos extends AppCore {
      * List all organisation types
      * @since Version 3.4
      * @return array
-     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listOrgLinkTypes()
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::getOrgLinkTypes()
      */
     
     public function listOrgLinkTypes() {
         
-        return Lister::listOrgLinkTypes(); 
+        return Lister::getOrgLinkTypes(); 
         
     }
     
@@ -551,12 +551,12 @@ class Locos extends AppCore {
      * List production models
      * @since Version 3.4
      * @return array
-     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listModels()
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::getModels()
      */
     
     public function listModels() {
         
-        return Lister::listModels(); 
+        return Lister::getModels(); 
         
     }
     
@@ -564,12 +564,12 @@ class Locos extends AppCore {
      * List locomotive groupings
      * @since Version 3.5
      * @return array
-     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::listGroupings()
+     * @todo Remove this helper function, redirect all frontend code to \Railpage\Locos\Lister::getGroupings()
      */
     
     public function listGroupings() {
         
-        return Lister::listGroupings(); 
+        return Lister::getGroupings(); 
         
     }
     

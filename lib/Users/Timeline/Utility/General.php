@@ -20,7 +20,7 @@ class General {
      * @return string
      */
     
-    static public function getModuleNamespace($row) {
+    public static function getModuleNamespace($row) {
         
         $Module = new Module($row['module']);
         
@@ -35,7 +35,7 @@ class General {
      * @return string
      */
     
-    static public function compactEvents($row) {
+    public static function compactEvents($row) {
         
         foreach ($row['event'] as $k => $v) {
             if (empty($v)) {
@@ -54,7 +54,7 @@ class General {
      * @return string
      */
     
-    static public function getIcon($row) {
+    public static function getIcon($row) {
         
         $lookup = array(
             "edited" => "pencil",
@@ -92,7 +92,7 @@ class General {
      * @return array
      */
     
-    static public function formatObject($row) {
+    public static function formatObject($row) {
         if ($row['module'] == "locos" && $row['event']['object'] == "class") {
             $row['event']['object'] = "locomotive class";
             

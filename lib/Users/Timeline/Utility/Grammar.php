@@ -32,7 +32,7 @@ class Grammar {
      * @return string
      */
     
-    static public function getPrepositionTo($row) {
+    public static function getPrepositionTo($row) {
         if (preg_match("@(added|add|linked)@Di", $row['event']['action']) && preg_match("@(locos)@Di", $row['module'])) {
             $row['event']['preposition'] = "to";
         }
@@ -47,7 +47,7 @@ class Grammar {
      * @return string
      */
     
-    static public function getPrepositionFrom($row) {
+    public static function getPrepositionFrom($row) {
         if (preg_match("@(removed)@Di", $row['title'])) {
             $row['event']['preposition'] = "from";
         }
@@ -66,7 +66,7 @@ class Grammar {
      * @return string
      */
     
-    static public function getPrepositionOf($row) {
+    public static function getPrepositionOf($row) {
         if (preg_match("@(correction|re-ordered|sorted|sort|tagged|tag|changed|modified)@Di", $row['title'])) {
             $row['event']['preposition'] = "of";
         }
@@ -81,7 +81,7 @@ class Grammar {
      * @return string
      */
     
-    static public function getPrepositionIn($row) {
+    public static function getPrepositionIn($row) {
         if (preg_match("@(added|add|edited|edit|deleted|delete|rejected|reject|created|create)@Di", $row['title']) && preg_match("@(forums|news)@Di", $row['module'])) {
             $row['event']['preposition'] = "in";
         }
@@ -96,7 +96,7 @@ class Grammar {
      * @return string
      */
     
-    static public function getAction($row) {
+    public static function getAction($row) {
         if (preg_match("@(favourited|suggested|ignored|accepted|closed|commented|removed|re-ordered|edited|edit|added|add|sorted|sort|deleted|delete|rejected|reject|tagged|tag|changed|modified|linked|created|create)@Di", $row['title'], $matches)) {
             $row['event']['action'] = strtolower($matches[1]);
         }
@@ -111,7 +111,7 @@ class Grammar {
      * @return string
      */
     
-    static public function getObject($row) {
+    public static function getObject($row) {
         if (preg_match("@(idea|suggestion|correction|sighting|date|post|thread|digital asset|loco photo|loco class|loco|class|location|grouping|owners|owner|operators|operator|article|story|topic|railcam photo|photo|railcam|download|event|calendar|image)@Di", $row['title'], $matches)) {
             $row['event']['object'] = strtolower($matches[1]);
         }
@@ -126,7 +126,7 @@ class Grammar {
      * @return string
      */
     
-    static public function getArticle_OfIn($row) {
+    public static function getArticle_OfIn($row) {
         if ($row['event']['preposition'] == "of") {
             $row['event']['article'] = "the";
         }
@@ -145,7 +145,7 @@ class Grammar {
      * @return string
      */
     
-    static public function getArticle_AnA($row) {
+    public static function getArticle_AnA($row) {
         
         if (preg_match("@(correction|date|post|thread|digital asset|loco|class|location|story|topic|railcam photo|photo|railcam|download)@Di", $row['event']['object'], $matches)) {
             if (!($matches[1] == "loco" && $row['event']['action'] == "edited")) {
@@ -168,7 +168,7 @@ class Grammar {
      * @return array
      */
     
-    static public function getArticle_The($row) {
+    public static function getArticle_The($row) {
         if (preg_match("@(cover photo)@Di", $row['event']['object'], $matches)) {
             $row['event']['article'] = "the";
         }

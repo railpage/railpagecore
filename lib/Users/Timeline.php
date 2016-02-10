@@ -31,23 +31,26 @@ class Timeline extends AppCore {
     /**
      * Extract a user's timeline 
      * @since Version 3.9.1
-     * @param \DateTime|int $DateFrom
-     * @param \DateTime|int $DateTo
+     * @param \DateTime|int $dateFrom
+     * @param \DateTime|int $dateTo
      * @return array
      */
     
-    public function GenerateTimeline($DateFrom, $DateTo) {
+    public function GenerateTimeline($dateFrom, $dateTo) {
+        
+        $page = false;
+        $items_per_page = false;
         
         if (!$this->User instanceof User) {
             throw new InvalidArgumentException("No user object has been provided (hint: " . __CLASS__ . "::setUser(\$User))"); 
         }
         
-        if (filter_var($DateFrom, FILTER_VALIDATE_INT)) {
-            $page = $DateFrom;
+        if (filter_var($dateFrom, FILTER_VALIDATE_INT)) {
+            $page = $dateFrom;
         }
         
-        if (filter_var($DateTo, FILTER_VALIDATE_INT)) {
-            $items_per_page = $DateTo;
+        if (filter_var($dateTo, FILTER_VALIDATE_INT)) {
+            $items_per_page = $dateTo;
         }
         
         /**
@@ -65,13 +68,15 @@ class Timeline extends AppCore {
                 $offset, 
                 $items_per_page
             );
-        } else {
+        }
+        
+        if (!$page || !$items_per_page) {
             $query = "SELECT SQL_CALC_FOUND_ROWS * FROM log_general WHERE user_id = ? " . $forum_post_filter . " AND timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC";
             
             $params = array(
                 $this->User->id, 
-                $DateFrom->format("Y-m-d H:i:s"), 
-                $DateTo->format("Y-m-d H:i:s")
+                $dateFrom->format("Y-m-d H:i:s"), 
+                $dateTo->format("Y-m-d H:i:s")
             );
         }
         
@@ -83,9 +88,11 @@ class Timeline extends AppCore {
             if ($page && $items_per_page) {
                 $timeline['page'] = $page;
                 $timeline['perpage'] = $items_per_page;
-            } else {
-                $timeline['start'] = $DateFrom->format("Y-m-d H:i:s");
-                $timeline['end'] = $DateTo->format("Y-m-d H:i:s");
+            }
+            
+            if (!$page || !$items_per_page) {
+                $timeline['start'] = $dateFrom->format("Y-m-d H:i:s");
+                $timeline['end'] = $dateTo->format("Y-m-d H:i:s");
             }
             
             $timeline['total'] = $this->db->fetchOne("SELECT FOUND_ROWS() AS total"); 
@@ -102,84 +109,80 @@ class Timeline extends AppCore {
          * Process the timeline data
          */
         
-        if (isset($timeline['timeline'])) {
-            foreach ($timeline['timeline'] as $key => $row) {
-                
-                // Set their timezone
-                $row['timestamp']->setTimezone(new DateTimeZone($this->User->timezone));
-                
-                #$relative_cutoff = new DateTime("12 hours ago", new DateTimeZone($this->User->timezone));
-                #$moments_ago = new DateTime("60 seconds ago", new DateTimeZone($this->User->timezone)); 
-                #$minutes_ago = new DateTime("60 minutes ago", new DateTimeZone($this->User->timezone));
-                
-                if (stristr($row['title'], "loco") && empty($row['module'])) {
-                    $row['module'] = "locos";
-                }
-                
-                /**
-                 * Check if the meta data array exists
-                 */
-                
-                if (!isset($row['meta'])) {
-                    if (!isset($row['meta'])) {
-                        $row['meta'] = array(
-                            "id" => NULL,
-                            "namespace" => NULL
-                        ); 
-                    }
-                }
-                
-                /**
-                 * Format our data for grammatical and sentence structural purposes
-                 */
-                
-                $row = $this->processGrammar($row); 
-                
-                /**
-                 * Alter the object if needed
-                 */
-                
-                $row = Timeline\Utility\General::formatObject($row);
-                
-                /**
-                 * Set the module namespace
-                 */
-                
-                
-                $row['meta']['namespace'] = Timeline\Utility\General::getModuleNamespace($row);
-                
-                /**
-                 * Attempt to create a link to this object or action if none exists
-                 */
-                
-                $row['meta']['url'] = Timeline\Utility\Url::createUrl($row);
-                
-                /**
-                 * Attempt to create a meta object title for this object or action if none exists
-                 */
-                
-                $row = Timeline\Utility\ObjectTitle::generateTitle($row); 
-                
-                /**
-                 * Compact it all together and create a succinct message
-                 */
-                
-                $row['action'] = Timeline\Utility\General::compactEvents($row); 
-                
-                /**
-                 * Create the timestamp
-                 */
-                
-                $row['timestamp_nice'] = ContentUtility::relativeTime($row['timestamp']);
-                
-                /**
-                 * Determine the icon
-                 */
-                
-                $row['glyphicon'] = Timeline\Utility\General::getIcon($row); 
-                
-                $timeline['timeline'][$key] = $row;
+        if (!isset($timeline['timeline'])) {
+            return $timeline;
+        }
+        
+        foreach ($timeline['timeline'] as $key => $row) {
+            
+            // Set their timezone
+            $row['timestamp']->setTimezone(new DateTimeZone($this->User->timezone));
+            
+            if (stristr($row['title'], "loco") && empty($row['module'])) {
+                $row['module'] = "locos";
             }
+            
+            /**
+             * Check if the meta data array exists
+             */
+            
+            if (!isset($row['meta'])) {
+                $row['meta'] = array(
+                    "id" => NULL,
+                    "namespace" => NULL
+                ); 
+            }
+            
+            /**
+             * Format our data for grammatical and sentence structural purposes
+             */
+            
+            $row = $this->processGrammar($row); 
+            
+            /**
+             * Alter the object if needed
+             */
+            
+            $row = Timeline\Utility\General::formatObject($row);
+            
+            /**
+             * Set the module namespace
+             */
+            
+            
+            $row['meta']['namespace'] = Timeline\Utility\General::getModuleNamespace($row);
+            
+            /**
+             * Attempt to create a link to this object or action if none exists
+             */
+            
+            $row['meta']['url'] = Timeline\Utility\Url::createUrl($row);
+            
+            /**
+             * Attempt to create a meta object title for this object or action if none exists
+             */
+            
+            $row = Timeline\Utility\ObjectTitle::generateTitle($row); 
+            
+            /**
+             * Compact it all together and create a succinct message
+             */
+            
+            $row['action'] = Timeline\Utility\General::compactEvents($row); 
+            
+            /**
+             * Create the timestamp
+             */
+            
+            $row['timestamp_nice'] = ContentUtility::relativeTime($row['timestamp']);
+            
+            /**
+             * Determine the icon
+             */
+            
+            $row['glyphicon'] = Timeline\Utility\General::getIcon($row); 
+            
+            $timeline['timeline'][$key] = $row;
         }
         
         return $timeline;

@@ -34,7 +34,7 @@ class Lister {
      * @param null $force Ignore Memcached and force refresh this list
      */
     
-    public static function listWheelArrangements($force = null) {
+    public static function getWheelArrangements($force = null) {
         
         $cacheDriver = AppCore::getMemcached(); 
         
@@ -60,7 +60,7 @@ class Lister {
      * @param $force Ignore Memcached and force refresh this list
      */
     
-    public static function listManufacturers($force = null) {
+    public static function getManufacturers($force = null) {
         
         $cacheDriver = AppCore::getMemcached(); 
         
@@ -83,7 +83,7 @@ class Lister {
      * @return array
      */
     
-    public static function listTypes() {
+    public static function getTypes() {
         
         $query = "SELECT * FROM loco_type ORDER BY title";
         
@@ -98,7 +98,7 @@ class Lister {
      * @return array
      */
     
-    public static function listStatus() {
+    public static function getStatus() {
         
         $query = "SELECT * FROM loco_status ORDER BY name";
         
@@ -113,7 +113,7 @@ class Lister {
      * @return array
      */
     
-    public static function listYears() {
+    public static function getYears() {
         
         $classes = (new Locos)->listClasses();
         $return = array(
@@ -145,7 +145,7 @@ class Lister {
      * @return array
      */
     
-    public static function listOperators() {
+    public static function getOperators() {
         
         $query = "SELECT * FROM operators ORDER BY operator_name";
         $return = array(); 
@@ -169,7 +169,7 @@ class Lister {
      * @return array
      */
     
-    public static function listAllLocos() {
+    public static function getAllLocos() {
         
         $query = "SELECT * FROM loco_unit ORDER BY loco_id DESC";
         
@@ -192,7 +192,7 @@ class Lister {
      * @return array
      */
     
-    public static function listLiveries() {
+    public static function getLiveries() {
         
         $query = "SELECT * FROM loco_livery ORDER BY livery";
         
@@ -213,7 +213,7 @@ class Lister {
      * @return array
      */
     
-    public static function listGauges() {
+    public static function getGauges() {
         
         $query = "SELECT * FROM loco_gauge ORDER BY gauge_name, gauge_imperial";
         
@@ -234,7 +234,7 @@ class Lister {
      * @return array
      */
     
-    public static function listOrgLinkTypes() {
+    public static function getOrgLinkTypes() {
         
         $query = "SELECT * FROM loco_org_link_type ORDER BY name";
         
@@ -255,7 +255,7 @@ class Lister {
      * @return array
      */
     
-    public static function listModels() {
+    public static function getModels() {
         
         $query = "SELECT DISTINCT Model from loco_class ORDER BY Model";
         
@@ -278,7 +278,7 @@ class Lister {
      * @return array
      */
     
-    public static function listGroupings() {
+    public static function getGroupings() {
         
         $query = "SELECT * FROM loco_groups ORDER BY group_name"; 
         

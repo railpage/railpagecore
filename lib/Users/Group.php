@@ -117,20 +117,20 @@ class Group extends Groups {
     /**
      * Constructor
      * @since Version 3.5
-     * @param int $group_id
+     * @param int $groupId
      */
     
-    public function __construct($group_id = false) {
+    public function __construct($groupId = null) {
         
         parent::__construct(); 
         
-        if ($group_id) {
-            $this->id = $group_id; 
-            
-            if (filter_var($this->id, FILTER_VALIDATE_INT)) {
-                $this->fetch(); 
-            }
+        if (!filter_var($groupId, FILTER_VALIDATE_INT)) {
+            return;
         }
+        
+        $this->id = $groupId; 
+        $this->fetch(); 
+        
     }
     
     /**
@@ -184,13 +184,13 @@ class Group extends Groups {
      * Set the owner of this group
      * @since Version 3.9.1
      * @return \Railpage\Users\Group
-     * @param \Railpage\Users\User $User
+     * @param \Railpage\Users\User $userObject
      */
     
-    public function setOwner(User $User) {
+    public function setOwner(User $userObject) {
         
-        $this->owner_user_id = $User->id;
-        $this->owner_username = $User->username;
+        $this->owner_user_id = $userObject->id;
+        $this->owner_username = $userObject->username;
         
         return $this;
     }
@@ -279,101 +279,84 @@ class Group extends Groups {
      * Add a user to this group
      * @since Version 3.5
      * @param string $username
-     * @param int $user_id
-     * @param string $org_role
-     * @param string $org_contact
-     * @param int $org_perms
+     * @param int $userId
+     * @param string $orgRole
+     * @param string $orgContact
+     * @param int $orgPerms
      * @return boolean
      */
     
-    public function addMember($username = false, $user_id = false, $org_role = false, $org_contact = false, $org_perms = false) {
+    public function addMember($username = null, $userId = null, $orgRole = null, $orgContact = null, $orgPerms = null) {
         
         $mckey = sprintf("railpage:group=%d", intval($this->id)); 
         $this->Redis->delete($mckey); 
         
-        if ($username && !$user_id) {
+        if ($username && !$userId) {
             $query = "SELECT user_id, username FROM nuke_users WHERE username = ? AND user_active = 1"; 
             $params = [ $username ];
             
             if ($row = $this->db->fetchRow($query, $params)) {
-                /*
-                if (count($result) === 0) {
-                    return false;
-                }
                 
-                if (count($result) > 1) {
-                    $return = array(); 
-                    
-                    foreach ($result as $row) {
-                        $return[$row['user_id']] = $row['username']; 
-                    }
-                    
-                    $this->updateUserGroupMembership($user_id);
-                    
-                    return $return;
-                }
+                $userId = $row['user_id']; 
                 
-                $row = $result[0]; 
-                */
+                $data = [
+                    "group_id" => $this->id,
+                    "user_id" => $userId
+                ];
                 
-                $user_id = $row['user_id']; 
-                
-                if ($org_role && $org_contact && $org_perms) {
+                if ($orgRole && $orgContact && $orgPerms) {
                     $data = [
                         "group_id" => $this->id,
-                        "user_id" => $user_id,
-                        "organisation_role" => $org_role,
-                        "organisation_contact" => $org_contact,
-                        "organisation_privileges" => $org_perms
-                    ];
-                } else {
-                    $data = [
-                        "group_id" => $this->id,
-                        "user_id" => $user_id
+                        "user_id" => $userId,
+                        "organisation_role" => $orgRole,
+                        "organisation_contact" => $orgContact,
+                        "organisation_privileges" => $orgPerms
                     ];
                 }
                     
                 $this->db->insert("nuke_bbuser_group", $data); 
                     
-                $this->updateUserGroupMembership($user_id);
+                $this->updateUserGroupMembership($userId);
                 
                 return true;
             }
             
-        } elseif ($user_id) {
-            $data = [ 
-                "group_id" => $this->id,
-                "user_id" => $user_id
-            ];
+            return false;
             
-            $this->db->insert("nuke_bbuser_group", $data); 
-                    
-            $this->updateUserGroupMembership($user_id);
-            
-            return true;
         }
+        
+        $data = [ 
+            "group_id" => $this->id,
+            "user_id" => $userId
+        ];
+        
+        $this->db->insert("nuke_bbuser_group", $data); 
+                
+        $this->updateUserGroupMembership($userId);
+        
+        return true;
     }
     
     /**
      * Force refresh the user group membership
      * @since Version 3.9.1
-     * @param \Railpage\Users\User|int $user_id
+     * @param \Railpage\Users\User|int $userObject
      * @return void
      */
     
-    private function updateUserGroupMembership($User) {
+    private function updateUserGroupMembership($userObject) {
         
-        if (!$User instanceof User) {
-            $User = new User($User); 
+        if (!$userObject instanceof User) {
+            $userObject = Factory::CreateUser($userObject); 
         }
         
-        $mckey = sprintf("railpage:group=%d.user_id=%d", $this->id, $User->id);
+        $mckey = sprintf("railpage:group=%d.user_id=%d", $this->id, $userObject->id);
         $this->Redis->delete($mckey);
         
-        $rdkey = sprintf("railpage:usergroups.user_id=%d", $User->id); 
+        $rdkey = sprintf("railpage:usergroups.user_id=%d", $userObject->id); 
         $this->Redis->delete($rdkey); 
         
-        $User->getGroups(true);
+        $userObject->getGroups(true);
         
         return;
         
@@ -436,6 +419,7 @@ class Group extends Groups {
             $data['organisation_id'] = $this->organisation_id;
         }
         
+        // Update
         if (filter_var($this->id, FILTER_VALIDATE_INT)) {
             
             $where = [ "group_id = ?" => $this->id ];
@@ -443,14 +427,17 @@ class Group extends Groups {
         
             $mckey = sprintf("railpage:group=%d", intval($this->id)); 
             $this->Redis->delete($mckey); 
+        
+            $this->makeURLs(); 
             
-        } else {
-            
-            $data['group_single_user'] = 0; 
-            $this->db->insert("nuke_bbgroups", $data); 
-            $this->id = $this->db->lastInsertId(); 
+            return true;
             
         }
+            
+        // Insert
+        $data['group_single_user'] = 0; 
+        $this->db->insert("nuke_bbgroups", $data); 
+        $this->id = $this->db->lastInsertId(); 
         
         $this->makeURLs(); 
         
@@ -460,37 +447,37 @@ class Group extends Groups {
     /**
      * Check if a user is a member of this group
      * @since Version 3.7.5
-     * @paran int $user_id
+     * @paran int $userId
      * @return boolean
      */
      
-    public function userInGroup($user_id = false) {
-        if ($user_id instanceof User) {
-            $user_id = $user_id->id;
+    public function userInGroup($userId = null) {
+        if ($userId instanceof User) {
+            $userId = $userId->id;
         }
         
-        if (!filter_var($user_id, FILTER_VALIDATE_INT)) {
+        if (!filter_var($userId, FILTER_VALIDATE_INT)) {
             return false;
         }
         
-        $mckey = sprintf("railpage:group=%d.user_id=%d", $this->id, $user_id);
+        $mckey = sprintf("railpage:group=%d.user_id=%d", $this->id, $userId);
     
         $timer = Debug::getTimer(); 
         $result = false;
         
         if (!$result = $this->Redis->fetch($mckey)) {
             $query = "SELECT user_id FROM nuke_bbuser_group WHERE group_id = ? AND user_id = ? AND user_pending = 0";
-            $params = [ $this->id, $user_id ];
+            $params = [ $this->id, $userId ];
             
             $id = $this->db->fetchOne($query, $params);
             if (filter_var($id, FILTER_VALIDATE_INT)) {
                 $this->Redis->save($mckey, "yes", strtotime("+1 day")); 
-                Debug::logEvent(__METHOD__ . " found user ID " . $user_id . " in group ID " . $this->id, $timer); 
+                Debug::logEvent(__METHOD__ . " found user ID " . $userId . " in group ID " . $this->id, $timer); 
                 return true; 
             }
         }
             
-        Debug::logEvent(__METHOD__ . " did not find ID " . $user_id . " in group ID " . $this->id, $timer); 
+        Debug::logEvent(__METHOD__ . " did not find ID " . $userId . " in group ID " . $this->id, $timer); 
         
         return (bool) $result;
     }
@@ -498,22 +485,22 @@ class Group extends Groups {
     /**
      * Remove a member from this group
      * @since Version 3.7.5
-     * @param int $user_id
+     * @param int $userId
      * @return boolean
      */
     
-    public function removeUser($user_id = false) {
-        if ($user_id instanceof User) {
-            $user_id = $user_id->id;
+    public function removeUser($userId = null) {
+        if ($userId instanceof User) {
+            $userId = $userId->id;
         }
         
-        if (!filter_var($user_id, FILTER_VALIDATE_INT)) {
+        if (!filter_var($userId, FILTER_VALIDATE_INT)) {
             return false;
         }
         
         $where = [ 
             "group_id = ?" => $this->id, 
-            "user_id = ?" => $user_id
+            "user_id = ?" => $userId
         ]; 
         
         $this->db->delete("nuke_bbuser_group", $where); 
@@ -521,7 +508,7 @@ class Group extends Groups {
         $mckey = sprintf("railpage:group=%d", intval($this->id)); 
         $this->Redis->delete($mckey); 
                     
-        $this->updateUserGroupMembership($user_id);
+        $this->updateUserGroupMembership($userId);
         
         return true;
     }
@@ -529,18 +516,18 @@ class Group extends Groups {
     /**
      * Approve user membership
      * @since Version 3.9.1
-     * @param \Railpage\Users\User|int $User
+     * @param \Railpage\Users\User|int $userObject
      * @return \Railpage\Users\Group
      */
     
-    public function approveUser($User) {
-        if (!$User instanceof User) {
-            $User = new User($User);
+    public function approveUser($userObject) {
+        if (!$userObject instanceof User) {
+            $userObject = Factory::CreateUser($userObject);
         }
         
         $data = [ "user_pending" => 0 ];
         $where = [ 
-            "user_id = ?" => $User->id,
+            "user_id = ?" => $userObject->id,
             "group_id = ?" => $this->id
         ]; 
         

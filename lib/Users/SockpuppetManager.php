@@ -54,13 +54,13 @@ class SockpuppetManager extends AppCore {
     /**
      * Set the reference user
      * @since Version 3.10.0
-     * @param \Railpage\Users\User $User
+     * @param \Railpage\Users\User $userObject
      * @return \Railpage\Users\SockpuppetManager
      */
     
-    public function setReferenceUser(User $User) {
+    public function setReferenceUser(User $userObject) {
         
-        $this->ReferenceUser = $User;
+        $this->ReferenceUser = $userObject;
         
         return $this;
         
@@ -69,13 +69,13 @@ class SockpuppetManager extends AppCore {
     /**
      * Add a suspect to our lookup array
      * @since Version 3.10.0
-     * @param \Railpage\Users\User $User
+     * @param \Railpage\Users\User $userObject
      * @return \Railpage\Users\SockpuppetManager
      */
     
-    public function addSuspect(User $User) {
+    public function addSuspect(User $userObject) {
         
-        $this->suspects[$User->id] = $User; 
+        $this->suspects[$userObject->id] = $userObject; 
         
         return $this;
         

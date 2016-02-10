@@ -31,7 +31,6 @@ use Zend_Db_Expr;
 /**
  * Locomotive class (eg X class or 92 class) class
  * @since Version 3.2
- * @version 3.8.7
  */
 
 class LocoClass extends Locos {
