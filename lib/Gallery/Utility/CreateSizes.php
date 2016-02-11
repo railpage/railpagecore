@@ -197,7 +197,9 @@ class CreateSizes {
                 if ($dims['width'] == $dims['height']) {
                     $size = $Image->resize($dims['width'], $dims['height'], "outside");
                     $size = $size->crop(0, "middle", $dims['width'], $dims['height']);
-                } else {
+                }
+                
+                if ($dims['width'] != $dims['height']) {
                     $size = $Image->resize($dims['width'], $dims['width'], "inside");
                 }
                 

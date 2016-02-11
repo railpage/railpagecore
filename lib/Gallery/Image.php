@@ -142,7 +142,7 @@ class Image extends AppCore {
      * @param int|string $id
      */
     
-    public function __construct($id = false) {
+    public function __construct($id = null) {
         
         parent::__construct();
         
@@ -272,12 +272,12 @@ class Image extends AppCore {
      * Set the album this image belongs to
      * @since Version 3.10.0
      * @return \Railpage\Gallery\Image
-     * @param \Railpage\Gallery\Album $Album
+     * @param \Railpage\Gallery\Album $albumObject
      */
     
-    public function setAlbum(Album $Album) {
+    public function setAlbum(Album $albumObject) {
         
-        $this->Album = $Album;
+        $this->Album = $albumObject;
         
         return $this;
         
@@ -413,10 +413,14 @@ class Image extends AppCore {
             );
             
             $this->db->update("gallery_mig_album", $data, $where);
-        } else {
-            $this->db->insert("gallery_mig_image", $data); 
-            $this->id = $this->db->lastInsertId(); 
+            
+            $this->getAlbum()->flushCache();
+            
+            return $this;
         }
+        
+        $this->db->insert("gallery_mig_image", $data); 
+        $this->id = $this->db->lastInsertId(); 
         
         $this->getAlbum()->flushCache();
         
@@ -449,13 +453,13 @@ class Image extends AppCore {
     /**
      * Set the album owner
      * @since Version 3.10.0
-     * @param \Railpage\Users\User $Owner
+     * @param \Railpage\Users\User $userObject
      * @return \Railpage\Gallery\Album
      */
     
-    public function setOwner(User $User) {
+    public function setOwner(User $userObject) {
         
-        $this->Owner = $User; 
+        $this->Owner = $userObject; 
         
         return $this;
         

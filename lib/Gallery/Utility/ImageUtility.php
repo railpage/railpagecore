@@ -27,26 +27,26 @@ class ImageUtility {
     /**
      * Resize the original image - we don't want to save massive copies of everything
      * @since Version 3.10.0
-     * @param string $image_source
+     * @param string $imageSource
      * @return void
      */
     
-    public static function ResizeOriginal($image_source) {
+    public static function ResizeOriginal($imageSource) {
         
-        $sizes = getimagesize($image_source); 
+        $sizes = getimagesize($imageSource); 
         
         if ($sizes[0] <= Image::MAX_WIDTH && $sizes[1] <= Image::MAX_HEIGHT) {
             return true;
         }
         
-        $image = file_get_contents($image_source); 
+        $image = file_get_contents($imageSource); 
         $Image = WideImage::loadFromString($image); 
         
         $size = $Image->resize(Image::MAX_WIDTH, Image::MAX_HEIGHT, "inside");
         
-        file_put_contents($image_source, $size->asString("jpg", 100));
+        file_put_contents($imageSource, $size->asString("jpg", 100));
         
-        if (!file_exists($image_source)) {
+        if (!file_exists($imageSource)) {
             throw new Exception("Resized image and saved to path, but could not find it after!"); 
         }
         
@@ -57,23 +57,23 @@ class ImageUtility {
     /**
      * Run the provided image through jpegoptim
      * @since Version 3.10.0
-     * @param string $image_source
+     * @param string $imageSource
      * @return void
      */
     
-    public static function OptimiseImage($image_source) {
+    public static function OptimiseImage($imageSource) {
         
-        if ($image_source instanceof Image) {
-            foreach ($Image->sizes as $size) {
+        if ($imageSource instanceof Image) {
+            foreach ($imageSource->sizes as $size) {
                 OptimizeImage($size['source']);
             }
         }
         
-        if (!file_exists($image_source)) {
+        if (!file_exists($imageSource)) {
             return;
         }
         
-        exec('/usr/bin/jpegoptim --strip-none -f -q -p --all-progressive -o "' . $image_source . '"');
+        exec('/usr/bin/jpegoptim --strip-none -f -q -p --all-progressive -o "' . $imageSource . '"');
         
         return;
         
@@ -83,23 +83,23 @@ class ImageUtility {
      * Get important EXIF information from the image
      * @since Version 3.10.0
      * @return array
-     * @param \Railpage\Gallery\Image $Image
+     * @param \Railpage\Gallery\Image $imageObject
      */
     
-    public static function PopulateExif($Image) {
+    public static function PopulateExif($imageObject) {
         
-        $image_source = Album::ALBUMS_DIR . $Image->path; 
+        $imageSource = Album::ALBUMS_DIR . $imageObject->path; 
         
         /**
          * Read the IPTC data
          */
         
-        $size = getimagesize($image_source, $info);
+        #$size = getimagesize($imageSource, $info);
     
         if (is_array($info)) {
             $iptc = iptcparse($info["APP13"]);
             if (isset($iptc['2#005'])) {
-                $Image->title = $iptc['2#005'][0];
+                $imageObject->title = $iptc['2#005'][0];
             }
         }
         
@@ -107,24 +107,24 @@ class ImageUtility {
          * Read the EXIF data
          */
         
-        $exif = exif_read_data($image_source, 0, true); 
+        $exif = exif_read_data($imageSource, 0, true); 
         
         if (isset($exif['IFD0']['ImageDescription'])) {
-            $Image->caption = $exif['IFD0']['ImageDescription'];
+            $imageObject->caption = $exif['IFD0']['ImageDescription'];
         }
         
         if (isset($exif['EXIF']['DateTimeOriginal'])) {
-            $Image->DateTaken = new DateTime($exif['EXIF']['DateTimeOriginal']);
+            $imageObject->DateTaken = new DateTime($exif['EXIF']['DateTimeOriginal']);
         }
         
         if (isset($exif['GPS']['GPSLatitude']) && isset($exif['GPS']['GPSLongitude'])) {
             $lat = self::getGps($exif['GPS']['GPSLatitude'], $exif['GPS']['GPSLatitudeRef']);
             $lon = self::getGps($exif['GPS']['GPSLongitude'], $exif['GPS']['GPSLongitudeRef']);
             
-            $Image->Place = Place::Factory($lat, $lon); 
+            $imageObject->Place = Place::Factory($lat, $lon); 
         }
         
-        return $Image;
+        return $imageObject;
         
     }
     

@@ -62,22 +62,22 @@ class Type extends AppCore {
         $this->id = $type;
         
         switch ($type) {
-            case "code" : 
-            case "acronym" :
-            case "station" : 
+            case "code": 
+            case "acronym":
+            case "station": 
                 $this->name = ucfirst($type . "s");
                 break;
             
-            case "slang" : 
-            case "general" : 
+            case "slang": 
+            case "general": 
                 $this->name = ucfirst($type);
                 break;
                 
-            case "term" : 
+            case "term": 
                 $this->name = "Terminology";
                 break;
                 
-            default :
+            default:
                 $this->name = "General";
                 break;
         }

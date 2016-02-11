@@ -102,14 +102,14 @@ class Album extends AppCore {
      * @param int|string $id
      */
     
-    public function __construct($id = false) {
+    public function __construct($id = null) {
         
         parent::__construct();
         
         $this->Module = new Module("Gallery");
         
         // Rewrite - some album titles can be all numbers (eg 639, 8203)
-        if ($id) {
+        if ($id != null) {
             // First, assume that the album ID is a string. Let's try to get the ID from that
             $query = "SELECT id FROM gallery_mig_album WHERE name = ?";
             $this->id = $this->db->fetchOne($query, $id);
@@ -178,17 +178,17 @@ class Album extends AppCore {
      * Get a single image from this album
      * @since Version 3.9
      * @yield new \Railpage\Gallery\Image
-     * @param string $image_id
+     * @param string $imageId
      */
     
-    public function getImage($image_id) {
-        if (!filter_var($image_id, FILTER_VALIDATE_INT)) {
+    public function getImage($imageId) {
+        if (!filter_var($imageId, FILTER_VALIDATE_INT)) {
             $query = "SELECT id FROM gallery_mig_image WHERE album_id = ? AND meta LIKE ?";
             
-            $image_id = $this->db->fetchOne($query, array($this->id, "%" . $image_id . "%"));
+            $imageId = $this->db->fetchOne($query, array($this->id, "%" . $imageId . "%"));
         }
         
-        return new Image($image_id);
+        return new Image($imageId);
     }
     
     /**
@@ -272,13 +272,13 @@ class Album extends AppCore {
     /**
      * Set the parent album
      * @since Version 3.10.0
-     * @param \Railpage\Gallery\Album $Album
+     * @param \Railpage\Gallery\Album $albumObject
      * @return \Railpage\Gallery\Album $this
      */
     
-    public function setParent(Album $Album) {
+    public function setParent(Album $albumObject) {
         
-        $this->ParentAlbum = $Album;
+        $this->ParentAlbum = $albumObject;
         
         return $this;
         
@@ -310,13 +310,13 @@ class Album extends AppCore {
     /**
      * Set the album owner
      * @since Version 3.10.0
-     * @param \Railpage\Users\User $Owner
+     * @param \Railpage\Users\User $userObject
      * @return \Railpage\Gallery\Album
      */
     
-    public function setOwner(User $User) {
+    public function setOwner(User $userObject) {
         
-        $this->Owner = $User; 
+        $this->Owner = $userObject; 
         
         return $this;
         
@@ -494,7 +494,10 @@ class Album extends AppCore {
         if (filter_var($this->id, FILTER_VALIDATE_INT)) {
             $where = [ "id = ?" => $this->id ];
             $this->db->update("gallery_mig_album", $data, $where); 
-        } else {
+        }
+        
+        
+        if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
             $this->db->insert("gallery_mig_album", $data); 
             $this->id = $this->db->lastInsertId(); 
         }

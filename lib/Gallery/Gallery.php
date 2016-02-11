@@ -52,14 +52,14 @@ class Gallery extends AppCore {
     /**
      * Find album for a given user
      * @since Version 3.8.7
-     * @param \Railpage\Users\User $User
+     * @param \Railpage\Users\User $userObject
      * @return \Railpage\Gallery\Album
      */
     
-    public function getUserAlbum(User $User) {
+    public function getUserAlbum(User $userObject) {
         $query = "SELECT id FROM gallery_mig_album WHERE parent_id = ? AND owner = ?";
         
-        $id = $this->db->fetchOne($query, array(2805, $User->id));
+        $id = $this->db->fetchOne($query, array(2805, $userObject->id));
         
         if (filter_var($id, FILTER_VALIDATE_INT)) {
             return new Album($id);
