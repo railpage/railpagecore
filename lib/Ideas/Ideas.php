@@ -138,10 +138,10 @@ class Ideas extends AppCore {
      * @since Version 3.9.1
      * @return array
      * @param int $page Page number
-     * @param int $items_per_page Number of results to return
+     * @param int $itemsPerPage Number of results to return
      */
     
-    public function getIdeasByUser($page = 1, $items_per_page = 25) {
+    public function getIdeasByUser($page = 1, $itemsPerPage = 25) {
         if (!$this->User instanceof User) {
             throw new Exception("You must set a valid user before you can find ideas created by a user");
         }
@@ -150,14 +150,14 @@ class Ideas extends AppCore {
         
         $params = array(
             $this->User->id,
-            ($page - 1) * $items_per_page, 
-            $items_per_page 
+            ($page - 1) * $itemsPerPage, 
+            $itemsPerPage 
         );
         
         $return = array(
             "total" => 0,
             "page" => $page,
-            "perpage" => $items_per_page,
+            "perpage" => $itemsPerPage,
             "ideas" => array()
         );
         
@@ -177,56 +177,58 @@ class Ideas extends AppCore {
     /**
      * Get the idea status with fancy formatting and stuff
      * @since Version 3.9.1
-     * @param int $status_id
+     * @param int $statusId
      * @return array
      */
     
-    public static function getStatusDescription($status_id = false) {
-        if (filter_var($status_id, FILTER_VALIDATE_INT)) {
-            $badge = '<span class="label label-%s"><span class="glyphicon glyphicon-%s" style="top:2px;"></span>&nbsp;&nbsp;%s</span>';
-            
-            switch ($status_id) {
-                case self::STATUS_DELETED :
-                    $text = "Deleted";
-                    $badge = sprintf($badge, "danger", "remove", $text);
-                    break;
-                    
-                case self::STATUS_ACTIVE :
-                    $text = "";
-                    $badge = "";
-                    break;
-                    
-                case self::STATUS_NO :
-                    $text = "Will not implement";
-                    $badge = sprintf($badge, "warning", "remove", $text);
-                    break;
-                    
-                case self::STATUS_IMPLEMENTED :
-                    $text = "Implemented!";
-                    $badge = sprintf($badge, "success", "ok", $text);
-                    break;
-                    
-                case self::STATUS_INPROGRESS :
-                    $text = "In progress";
-                    $badge = sprintf($badge, "info", "wrench", $text);
-                    break;
-                    
-                case self::STATUS_UNDERCONSIDERATION :
-                    $text = "Under consideration";
-                    $badge = sprintf($badge, "info", "tasks", $text);
-                    break;
-                
-                default :
-                    $text = "";
-                    $badge = "";
-                    
-            }
-            
-            return array(
-                "id" => $status_id, 
-                "text" => $text,
-                "badge" => $badge
-            );
+    public static function getStatusDescription($statusId = null) {
+        if (!filter_var($statusId, FILTER_VALIDATE_INT)) {
+            return;
         }
+        
+        $badge = '<span class="label label-%s"><span class="glyphicon glyphicon-%s" style="top:2px;"></span>&nbsp;&nbsp;%s</span>';
+        
+        switch ($statusId) {
+            case self::STATUS_DELETED:
+                $text = "Deleted";
+                $badge = sprintf($badge, "danger", "remove", $text);
+                break;
+                
+            case self::STATUS_ACTIVE:
+                $text = "";
+                $badge = "";
+                break;
+                
+            case self::STATUS_NO:
+                $text = "Will not implement";
+                $badge = sprintf($badge, "warning", "remove", $text);
+                break;
+                
+            case self::STATUS_IMPLEMENTED:
+                $text = "Implemented!";
+                $badge = sprintf($badge, "success", "ok", $text);
+                break;
+                
+            case self::STATUS_INPROGRESS:
+                $text = "In progress";
+                $badge = sprintf($badge, "info", "wrench", $text);
+                break;
+                
+            case self::STATUS_UNDERCONSIDERATION:
+                $text = "Under consideration";
+                $badge = sprintf($badge, "info", "tasks", $text);
+                break;
+            
+            default:
+                $text = "";
+                $badge = "";
+                
+        }
+        
+        return array(
+            "id" => $statusId, 
+            "text" => $text,
+            "badge" => $badge
+        );
     }
 }

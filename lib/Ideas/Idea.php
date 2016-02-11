@@ -125,7 +125,7 @@ class Idea extends AppCore {
      * @param int $id
      */
     
-    public function __construct($id = false) {
+    public function __construct($id = null) {
         
         parent::__construct();
         
@@ -358,15 +358,18 @@ class Idea extends AppCore {
             );
             
             $this->db->update("idea_ideas", $data, $where);
-        } else {
-            $this->db->insert("idea_ideas", $data);
-            $this->id = $this->db->lastInsertId();
         
-            $this->Author->wheat(10);
+            $this->makeURLs(); 
             
-            $this->logEvent(); 
-            
+            return $this;
         }
+        
+        $this->db->insert("idea_ideas", $data);
+        $this->id = $this->db->lastInsertId();
+    
+        $this->Author->wheat(10);
+        
+        $this->logEvent(); 
         
         $this->makeURLs(); 
         
@@ -446,26 +449,26 @@ class Idea extends AppCore {
     /**
      * Check if this user can vote for this idea or not
      * @since Version 3.8.7
-     * @param \Railpage\Users\User $User
+     * @param \Railpage\Users\User $userObject
      * @return boolean
      */
     
-    public function canVote(User $User) {
+    public function canVote(User $userObject) {
         
         if ($this->status == Ideas::STATUS_DELETED || $this->status == Ideas::STATUS_NO || $this->status == Ideas::STATUS_IMPLEMENTED) {
             return false;
         }
         
-        if ($User->id === 0 || $User->guest === true) {
+        if ($userObject->id === 0 || $userObject->guest === true) {
             return false;
         }
         
-        if ($User->id == $this->Author->id) {
+        if ($userObject->id == $this->Author->id) {
             return false;
         }
         
         foreach ($this->votes as $vote) {
-            if ($vote['user_id'] == $User->id) {
+            if ($vote['user_id'] == $userObject->id) {
                 return false;
             }
         }
@@ -476,13 +479,13 @@ class Idea extends AppCore {
     
     /**
      * Add a vote for this idea
-     * @param \Railpage\Users\User $User
+     * @param \Railpage\Users\User $userObject
      * @return $this
      */
     
-    public function vote(User $User) {
+    public function vote(User $userObject) {
         
-        if (!$this->canVote($User)) {
+        if (!$this->canVote($userObject)) {
             throw new Exception("We couldn't add your vote to this idea. You must be logged in and not already voted for this idea");
         }
         
@@ -490,7 +493,7 @@ class Idea extends AppCore {
         
         $data = array(
             "idea_id" => $this->id,
-            "user_id" => $User->id,
+            "user_id" => $userObject->id,
             "date" => $Date->format("Y-m-d H:i:s")
         );
         
@@ -498,7 +501,7 @@ class Idea extends AppCore {
         
         $this->fetchVotes();
         
-        $User->wheat();
+        $userObject->wheat();
         
         return $this;
         
@@ -548,15 +551,15 @@ class Idea extends AppCore {
     /**
      * Set the discussion thread for this idea
      * @since Version 3.9.1
-     * @param \Railpage\Forums\Thread $Thread
+     * @param \Railpage\Forums\Thread $forumThread
      * @return \Railpage\Ideas\Idea
      */
     
-    public function setForumThread(Thread $Thread) {
-        $this->forum_thread_id = $Thread->id;
+    public function setForumThread(Thread $forumThread) {
+        $this->forum_thread_id = $forumThread->id;
         $this->commit(); 
         
-        $Thread->putObject($this);
+        $forumThread->putObject($this);
         
         return $this;
     }

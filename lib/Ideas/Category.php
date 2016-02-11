@@ -60,7 +60,7 @@ class Category extends AppCore {
      * @param int $id
      */
     
-    public function __construct($id = false) {
+    public function __construct($id = null) {
         
         parent::__construct();
         
@@ -174,10 +174,12 @@ class Category extends AppCore {
             );
             
             $this->db->update("idea_categories", $data, $where);
-        } else {
-            $this->db->insert("idea_categories", $data);
-            $this->id = $this->db->lastInsertId();
+            
+            return $this;
         }
+        
+        $this->db->insert("idea_categories", $data);
+        $this->id = $this->db->lastInsertId();
         
         return $this;
         
