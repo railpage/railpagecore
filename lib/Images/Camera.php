@@ -193,7 +193,9 @@ class Camera extends AppCore {
             $where = [ "id = ?" => $this->id ];
             
             $this->db->update("image_camera", $data, $where); 
-        } else {
+        }
+        
+        if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
             $this->db->insert("image_camera", $data); 
             $this->id = $this->db->lastInsertId(); 
         }

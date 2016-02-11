@@ -46,7 +46,9 @@ class RPOldGallery extends AppCore implements ProviderInterface {
      * @return array
      */
     
-    public function getImage($id, $force = false) {
+    public function getImage($id, $force = 0) {
+        
+        $force = (bool) $force;
         
         $imageObject = new G1Image($id); 
         
@@ -141,10 +143,10 @@ class RPOldGallery extends AppCore implements ProviderInterface {
      * Get the EXIF data for this image
      * @since Version 3.10.0
      * @return array
-     * @param int $photo_id
+     * @param int $photoId
      */
     
-    public function getExif($photo_id) {
+    public function getExif($photoId) {
         
     }
     

@@ -31,14 +31,16 @@ class AlbumScraper extends AppCore {
         
         $query = "SELECT * FROM image_scrape_album";
         
-        if (!is_null($provider)) {
+        if ($provider == null) {
             $query .= " WHERE provider = ?";
             $result = $this->db->fetchAll($query, $provider); 
-        } else {
+        }
+        
+        if ($provider == null) {
             $result = $this->db->fetchAll($query); 
         }
         
-        $result = array_map(function($row) {
+        $result = array_map(function ($row) {
             $row['meta'] = json_decode($row['meta'], true); 
             
             return $row;
@@ -52,24 +54,24 @@ class AlbumScraper extends AppCore {
      * Add an album
      * @since Version 3.10.0
      * @param string $provider
-     * @param int|string $album_id
+     * @param int|string $albumId
      * @return \Railpage\Images\AlbumScraper
      */
     
-    public function addAlbum($provider, $album_id) {
+    public function addAlbum($provider, $albumId) {
         
         $albums = $this->getMonitoredAlbums($provider); 
-        $album_ids = array_map(function($row) {
+        $albumIds = array_map(function ($row) {
             return $row['album_id'];
         }, $albums); 
         
-        if (in_array($album_id, $album_ids)) {
+        if (in_array($albumId, $albumIds)) {
             return $this;
         }
         
         $data = [
             "provider" => $provider,
-            "album_id" => $album_id
+            "album_id" => $albumId
         ];
         
         $this->db->insert("image_scrape_album", $data); 

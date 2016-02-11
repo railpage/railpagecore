@@ -27,14 +27,14 @@ class ImageFactory {
      * @return \Railpage\Images\Image
      */
     
-    public static function CreateImage($id = false, $provider = false, $options = false) {
+    public static function CreateImage($id = null, $provider = null, $options = null) {
         
         $Redis = AppCore::GetRedis(); 
         $Registry = Registry::GetInstance(); 
             
         $cachekey = sprintf("rp:v2;cache.image=%s;o=%s", $id, crc32(json_encode($options))); 
         
-        if ($id && !$provider) {
+        if ($id != null && $provider == null) {
             
             return new Image($id, $options); 
             
@@ -165,9 +165,8 @@ class ImageFactory {
     
     public static function CreatePhotoComp($id) {
         
-        $Database = AppCore::GetDatabase(); 
-        $Memcached = AppCore::GetMemcached(); 
-        $Redis = AppCore::getRedis();
+        //$Database = AppCore::GetDatabase(); 
+        $cacheHandler = AppCore::getRedis();
         $Registry = Registry::getInstance(); 
         
         if (!filter_var($id, FILTER_VALIDATE_INT)) {
@@ -187,9 +186,9 @@ class ImageFactory {
         try {
             $Competition = $Registry->get($regkey); 
         } catch (Exception $e) {
-            #if (!$Competition = $Redis->fetch($regkey)) {
+            #if (!$Competition = $cacheHandler->fetch($regkey)) {
                 $Competition = new Competition($id); 
-                $Redis->save($regkey, $Competition, strtotime("+1 day"));
+                $cacheHandler->save($regkey, $Competition, strtotime("+1 day"));
             #}
             
             $Registry->set($regkey, $Competition); 

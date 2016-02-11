@@ -70,8 +70,11 @@ class SmugMug extends AppCore implements ProviderInterface {
      * @since Verison 3.9.1
      */
     
-    public function __construct($api_key = false, $api_secret = false) {
+    public function __construct($api_key = 0, $api_secret = 0) {
         parent::__construct(); 
+        
+        $api_key = (bool) $api_key;
+        $api_secret = (bool) $api_secret; 
         
         if ($api_key) {
             $this->api_key = $api_key;
@@ -104,7 +107,7 @@ class SmugMug extends AppCore implements ProviderInterface {
      * @return array
      */
     
-    private function send($method = false, $data = false) {
+    private function send($method = null, $data = null) {
         
         if (is_null(filter_var($method, FILTER_SANITIZE_STRING))) {
             throw new InvalidArgumentException("Flickr API call failed: no API method requested"); 
@@ -134,10 +137,12 @@ class SmugMug extends AppCore implements ProviderInterface {
      * @return array
      */
     
-    public function getImage($id, $force = false) {
+    public function getImage($id, $force = 0) {
         $params = array(
             "ImageKey" => $id
         );
+        
+        $force = (bool) $force;
         
         $response = $this->send("smugmug.images.getInfo", $params);
         
@@ -288,10 +293,10 @@ class SmugMug extends AppCore implements ProviderInterface {
      * Get the EXIF data for this image
      * @since Version 3.10.0
      * @return array
-     * @param int $photo_id
+     * @param int $photoId
      */
     
-    public function getExif($photo_id) {
+    public function getExif($photoId) {
         
     }
     

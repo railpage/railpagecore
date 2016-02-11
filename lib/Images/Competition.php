@@ -143,7 +143,7 @@ class Competition extends AppCore {
      * @param int|string $id
      */
     
-    public function __construct($id = false) {
+    public function __construct($id = null) {
         parent::__construct(); 
         
         $this->Module = new Module("images.competitions"); 
@@ -360,7 +360,7 @@ class Competition extends AppCore {
         $Config = new Config;
         $Config->set("image.competition.suggestedthemes", json_encode($themes), "Photo competition themes"); 
         
-        
+        $this->url = Utility\Url::makeCompetitionUrls($this);
         
         return $this;
     }
@@ -378,7 +378,7 @@ class Competition extends AppCore {
             Competitions::PHOTO_APPROVED
         );
         
-        $photos = array(); 
+        //$photos = array(); 
         
         foreach ($this->db->fetchAll($query, $params) as $row) {
             yield $this->getPhoto($row);
@@ -516,12 +516,12 @@ class Competition extends AppCore {
      * @param \Railpage\Users\User $userObject
      */
     
-    public function canUserVote(User $userObject, $imageObject = false) {
+    public function canUserVote(User $userObject, $imageObject = null) {
         if (!filter_var($userObject->id, FILTER_VALIDATE_INT)) {
             return false;
         }
         
-        $now = new DateTime;
+        //$now = new DateTime;
         
         if (!Utility\CompetitionUtility::isVotingWindowOpen($this)) {
             return false;
@@ -689,7 +689,7 @@ class Competition extends AppCore {
         $num_votes = false;
         $tied = []; 
         
-        foreach ($photos as $key => $photo) {
+        foreach ($photos as $photo) {
             if ($num_votes === false) {
                 $num_votes = count($photo['votes']); 
                 $tied[] = $photo;
@@ -872,7 +872,7 @@ class Competition extends AppCore {
      */
     
     public function getArray() {
-        $now = new DateTime;
+        //$now = new DateTime;
         
         $voting_open = Utility\CompetitionUtility::isVotingWindowOpen($this);
         $submissions_open = Utility\CompetitionUtility::isSubmissionWindowOpen($this);
@@ -981,7 +981,7 @@ class Competition extends AppCore {
      * @param boolean $force
      */
     
-    public function getPhotosAsArray($force = false) {
+    public function getPhotosAsArray($force = null) {
         $key = sprintf("railpage:comp=%d;images.array", $this->id);
         
         $this->Memcached = AppCore::getMemcached();
@@ -990,28 +990,30 @@ class Competition extends AppCore {
             $this->Memcached->delete($key);
         }
         
-        if (!$photos = $this->Memcached->fetch($key)) {
-            $photos = array(); 
-            
-            foreach ($this->getPhotos() as $Submission) {
-                $photos[] = array(
-                    "id" => $Submission->id,
-                    "url" => $Submission->url->getURLs(),
-                    "image" => $Submission->Image->getArray(),
-                    "author" => array(
-                        "id" => $Submission->Author->id,
-                        "username" => $Submission->Author->username,
-                        "url" => $Submission->Author->url instanceof Url ? $Submission->Author->url->getURLs() : array("url" => $Submission->Author->url)
-                    ),
-                    "dateadded" => array(
-                        "absolute" => $Submission->DateAdded->format("Y-m-d H:i:s"),
-                        "relative" => function_exists("time2str") ? time2str($Submission->DateAdded->getTimestamp()) : null
-                    )
-                );
-            }
-            
-            $this->Memcached->save($key, $photos); 
+        if ($photos = $this->Memcached->fetch($key)) {
+            return $photos;
         }
+        
+        $photos = array(); 
+        
+        foreach ($this->getPhotos() as $Submission) {
+            $photos[] = array(
+                "id" => $Submission->id,
+                "url" => $Submission->url->getURLs(),
+                "image" => $Submission->Image->getArray(),
+                "author" => array(
+                    "id" => $Submission->Author->id,
+                    "username" => $Submission->Author->username,
+                    "url" => $Submission->Author->url instanceof Url ? $Submission->Author->url->getURLs() : array("url" => $Submission->Author->url)
+                ),
+                "dateadded" => array(
+                    "absolute" => $Submission->DateAdded->format("Y-m-d H:i:s"),
+                    "relative" => function_exists("time2str") ? time2str($Submission->DateAdded->getTimestamp()) : null
+                )
+            );
+        }
+        
+        $this->Memcached->save($key, $photos);
         
         return $photos;
     }
@@ -1031,21 +1033,28 @@ class Competition extends AppCore {
          */
         
         $votes = array(); 
+        $totalVotes = 0;
         
         foreach ($this->getVotes() as $vote) {
+            $totalVotes++; 
+            
             $votes[$vote['image_id']][] = $vote; 
+        }
+        
+        if ($totalVotes == 0) {
+            return $photos; 
         }
         
         foreach ($photos as $key => $photo) {
             $photos[$key]['votes'] = $votes[$photo['image']['id']]; 
-            $photos[$key]['votes_percentage'] = round((count($photos[$key]['votes']) / $total_votes) * 100);
+            $photos[$key]['votes_percentage'] = round((count($photos[$key]['votes']) / $totalVotes) * 100);
         }
         
         /**
          * Sort the photos by votes
          */
         
-        usort($photos, function($a, $b) {
+        usort($photos, function ($a, $b) {
             if (count($a['votes']) == count($b['votes'])) {
                 return 0;
             }

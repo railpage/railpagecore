@@ -38,14 +38,6 @@ class ImageCache extends AppCore {
     private $config; 
     
     /**
-     * Image resource
-     * @since Version 3.10.0
-     * @var resource|string|object $image
-     */
-    
-    private $image;
-    
-    /**
      * Set config parameters
      * @since Version 3.10.0
      * @param array $config
@@ -160,27 +152,27 @@ class ImageCache extends AppCore {
     /**
      * Grab an image from the web and store it locally
      * @since Version 3.10.0
-     * @param string $remote_file
-     * @param string $local_file
+     * @param string $remoteFile
+     * @param string $localFile
      * @return void
      */
     
-    private function grab($remote_file, $local_file) {
+    private function grab($remoteFile, $localFile) {
         
         $GuzzleClient = new GuzzleClient;
         
-        Debug::LogCLI("Fetching $remote_file");
+        Debug::LogCLI("Fetching $remoteFile");
         
-        $response = $GuzzleClient->get($remote_file); 
+        $response = $GuzzleClient->get($remoteFile); 
         
         if ($response->getStatusCode() != 200 && $response->getStatusCode() != 304) {
-            throw new Exception("Unexpected HTTP status code " . $response->getStatusCode() . " encountered when fetching " . $remote_file); 
+            throw new Exception("Unexpected HTTP status code " . $response->getStatusCode() . " encountered when fetching " . $remoteFile); 
         }
         
         $image = $response->getBody();
         
-        if (!file_put_contents($local_file, $image)) {
-            throw new Exception("File was fetched from remote source, but could not save to destination file " . $local_file); 
+        if (!file_put_contents($localFile, $image)) {
+            throw new Exception("File was fetched from remote source, but could not save to destination file " . $localFile); 
         }
         
         return;
@@ -190,22 +182,22 @@ class ImageCache extends AppCore {
     /**
      * Optimise the local file 
      * @since Version 3.10.0
-     * @param string $local_file
+     * @param string $localFile
      * @return void
      */
     
-    private function optimise($local_file) {
+    private function optimise($localFile) {
         
-        $filetype = exif_imagetype($local_file); 
+        $filetype = exif_imagetype($localFile); 
         
         switch ($filetype) {
             
             case IMAGETYPE_JPEG :
-                $this->optimiseJPEG($local_file); 
+                $this->optimiseJPEG($localFile); 
                 break;
                 
             case IMAGETYPE_PNG : 
-                $this->optimisePNG($local_file); 
+                $this->optimisePNG($localFile); 
                 break;
                 
         }
@@ -217,19 +209,19 @@ class ImageCache extends AppCore {
     /**
      * Optimise a JPEG file
      * @since Version 3.10.0
-     * @param string $local_file
+     * @param string $localFile
      * @return void
      */
     
-    private function optimiseJPEG($local_file) {
+    private function optimiseJPEG($localFile) {
         
         if (!file_exists("/usr/bin/jpegoptim")) {
             return;
         }
         
-        $output = system("/usr/bin/jpegoptim -m 100 -o -p -q --strip-all --all-progressive " . $local_file, $return_code); 
+        system("/usr/bin/jpegoptim -m 100 -o -p -q --strip-all --all-progressive " . $localFile); 
         
-        printArray($return_code);
+        //printArray($return_code);
         
         return;
         
@@ -238,11 +230,11 @@ class ImageCache extends AppCore {
     /**
      * Optimise a PNG file
      * @since Version 3.10.0
-     * @param string $local_file
+     * @param string $localFile
      * @return void
      */
     
-    private function optimisePNG($local_file) {
+    private function optimisePNG($localFile) {
         
         
         

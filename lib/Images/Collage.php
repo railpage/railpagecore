@@ -104,15 +104,15 @@ class Collage extends AppCore {
     /**
      * Add an image to the collage
      * @since Version 3.10.0
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      * @return \Railpage\Images\Collage
      */
     
-    public function addImage(Image $Image) {
+    public function addImage(Image $imageObject) {
         
-        Debug::LogCLI("Added image ID " . $Image->id . " to the collage list"); 
+        Debug::LogCLI("Added image ID " . $imageObject->id . " to the collage list"); 
         
-        $this->Images[$Image->id] = $Image;
+        $this->Images[$imageObject->id] = $imageObject;
         
         return $this;
         
@@ -150,12 +150,14 @@ class Collage extends AppCore {
         $this->width = $width;
         $this->height = $height; 
         
+        $this->setOrientation(self::ORIENTATION_SQUARE); 
+        
         if ($this->width > $this->height) {
             $this->setOrientation(self::ORIENTATION_LANDSCAPE); 
-        } elseif ($this->height > $this->width) {
+        }
+        
+        if ($this->height > $this->width) {
             $this->setOrientation(self::ORIENTATION_PORTRAIT); 
-        } else {
-            $this->setOrientation(self::ORIENTATION_SQUARE); 
         }
         
         return $this;
@@ -241,7 +243,7 @@ class Collage extends AppCore {
         set_time_limit(20); 
         
         $string = file_get_contents($url); 
-        $rs = $Cache->save($cachekey, $string, 0); 
+        $Cache->save($cachekey, $string, 0); 
         
         return $string;
         
@@ -267,7 +269,7 @@ class Collage extends AppCore {
         $offset_x = 0; 
         $offset_y = 0;
         
-        $images_per_row = ceil($this->width / $size['thumbWidth']); 
+        //$images_per_row = ceil($this->width / $size['thumbWidth']); 
         
         foreach ($this->Images as $Image) {
             
@@ -281,7 +283,12 @@ class Collage extends AppCore {
             imagecopyresampled($this->canvas, $thumb, $offset_x, $offset_y, 0, 0, $imageSize['thumbWidth'], $imageSize['thumbHeight'], $imageSize['thumbWidth'], $imageSize['thumbHeight']);
             
             if (php_sapi_name() == "cli") {
-                var_dump($offset_x); var_dump($offset_y); var_dump($offset_x + $imageSize['thumbWidth']); var_dump($offset_y + $imageSize['thumbHeight']); var_dump($imageSize['thumbWidth']); var_dump($imageSize['thumbHeight']);
+                var_dump($offset_x); 
+                var_dump($offset_y); 
+                var_dump($offset_x + $imageSize['thumbWidth']); 
+                var_dump($offset_y + $imageSize['thumbHeight']); 
+                var_dump($imageSize['thumbWidth']); 
+                var_dump($imageSize['thumbHeight']);
             }
             
             $offset_x += $imageSize['thumbWidth']; 

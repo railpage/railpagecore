@@ -31,25 +31,25 @@ class CollectionUtility {
      * Find all collections
      * @since Version 3.9.1
      * @return array
-     * @param \Railpage\Users\User $User
+     * @param \Railpage\Users\User $userObject
      */
     
-    public static function getCollections($User = false) {
+    public static function getCollections($userObject = null) {
         
         $Database = (new AppCore)->getDatabaseConnection(); 
         
         $query = "SELECT i.*, u.username FROM image_collection AS i LEFT JOIN nuke_users AS u ON i.user_id = u.user_id";
         $params = array(); 
         
-        if ($User instanceof User) {
+        if ($userObject instanceof User) {
             $query .= " WHERE i.user_id = ?";
-            $params[] = $User->id;
+            $params[] = $userObject->id;
         }
         
         $query .= " ORDER BY i.modified DESC";
         $result = array(); 
         
-        foreach ($Database->fetchAll($query, $params) as $key => $row) {
+        foreach ($Database->fetchAll($query, $params) as $row) {
             $result[] = (new Collection($row['id']))->getArray(); 
         }
         
@@ -60,11 +60,11 @@ class CollectionUtility {
     /**
      * Find collections featuring this image
      * @since Version 3.9.1
-     * @param \Railpage\Images\Image
+     * @param \Railpage\Images\Image $imageObject
      * @return array
      */
     
-    public static function getCollectionsFeaturingImage(Image $Image) {
+    public static function getCollectionsFeaturingImage(Image $imageObject) {
         
         $Database = (new AppCore)->getDatabaseConnection(); 
         
@@ -79,7 +79,7 @@ class CollectionUtility {
         
         $params = [
             (new Collection)->namespace,
-            $Image->id
+            $imageObject->id
         ];
         
         $result = $Database->fetchAll($query, $params); 

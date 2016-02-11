@@ -104,7 +104,7 @@ class Finder {
         $Loco       = false;
         $LocoClass  = false;
         $Livery     = false;
-        $Place      = false;
+        //$Place      = false;
         $ThisUser   = false;
         
         foreach ($args as $arg) {
@@ -317,11 +317,11 @@ class Finder {
      * @return array
      */
     
-    private static function fetch($query = false, $params = false) {
+    private static function fetch($query = null, $params = null) {
         
         $Database = (new AppCore)->getDatabaseConnection();
         
-        $Config = AppCore::GetConfig(); 
+        //$Config = AppCore::GetConfig(); 
         
         /**
          * Filter our query
@@ -457,10 +457,10 @@ class Finder {
      * Get photos in a collection
      * @since Version 3.9.1
      * @return array
-     * @param \Railpage\Images\Collection
+     * @param \Railpage\Images\Collection $photoCollection
      */
     
-    public static function getPhotosInCollection($Collection) {
+    public static function getPhotosInCollection($photoCollection) {
         
         $Database = (new AppCore)->getDatabaseConnection(); 
         
@@ -477,8 +477,8 @@ class Finder {
         
         $params = [ 
             0,
-            $Collection instanceof Collection ? $Collection->namespace : $Collection['namespace'],
-            $Collection instanceof Collection ? $Collection->id : $Collection['id'],
+            $photoCollection instanceof Collection ? $photoCollection->namespace : $photoCollection['namespace'],
+            $photoCollection instanceof Collection ? $photoCollection->id : $photoCollection['id'],
             (self::$pagenum - 1) * self::$perpage,
             self::$perpage
         ];
@@ -558,30 +558,30 @@ class Finder {
     /**
      * Get photo context
      * @since Version 3.10.0
-     * @param \Railpage\Images\Image $Image
-     * @param boolean $unapprovedonly
+     * @param \Railpage\Images\Image $imageObject
+     * @param boolean $unapprovedOnly
      * @return array
      */
     
-    public static function getPhotoContext(Image $Image, $unapprovedonly = false) {
+    public static function getPhotoContext(Image $imageObject, $unapprovedOnly = null) {
         
         $Database = (new AppCore)->getDatabaseConnection(); 
         
-        if (!$unapprovedonly) {
+        if ($unapprovedOnly == false || $unapprovedOnly == null) {
             
-            if ($Image->DateCaptured instanceof DateTime) {
+            if ($imageObject->DateCaptured instanceof DateTime) {
             
                 $query = "(SELECT image.id, image.provider, image.photo_id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.captured <= ? AND image.id != ? ORDER BY image.captured DESC LIMIT 0, ?)
                             UNION (SELECT id, image.provider, image.photo_id, image.captured, title, description, meta FROM image WHERE id = ?)
                             UNION (SELECT image.id, image.provider, image.photo_id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.captured >= ? AND image.id != ? ORDER BY captured ASC LIMIT 0, ?)";
                 
                 $params = [ 
-                    $Image->DateCaptured->format("Y-m-d H:i:s"), 
-                    $Image->id,
+                    $imageObject->DateCaptured->format("Y-m-d H:i:s"), 
+                    $imageObject->id,
                     self::$num_context,
-                    $Image->id, 
-                    $Image->DateCaptured->format("Y-m-d H:i:s"),
-                    $Image->id,
+                    $imageObject->id, 
+                    $imageObject->DateCaptured->format("Y-m-d H:i:s"),
+                    $imageObject->id,
                     self::$num_context,
                 ];
                 
@@ -592,39 +592,39 @@ class Finder {
                             UNION (SELECT image.id, image.provider, image.photo_id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE COALESCE(f.rejected, 0) = 0 AND image.id >= ? AND image.id != ? ORDER BY captured ASC LIMIT 0, ?)";
                 
                 $params = [ 
-                    $Image->id, 
-                    $Image->id,
+                    $imageObject->id, 
+                    $imageObject->id,
                     self::$num_context,
-                    $Image->id, 
-                    $Image->id,
-                    $Image->id,
+                    $imageObject->id, 
+                    $imageObject->id,
+                    $imageObject->id,
                     self::$num_context,
                 ];
                 
             }
             
-        } elseif ($Image->DateCaptured instanceof DateTime) {
+        } elseif ($imageObject->DateCaptured instanceof DateTime) {
             
             $query = "(SELECT image.id, image.provider, image.photo_id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE f.rejected IS NULL AND image.captured <= ? AND image.id != ? ORDER BY image.id DESC LIMIT 0, ?)
                         UNION (SELECT id, image.provider, image.photo_id, image.captured, title, description, meta FROM image WHERE id = ?)";
             
             $params = [ 
-                $Image->DateCaptured->format("Y-m-d H:i:s"), 
-                $Image->id,
+                $imageObject->DateCaptured->format("Y-m-d H:i:s"), 
+                $imageObject->id,
                 self::$num_context * 2,
-                $Image->id
+                $imageObject->id
             ];
             
-        } elseif (!$Image->DateCaptured instanceof DateTime) {
+        } elseif (!$imageObject->DateCaptured instanceof DateTime) {
             
             $query = "(SELECT image.id, image.provider, image.photo_id, image.captured, image.title, image.description, image.meta FROM image LEFT JOIN image_flags AS f ON image.id = f.image_id WHERE f.rejected IS NULL AND image.id <= ? AND image.id != ? ORDER BY image.id DESC LIMIT 0, ?)
                         UNION (SELECT id, image.provider, image.photo_id, image.captured, title, description, meta FROM image WHERE id = ?)";
             
             $params = [ 
-                $Image->id, 
-                $Image->id,
+                $imageObject->id, 
+                $imageObject->id,
                 self::$num_context * 2,
-                $Image->id
+                $imageObject->id
             ];
             
         }
@@ -651,27 +651,27 @@ class Finder {
             $Date = new DateTime($row['captured']);
             $row['unixtime'] = $Date->getTimestamp(); 
             
-            if ($Date < $Image->DateCaptured) {
+            if ($Date < $imageObject->DateCaptured) {
                 $before[] = $row;
                 continue;
             }
             
-            if ($Date > $Image->DateCaptured) {
+            if ($Date > $imageObject->DateCaptured) {
                 $after[] = $row;
                 continue;
             }
             
-            if ($row['id'] == $Image->id) {
+            if ($row['id'] == $imageObject->id) {
                 $current[] = $row;
                 continue;
             }
         }
         
-        usort($before, function($a, $b) {
+        usort($before, function ($a, $b) {
             return $a['unixtime'] - $b['unixtime'];
         });
         
-        usort($after, function($a, $b) {
+        usort($after, function ($a, $b) {
             return $a['unixtime'] + $b['unixtime'];
         });
         
@@ -683,19 +683,19 @@ class Finder {
      * Get a random image as an array
      * @since Version 3.10.0
      * @param string $namespace An optional linked namespace to filter by
-     * @param int $namespace_key An optional linked namespace key to filter by
+     * @param int $namespaceKey An optional linked namespace key to filter by
      * @return array
      */
     
-    public static function randomImage($namespace, $namespace_key) {
+    public static function randomImage($namespace, $namespaceKey) {
         
         $Database = (new AppCore)->getDatabaseConnection(); 
         
-        if (is_null($namespace) && !is_null($namespace_key)) {
+        if (is_null($namespace) && !is_null($namespaceKey)) {
             throw new InvalidArgumentException("A namespace key was specified but an associated namespace value was not.");
         }
         
-        if (is_null($namespace) && is_null($namespace_key)) {
+        if (is_null($namespace) && is_null($namespaceKey)) {
             
             $query = "SELECT * FROM image AS r1 JOIN (SELECT CEIL(RAND() * (SELECT MAX(id) FROM image)) AS randomid) AS r2 WHERE r1.id >= r2.randomid ORDER BY r1.id ASC LIMIT 1";
             
@@ -714,9 +714,9 @@ class Finder {
             $query = "SELECT il.image_id FROM image_link AS il LEFT JOIN image AS i ON i.id = il.image_id WHERE il.namespace = ? AND i.provider IS NOT NULL";
             $params = [ $namespace ];
             
-            if (!is_null($namespace_key)) {
+            if (!is_null($namespaceKey)) {
                 $query .= " AND namespace_key = ?";
-                $params[] = $namespace_key;
+                $params[] = $namespaceKey;
             }
             
             $ids = [];
@@ -746,13 +746,15 @@ class Finder {
     /**
      * Find a suitable cover photo
      * @since Version 3.10.0
-     * @param string|object $search_query
+     * @param string|object $searchQuery
      * @return string
      */
     
-    public static function GuessCoverPhoto($search_query) {
+    public static function GuessCoverPhoto($searchQuery) {
         
-        $cachekey = sprintf("railpage:coverphoto=%s", md5($search_query)); 
+        $defaultPhoto = "https://static.railpage.com.au/i/logo-fb.jpg";
+        
+        $cachekey = sprintf("railpage:coverphoto=%s", md5($searchQuery)); 
         
         $Memcached = AppCore::getMemcached(); 
         
@@ -762,31 +764,33 @@ class Finder {
         
         $SphinxQL = AppCore::getSphinx(); 
         
-        if (is_string($search_query)) {
-            $n_words = preg_match_all('/([a-zA-Z]|\xC3[\x80-\x96\x98-\xB6\xB8-\xBF]|\xC5[\x92\x93\xA0\xA1\xB8\xBD\xBE]){4,}/', $search_query, $match_arr);
-            $word_arr = $match_arr[0];
-            $words = implode(" || ", $word_arr);
-            
-            $SphinxQL->select()->from("idx_images")->match(array("title", "description"), $words, true); 
-            $rs = $SphinxQL->execute();
-            
-            if (count($rs)) {
-                $photo = $rs[0]; 
-                $photo['meta'] = json_decode($photo['meta'], true); 
-                $photo['sizes'] = Images::NormaliseSizes($photo['meta']['sizes']); 
-                
-                foreach ($photo['sizes'] as $size) {
-                    if ($size['width'] > 400 && $size['height'] > 300) {
-                        
-                        $Memcached->save($cachekey, $size['source'], 0); 
-                        
-                        return $size['source'];
-                    }
-                }
-            }
+        if (!is_string($searchQuery)) {
+            return $defaultPhoto;
         }
         
-        return "https://static.railpage.com.au/i/logo-fb.jpg";
+        preg_match_all('/([a-zA-Z]|\xC3[\x80-\x96\x98-\xB6\xB8-\xBF]|\xC5[\x92\x93\xA0\xA1\xB8\xBD\xBE]){4,}/', $searchQuery, $match_arr);
+        $word_arr = $match_arr[0];
+        $words = implode(" || ", $word_arr);
+        
+        $SphinxQL->select()->from("idx_images")->match(array("title", "description"), $words, true); 
+        $rs = $SphinxQL->execute();
+        
+        if (!count($rs)) {
+            return $defaultPhoto;
+        }
+        
+        $photo = $rs[0]; 
+        $photo['meta'] = json_decode($photo['meta'], true); 
+        $photo['sizes'] = Images::NormaliseSizes($photo['meta']['sizes']); 
+        
+        foreach ($photo['sizes'] as $size) {
+            if ($size['width'] > 400 && $size['height'] > 300) {
+                
+                $Memcached->save($cachekey, $size['source'], 0); 
+                
+                return $size['source'];
+            }
+        }
         
     }
     

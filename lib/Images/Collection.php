@@ -85,7 +85,7 @@ class Collection extends AppCore {
      * @param int|string $id
      */
     
-    public function __construct($id = false) {
+    public function __construct($id = null) {
         
         parent::__construct(); 
         
@@ -217,7 +217,9 @@ class Collection extends AppCore {
         if (filter_var($this->id, FILTER_VALIDATE_INT)) {
             $where = [ "id = ?" => $this->id ];
             $this->db->update("image_collection", $data, $where); 
-        } else {
+        }
+        
+        if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
             $this->db->insert("image_collection", $data); 
             $this->id = $this->db->lastInsertId(); 
         }
@@ -231,16 +233,16 @@ class Collection extends AppCore {
     /**
      * Is the specified image in this collection?
      * @since Version 3.9.1
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      * @return boolean
      */
     
-    public function containsImage(Image $Image) {
+    public function containsImage(Image $imageObject) {
         
         // Check that it's not already in this collection
         $query = "SELECT id FROM image_link WHERE image_id = ? AND namespace = ? AND namespace_key = ?";
         
-        if ($id = $this->db->fetchOne($query, array($Image->id, $this->namespace, $this->id))) {
+        if ($this->db->fetchOne($query, array($imageObject->id, $this->namespace, $this->id))) {
             return true;
         }
         
@@ -251,18 +253,18 @@ class Collection extends AppCore {
     /**
      * Add an image to this collection
      * @since Version 3.9.1
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      * @return \Railpage\Images\Collection
      */
     
-    public function addImage(Image $Image) {
+    public function addImage(Image $imageObject) {
         
-        if ($this->containsImage($Image)) {
+        if ($this->containsImage($imageObject)) {
             return $this;
         }
         
         $data = [
-            "image_id" => $Image->id,
+            "image_id" => $imageObject->id,
             "namespace" => $this->namespace,
             "namespace_key" => $this->id
         ];
@@ -278,14 +280,14 @@ class Collection extends AppCore {
     /**
      * Remove an image from this collection
      * @since Version 3.9.1
-     * @param \Railpage\Images\Image $Imgae
+     * @param \Railpage\Images\Image $imageObject
      * @return \Railpage\Images\Collection
      */
     
-    public function removeImage(Image $Image) {
+    public function removeImage(Image $imageObject) {
         
         $where = [
-            "image_id = ?" => $Image->id,
+            "image_id = ?" => $imageObject->id,
             "namespace = ?" => $this->namespace,
             "namespace_key = ?" => $this->id
         ];
@@ -326,4 +328,3 @@ class Collection extends AppCore {
     }
     
 }
-

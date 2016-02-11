@@ -29,7 +29,6 @@ use Railpage\Images\Competitions;
 use Railpage\Notifications\Notifications;
 use Railpage\Notifications\Notification;
 
-
 class PushNotify {
     
     /**

@@ -130,7 +130,7 @@ class FiveHundredPx extends AppCore implements ProviderInterface {
      * @param array $params
      */
     
-    public function __construct($params = false) {
+    public function __construct($params = null) {
         
         parent::__construct(); 
         
@@ -204,7 +204,7 @@ class FiveHundredPx extends AppCore implements ProviderInterface {
      * @return array
      */
     
-    public function getImage($id, $force = false) {
+    public function getImage($id, $force = 0) {
         
         $params['image_size'] = "1,2,3,4,5,20,21,30,100,200,440,600,1080,1600,2048";
         
@@ -227,11 +227,11 @@ class FiveHundredPx extends AppCore implements ProviderInterface {
      * Get a list of photos
      * @since Version 3.9
      * @param int $page
-     * @param int $items_per_page
+     * @param int $itemsPerPage
      * @return array
      */
     
-    public function getImages($page, $items_per_page) {
+    public function getImages($page, $itemsPerPage) {
         
     }
     
@@ -274,7 +274,7 @@ class FiveHundredPx extends AppCore implements ProviderInterface {
      * @return array
      */
     
-    public function execute($method = false, $params = array()) {
+    public function execute($method = null, $params = array()) {
         
         if (strpos("consumer_key=" . $this->oauth_consumer_key, $method) === false && !isset($params['oauth_consumer_key'])) {
             $params['consumer_key'] = $this->oauth_consumer_key; 
@@ -397,12 +397,12 @@ class FiveHundredPx extends AppCore implements ProviderInterface {
      * Get the EXIF data for this image
      * @since Version 3.10.0
      * @return array
-     * @param int $photo_id
+     * @param int $photoId
      */
     
-    public function getExif($photo_id) {
+    public function getExif($photoId) {
         
-        $data = $this->getImage($photo_id); 
+        $data = $this->getImage($photoId); 
         
         // finish this 
         

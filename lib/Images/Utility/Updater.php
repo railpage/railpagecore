@@ -83,7 +83,7 @@ class Updater {
             $Database->update("image", $data, $where); 
             
             continue;
-            
+            /*
             print_r($row['meta']['author']); die;
             
             if (isset($this->author->railpage_id)) {
@@ -93,6 +93,7 @@ class Updater {
                     $this->commit(); 
                 }
             }
+            */
         }
         
     }
@@ -100,19 +101,19 @@ class Updater {
     /**
      * Update the author for a specific image
      * @since Version 3.10.0
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      * @return \Railpage\Images\Image
      */
     
-    public static function updateAuthor(Image $Image) {
+    public static function updateAuthor(Image $imageObject) {
         
-        if ($id = UserUtility::findFromFlickrNSID($Image->author->id)) {
-            $Image->author->railpage_id = $id;
-            $Image->author->User = UserFactory::CreateUser($Image->author->railpage_id);
-            $Image->commit(); 
+        if ($id = UserUtility::findFromFlickrNSID($imageObject->author->id)) {
+            $imageObject->author->railpage_id = $id;
+            $imageObject->author->User = UserFactory::CreateUser($imageObject->author->railpage_id);
+            $imageObject->commit(); 
         }
         
-        return $Image;
+        return $imageObject;
         
     }
     
@@ -124,7 +125,7 @@ class Updater {
     
     public static function updateCaptureDate() {
         
-        $userlookup = array(); 
+        //$userlookup = array(); 
         
         $Database = (new AppCore)->getDatabaseConnection(); 
         
@@ -190,7 +191,7 @@ class Updater {
             
             set_time_limit(10);
             
-            $Image = ImageFactory::CreateImage($photo['id'], $album['provider']);
+            ImageFactory::CreateImage($photo['id'], $album['provider']);
             
             Debug::LogCLI("Sleeping for 2 seconds..."); 
             

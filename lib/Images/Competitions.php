@@ -233,7 +233,7 @@ class Competitions extends AppCore {
      * @param boolean $winner True/false flag indicating if this theme has been suggested by a competition winner
      */
     
-    public function suggestTheme($theme, $winner = false) {
+    public function suggestTheme($theme, $winner = null) {
         if (!$this->Author instanceof User) {
             throw new Exception("You have not set the author of this theme (hint: Competitions::setAuthor()");
         }
@@ -344,11 +344,11 @@ class Competitions extends AppCore {
     /**
      * Get the next photo competition
      * @since Version 3.10.0
-     * @param \Railpage\Gallery\Competition $Comp
+     * @param \Railpage\Gallery\Competition $photoComp
      * @return \Railpage\Gallery\Competition
      */
     
-    public function getNextCompetition(Competition $Comp) {
+    public function getNextCompetition(Competition $photoComp) {
         
         $query = "SELECT id 
             FROM image_competition
@@ -358,19 +358,19 @@ class Competitions extends AppCore {
             LIMIT 0, 1";
         
         $params = [
-            $Comp->id,
+            $photoComp->id,
         ];
         
         $id = $this->db->fetchOne($query, $params); 
         
         try {
-            $Comp = new Competition($id); 
+            $photoComp = new Competition($id); 
         } catch (Exception $e) {
             // throw it away
         }
         
-        if ($Comp instanceof Competition && filter_var($Comp->id, FILTER_VALIDATE_INT)) {
-            return $Comp; 
+        if ($photoComp instanceof Competition && filter_var($photoComp->id, FILTER_VALIDATE_INT)) {
+            return $photoComp; 
         } 
         
         $NextComp = $this->autoPopulateNextComp(); 

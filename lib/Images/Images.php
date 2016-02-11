@@ -18,7 +18,6 @@ use InvalidArgumentException;
 use DateTime;
 use DateTimeZone;
 
-
 /**
  * Images class
  * @since Version 3.8.7
@@ -66,16 +65,16 @@ class Images extends AppCore {
      * Delete a photo from the geodata cache
      * @since Version 3.9.1
      * @param string $provider
-     * @param string $photo_id
+     * @param string $photoId
      */
     
-    public function deleteFromCache($provider, $photo_id = false) {
+    public function deleteFromCache($provider, $photoId = null) {
         
-        if ($photo_id === false) {
+        if ($photoId == null) {
             throw new InvalidArgumentException("No photo ID was provided"); 
         }
         
-        $where = [ "photo_id = ?" => $photo_id ];
+        $where = [ "photo_id = ?" => $photoId ];
         $this->db->delete("flickr_geodata", $where); 
         
         return $this;
@@ -86,27 +85,28 @@ class Images extends AppCore {
      * Find an image by provider and provider image ID
      * @since Version 3.8.7
      * @param string $provider
-     * @param int $id
+     * @param int $photoId
+     * @param mixed $option
      * @throws \Exception if $provider is null
-     * @throws \Exception if $photo_id is null
+     * @throws \Exception if $photoId is null
      * @param int $option
      */
     
-    public function findImage($provider = NULL, $photo_id = NULL, $option = NULL) {
+    public function findImage($provider = null, $photoId = null, $option = null) {
         if (is_null($provider)) {
             throw new Exception("Cannot lookup image from image provider - no provider given (hint: Flickr, WestonLangford)");
         }
         
-        if (!preg_match("/([a-zA-Z0-9]+)/", $photo_id) || $photo_id === 0) {
+        if (!preg_match("/([a-zA-Z0-9]+)/", $photoId) || $photoId === 0) {
             throw new Exception("Cannot lookup image from image provider - no provider image ID given");
         }
         
-        $mckey = sprintf("railpage:image;provider=%s;id=%s", $provider, $photo_id);
+        $mckey = sprintf("railpage:image;provider=%s;id=%s", $provider, $photoId);
         
         if ((defined("NOREDIS") && NOREDIS == true)  || ($option != self::OPT_REFRESH && !$id = $this->Redis->fetch($mckey))) {
-            Debug::LogCLI("Found photo ID " . $photo_id . " in database"); 
+            Debug::LogCLI("Found photo ID " . $photoId . " in database"); 
             
-            $id = $this->db->fetchOne("SELECT id FROM image WHERE provider = ? AND photo_id = ?", array($provider, $photo_id));
+            $id = $this->db->fetchOne("SELECT id FROM image WHERE provider = ? AND photo_id = ?", array($provider, $photoId));
             $this->Redis->save($mckey, $id, strtotime("+1 month"));
         }
         
@@ -114,11 +114,11 @@ class Images extends AppCore {
             return new Image($id, $option);
         }
         
-        Debug::LogCLI("Photo ID " . $photo_id . " not found in local cache"); 
+        Debug::LogCLI("Photo ID " . $photoId . " not found in local cache"); 
         
         $Image = new Image;
         $Image->provider = $provider;
-        $Image->photo_id = $photo_id;
+        $Image->photo_id = $photoId;
         
         $Image->populate(true, $option);
         
@@ -128,21 +128,21 @@ class Images extends AppCore {
     /**
      * Find images of a locomotive
      * @since Version 3.8.7
-     * @param int $loco_id
-     * @param int $livery_id
+     * @param int $locoId
+     * @param int $liveryId
      * @return array
      */
     
-    public function findLocoImage($loco_id = NULL, $livery_id = NULL) {
-        if (is_null($loco_id)) {
+    public function findLocoImage($locoId = null, $liveryId = null) {
+        if (is_null($locoId)) {
             throw new Exception("Cannot find loco image - no loco ID given");
         }
         
-        if (is_null($livery_id)) {
+        if (is_null($liveryId)) {
             $query = "SELECT i.id FROM image_link AS il INNER JOIN image AS i ON il.image_id = i.id WHERE il.namespace = ? AND il.namespace_key = ? AND il.ignored = 0";
             $args = array(
                 "railpage.locos.loco",
-                $loco_id
+                $locoId
             );
             
             $image_id = $this->db->fetchOne($query, $args); 
@@ -150,12 +150,12 @@ class Images extends AppCore {
             $query = "SELECT il.image_id FROM image_link AS il WHERE il.namespace = ? AND il.namespace_key = ? AND il.image_id IN (SELECT i.id FROM image_link AS il INNER JOIN image AS i ON il.image_id = i.id WHERE il.namespace = ? AND il.namespace_key = ? AND il.ignored = 0)";
             $args = array(
                 "railpage.locos.liveries.livery",
-                $livery_id,
+                $liveryId,
                 "railpage.locos.loco",
-                $loco_id
+                $locoId
             );
             
-            $image_id = $results = $this->db->fetchOne($query, $args); 
+            $image_id = $this->db->fetchOne($query, $args); 
         }
         
         if (isset($image_id) && filter_var($image_id, FILTER_VALIDATE_INT)) {
@@ -176,7 +176,7 @@ class Images extends AppCore {
      * @return boolean|\Railpage\Images\Image
      */
     
-    public function getImageFromUrl($url = null, $option = NULL) {
+    public function getImageFromUrl($url = null, $option = null) {
         
         /**
          * Flickr
@@ -304,15 +304,15 @@ class Images extends AppCore {
     /**
      * Normalise sizes: add missing sizes
      * @since Version 3.9.1
-     * @param string $missing_size
-     * @param int $min_width
-     * @param int $min_height
+     * @param string $missingSize
+     * @param int $minWidth
+     * @param int $minHeight
      * @return void
      */
     
-    private static function normaliseSizes_addMissingSizes($missing_size, $min_width, $min_height) {
+    private static function normaliseSizes_addMissingSizes($missingSize, $minWidth, $minHeight) {
         
-        if (isset(self::$sizes[$missing_size])) {
+        if (isset(self::$sizes[$missingSize])) {
             return;
         }
         
@@ -321,8 +321,8 @@ class Images extends AppCore {
         }
         
         foreach (self::$sizes as $size) {
-            if ($size['width'] >= $min_width && $size['height'] >= $min_height) {
-                self::$sizes[$missing_size] = $size;
+            if ($size['width'] >= $minWidth && $size['height'] >= $minHeight) {
+                self::$sizes[$missingSize] = $size;
                 break;
             }
         }
@@ -334,30 +334,30 @@ class Images extends AppCore {
     /**
      * Normalise sizes: add shorthand names to sizes
      * @since Version 3.9.1
-     * @param string $missing_size
-     * @param int $min_width
-     * @param int $min_height
+     * @param string $missingSize
+     * @param int $minWidth
+     * @param int $maxWidth
      * @return void
      */
     
-    private static function normaliseSizes_addShorthands($missing_size, $min_width = 0, $max_width = 99999) {
+    private static function normaliseSizes_addShorthands($missingSize, $minWidth = 0, $maxWidth = 99999) {
         
         if (!count(self::$sizes)) {
             return;
         }
         
-        if (isset(self::$sizes[$missing_size])) {
+        if (isset(self::$sizes[$missingSize])) {
             return;
         }
         
         foreach (self::$sizes as $size) {
-            if ($missing_size != "largest" && $size['width'] >= $min_width && $size['width'] <= $max_width) {
-                self::$sizes[$missing_size] = $size;
+            if ($missingSize != "largest" && $size['width'] >= $minWidth && $size['width'] <= $maxWidth) {
+                self::$sizes[$missingSize] = $size;
                 return;
             }
         }
         
-        if ($missing_size == "largest") {
+        if ($missingSize == "largest") {
             $largest = current(self::$sizes); 
             
             foreach (self::$sizes as $size) {
@@ -366,7 +366,7 @@ class Images extends AppCore {
                 }
             }
             
-            self::$sizes[$missing_size] = $largest;
+            self::$sizes[$missingSize] = $largest;
         }
         
         return;
@@ -378,15 +378,15 @@ class Images extends AppCore {
      * @since Version 3.9.1
      * @return array
      * @param int $page
-     * @param int $items_per_page
+     * @param int $itemsPerPage
      */
     
-    public function findUntagged($page = 1, $items_per_page = 25) {
+    public function findUntagged($page = 1, $itemsPerPage = 25) {
         $query = "SELECT SQL_CALC_FOUND_ROWS * FROM image WHERE id NOT IN (SELECT DISTINCT image_id FROM image_link) LIMIT ?, ?";
         
         $params = array(
-            ($page - 1) * $items_per_page,
-            $items_per_page
+            ($page - 1) * $itemsPerPage,
+            $itemsPerPage
         );
         
         $result = $this->db->fetchAll($query, $params); 
@@ -394,7 +394,7 @@ class Images extends AppCore {
         $return = [ 
             "stat" => "ok",
             "page" => $page, 
-            "perpage" => $items_per_page,
+            "perpage" => $itemsPerPage,
             "total" => 0,
             "photos" => array()
         ];
@@ -420,23 +420,18 @@ class Images extends AppCore {
     
     public function getRecentAdditions($limit = 10) {
         
-        $cachekey = sprintf("railpage:photos.latest.num=%d", $limit); 
+        //$cachekey = sprintf("railpage:photos.latest.num=%d", $limit); 
         
-        #if (!$result = $this->Redis->fetch($cachekey)) {
+        $query = "SELECT i.* FROM image AS i LEFT JOIN image_flags AS f ON i.id = f.image_id WHERE i.hidden = 0 AND f.published = 1 ORDER BY i.id DESC LIMIT 0, ?";
         
-            $query = "SELECT i.* FROM image AS i LEFT JOIN image_flags AS f ON i.id = f.image_id WHERE i.hidden = 0 AND f.published = 1 ORDER BY i.id DESC LIMIT 0, ?";
+        $return = array(); 
+        
+        foreach ($this->db->fetchAll($query, $limit) as $row) {
+            $row['meta'] = json_decode($row['meta'], true); 
+            $row['meta']['sizes'] = self::normaliseSizes($row['meta']['sizes']); 
             
-            $return = array(); 
-            
-            foreach ($this->db->fetchAll($query, $limit) as $row) {
-                $row['meta'] = json_decode($row['meta'], true); 
-                $row['meta']['sizes'] = self::normaliseSizes($row['meta']['sizes']); 
-                
-                $return[] = $row;
-            }
-            
-            #$this->Redis->save($cachekey, $return, strtotime("+1 hour"));
-        #}
+            $return[] = $row;
+        }
         
         return $return;
     }

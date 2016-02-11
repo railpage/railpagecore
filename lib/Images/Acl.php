@@ -36,16 +36,16 @@ class Acl {
     /**
      * Check if a user is allowed to do something
      * @since Version 3.10.0
-     * @param \Railpage\Users\User $User
+     * @param \Railpage\Users\User $userObject
      * @param string $perm
      * @return boolean
      */
     
-    public static function can(User $User, $perm) {
+    public static function can(User $userObject, $perm) {
         
         $Acl = new Acl;
         
-        if (in_array($User->id, $Acl->showRunners)) {
+        if (in_array($userObject->id, $Acl->showRunners)) {
             return true;
         }
         

@@ -24,11 +24,11 @@ class Screener extends AppCore {
      * Get unreviewed images
      * @since Version 3.10.0
      * @param int $page
-     * @param int $items_per_page
+     * @param int $itemsPerPage
      * @return array
      */
     
-    public function getUnreviewedImages($page = 1, $items_per_page = 25) {
+    public function getUnreviewedImages($page = 1, $itemsPerPage = 25) {
         
         if (!$this->User instanceof User) {
             throw new Exception("Cannot find unreviewed images - no user has been set");
@@ -52,13 +52,13 @@ class Screener extends AppCore {
         
         $params = [ 
             $this->User->id,
-            ($page - 1) * $items_per_page, 
-            $items_per_page 
+            ($page - 1) * $itemsPerPage, 
+            $itemsPerPage 
         ];
         
         $return = array(
             "page" => $page, 
-            "items_per_page" => $items_per_page, 
+            "items_per_page" => $itemsPerPage, 
             "total" => 0,
             "images" => array()
         );
@@ -75,31 +75,38 @@ class Screener extends AppCore {
     /**
      * Review an image
      * @since Version 3.10.0
-     * @param \Railpage\Images\Image $Image
-     * @param \Railpage\Users\User $User
+     * @param \Railpage\Images\Image $imageObject
+     * @param \Railpage\Users\User $userObject
      * @param boolean $publish
      * @param boolean $pick Does the screener think this is an exceptional photograph?
      * @return \Railpage\Images\Screener
      */
     
-    public function reviewImage(Image $Image, User $User, $publish = false, $pick = false) {
+    public function reviewImage(Image $imageObject, User $userObject, $publish = 0, $pick = 0) {
         
         $publish = (bool) intval($publish);
         $pick = (bool) intval($pick); 
         
         // If the screener hinks this is a worthy photo, why shouldn't we publish it?
-        if ($pick) {
+        if ($pick == true) {
             $publish = true;
         }
         
-        $query = sprintf("INSERT INTO image_flags (
-                            image_id, published, screened, screened_by, screened_on, screened_pick, rejected
-                        ) VALUES (
-                            %d, %d, %d, %d, NOW(), %d, %d
-                        ) ON DUPLICATE KEY UPDATE 
-                            published = VALUES(published), screened_by = VALUES(screened_by), 
-                            screened_on = NOW(), screened_pick = VALUES(screened_pick), rejected = VALUES(rejected)",
-                        $this->db->quote(intval($Image->id)), $publish, 1, $this->db->quote(intval($User->id)), $pick, !$publish);
+        $query = sprintf(
+            "INSERT INTO image_flags (
+                image_id, published, screened, screened_by, screened_on, screened_pick, rejected
+            ) VALUES (
+                %d, %d, %d, %d, NOW(), %d, %d
+            ) ON DUPLICATE KEY UPDATE 
+                published = VALUES(published), screened_by = VALUES(screened_by), 
+                screened_on = NOW(), screened_pick = VALUES(screened_pick), rejected = VALUES(rejected)",
+            $this->db->quote(intval($imageObject->id)), 
+            $publish, 
+            1, 
+            $this->db->quote(intval($userObject->id)), 
+            $pick, 
+            !$publish
+        );
         
         $this->db->query($query); 
         
@@ -108,13 +115,13 @@ class Screener extends AppCore {
          */
         
         $where = [ 
-            "image_id = ?" => $Image->id
+            "image_id = ?" => $imageObject->id
         ];
         
         $this->db->delete("image_flags_skip", $where);
         
         if ($publish) {
-            $Image = Utility\Updater::updateAuthor($Image);
+            $imageObject = Utility\Updater::updateAuthor($imageObject);
         }
         
         return $this;
@@ -124,20 +131,23 @@ class Screener extends AppCore {
     /**
      * Skip reviewing this image
      * @since Version 3.10.0
-     * @param \Railpage\Images\Image $Image
-     * @param \Railpage\Users\User $User
+     * @param \Railpage\Images\Image $imageObject
+     * @param \Railpage\Users\User $userObject
      * @return \Railpage\Images\Screener
      */
     
-    public function skipImage(Image $Image, User $User) {
+    public function skipImage(Image $imageObject, User $userObject) {
         
-        $query = sprintf("INSERT INTO image_flags_skip ( 
-                            `image_id`, `user_id`, `date`
-                        ) VALUES (
-                            %d, %d, NOW()
-                        ) ON DUPLICATE KEY UPDATE
-                            `date` = NOW()",
-                        $this->db->quote(intval($Image->id)), $this->db->quote(intval($User->id)));
+        $query = sprintf(
+            "INSERT INTO image_flags_skip ( 
+                `image_id`, `user_id`, `date`
+            ) VALUES (
+                %d, %d, NOW()
+            ) ON DUPLICATE KEY UPDATE
+                `date` = NOW()",
+            $this->db->quote(intval($imageObject->id)), 
+            $this->db->quote(intval($userObject->id))
+        );
         
         $this->db->query($query); 
         
@@ -148,15 +158,15 @@ class Screener extends AppCore {
     /**
      * Get a list of users who have skipped reviewing this photo
      * @since Version 3.10.0
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      * @return array
      */
     
-    public function getSkippedBy(Image $Image) {
+    public function getSkippedBy(Image $imageObject) {
         
         $query = "SELECT u.username, u.user_id FROM nuke_users AS u LEFT JOIN image_flags_skip AS p ON p.user_id = u.user_id WHERE p.image_id = ?";
         
-        $rs = $this->db->fetchAll($query, $Image->id); 
+        $rs = $this->db->fetchAll($query, $imageObject->id); 
         return $rs;
         
     }
@@ -193,9 +203,9 @@ class Screener extends AppCore {
      * @param string $provider
      */
     
-    public function deleteImage($id, $provider = false) {
+    public function deleteImage($id, $provider = null) {
         
-        if (!$provider) {
+        if ($provider == null) {
             $where = [ "id = ?" => $id ];
             $this->db->delete("image", $where); 
             
@@ -216,15 +226,15 @@ class Screener extends AppCore {
     /**
      * Get the screener of the selected image
      * @since Version 3.10.0
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      * @return array
      */
     
-    public function getImageScreener(Image $Image) {
+    public function getImageScreener(Image $imageObject) {
         
         $query = "SELECT f.*, f.screened_by AS user_id, u.username, u.user_avatar, CONCAT('/user/', f.screened_by) AS url FROM image_flags AS f LEFT JOIN nuke_users AS u ON f.screened_by = u.user_id WHERE image_id = ?";
         
-        $row = $this->db->fetchRow($query, $Image->id); 
+        $row = $this->db->fetchRow($query, $imageObject->id); 
         
         $av = $row['user_avatar'];
         
@@ -262,11 +272,11 @@ class Screener extends AppCore {
      * Get rejected images
      * @since Version 3.10.0
      * @param int $page
-     * @param int $items_per_page
+     * @param int $itemsPerPage
      * @return array
      */
     
-    public function getRejectedImages($page = 1, $items_per_page = 25) {
+    public function getRejectedImages($page = 1, $itemsPerPage = 25) {
         
         $query = "SELECT SQL_CALC_FOUND_ROWS u.user_id, u.username, CONCAT('/user/', u.user_id) AS url, i.*
             FROM image_flags AS f
@@ -277,14 +287,14 @@ class Screener extends AppCore {
             LIMIT ?, ?";
         
         $params = [
-            ($page - 1) * $items_per_page, 
-            $items_per_page
+            ($page - 1) * $itemsPerPage, 
+            $itemsPerPage
         ];
         
         $return = array(
             "total" => 0,
             "page" => $page,
-            "items_per_page" => $items_per_page,
+            "items_per_page" => $itemsPerPage,
             "photos" => array()
         ); 
         
@@ -304,11 +314,11 @@ class Screener extends AppCore {
      * Get skipped images
      * @since Version 3.10.0
      * @param int $page
-     * @param int $items_per_page
+     * @param int $itemsPerPage
      * @return array
      */
     
-    public function getSkippedImages($page = 1, $items_per_page = 25) {
+    public function getSkippedImages($page = 1, $itemsPerPage = 25) {
         
         $query = "SELECT SQL_CALC_FOUND_ROWS i.*
             FROM image_flags_skip AS f
@@ -318,14 +328,14 @@ class Screener extends AppCore {
             LIMIT ?, ?";
         
         $params = [
-            ($page - 1) * $items_per_page, 
-            $items_per_page
+            ($page - 1) * $itemsPerPage, 
+            $itemsPerPage
         ];
         
         $return = array(
             "total" => 0,
             "page" => $page,
-            "items_per_page" => $items_per_page,
+            "items_per_page" => $itemsPerPage,
             "photos" => array()
         ); 
         
@@ -344,13 +354,13 @@ class Screener extends AppCore {
     /**
      * Get the last review date by a given user
      * @since Version 3.10.0
-     * @param \Railpage\Users\User $User
+     * @param \Railpage\Users\User $userObject
      * @return \DateTime|false Returns false if guest, or no review date found
      */
     
-    public static function getLastReviewDate(User $User) {
+    public static function getLastReviewDate(User $userObject) {
         
-        if (!filter_var($User->id, FILTER_VALIDATE_INT)) {
+        if (!filter_var($userObject->id, FILTER_VALIDATE_INT)) {
             return false;
         }
         
@@ -358,7 +368,7 @@ class Screener extends AppCore {
         
         $query = "SELECT screened_on FROM image_flags WHERE screened_by = ? ORDER BY screened_on DESC LIMIT 0, 1";
         
-        $date = $Database->fetchOne($query, $User->id); 
+        $date = $Database->fetchOne($query, $userObject->id); 
         
         if (!$date) {
             
@@ -367,7 +377,7 @@ class Screener extends AppCore {
                 13666
             ];
             
-            if (in_array($User->id, $maintainers)) {
+            if (in_array($userObject->id, $maintainers)) {
                 return new DateTime("jan 1 1970"); 
             }
             

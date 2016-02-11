@@ -209,9 +209,11 @@ class Flickr extends AppCore implements ProviderInterface {
      * @return array
      */
     
-    public function getImage($id, $force = null) {
+    public function getImage($id, $force = 0) {
         
         $mckey = sprintf("railpage:image.provider=%s;image=%d", self::PROVIDER_NAME, $id);
+        
+        $force = (bool) $force;
         
         if ($force) {
             $this->Memcached->delete($mckey); 
@@ -608,12 +610,12 @@ class Flickr extends AppCore implements ProviderInterface {
      * Get the EXIF data for this image
      * @since Version 3.10.0
      * @return array
-     * @param int $photo_id
+     * @param int $photoId
      */
     
-    public function getExif($photo_id) {
+    public function getExif($photoId) {
         
-        $data = [ "photo_id" => $photo_id ];
+        $data = [ "photo_id" => $photoId ];
         
         $raw = $this->execute("flickr.photos.getExif", $data);
         $raw = $raw['photo']['exif']; 

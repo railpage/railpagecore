@@ -17,13 +17,13 @@ class Url {
     /**
      * Create URL object from an image ID
      * @since Version 3.9.1
-     * @param int $image_id
+     * @param int $imageId
      * @return \Railpage\Url
      */
     
-    public static function CreateFromImageID($image_id) {
+    public static function CreateFromImageID($imageId) {
         
-        $Url = new RealUrl(sprintf("/photos/%d", $image_id));
+        $Url = new RealUrl(sprintf("/photos/%d", $imageId));
         $Url->favourite = sprintf("%s?mode=image.favourite", $Url->url);
         
         if ($Url->canonical == "http://" . $Url->url) {

@@ -22,16 +22,16 @@ class ImageUtility {
     /**
      * Generate the HTML5 picture srcset string
      * @since Version 3.10.0
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      * @return array
      */
      
-    public static function generateSrcSet(Image $Image) {
+    public static function generateSrcSet(Image $imageObject) {
         
         $sources = array(); 
         $widths = array(); 
         
-        foreach ($Image->sizes as $size) {
+        foreach ($imageObject->sizes as $size) {
             $k = md5($size['source']); 
             
             if (isset($sources[$k])) {
@@ -46,7 +46,7 @@ class ImageUtility {
                 continue;
             }
             
-            $multiplier = intval($size['width'] > 1600) + 1;
+            //$multiplier = intval($size['width'] > 1600) + 1;
             
             $sources[$k] = sprintf("%s %dw", $size['source'], $size['width']);
             $widths[] = $size['width'];
@@ -60,13 +60,13 @@ class ImageUtility {
      * Get the SVG string for a gaussian blur of an image thumbnail, blown up to full size
      * Displayed while the full image loads in the background
      * @since Version 3.10.0
-     * @param \Railpage\Images\Images $Image
+     * @param \Railpage\Images\Images $imageObject
      * @return string
      */
     
-    public static function GetLoadingSVG(Image $Image) {
+    public static function GetLoadingSVG(Image $imageObject) {
         
-        $cachekey = sprintf("railpage:base64.image.svg=%d", $Image->id); 
+        $cachekey = sprintf("railpage:base64.image.svg=%d", $imageObject->id); 
         
         $Memcached = AppCore::GetMemcached(); 
         
@@ -88,7 +88,7 @@ class ImageUtility {
         }
         
         if (!$base64 = $Memcached->Fetch($cachekey)) {*/
-            $thumbnail = $Image->sizes['thumb']['source']; 
+            $thumbnail = $imageObject->sizes['thumb']['source']; 
             $cached_url = ImageCache::cache($thumbnail);
             
             $base64 = base64_encode(file_get_contents($cached_url)); 
@@ -96,8 +96,8 @@ class ImageUtility {
             $Memcached->save($cachekey, $base64); 
         }
         
-        $dstw = $Image->sizes['largest']['width'];
-        $dsth = $Image->sizes['largest']['height'];
+        $dstw = $imageObject->sizes['largest']['width'];
+        $dsth = $imageObject->sizes['largest']['height'];
         
         $string = '
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="' . $dstw . '" height="' . $dsth . '" viewBox="0 0 ' . $dstw . ' ' . $dsth . '">

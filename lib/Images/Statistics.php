@@ -294,19 +294,19 @@ AND i.user_id != 0
     /**
      * Get stats for a given camera
      * @since Version 3.10.0
-     * @param \Railpage\Images\Camera $Camera
+     * @param \Railpage\Images\Camera $cameraObject
      * @return array
      */
     
-    public function getStatsForCamera(Camera $Camera) {
+    public function getStatsForCamera(Camera $cameraObject) {
         
         $query = "(SELECT 'Photos on Railpage' AS label, COUNT(*) AS value FROM image_exif WHERE camera_id = ?)
             UNION (SELECT 'Most used lens' AS label, l.model AS value FROM image_exif AS e LEFT JOIN image_lens AS l ON e.lens_id = l.id WHERE e.camera_id = ? GROUP BY e.lens_id ORDER BY COUNT(*) DESC LIMIT 1)
             UNION (SELECT 'Screener\'s Choice' AS label, COUNT(*) AS value FROM image_flags AS f LEFT JOIN image_exif AS e ON e.image_id = f.image_id WHERE e.camera_id = ? AND f.screened_pick = 1)";
         
-        $params[] = $Camera->id;
-        $params[] = $Camera->id;
-        $params[] = $Camera->id;
+        $params[] = $cameraObject->id;
+        $params[] = $cameraObject->id;
+        $params[] = $cameraObject->id;
         
         $result = $this->db->fetchAll($query, $params); 
         

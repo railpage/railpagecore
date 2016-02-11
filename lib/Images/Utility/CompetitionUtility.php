@@ -33,11 +33,11 @@ class CompetitionUtility {
      * Find the photo context from a specified array
      * @since Version 3.9.1
      * @param array $photos
-     * @param \Railpage\Images\Image $Image
+     * @param \Railpage\Images\Image $imageObject
      * @return array
      */
     
-    public static function getPhotoContext($photos, $Image) {
+    public static function getPhotoContext($photos, $imageObject) {
         
         /**
          * Loop through the array once until we find the provided image. Add photos to a temporary array, and then we slice it to return the last 4 entries to the array
@@ -49,7 +49,7 @@ class CompetitionUtility {
         
         foreach ($photos as $key => $data) {
             
-            if ($data['image_id'] == $Image->id) {
+            if ($data['image_id'] == $imageObject->id) {
                 $split = $key;
                 break;
             }
@@ -86,21 +86,21 @@ class CompetitionUtility {
     /**
      * Create a news article announcing the commencement of submissions
      * @since Version 3.10.0
-     * @param \Railpage\Images\Competition $Comp
+     * @param \Railpage\Images\Competition $photoComp
      * @return void
      */
     
-    public static function createNewsArticle_SubmissionsOpen(Competition $Comp) {
+    public static function createNewsArticle_SubmissionsOpen(Competition $photoComp) {
         
-        if (isset($Comp->meta['news.submissions.open']) && $Comp->meta['news.submissions.open'] == "created") {
+        if (isset($photoComp->meta['news.submissions.open']) && $photoComp->meta['news.submissions.open'] == "created") {
             return;
         }
         
-        if (!self::isSubmissionWindowOpen($Comp)) {
+        if (!self::isSubmissionWindowOpen($photoComp)) {
             return;
         }
         
-        $theme = $Comp->theme;
+        $theme = $photoComp->theme;
         if (!preg_match('/[\p{P}]$/u', $theme)) {
             $theme .= ".";
         }
@@ -112,13 +112,13 @@ class CompetitionUtility {
         $Topic = new NewsTopic(5); // Topic in the Railpage category
         $Article = new NewsArticle;
         
-        $Article->title = "Submissions open for " . $Comp->title . " photo comp";
+        $Article->title = "Submissions open for " . $photoComp->title . " photo comp";
         $Article->featured_image = "https://static.railpage.com.au/i/photocomphero.jpg";
         
         $Article->lead = sprintf("Submissions are now open for our monthly international photo competition. The theme for this competition is <em>%s</em>", $theme); 
         $Article->firstline = $Article->lead;
-        $Article->paragraphs  = $Article->lead . "\n\n" . sprintf("Entries are open until %s. Please take a moment to read the competition rules before submitting your entry, and please note the photo must belong to you.\n\n", $Comp->SubmissionsDateClose->format("F jS"));
-        $Article->paragraphs .= sprintf("To enter the competition your photo must appear on Flickr or SmugMug, and you must have a valid Railpage user account. For further details, view the submissions thus far or to enter your own photo please head to the <a href='%s'>%s</a> competition page.", $Comp->url->url, $Comp->title); 
+        $Article->paragraphs  = $Article->lead . "\n\n" . sprintf("Entries are open until %s. Please take a moment to read the competition rules before submitting your entry, and please note the photo must belong to you.\n\n", $photoComp->SubmissionsDateClose->format("F jS"));
+        $Article->paragraphs .= sprintf("To enter the competition your photo must appear on Flickr or SmugMug, and you must have a valid Railpage user account. For further details, view the submissions thus far or to enter your own photo please head to the <a href='%s'>%s</a> competition page.", $photoComp->url->url, $photoComp->title); 
         
         $Article->setAuthor(UserFactory::CreateUser(User::SYSTEM_USER_ID))
                 ->setStaff(UserFactory::CreateUser(User::SYSTEM_USER_ID))
@@ -126,8 +126,8 @@ class CompetitionUtility {
         
         $Article->commit();
         
-        $Comp->meta['news.submissions.open'] = "created";
-        $Comp->commit();
+        $photoComp->meta['news.submissions.open'] = "created";
+        $photoComp->commit();
         
         return;
         
@@ -136,21 +136,21 @@ class CompetitionUtility {
     /**
      * Create a news article announcing the commencement of voting
      * @since Version 3.10.0
-     * @param \Railpage\Images\Competition $Comp
+     * @param \Railpage\Images\Competition $photoComp
      * @return void
      */
     
-    public static function createNewsArticle_VotingOpen(Competition $Comp) {
+    public static function createNewsArticle_VotingOpen(Competition $photoComp) {
         
-        if (isset($Comp->meta['news.voting.open']) && $Comp->meta['news.voting.open'] == "created") {
+        if (isset($photoComp->meta['news.voting.open']) && $photoComp->meta['news.voting.open'] == "created") {
             return;
         }
         
-        if (!self::isVotingWindowOpen($Comp)) {
+        if (!self::isVotingWindowOpen($photoComp)) {
             return;
         }
         
-        $theme = $Comp->theme;
+        $theme = $photoComp->theme;
         if (!preg_match('/[\p{P}]$/u', $theme)) {
             $theme .= ".";
         }
@@ -162,13 +162,13 @@ class CompetitionUtility {
         $Topic = new NewsTopic(5); // Topic in the Railpage category
         $Article = new NewsArticle;
         
-        $Article->title = "Voting open for " . $Comp->title . " photo comp";
+        $Article->title = "Voting open for " . $photoComp->title . " photo comp";
         $Article->featured_image = "https://static.railpage.com.au/i/photocomphero.jpg";
         
-        $Article->lead = sprintf("Voting is now open for our monthly international photo competition. The theme for this competition is <em><a href='%s'>%s</a></em>", $Comp->url->url, $theme); 
+        $Article->lead = sprintf("Voting is now open for our monthly international photo competition. The theme for this competition is <em><a href='%s'>%s</a></em>", $photoComp->url->url, $theme); 
         $Article->firstline = $Article->lead;
-        $Article->paragraphs  = $Article->lead . "\n\n" . sprintf("Voting is open until %s.\n\n", $Comp->VotingDateClose->format("F jS"));
-        //$Article->paragraphs .= sprintf("To enter the competition your photo must appear on Flickr or SmugMug, and you must have a valid Railpage user account. For further details, view the submissions thus far or to enter your own photo please head to the <a href='%s'>%s</a> competition page.", $Comp->url->url, $Comp->title); 
+        $Article->paragraphs  = $Article->lead . "\n\n" . sprintf("Voting is open until %s.\n\n", $photoComp->VotingDateClose->format("F jS"));
+        //$Article->paragraphs .= sprintf("To enter the competition your photo must appear on Flickr or SmugMug, and you must have a valid Railpage user account. For further details, view the submissions thus far or to enter your own photo please head to the <a href='%s'>%s</a> competition page.", $photoComp->url->url, $photoComp->title); 
         
         $Article->setAuthor(UserFactory::CreateUser(User::SYSTEM_USER_ID))
                 ->setStaff(UserFactory::CreateUser(User::SYSTEM_USER_ID))
@@ -176,8 +176,8 @@ class CompetitionUtility {
         
         $Article->commit();
         
-        $Comp->meta['news.voting.open'] = "created";
-        $Comp->commit();
+        $photoComp->meta['news.voting.open'] = "created";
+        $photoComp->commit();
         
         return;
         
@@ -186,30 +186,30 @@ class CompetitionUtility {
     /**
      * Create a news article announcing the end of the competition
      * @since Version 3.10.0
-     * @param \Railpage\Images\Competition $Comp
+     * @param \Railpage\Images\Competition $photoComp
      * @return void
      */
     
-    public static function createNewsArticle_Winner(Competition $Comp) {
+    public static function createNewsArticle_Winner(Competition $photoComp) {
         
         /**
          * Get the winning photo
          */
         
-        $Photo = $Comp->getWinningPhoto();
+        $Photo = $photoComp->getWinningPhoto();
         
         /**
          * Get all photos by vote count
          */
         
-        $photos = $Comp->getPhotosAsArrayByVotes(); 
+        $photos = $photoComp->getPhotosAsArrayByVotes(); 
         
         /**
          * Get the next competition
          */
         
         $Competitions = new Competitions;
-        $NextComp = $Competitions->getNextCompetition($Comp); 
+        $NextComp = $Competitions->getNextCompetition($photoComp); 
         
         /**
          * Curate the news article
@@ -218,8 +218,8 @@ class CompetitionUtility {
         $Topic = new NewsTopic(5); // Topic in the Railpage category
         $Article = new NewsArticle;
         
-        $Article->title = $Comp->title . " photo comp";
-        $Article->lead = sprintf("Congratulations to [url=%s]%s[/url] who has won the [url=%s]%s[/url] photo competition with %d votes.", $Photo->Author->url->url, $Photo->Author->username, $Comp->url->url, $Comp->title, count($photos[0]['votes'])); 
+        $Article->title = $photoComp->title . " photo comp";
+        $Article->lead = sprintf("Congratulations to [url=%s]%s[/url] who has won the [url=%s]%s[/url] photo competition with %d votes.", $Photo->Author->url->url, $Photo->Author->username, $photoComp->url->url, $photoComp->title, count($photos[0]['votes'])); 
         $Article->firstline = $Article->lead;
         $Article->featured_image = $Photo->Image->sizes['medium']['source'];
         
@@ -253,20 +253,20 @@ class CompetitionUtility {
     /**
      * Create a site message targeted to the competition winner
      * @since Version 3.9.1
-     * @param \Railpage\Images\Competition $Comp
+     * @param \Railpage\Images\Competition $photoComp
      * @return void
      */
     
-    public static function createSiteNotificationForWinner(Competition $Comp) {
+    public static function createSiteNotificationForWinner(Competition $photoComp) {
         
-        $Photo = $Comp->getWinningPhoto();
+        $Photo = $photoComp->getWinningPhoto();
         
-        if (!$SiteMessage = (new SiteMessages)->getMessageForObject($Comp)) {
+        if (!$SiteMessage = (new SiteMessages)->getMessageForObject($photoComp)) {
             $SiteMessage = new SiteMessage; 
             
-            $SiteMessage->title = sprintf("Photo competition: %s", $Comp->title); 
-            $SiteMessage->text = sprintf("You won the %s photo competition! <a href='%s'>Set the subject of next month's competition</a>.", $Comp->title, $Comp->url->suggestsubject); 
-            $SiteMessage->Object = $Comp;
+            $SiteMessage->title = sprintf("Photo competition: %s", $photoComp->title); 
+            $SiteMessage->text = sprintf("You won the %s photo competition! <a href='%s'>Set the subject of next month's competition</a>.", $photoComp->title, $photoComp->url->suggestsubject); 
+            $SiteMessage->Object = $photoComp;
             $SiteMessage->targetUser($Photo->Author)->commit(); 
         }
         
@@ -275,46 +275,46 @@ class CompetitionUtility {
     /**
      * Check if the image submission window is open
      * @since Version 3.9.1
-     * @param \Railpage\Images\Competition $Comp
+     * @param \Railpage\Images\Competition $photoComp
      * @return boolean
      */
     
-    public static function isSubmissionWindowOpen(Competition $Comp) {
+    public static function isSubmissionWindowOpen(Competition $photoComp) {
         
-        return self::compareWindows($Comp, "Submissions");
+        return self::compareWindows($photoComp, "Submissions");
         
     }
     
     /**
      * Check if the voting window is open
      * @since Version 3.9.1
-     * @param \Railpage\Images\Competition $Comp
+     * @param \Railpage\Images\Competition $photoComp
      * @return boolean
      */
     
-    public static function isVotingWindowOpen(Competition $Comp) {
+    public static function isVotingWindowOpen(Competition $photoComp) {
         
-        return self::compareWindows($Comp, "Voting");
+        return self::compareWindows($photoComp, "Voting");
         
     }
     
     /**
      * Compare voting / submission windows to current time
      * @since Version 3.9.1
-     * @param \Railpage\Images\Competition $Comp
+     * @param \Railpage\Images\Competition $photoComp
      * @param string $window
      * @return boolean
      */
     
-    private static function compareWindows(Competition $Comp, $window) {
+    private static function compareWindows(Competition $photoComp, $window) {
         
         $Now = new DateTime;
         
         $open = sprintf("%sDateOpen", $window);
         $close = sprintf("%sDateClose", $window);
         
-        if (!($Comp->$open instanceof DateTime && $Comp->$open <= $Now) || 
-            !($Comp->$close instanceof DateTime && $Comp->$close >= $Now)) {
+        if (!($photoComp->$open instanceof DateTime && $photoComp->$open <= $Now) || 
+            !($photoComp->$close instanceof DateTime && $photoComp->$close >= $Now)) {
                 return false;
         }
         
@@ -325,16 +325,16 @@ class CompetitionUtility {
     /**
      * Get contestants from a photo competition
      * @since Version 3.10.0
-     * @param \Railpage\Images\Competition $Comp
+     * @param \Railpage\Images\Competition $photoComp
      * @return array
      */
     
-    public static function getCompetitionContestants(Competition $Comp) {
+    public static function getCompetitionContestants(Competition $photoComp) {
         
         $Database = (new AppCore)->getDatabaseConnection(); 
         
         $query = "SELECT u.user_id, u.username, u.user_email AS contact_email FROM image_competition_submissions AS s LEFT JOIN nuke_users AS u ON s.user_id = u.user_id WHERE s.competition_id = ? AND s.status != ?";
-        $params = [ $Comp->id, Competitions::PHOTO_REJECTED ];
+        $params = [ $photoComp->id, Competitions::PHOTO_REJECTED ];
         
         return $Database->fetchAll($query, $params); 
         
@@ -343,13 +343,13 @@ class CompetitionUtility {
     /**
      * Process the recipients of the notification email
      * @since Version 3.9.1
-     * @param \Railpage\Notifications\Notification $Notification
-     * @param \Railpage\Images\Competition $Comp
+     * @param \Railpage\Notifications\Notification $notificationObject
+     * @param \Railpage\Images\Competition $photoComp
      * @param array $notificationOptions
      * @return \Railpage\Notifications\Notification
      */
      
-    public static function notificationDoRecipients(Notification $Notification, Competition $Comp, $notificationOptions = false) {
+    public static function notificationDoRecipients(Notification $notificationObject, Competition $photoComp, $notificationOptions = null) {
         
         $contestants = (new Competitions)->getPreviousContestants(); 
         
@@ -357,14 +357,14 @@ class CompetitionUtility {
         $exclude = array(); 
         
         if ($notificationOptions['excludeCurrentContestants']) {
-            foreach (self::getCompetitionContestants($Comp) as $row) {
+            foreach (self::getCompetitionContestants($photoComp) as $row) {
                 $exclude[$row['user_id']] = $row;
             }
         }
         
         foreach ($contestants as $row) {
             if (!in_array($row['user_id'], array_keys($exclude))) {
-                $Notification->AddRecipient($row['user_id'], $row['username'], $row['contact_email']);
+                $notificationObject->AddRecipient($row['user_id'], $row['username'], $row['contact_email']);
                 
                 // Add to the decorator
                 $replacements[$row['contact_email']] = array(
@@ -373,22 +373,22 @@ class CompetitionUtility {
             }
         }
         
-        $Notification->meta['decoration'] = $replacements;
+        $notificationObject->meta['decoration'] = $replacements;
         
-        return $Notification;
+        return $notificationObject;
 
     }
     
     /**
      * Send an email notification for this competition
      * @since Version 3.9.1
-     * @param \Railpage\Images\Competition $Comp
+     * @param \Railpage\Images\Competition $photoComp
      * @param array $notificationOptions
      * @return void
      * @todo Finish push notifications
      */
     
-    public static function sendNotification(Competition $Comp, $notificationOptions) {
+    public static function sendNotification(Competition $photoComp, $notificationOptions) {
         
         $flag = $notificationOptions['flag'];
         
@@ -407,7 +407,7 @@ class CompetitionUtility {
          * Check if the notification sent flag has been set
          */
         
-        if (!isset($Comp->meta[$flag]) || !filter_var($Comp->meta[$flag]) || $Comp->meta[$flag] === false) {
+        if (!isset($photoComp->meta[$flag]) || !filter_var($photoComp->meta[$flag]) || $photoComp->meta[$flag] === false) {
             
             /**
              * Create the notification
@@ -423,8 +423,8 @@ class CompetitionUtility {
              * Add recipients and decoration
              */
             
-            $Notification = self::notificationDoRecipients($Notification, $Comp, $notificationOptions);
-            $Push = self::notificationDoRecipients($Push, $Comp, $notificationOptions);  
+            $Notification = self::notificationDoRecipients($Notification, $photoComp, $notificationOptions);
+            $Push = self::notificationDoRecipients($Push, $photoComp, $notificationOptions);  
                             
             /**
              * Set our email body
@@ -456,8 +456,8 @@ class CompetitionUtility {
              * Set the notification flag
              */
             
-            $Comp->meta[$flag] = true;
-            $Comp->commit(); 
+            $photoComp->meta[$flag] = true;
+            $photoComp->commit(); 
             
         }
 
@@ -493,17 +493,17 @@ class CompetitionUtility {
     /**
      * Make an opengraph tag from the supplied object
      * @since Version 3.10.0
-     * @param \Railpage\Images\Competition $Competition
+     * @param \Railpage\Images\Competition $photoComp
      * @param string $tag
      * @return string
      */
     
-    public static function makeOpenGraphTag(Competition $Competition, $tag) {
+    public static function makeOpenGraphTag(Competition $photoComp, $tag) {
         
         switch ($tag) {
             case "description":
             case "desc":
-                $string = trim("Theme: " . $Competition->theme);
+                $string = trim("Theme: " . $photoComp->theme);
                 
                 if (preg_match("/([a-zA-Z0-9]+)/", substr($string, -1, 1))) {
                     $string .= "."; 
@@ -511,12 +511,12 @@ class CompetitionUtility {
                 
                 $string = trim($string);
                 
-                if (self::isSubmissionWindowOpen($Competition)) {
-                    $string .= " Submissions open until " . $Competition->SubmissionsDateClose->format("F jS");
+                if (self::isSubmissionWindowOpen($photoComp)) {
+                    $string .= " Submissions open until " . $photoComp->SubmissionsDateClose->format("F jS");
                 }
                 
-                if (self::isVotingWindowOpen($Competition)) {
-                    $string .= " Voting open until " . $Competition->VotingDateClose->format("F jS");
+                if (self::isVotingWindowOpen($photoComp)) {
+                    $string .= " Voting open until " . $photoComp->VotingDateClose->format("F jS");
                 }
                 
                 if (preg_match("/([a-zA-Z0-9]+)/", substr($string, -1, 1))) {
@@ -533,18 +533,18 @@ class CompetitionUtility {
     /**
      * Send out a notification to site admins to cast a deciding vote in the event of a tied competition
      * @since Version 3.10.0
-     * @param \Railpage\Images\Competition $Comp
+     * @param \Railpage\Images\Competition $photoComp
      * @return void
      */
     
-    public static function NotifyTied(Competition $Comp) {
+    public static function NotifyTied(Competition $photoComp) {
         
-        if (isset($Comp->meta['notifytied']) && $Comp->meta['notifytied'] >= strtotime("-1 day")) {
+        if (isset($photoComp->meta['notifytied']) && $photoComp->meta['notifytied'] >= strtotime("-1 day")) {
             return;
         }
         
-        $Comp->meta['notifytied'] = time(); 
-        $Comp->commit(); 
+        $photoComp->meta['notifytied'] = time(); 
+        $photoComp->commit(); 
         
         $Smarty = AppCore::GetSmarty(); 
         
@@ -555,20 +555,20 @@ class CompetitionUtility {
         $Push = new Notification;
         $Push->transport = Notifications::TRANSPORT_PUSH; 
         $Push->subject = "Tied photo competition";
-        $Push->body = sprintf("The %s photo competition is tied. Cast a deciding vote ASAP.", $Comp->title); 
-        $Push->setActionUrl($Comp->url->tied)->addRecipient($Decider->id, $Decider->username, $Decider->username); 
+        $Push->body = sprintf("The %s photo competition is tied. Cast a deciding vote ASAP.", $photoComp->title); 
+        $Push->setActionUrl($photoComp->url->tied)->addRecipient($Decider->id, $Decider->username, $Decider->username); 
         $Push->commit()->dispatch(); 
         
         // Create an email notification as a backup
         $Email = new Notification;
-        $Email->subject = "Tied competition: " . $Comp->title;
+        $Email->subject = "Tied competition: " . $photoComp->title;
         $Email->addRecipient($Decider->id, $Decider->username, $Decider->username); 
         $tpl = $Smarty->ResolveTemplate("template.generic");
             
         $email = array(
             "subject" => $Email->subject,
             "subtitle" => "Photo competitions",
-            "body" => sprintf("<p>The <a href='%s'>%s</a>photo competition is tied and requires a deciding vote. <a href='%s'>Cast it ASAP</a>.</p>", $Comp->url->canonical, $Comp->title, $Comp->url->tied)
+            "body" => sprintf("<p>The <a href='%s'>%s</a>photo competition is tied and requires a deciding vote. <a href='%s'>Cast it ASAP</a>.</p>", $photoComp->url->canonical, $photoComp->title, $photoComp->url->tied)
         );
         
         $Smarty->Assign("email", $email);
@@ -584,17 +584,17 @@ class CompetitionUtility {
     /**
      * Get photos tied for first place
      * @since Version 3.10.0
-     * @param \Railpage\Images\Competition $Comp
+     * @param \Railpage\Images\Competition $photoComp
      * @return array
      */
     
-    public static function getTiedPhotos(Competition $Comp) {
+    public static function getTiedPhotos(Competition $photoComp) {
         
-        $photos = $Comp->getPhotosAsArrayByVotes(); 
+        $photos = $photoComp->getPhotosAsArrayByVotes(); 
         $votes = false;
         $tied = [];
         
-        foreach ($photos as $key => $photo) {
+        foreach ($photos as $photo) {
             if ($votes === false) {
                 $votes = count($photo['votes']); 
                 $tied[] = $photo;
