@@ -610,6 +610,10 @@ class CompetitionUtility {
             }
             
         }
+        
+        if (count($tied) < 2) {
+            return [];
+        }
            
         return $tied;
         
