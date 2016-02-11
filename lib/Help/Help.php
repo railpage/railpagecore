@@ -76,7 +76,7 @@ class Help extends AppCore {
      * @return boolean
      */
     
-    public function deleteItem($helpId = false) {
+    public function deleteItem($helpId = null) {
         
         if (!$helpId = filter_var($helpId, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot delete help item - no ID given"); 
@@ -98,7 +98,7 @@ class Help extends AppCore {
      * @return boolan
      */
     
-    public function deleteCategory($categoryId = false) {
+    public function deleteCategory($categoryId = null) {
         
         if (!$categoryId = filter_var($categoryId, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot delete category - no ID given"); 

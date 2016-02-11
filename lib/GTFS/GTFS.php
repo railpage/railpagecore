@@ -34,12 +34,12 @@ class GTFS extends AppCore {
      * @param string $region The region to filter by: eg AU or AU/VIC
      */
     
-    public function getProviders($region = false) {
+    public function getProviders($region = null) {
         $ritit = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__), RecursiveIteratorIterator::CHILD_FIRST); 
         $providers = array(); 
         
         foreach ($ritit as $splFileInfo) {
-            $path = $splFileInfo->isDir() ? array($splFileInfo->getFilename() => array()) : array($splFileInfo->getFilename()); 
+            //$path = $splFileInfo->isDir() ? array($splFileInfo->getFilename() => array()) : array($splFileInfo->getFilename()); 
             
             for ($depth = $ritit->getDepth() - 1; $depth >= 0; $depth--) {
                 
@@ -50,19 +50,20 @@ class GTFS extends AppCore {
                     $name = sprintf("\\Railpage%s", str_replace("/", "\\", $name)); 
                     
                     if (!in_array($name, $providers)) {
-                        if ($region) {
-                            if (preg_match(sprintf("/(%s)/i", str_replace("/", "\\\\", $region)), $name)) {
-                                $providers[] = $name;
-                            }
-                        } else {
+                        if ($region == null) {
+                            $providers[] = $name;
+                            continue;
+                        }
+                        
+                        if (preg_match(sprintf("/(%s)/i", str_replace("/", "\\\\", $region)), $name)) {
                             $providers[] = $name;
                         }
                     }
-                    
-                    sort($providers);
                 }
             }
         }
+                    
+        sort($providers);
         
         return $providers;
     }
@@ -74,7 +75,7 @@ class GTFS extends AppCore {
      * @return object A Railpage GTFS instance, eg \Railpage\GTFS\AU\TFNSW\TFNSW
      */
     
-    public function yieldProviders($region = false) {
+    public function yieldProviders($region = null) {
         foreach ($this->getProviders($region) as $provider) {
             yield new $provider;
         }
@@ -87,8 +88,8 @@ class GTFS extends AppCore {
      * @return object A Railpage GTFS instance, eg \Railpage\GTFS\AU\SA\AdelaideMetro\AdelaideMetro
      */
     
-    public function getProvider($name = false) {
-        if (!$name) {
+    public function getProvider($name = null) {
+        if ($name == null) {
             throw new Exception("No name provided to filter by");
         }
         

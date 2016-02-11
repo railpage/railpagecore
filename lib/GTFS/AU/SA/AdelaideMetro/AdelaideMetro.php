@@ -112,7 +112,7 @@ class AdelaideMetro extends StandardProvider {
      * @return object
      */
     
-    public function getRoute($id = false) {
+    public function getRoute($id = null) {
         return new Route($id, $this);
     }
 }

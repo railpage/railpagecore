@@ -88,28 +88,30 @@ class StandardStop implements StopInterface {
      * @param mixed $id
      */
     
-    public function __construct($id = false) {
+    public function __construct($id = null) {
         
         if (stristr(get_class($this->Provider), "Railpage\\GTFS") === false) {
             throw new Exception("No GTFS provider has been set, or an invalid provider has been set");
         }
         
-        if (filter_var($id, FILTER_VALIDATE_INT)) {
-            $result = $this->Provider->adapter->query(sprintf("SELECT * FROM %s_stops WHERE stop_id = '%d' AND location_type = 1", $this->Provider->getDbPrefix(), $id), Adapter::QUERY_MODE_EXECUTE); 
-            
-            if ($result) {
-                foreach ($result as $row) {
-                    $row = $row->getArrayCopy();
-                    
-                    $this->id = $row['stop_id'];
-                    $this->name = $row['stop_name'];
-                    $this->code = $row['stop_code'];
-                    $this->lat = $row['stop_lat'];
-                    $this->lon = $row['stop_lon'];
-                    $this->wheelchair_boarding = (bool) $row['wheelchair_boarding'];
-                    
-                    $this->Place = new Place($this->lat, $this->lon);
-                }
+        if (!filter_var($id, FILTER_VALIDATE_INT)) {
+            return;
+        }
+        
+        $result = $this->Provider->adapter->query(sprintf("SELECT * FROM %s_stops WHERE stop_id = '%d' AND location_type = 1", $this->Provider->getDbPrefix(), $id), Adapter::QUERY_MODE_EXECUTE); 
+        
+        if ($result) {
+            foreach ($result as $row) {
+                $row = $row->getArrayCopy();
+                
+                $this->id = $row['stop_id'];
+                $this->name = $row['stop_name'];
+                $this->code = $row['stop_code'];
+                $this->lat = $row['stop_lat'];
+                $this->lon = $row['stop_lon'];
+                $this->wheelchair_boarding = (bool) $row['wheelchair_boarding'];
+                
+                $this->Place = new Place($this->lat, $this->lon);
             }
         }
     }

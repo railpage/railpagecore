@@ -63,14 +63,14 @@ class Graph extends AppCore {
      * @param string $target
      */
     
-    public function __construct($target = false) {
+    public function __construct($target = null) {
         parent::__construct(); 
         
         if (function_exists("getRailpageConfig")) {
             $this->Config = getRailpageConfig();
         }
         
-        if ($target) {
+        if ($target != null) {
             $this->target = $target;
         }
         

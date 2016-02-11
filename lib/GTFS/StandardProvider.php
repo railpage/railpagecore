@@ -17,6 +17,7 @@ use Zend\Db\Sql\Select;
 use Zend\Db\Adapter\Adapter;
 use Railpage\GTFS\GTFSInterface;
 use Railpage\Url;
+use Railpage\AppCore;
 
 /**
  * Standard GTFS provider class for GTFS
@@ -60,9 +61,7 @@ class StandardProvider implements GTFSInterface {
     
     public function __construct() {
         
-        if (function_exists("getRailpageConfig")) {
-            $this->Config = getRailpageConfig();
-        }
+        $this->Config = AppCore::GetConfig(); 
         
         $this->adapter = new Adapter(array(
             "driver" => "Mysqli",
@@ -103,12 +102,12 @@ class StandardProvider implements GTFSInterface {
      * @return array
      */
     
-    public function StopsNearLocation($latitude = false, $longitude = false) {
-        if (!$latitude) {
+    public function StopsNearLocation($latitude = null, $longitude = null) {
+        if ($latitude == null) {
             throw new Exception("Cannot fetch " . __METHOD__ . " - no latitude given");
         }
         
-        if (!$longitude) {
+        if ($longitude == null) {
             throw new Exception("Cannot fetch " . __METHOD__ . " - no longitude given");
         }
         

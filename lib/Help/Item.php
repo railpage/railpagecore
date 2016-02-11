@@ -82,20 +82,22 @@ class Item extends Help {
      * @param int $id
      */
      
-    public function __construct($id = false) {
+    public function __construct($id = null) {
         parent::__construct(); 
          
-        if ($id) {
-            if (filter_var($id, FILTER_VALIDATE_INT)) {
-                $this->id = $id; 
-            } elseif (is_string($id)) {
-                $query = "SELECT id FROM nuke_faqAnswer WHERE url_slug = ?";
-                $this->id = $this->db->fetchOne($query, $id);
-            }
-             
-            if ($this->id = filter_var($this->id, FILTER_VALIDATE_INT)) {
-                $this->fetch(); 
-            }
+        if ($id == null) {
+            return;
+        }
+        
+        if (filter_var($id, FILTER_VALIDATE_INT)) {
+            $this->id = $id; 
+        } elseif (is_string($id)) {
+            $query = "SELECT id FROM nuke_faqAnswer WHERE url_slug = ?";
+            $this->id = $this->db->fetchOne($query, $id);
+        }
+         
+        if ($this->id = filter_var($this->id, FILTER_VALIDATE_INT)) {
+            $this->fetch(); 
         }
     }
     

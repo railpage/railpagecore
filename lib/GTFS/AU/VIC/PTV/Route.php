@@ -26,16 +26,17 @@ class Route extends PTV {
     /**
      * Constructor
      * @since Version 3.9
-     * @param int $route_id
+     * @param int $routeId
+     * @param object $providerObject
      */
     
-    public function __construct($route_id = false, $Provider = false) {
+    public function __construct($routeId = null, $providerObject = null) {
         
         parent::__construct(); 
         
         $routes = $this->getRoutes(); 
         
-        $route = $routes[$route_id];
+        $route = $routes[$routeId];
         
         $this->id = $route['id'];
         $this->route_id = $route['route_id'];

@@ -33,7 +33,7 @@ class Stop extends StandardStop {
      * @param mixed $id
      */
     
-    public function __construct($id = false) {
+    public function __construct($id = null) {
         $this->Provider = new PTV; 
         
         parent::__construct($id);

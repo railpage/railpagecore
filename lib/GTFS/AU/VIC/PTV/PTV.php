@@ -207,15 +207,15 @@ class PTV extends StandardProvider {
      * @param array $other Any other data we need to create the URL
      */
     
-    public function fetch($method = false, $parameters = array(), $other = array()) {
-        if (!$method && empty($parameters)) {
+    public function fetch($method = null, $parameters = array(), $other = array()) {
+        if ($method == null && empty($parameters)) {
             throw new Exception("Cannot fetch API query - no API method defined");
         }
         
+        $url = strlen($method) > 0 ? "/v2/" . $method : "/v2";
+        
         if ($method == "stops-for-line") {
             $url = "/v2";
-        } else {
-            $url = strlen($method) > 0 ? "/v2/" . $method : "/v2";
         }
         
         $Date = new DateTime;
@@ -235,9 +235,7 @@ class PTV extends StandardProvider {
             $url .= "/" . urlencode($parameters[0]);
         } else {
             foreach ($parameters as $key => $val) {
-                if (is_array($val)) {
-                    // Figure it out later
-                } else {
+                if (!is_array($val)) {
                     $url .= "/" . urlencode($key) . "/" . urlencode($val); 
                 }
             }
@@ -252,9 +250,7 @@ class PTV extends StandardProvider {
          */
         
         foreach ($other as $key => $val) {
-            if (is_array($val)) {
-                // Figure it out later
-            } else {
+            if (!is_array($val)) {
                 $data[] = urlencode($key) . "=" . urlencode($val); 
             }
         }
@@ -307,12 +303,12 @@ class PTV extends StandardProvider {
      * @return array
      */
     
-    public function StopsNearLocation($latitude = false, $longitude = false) {
-        if (!$latitude) {
+    public function StopsNearLocation($latitude = null, $longitude = null) {
+        if ($latitude == null) {
             throw new Exception("Cannot fetch " . __METHOD__ . " - no latitude given");
         }
         
-        if (!$longitude) {
+        if ($longitude == null) {
             throw new Exception("Cannot fetch " . __METHOD__ . " - no longitude given");
         }
         
@@ -351,7 +347,7 @@ class PTV extends StandardProvider {
                         $Insert = $this->db->insert(sprintf("%s_stops", self::DB_PREFIX));
                         $Insert->values($placeData);
                         $selectString = $this->db->getSqlStringForSqlObject($Insert);
-                        $results = $this->adapter->query($selectString, Adapter::QUERY_MODE_EXECUTE);
+                        $this->adapter->query($selectString, Adapter::QUERY_MODE_EXECUTE);
                     }
                 
                     $placeData['distance'] = vincentyGreatCircleDistance($row['result']['lat'], $row['result']['lon'], $latitude, $longitude);
@@ -373,7 +369,7 @@ class PTV extends StandardProvider {
      * @return object
      */
     
-    public function getRoute($id = false) {
+    public function getRoute($id = null) {
         return new Route($id, $this);
     }
     

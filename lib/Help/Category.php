@@ -14,7 +14,6 @@ use DateTime;
 use Railpage\Url;
 use Railpage\ContentUtility;
 
-
 /**
  * Category
  */
@@ -168,10 +167,12 @@ class Category extends Help {
         if ($this->id) {
             $where = array("id_cat = ?" => $this->id); 
             $this->db->update("nuke_faqCategories", $data, $where);
-        } else {
-            $this->db->insert("nuke_faqCategories", $data);
-            $this->id = $this->db->lastInsertId(); 
+            
+            return true;
         }
+        
+        $this->db->insert("nuke_faqCategories", $data);
+        $this->id = $this->db->lastInsertId(); 
         
         return true;
     }

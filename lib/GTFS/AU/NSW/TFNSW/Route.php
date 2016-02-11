@@ -28,12 +28,13 @@ class Route extends StandardRoute {
     /**
      * Constructor
      * @since Version 3.9
-     * @param int $route_id
+     * @param int $routeId
+     * @param object $providerObject
      */
     
-    public function __construct($route_id = false, $Provider = false) {
+    public function __construct($routeId = null, $providerObject = null) {
         
-        parent::__construct($route_id, $Provider);
+        parent::__construct($routeId, $providerObject);
         
     }
 }

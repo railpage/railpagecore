@@ -21,6 +21,6 @@ interface StopInterface {
      * @return array
      */
     
-    function NextDepartures();
+    public function NextDepartures();
     
 }

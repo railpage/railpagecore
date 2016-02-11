@@ -32,7 +32,7 @@ class Stop extends StandardStop {
      * @param mixed $id
      */
     
-    public function __construct($id = false) {
+    public function __construct($id = null) {
         $this->Provider = new TFNSW; 
         
         parent::__construct($id);
