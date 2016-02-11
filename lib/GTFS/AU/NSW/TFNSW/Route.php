@@ -1,39 +1,39 @@
 <?php
-    /**
-     * Transport for NSW GTFS interface
-     * @since Version 3.9
-     * @package Railpage
-     * @author Michael Greenhill
-     */
-    
-    namespace Railpage\GTFS\AU\NSW\TFNSW;
-    
-    use Exception;
-    use DateTime;
-    use Zend\Http\Client;
-    use Zend\Db\Sql\Sql;
-    use Zend\Db\Sql\Select;
-    use Zend\Db\Adapter\Adapter;
-    use Railpage\GTFS\GTFSInterface;
-    use Railpage\GTFS\StandardRoute;
-    use Railpage\Url;
 
+/**
+ * Transport for NSW GTFS interface
+ * @since Version 3.9
+ * @package Railpage
+ * @author Michael Greenhill
+ */
+
+namespace Railpage\GTFS\AU\NSW\TFNSW;
+
+use Exception;
+use DateTime;
+use Zend\Http\Client;
+use Zend\Db\Sql\Sql;
+use Zend\Db\Sql\Select;
+use Zend\Db\Adapter\Adapter;
+use Railpage\GTFS\GTFSInterface;
+use Railpage\GTFS\StandardRoute;
+use Railpage\Url;
+
+/**
+ * Routes class
+ */
+
+class Route extends StandardRoute {
+    
     /**
-     * Routes class
+     * Constructor
+     * @since Version 3.9
+     * @param int $route_id
      */
     
-    class Route extends StandardRoute {
+    public function __construct($route_id = false, $Provider = false) {
         
-        /**
-         * Constructor
-         * @since Version 3.9
-         * @param int $route_id
-         */
+        parent::__construct($route_id, $Provider);
         
-        public function __construct($route_id = false, $Provider = false) {
-            
-            parent::__construct($route_id, $Provider);
-            
-        }
     }
-    
+}

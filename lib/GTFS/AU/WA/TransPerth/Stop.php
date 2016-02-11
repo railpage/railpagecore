@@ -1,49 +1,49 @@
 <?php
+
+/**
+ * TransPerth GTFS stop/place class
+ * @since Version 3.8.7
+ * @package Railpage
+ * @author Michael Greenhill
+ */
+
+namespace Railpage\GTFS\AU\WA\TransPerth;
+
+use Exception;
+use DateTime;
+use Zend\Http\Client;
+use Zend\Db\Sql\Sql;
+use Zend\Db\Sql\Select;
+use Zend\Db\Adapter\Adapter;
+use Railpage\GTFS\StopInterface;
+use Railpage\Place;
+use Railpage\GTFS\StandardStop;
+
+/**
+ * GTFS stop for the AU\TransPerth GTFS provider
+ * @since Version 3.8.7
+ */
+
+class Stop extends StandardStop {
+    
     /**
-     * TransPerth GTFS stop/place class
+     * Constructor
      * @since Version 3.8.7
-     * @package Railpage
-     * @author Michael Greenhill
+     * @param mixed $id
      */
     
-    namespace Railpage\GTFS\AU\WA\TransPerth;
-    
-    use Exception;
-    use DateTime;
-    use Zend\Http\Client;
-    use Zend\Db\Sql\Sql;
-    use Zend\Db\Sql\Select;
-    use Zend\Db\Adapter\Adapter;
-    use Railpage\GTFS\StopInterface;
-    use Railpage\Place;
-    use Railpage\GTFS\StandardStop;
-    
-    /**
-     * GTFS stop for the AU\TransPerth GTFS provider
-     * @since Version 3.8.7
-     */
-    
-    class Stop extends StandardStop {
+    public function __construct($id = false) {
+        $this->Provider = new TransPerth; 
         
-        /**
-         * Constructor
-         * @since Version 3.8.7
-         * @param mixed $id
-         */
-        
-        public function __construct($id = false) {
-            $this->Provider = new TransPerth; 
-            
-            parent::__construct($id);
-        }
-        
-        /**
-         * Get the next departures for this stop
-         * @return array
-         */
-        
-        public function NextDepartures() {
-            
-        }
+        parent::__construct($id);
     }
     
+    /**
+     * Get the next departures for this stop
+     * @return array
+     */
+    
+    public function NextDepartures() {
+        
+    }
+}
