@@ -45,12 +45,12 @@ class Feedback extends AppCore {
     /**
      * Set the staff member associated to this feedback item
      * @since Version 3.9
-     * @param \Railpage\Users\User $User
+     * @param \Railpage\Users\User $userObject
      * @return $this
      */
     
-    public function setStaff(User $User) {
-        $this->Staff = $User;
+    public function setStaff(User $userObject) {
+        $this->Staff = $userObject;
         
         return $this;
     }

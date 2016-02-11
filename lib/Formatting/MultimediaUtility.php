@@ -94,7 +94,7 @@ class MultimediaUtility {
     
     public static function EmbedFlickrGroup(DOMElement $e) {
         
-        if (!(preg_match("#:\/\/www.flickr.com\/groups/([a-zA-Z0-9\@]+)\/\z#", pq($e)->attr("href"), $matches) && pq($e)->attr("href") == pq($e)->html() && !pq($e)->hasClass("rp-coverphoto"))) {
+        if (!(preg_match("#:\/\/www.flickr.com\/groups/([a-zA-Z0-9\@]+)\/\z#", pq($e)->attr("href")) && pq($e)->attr("href") == pq($e)->html() && !pq($e)->hasClass("rp-coverphoto"))) {
             return $e;
         }
         
@@ -151,7 +151,7 @@ src="https://www.google.com/maps/embed/v1/view?key=%s
             "satellite",
         ];
         
-        foreach ($matches as $key => $val) {
+        foreach ($matches as $val) {
             if (!count($val)) {
                 continue;
             }
@@ -163,39 +163,40 @@ src="https://www.google.com/maps/embed/v1/view?key=%s
             }
             
             // Co-ordinates not known. Shit. Better look 'em up
-            if (count($val) === 2) {
+            if (count($val) !== 2) {
+                continue;
+            }
                 
-                $Memcached = AppCore::GetMemcached(); 
-                $cachekey = sprintf("google:url.shortner=%s", $val[1]); 
+            $Memcached = AppCore::GetMemcached(); 
+            $cachekey = sprintf("google:url.shortner=%s", $val[1]); 
+            
+            if (!$return = $Memcached->fetch($cachekey)) {
+            
+                $GuzzleClient = new Client;
+                $url = sprintf("https://www.googleapis.com/urlshortener/v1/url?shortUrl=%s&key=%s", $lookup, "AIzaSyC1lUe1h-gwmFqj9xDTDYI9HYVTUxNscCA"); 
+                $response = $GuzzleClient->get($url);
                 
-                if (!$return = $Memcached->fetch($cachekey)) {
-                
-                    $GuzzleClient = new Client;
-                    $url = sprintf("https://www.googleapis.com/urlshortener/v1/url?shortUrl=%s&key=%s", $lookup, "AIzaSyC1lUe1h-gwmFqj9xDTDYI9HYVTUxNscCA"); 
-                    $response = $GuzzleClient->get($url);
-                    
-                    // Fucked it
-                    if ($response->getStatusCode() != 200) {
-                        return $e; 
-                    }
-                    
-                    $return = json_decode($response->getBody(), true);
-                    
-                    $Memcached->save($cachekey, $return); 
-                    
-                }
-                
-                // Get out if it looks problematic
-                if ($return['status'] != "OK") {
+                // Fucked it
+                if ($response->getStatusCode() != 200) {
                     return $e; 
                 }
                 
-                pq($e)->attr("href", $return['longUrl'])->text($return['longUrl']); 
+                $return = json_decode($response->getBody(), true);
                 
-                return self::EmbedGoogleMap($e);
+                $Memcached->save($cachekey, $return); 
                 
-                continue;
             }
+            
+            // Get out if it looks problematic
+            if ($return['status'] != "OK") {
+                return $e; 
+            }
+            
+            pq($e)->attr("href", $return['longUrl'])->text($return['longUrl']); 
+            
+            return self::EmbedGoogleMap($e);
+            
+            continue;
         }
         
         pq($e)->replaceWith(vsprintf($basehtml, $params)); 

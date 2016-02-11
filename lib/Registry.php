@@ -103,12 +103,16 @@ class Registry {
      * @since Version 3.9.1
      */
     
-    private function __construct() {}
+    private function __construct() {
+        
+    }
     
     /**
      * Private cloner
      * @since Version 3.9.1
      */
     
-    private function __clone() {}
+    private function __clone() {
+        
+    }
 }

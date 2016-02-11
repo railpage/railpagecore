@@ -114,48 +114,46 @@ class FeedbackItem extends Feedback {
      * @param $id;
      */
     
-    public function __construct($id = false) {
+    public function __construct($id = null) {
         parent::__construct(); 
         
-        if ($id) {
-            $query = "SELECT f.*, fa.feedback_title, fs.name AS feedback_status
-                FROM feedback AS f
-                LEFT JOIN feedback_area AS fa ON f.area = fa.feedback_id 
-                LEFT JOIN feedback_status AS fs ON f.status = fs.id
-                WHERE f.id = ?";
-            
-            $row = $this->db->fetchRow($query, $id); 
-            $this->id           = $row['id']; 
-            $this->Date         = new DateTime("@" . $row['time']);
-            $this->user_id      = $row['user_id'];
-            $this->username     = $row['username'];
-            $this->email        = $row['email'];
-            $this->area         = $row['feedback_title'];
-            $this->area_id      = $row['area']; 
-            $this->message      = $row['message']; 
-            $this->status       = $row['feedback_status']; 
-            $this->status_id    = $row['status'];
-            $this->assigned_to  = $row['assigned_to'];
-            
-            $this->url = new Url(sprintf("/feedback/manage/%d", $this->id));
-            
-            if ($this->user_id > 0) {
-                $this->Author = new User($this->user_id);
-            } else {
-                $this->Author = new User(0);
-                $this->Author->id = 0;
-                $this->Author->username = sprintf("%s (guest)", $this->email);
-                $this->Author->url = sprintf("/user?mode=lookup&email=%s", $this->email);
-                $this->Author->contact_email = $this->email;
-            }
-            
-            if ($this->Author->id > 0) {
-                $this->url->replypm = sprintf("/messages/new/from/feedback-%d", $this->id);
-            }
-            
-            if (!empty($this->Author->contact_email)) {
-                $this->url->replyemail = sprintf("/feedback/email/%d", $this->id);
-            }
+        if (!filter_var($id, FILTER_VALIDATE_INT)) {
+            return;
+        }
+        
+        $query = "SELECT f.*, fa.feedback_title, fs.name AS feedback_status
+            FROM feedback AS f
+            LEFT JOIN feedback_area AS fa ON f.area = fa.feedback_id 
+            LEFT JOIN feedback_status AS fs ON f.status = fs.id
+            WHERE f.id = ?";
+        
+        $row = $this->db->fetchRow($query, $id); 
+        $this->id           = $row['id']; 
+        $this->Date         = new DateTime("@" . $row['time']);
+        $this->user_id      = $row['user_id'];
+        $this->username     = $row['username'];
+        $this->email        = $row['email'];
+        $this->area         = $row['feedback_title'];
+        $this->area_id      = $row['area']; 
+        $this->message      = $row['message']; 
+        $this->status       = $row['feedback_status']; 
+        $this->status_id    = $row['status'];
+        $this->assigned_to  = $row['assigned_to'];
+        
+        $this->url = new Url(sprintf("/feedback/manage/%d", $this->id));
+        
+        if (filter_var($this->user_id, FILTER_VALIDATE_INT)) {
+            $this->Author = new User($this->user_id);
+            $this->url->replypm = sprintf("/messages/new/from/feedback-%d", $this->id);
+            $this->url->replyemail = sprintf("/feedback/email/%d", $this->id);
+        }
+        
+        if (!filter_var($this->user_id, FILTER_VALIDATE_INT)) {
+            $this->Author = new User(0);
+            $this->Author->id = 0;
+            $this->Author->username = sprintf("%s (guest)", $this->email);
+            $this->Author->url = sprintf("/user?mode=lookup&email=%s", $this->email);
+            $this->Author->contact_email = $this->email;
         }
     }
     
@@ -227,10 +225,12 @@ class FeedbackItem extends Feedback {
         if (filter_var($this->id, FILTER_VALIDATE_INT)) {
             $where = [ "id = ?" => $this->id ];
             $this->db->update("feedback", $data, $where);
-        } else {
-            $this->db->insert("feedback", $data); 
-            $this->id = $this->db->lastInsertId(); 
+            
+            return $this;
         }
+        
+        $this->db->insert("feedback", $data); 
+        $this->id = $this->db->lastInsertId(); 
         
         return $this;
         
@@ -258,18 +258,17 @@ class FeedbackItem extends Feedback {
     /**
      * Assign a feedback item to a user
      * @since Version 3.4
-     * @param int $user_id
+     * @param int $userId
      * @return boolean
      */
     
-    public function assign($user_id = false) {
-        if (!$user_id) {
-            throw new \Exception("Could not assign feedback item - no user ID given"); 
-            return false;
+    public function assign($userId = null) {
+        if (!filter_var($userId, FILTER_VALIDATE_INT)) {
+            throw new Exception("Could not assign feedback item - no user ID given"); 
         }
         
         $data = array(
-            "assigned_to" => $user_id,
+            "assigned_to" => $userId,
             "status" => 2
         );
         
