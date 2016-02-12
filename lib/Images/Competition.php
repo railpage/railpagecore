@@ -378,9 +378,9 @@ class Competition extends AppCore {
             Competitions::PHOTO_APPROVED
         );
         
-        //$photos = array(); 
+        $photos = $this->db->fetchAll($query, $params); 
         
-        foreach ($this->db->fetchAll($query, $params) as $row) {
+        foreach ($photos as $row) {
             yield $this->getPhoto($row);
         }
     }
@@ -410,6 +410,7 @@ class Competition extends AppCore {
         $Photo->Image = ImageFactory::CreateImage(isset($image['image_id']) ? $image['image_id'] : $image['id']);
         $Photo->DateAdded = new DateTime($image['date_added']);
         $Photo->Meta = json_decode($image['meta'], true);
+        $Photo->status = intval($image['status']); 
         
         $Photo->url = new Url(sprintf("%s/%d", $this->url->url, $Photo->Image->id));
         $Photo->url->vote = sprintf("%s/vote", $Photo->url);
@@ -688,6 +689,10 @@ class Competition extends AppCore {
         $photos = $this->getPhotosAsArrayByVotes(); 
         $num_votes = false;
         $tied = []; 
+        
+        if (count($photos) == 0) {
+            return false;
+        }
         
         foreach ($photos as $photo) {
             if ($num_votes === false) {
@@ -986,11 +991,7 @@ class Competition extends AppCore {
         
         $this->Memcached = AppCore::getMemcached();
         
-        if ($force) {
-            $this->Memcached->delete($key);
-        }
-        
-        if ($photos = $this->Memcached->fetch($key)) {
+        if ($force == null && $photos = $this->Memcached->fetch($key)) {
             return $photos;
         }
         

@@ -127,7 +127,9 @@ class Collage extends AppCore {
     
     public function setOrientation($orientation) {
         
-        if ($orientation != self::ORIENTATION_PORTRAIT && $orientation != self::ORIENTATION_LANDSCAPE) {
+        if ($orientation != self::ORIENTATION_PORTRAIT && 
+            $orientation != self::ORIENTATION_LANDSCAPE &&
+            $orientation != self::ORIENTATION_SQUARE) {
             throw new InvalidArgumentException($orientation . " is not a valid orientation"); 
         }
         
@@ -282,7 +284,7 @@ class Collage extends AppCore {
             // Place the thubmnail onto our canvas
             imagecopyresampled($this->canvas, $thumb, $offset_x, $offset_y, 0, 0, $imageSize['thumbWidth'], $imageSize['thumbHeight'], $imageSize['thumbWidth'], $imageSize['thumbHeight']);
             
-            if (php_sapi_name() == "cli") {
+            if (php_sapi_name() == "cli" && !defined("PHPUNIT_RAILPAGE_TESTSUITE")) {
                 var_dump($offset_x); 
                 var_dump($offset_y); 
                 var_dump($offset_x + $imageSize['thumbWidth']); 

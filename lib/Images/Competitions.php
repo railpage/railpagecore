@@ -14,6 +14,7 @@ use Railpage\Users\Factory as UserFactory;
 use Railpage\Config\Base as Config;
 use Railpage\AppCore;
 use Railpage\Module;
+use Railpage\ContentUtility;
 use Exception;
 use DateTime;
 use DateInterval;
@@ -242,9 +243,7 @@ class Competitions extends AppCore {
             throw new Exception("You haven't entered any text...");
         }
         
-        if (function_exists("format_topictitle")) {
-            $theme = format_topictitle($theme);
-        }
+        $theme = ContentUtility::FormatTitle($theme);
         
         $themes = $this->getSuggestedThemes(); 
         

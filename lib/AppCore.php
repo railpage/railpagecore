@@ -579,6 +579,10 @@ class AppCore {
             return new NullCacheDriver;
         }
         
+        if (defined("PHPUNIT_RAILPAGE_TESTSUITE")) {
+            return new NullCacheDriver;
+        }
+        
         $Registry = Registry::getInstance();
         
         $Config = self::getConfig();
@@ -611,7 +615,7 @@ class AppCore {
     
     public static function getMemcache($reload = false) {
         
-        if (!extension_loaded("memcache")) {
+        if (!extension_loaded("memcache") || defined("PHPUNIT_RAILPAGE_TESTSUITE")) {
             return new NullCacheDriver;
         }
         
@@ -648,7 +652,7 @@ class AppCore {
     
     public static function getMemcached() {
         
-        if (!extension_loaded("memcached")) {
+        if (!extension_loaded("memcached") || defined("PHPUNIT_RAILPAGE_TESTSUITE")) {
             return new NullCacheDriver;
         }
         

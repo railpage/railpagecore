@@ -138,7 +138,8 @@
 		"leg/simhash-php": "1.0",
 		"lusitanian/oauth": "~0.3",
         "lcobucci/jwt": "^3.1",
-        "textalk/websocket": "^1.2"
+        "textalk/websocket": "^1.2",
+		"tga/simhash-php": "^2.0"
 	},
 	"require-dev" : {
 		"codeclimate/php-test-reporter": "dev-master",
