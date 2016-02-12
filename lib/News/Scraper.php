@@ -18,7 +18,7 @@
     use Railpage\Url;
     use Railpage\Users\User;
     use Zend\Http\Client;
-    use FastFeed\Factory;
+    use FastFeed\Factory as FastFeedFactory;
     use FastFeed\Processor\StripTagsProcessor;
     use FastFeed\Processor\SanitizerProcessor;
     use FastFeed\Processor\ImageProcessor;
@@ -89,7 +89,7 @@
             
             $articles = array();
             
-            $FastFeed = Factory::create();
+            $FastFeed = FastFeedFactory::create();
             $FastFeed->addFeed('default', $this->feed);
             $FastFeed->pushProcessor(new RemoveStylesProcessor); 
             #$FastFeed->pushParser(new RailpageParser);

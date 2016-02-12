@@ -4,6 +4,9 @@
 			 <directory>tests</directory>
 		</testsuite>
 	</testsuites>
+    <php>
+        <const name="PHPUNIT_RAILPAGE_TESTSUITE" value="true"/>
+    </php>
 	
 	<filter>
 		<blacklist>
@@ -17,6 +20,10 @@
 		</blacklist>
 		<whitelist processUncoveredFilesFromWhitelist="true">
 			<directory suffix=".php">lib</directory>
+            <exclude>
+                <directory suffix=".php">lib/vendor</directory>
+                <directory suffix=".php">vendor</directory>
+            </exclude>
 		</whitelist>
 	</filter>
 	
