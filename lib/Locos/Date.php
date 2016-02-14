@@ -116,7 +116,7 @@ class Date extends Locos {
      * @param int $id
      */
 
-    public function __construct($id) {
+    public function __construct($id = null) {
 
         $timer = Debug::getTimer();
 

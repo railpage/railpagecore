@@ -483,7 +483,10 @@
             $this->url->approve = sprintf("/news/pending?task=approve&id=%d", $this->id);
             $this->url->queue = sprintf("/news/pending?task=queue&id=%d", $this->id);
             $this->url->edit = sprintf("/news?mode=article.edit&id=%d", $this->id);
-            $this->fwlink = $this->url->short;
+            
+            if (isset($this->url->short)) {
+                $this->fwlink = $this->url->short;
+            }
 
             /**
              * Alter the URL
@@ -623,30 +626,32 @@
 
             $this->validate();
 
-            // Format the article blurb
-            try {
-                if (!empty( $this->blurb )) {
-                    $this->blurb = prepare_submit($this->blurb);
+            if (function_exists("prepare_submit")) {
+                // Format the article blurb
+                try {
+                    if (!empty( $this->blurb )) {
+                        $this->blurb = prepare_submit($this->blurb);
+                    }
+    
+                    if (!empty( $this->lead )) {
+                        $this->lead = prepare_submit($this->lead);
+                    }
+                } catch (Exception $e) {
+                    Debug::SaveError($e);
                 }
-
-                if (!empty( $this->lead )) {
-                    $this->lead = prepare_submit($this->lead);
+    
+                // Format the article body
+                try {
+                    if (!empty( $this->body )) {
+                        $this->body = prepare_submit($this->body);
+                    }
+    
+                    if (!empty( $this->paragraphs )) {
+                        $this->paragraphs = prepare_submit($this->paragraphs);
+                    }
+                } catch (Exception $e) {
+                    Debug::SaveError($e);
                 }
-            } catch (Exception $e) {
-                Debug::SaveError($e);
-            }
-
-            // Format the article body
-            try {
-                if (!empty( $this->body )) {
-                    $this->body = prepare_submit($this->body);
-                }
-
-                if (!empty( $this->paragraphs )) {
-                    $this->paragraphs = prepare_submit($this->paragraphs);
-                }
-            } catch (Exception $e) {
-                Debug::SaveError($e);
             }
 
             if ($this->Topic instanceof \Railpage\Forums\Thread) {

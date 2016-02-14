@@ -415,8 +415,8 @@ class PlaceUtility {
     
         foreach ($data as $coord)
         {
-            $lat = $coord[0] * pi() / 180;
-            $lon = $coord[1] * pi() / 180;
+            $lat = $coord['lat'] * pi() / 180;
+            $lon = $coord['lon'] * pi() / 180;
     
             $a = cos($lat) * cos($lon);
             $b = cos($lat) * sin($lon);
@@ -435,7 +435,10 @@ class PlaceUtility {
         $hyp = sqrt($X * $X + $Y * $Y);
         $lat = atan2($Z, $hyp);
     
-        return array($lat * 180 / pi(), $lon * 180 / pi());
+        return [
+            "lat" => $lat * 180 / pi(), 
+            "lon" => $lon * 180 / pi()
+        ];
     }
     
 }

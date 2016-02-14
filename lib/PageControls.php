@@ -40,13 +40,11 @@ class PageControls extends AppCore {
      */
     
     public function __construct($type = PAGECONTROL_TYPE_CONTROL) {
+        
         $this->type = $type; 
         
-        try {
-            parent::__construct(); 
-        } catch (Exception $e) {
-            throw new \Exception($e->getMessage()); 
-        }
+        parent::__construct(); 
+        
     }
     
     /**
@@ -65,18 +63,18 @@ class PageControls extends AppCore {
      * @return boolean
      */
     
-    public function addControl($args = false) {
-        if (is_array($args)) {
-            if (isset($args['href']) && isset($args['text'])) {
-                $this->controls[] = $args;
-                
-                return true;
-            } else {
-                return false;
-            }
-        } else {
+    public function addControl($args = null) {
+        
+        if (!is_array($args)) {
             return false;
         }
+        
+        if (isset($args['href']) && isset($args['text'])) {
+            $this->controls[] = $args;
+            
+            return true;
+        }
+        
     }
     
     /**
@@ -86,16 +84,20 @@ class PageControls extends AppCore {
      * @return boolean
      */
     
-    public function removeControl($url = false, $text = false) {
-        if ($url) {
-            foreach ($this->controls as $id => $args) {
-                if (!$text && $url == $args['href']) {
-                    unset($this->controls[$id]);
-                    return true;
-                } elseif ($text && $text == $args['text'] && $url == $args['href']) {
-                    unset($this->controls[$id]);
-                    return true;
-                }
+    public function removeControl($url = null, $text = null) {
+        if ($url == null) {
+            return false;
+        }
+        
+        foreach ($this->controls as $id => $args) {
+            if ($text == null && $url == $args['href']) {
+                unset($this->controls[$id]);
+                return true;
+            }
+            
+            if ($text != null && $text == $args['text'] && $url == $args['href']) {
+                unset($this->controls[$id]);
+                return true;
             }
         }
         
@@ -193,9 +195,9 @@ class PageControls extends AppCore {
                 break;
             }
             
-        } else {
-            return $string;
         }
+        
+        return $string;
     }
 }
 
