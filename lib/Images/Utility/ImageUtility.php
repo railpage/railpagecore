@@ -153,7 +153,7 @@ class ImageUtility {
      * @return object
      */
     
-    public static function CreateImageProvider($provider, $options) {
+    public static function CreateImageProvider($provider, $options = []) {
         
         $Config = AppCore::GetConfig(); 
         

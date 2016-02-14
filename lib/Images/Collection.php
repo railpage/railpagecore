@@ -136,10 +136,12 @@ class Collection extends AppCore {
         $this->DateModified = new DateTime($row['modified'], new DateTimeZone("Australia/Melbourne"));
         $this->setAuthor(UsersFactory::CreateUser($row['user_id']));
         
+        /*
         if (empty($this->slug) || $this->slug == 1) {
             $this->validate(); 
             $this->commit(); 
         }
+        */
         
         $this->makeURLs(); 
         

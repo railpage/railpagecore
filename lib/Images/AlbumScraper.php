@@ -31,7 +31,7 @@ class AlbumScraper extends AppCore {
         
         $query = "SELECT * FROM image_scrape_album";
         
-        if ($provider == null) {
+        if ($provider != null) {
             $query .= " WHERE provider = ?";
             $result = $this->db->fetchAll($query, $provider); 
         }

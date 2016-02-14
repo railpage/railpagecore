@@ -144,6 +144,10 @@ class PhotoOfTheWeek extends AppCore {
         
         $result = $this->db->fetchRow($query, $Date->format("Y-m-d")); 
         
+        if (!$result) {
+            return false;
+        }
+        
         $result['meta'] = json_decode($result['meta'], true); 
         $result['meta']['sizes'] = Images::normaliseSizes($result['meta']['sizes']);
         $result['url'] = Utility\Url::CreateFromImageID($result['id'])->getURLs();

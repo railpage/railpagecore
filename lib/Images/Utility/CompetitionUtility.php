@@ -390,6 +390,10 @@ class CompetitionUtility {
     
     public static function sendNotification(Competition $photoComp, $notificationOptions) {
         
+        if (count((new Competitions)->getPreviousContestants()) == 0) {
+            return false;
+        }
+        
         $flag = $notificationOptions['flag'];
         
         if (!is_array($notificationOptions)) {
