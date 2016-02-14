@@ -12,6 +12,8 @@ use Railpage\Images\Utility\CollectionUtility;
 use Railpage\Images\Utility\CompetitionUtility;
 use Railpage\Users\User;
 use Railpage\Images\Collage;
+use Railpage\Images\Statistics;
+use Railpage\Images\PhotoOfTheWeek;
 
 class CompetitionTest extends PHPUnit_Framework_TestCase {
     
@@ -93,6 +95,9 @@ class CompetitionTest extends PHPUnit_Framework_TestCase {
         
         $Competitions->getPreviousContestants(); 
         $Competitions->getScreeners(); 
+        
+        $Competitions->setAuthor($photoComp->Author)->suggestTheme("asfdafda786557isdfsf");
+        
         $Competitions->getNextCompetition($photoComp); 
         
     }
@@ -102,6 +107,10 @@ class CompetitionTest extends PHPUnit_Framework_TestCase {
      */
     
     public function test_createPhotos($photoComp) {
+        
+        $PhotoOfTheWeek = new PhotoOfTheWeek;
+        $PhotoOfTheWeek->getStartOfWeek(); 
+        $Exif = new Exif;
         
         $i = 1; 
         
@@ -139,7 +148,17 @@ class CompetitionTest extends PHPUnit_Framework_TestCase {
             $this->assertEquals($i, count($photoComp->getPhotosAsArray(true))); 
             $i++;
             
+            $PhotoOfTheWeek->NominateImage($Image, new DateTime, $User); 
+            
+            $PhotoOfTheWeek->isPhotoOfTheWeek($Image); 
+            
+            $exif = $Exif->getImageExif($Image, true); 
+            $exif = $Exif->formatExif($exif); 
+            
         }
+        
+        $PhotoOfTheWeek->getImageOfTheWeek(); 
+        $PhotoOfTheWeek->getPreviousPhotos();
         
         $photoComp->getPendingSubmissions(); 
         
@@ -176,6 +195,29 @@ class CompetitionTest extends PHPUnit_Framework_TestCase {
         }
         
         $Collage->__toString(); 
+        
+    }
+    
+    /**
+     * @depends test_createPhotos
+     */
+    
+    public function test_statistics() {
+        
+        $Stats = new Statistics;
+        
+        $Stats->getNumPhotosByRegion(); 
+        $Stats->getQuantities(); 
+        $Stats->getContributors(); 
+        $Stats->getContributorWithTaggedPhotos(); 
+        $Stats->getChartData( Statistics::CHART_PHOTOS_MM );
+        $Stats->getChartData( Statistics::CHART_PHOTOS_APERTURE );
+        $Stats->getChartData( Statistics::CHART_PHOTOS_EXPOSURE_PROGRAM );
+        $Stats->getChartData( Statistics::CHART_CAMERAS_POPULAR );
+        $Stats->getChartData( Statistics::CHART_CAMERAS_NUMPHOTOS );
+        $Stats->getChartData("0897657sdfsf");
+        
+        $Stats->getMostViewedPhotos(); 
         
     }
     

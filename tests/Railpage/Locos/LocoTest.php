@@ -856,6 +856,26 @@
             $Class->bulkAddLocos(10, 20, $gauge_id, $status_id, false, "Z");
             
         }
+        
+        /**
+         * @depends testAddLoco
+         */
+        
+        public function test_addDate($loco_id) {
+            
+            $TestLoco = LocosFactory::CreateLocomotive($loco_id);
+            $Date = new Date; 
+            $Date->Loco = $TestLoco;
+            $Date->Date = new DateTime; 
+            $Date->action_id = 1;
+            $Date->meta = [ "test" => "blalh" ];
+            
+            $Date->commit(); 
+            $id = $Date->id; 
+            
+            $Date = new Date($id); 
+            
+        }
             
     }
     
