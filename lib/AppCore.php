@@ -207,6 +207,7 @@ class AppCore {
             }
             
             $ZendDB_ReadOnly = $this->db;
+            $this->setDatabaseReadOnlyConnection($this->db); 
             
         } else {
             

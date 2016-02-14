@@ -46,7 +46,7 @@ class Debug {
 
     public static function getTimer() {
 
-        if (!defined("RP_DEBUG") || !RP_DEBUG) {
+        if ((!defined("RP_DEBUG") || !RP_DEBUG) && !defined("PHPUNIT_RAILPAGE_TESTSUITE")) {
             return;
         }
 
@@ -66,7 +66,7 @@ class Debug {
 
     public static function logEvent($text, $timer = false) {
 
-        if (!defined("RP_DEBUG") || !RP_DEBUG) {
+        if ((!defined("RP_DEBUG") || !RP_DEBUG) && !defined("PHPUNIT_RAILPAGE_TESTSUITE")) {
             return;
         }
 
@@ -184,7 +184,7 @@ class Debug {
 
     public static function LogCLI($text, $timer = false) {
 
-        if (php_sapi_name() != "cli" || class_exists("PHPUnit_Framework_TestCase")) {
+        if (php_sapi_name() != "cli" || (class_exists("PHPUnit_Framework_TestCase") && !defined("PHPUNIT_RAILPAGE_TESTSUITE"))) {
             return;
         }
 
