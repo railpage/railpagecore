@@ -262,6 +262,10 @@ class Date extends Locos {
         if (!$this->Loco instanceof Locomotive) {
             throw new Exception("\$this->Loco is not an instance of Railpage\Locos\Locomotive");
         }
+        
+        if (is_null($this->text)) {
+            $this->text = "";
+        }
 
         if (!empty( $this->meta )) {
             foreach ($this->meta as $k => $v) {

@@ -13,6 +13,7 @@ namespace Railpage\Content;
 use Exception;
 use DateTime;
 use Railpage\Url;
+use Railpage\ContentUtility;
 
 /**
  * Content
@@ -126,12 +127,8 @@ class Page extends Content {
      * @since Version 3.5
      */
     
-    public function fetch() {
-        if (!$this->id) {
-            throw new Exception("Cannot fetch page - no page ID given"); 
-        }
-        
-        if (!$row = getMemcacheObject($this->mckey)) {
+    private function fetch() {
+        if (!$row = $this->Memcached->fetch($this->mckey)) {
             $query = "SELECT * FROM nuke_pages WHERE pid = ?";
             
             $row = $this->db->fetchRow($query, $this->id);
@@ -140,7 +137,7 @@ class Page extends Content {
                 $row[$key] = stripslashes($val);
             }
             
-            setMemcacheObject($this->mckey, $row, strtotime("+1 month"));
+            $this->Memcached->save($this->mckey, $row, strtotime("+1 month"));
         }
         
         $this->title        = $row['title']; 
@@ -151,12 +148,88 @@ class Page extends Content {
         $this->footer       = $row['page_footer']; 
         $this->date         = new DateTime($row['date']);
         $this->hits         = $row['counter']; 
-        $this->langauge     = isset($row['language']) ? $row['language'] : NULL;
+        $this->langauge     = isset($row['clanguage']) ? $row['clanguage'] : NULL;
         $this->permalink    = $row['shortname']; 
         
         $this->url = new Url(sprintf("/static-%s.htm", $this->permalink));
         $this->url->edit = sprintf("/admin/pages/edit/%d", $this->id);
         
         return true;
+    }
+    
+    /**
+     * Validate changes
+     * @since Version 3.10.0
+     * @return boolean
+     */
+    
+    private function validate() {
+        
+        if (empty($this->title)) {
+            throw new Exception("Title cannot be empty"); 
+        }
+        
+        if (!$this->date instanceof DateTime) {
+            $this->date = new DateTime; 
+        }
+        
+        if (empty($this->hits)) {
+            $this->hits = 0; 
+        }
+        
+        if (empty($this->language)) {
+            $this->language = "english";
+        }
+        
+        if (empty($this->permalink)) {
+            $prop = ContentUtility::generateUrlSlug($this->title); 
+            
+            if ($rs = $this->db->fetchAll("SELECT pid FROM nuke_pages WHERE shortname = ?", $prop)) {
+                $prop .= count($rs); 
+            }
+            
+            $this->permalink = $prop;
+        }
+        
+        return true;
+        
+    }
+    
+    /**
+     * Save changes
+     * @since Version 3.10.0
+     * @return \Railpage\Content\Page
+     */
+    
+    public function commit() {
+        
+        $this->validate();
+        
+        $data = [
+            "title" => $this->title,
+            "subtitle" => $this->subtitle,
+            "active" => $this->active,
+            "page_header" => $this->header,
+            "text" => $this->body,
+            "page_footer" => $this->footer,
+            "date" => $this->date->format("Y-m-d H:i:s"),
+            "counter" => $this->hits,
+            "clanguage" => $this->language,
+            "shortname" => $this->permalink
+        ];
+        
+        if (filter_var($this->id, FILTER_VALIDATE_INT)) {
+            $where = [ "pid = ?" => $this->id ];
+            
+            $this->db->update("nuke_pages", $data, $where);
+            
+            return $this;
+        }
+        
+        $this->db->insert("nuke_pages", $data); 
+        $this->id = $this->db->lastInsertId(); 
+        
+        return $this;
+        
     }
 }

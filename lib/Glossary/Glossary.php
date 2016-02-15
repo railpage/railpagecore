@@ -15,6 +15,7 @@ use Railpage\Url;
 use Exception;
 use DateTime;
 use stdClass;
+use Railpage\Debug;
 
 /**
  * Glossary
@@ -27,15 +28,10 @@ class Glossary extends AppCore {
      */
     
     public function __construct() {
+        
         parent::__construct();
         
-        /**
-         * Record this in the debug log
-         */
-        
-        if (function_exists("debug_recordInstance")) {
-            debug_recordInstance(__CLASS__);
-        }
+        Debug::RecordInstance(); 
         
         /**
          * Load the Module object
