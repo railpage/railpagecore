@@ -8,6 +8,9 @@
     use Railpage\Forums\Post;
     use Railpage\Forums\Thread;
     use Railpage\Forums\Stats;
+    use Railpage\Forums\ForumsFactory;
+    use Railpage\Forums\Utility\ForumsUtility;
+    use Railpage\Users\User;
     
     class ForumsTest extends PHPUnit_Framework_TestCase {
         
@@ -54,6 +57,12 @@
             $Broken->commit(); 
         }
         
+        public function testBreakCategory_Load() {
+            $this->setExpectedException('InvalidArgumentException', "An invalid category ID was provided");
+            $Category = new Category;
+            $Category->load();
+        }
+        
         /**
          * @depends testAddCategory
          */
@@ -80,6 +89,9 @@
             $this->assertEquals(self::FORUM_NAME, $Forum->name); 
             $this->assertEquals($forum_id, $Forum->id);
             
+            $Forum->refreshForumStats(); 
+            $Forum->refresh(); 
+            
             return $forum_id;   
         }
         
@@ -104,5 +116,96 @@
             $Broken->commit(); 
         }
         
+        public function testCreateUser() {
+            
+            $User = new User;
+            $User->username = __FUNCTION__; 
+            $User->contact_email = sprintf("phpunit+%s@railpage.com.au", $User->username); 
+            $User->setPassword("sdfadfa7986asfsdf"); 
+            $User->commit(); 
+            
+            return $User;
+            
+        }
+        
+        /**
+         * @depends testCreateUser
+         * @depends testAddCategory
+         * @depends testAddForum
+         */
+        
+        public function testgetForums($User, $cat_id, $forum_id) {
+            
+            $Category = new Category($cat_id);
+            $Category->setUser($User); 
+            
+            //$Category->getForums(); 
+        }
+        
+        /**
+         * @depends testAddForum
+         */
+        
+        public function testAddSubForum($forum_id) {
+            
+            $Forum = ForumsFactory::CreateForum($forum_id); 
+            
+            $Sub = new Forum; 
+            $Sub->Parent = $Forum;
+            $Sub->setCategory($Forum->category);
+            $Sub->name = "Sub forum zomg";
+            $Sub->commit(); 
+            
+            $Sub = new Forum($Sub->id); 
+            
+        }
+        
+        public function testBreakForum_load() {
+            $this->setExpectedException("Exception", "No valid forum ID or shortname was provided"); 
+            $Forum = new Forum;
+            $Forum->load(); 
+        }
+        
+        /**
+         * @depends testAddCategory
+         */
+        
+        public function testBreakForum_validate_name($cat_id) {
+            $Category = new Category($cat_id); 
+            
+            $this->setExpectedException("Exception", "No forum name has been set"); 
+            $Forum = new Forum;
+            $Forum->category = $Category;
+            $Forum->commit(); 
+        }
+        
+        /**
+         * @depends testAddForum
+         * @depends testCreateUser
+         */
+        
+        public function testAddThread($forum_id, $User) {
+            
+            $Forum = ForumsFactory::CreateForum($forum_id); 
+            
+            $Thread = new Thread;
+            $Thread->setAuthor($User)->setForum($Forum); 
+            $Thread->title = "Test thread";
+            $Thread->commit(); 
+            
+            $Post = new Post; 
+            $Post->setAuthor($User)->setThread($Thread); 
+            $Post->text = "asdfasffasasfa87s9fsas989sfa9ffds";
+            $Post->commit(); 
+            
+            $NewThread = ForumsFactory::CreateThread($Thread->id); 
+            $NewPost = ForumsFactory::CreatePost($Post->id); 
+            $Index = ForumsFactory::CreateIndex(); 
+            
+            ForumsUtility::updateUserThreadView($Thread, $User); 
+            ForumsUtility::updateUserThreadView($Thread); 
+            ForumsUtility::getForumNotifications($User); 
+            
+        }
         
     }

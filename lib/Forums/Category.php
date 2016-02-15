@@ -12,6 +12,7 @@ namespace Railpage\Forums;
 
 use Railpage\Users\User;
 use Exception;
+use InvalidArgumentException;
 use DateTime;
 
 /**

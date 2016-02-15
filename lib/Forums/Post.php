@@ -16,6 +16,7 @@ use Railpage\Module;
 use Railpage\Url;
 use Railpage\AppCore;
 use Railpage\Registry;
+use Railpage\Debug;
 use Exception;
 use DateTime;
 use ArrayObject;
@@ -249,8 +250,7 @@ class Post extends Forums {
      */
     
     public function __construct($postid = false) {
-        global $site_debug;
-        $post_timer_start = microtime(true);
+        $post_timer_start = Debug::GetTimer(); 
         
         parent::__construct();
         
@@ -263,33 +263,14 @@ class Post extends Forums {
         
         if (!$row = $this->Redis->fetch($this->mckey)) {
             if (filter_var($postid, FILTER_VALIDATE_INT)) {
-                if (RP_DEBUG) {
-                    global $site_debug;
-                    $debug_timer_start = microtime(true);
-                }
+                $timer = Debug::GetTimer(); 
                 
-                if ($this->db instanceof \sql_db) {
-                    $query = "SELECT p.*, t.*, u.username, u.user_avatar FROM nuke_bbposts p, nuke_bbposts_text t, nuke_users AS u WHERE u.user_id = p.poster_id AND p.post_id = '".$this->db->real_escape_string($postid)."' AND t.post_id = p.post_id LIMIT 1";
+                $query = "SELECT p.*, t.*, u.username, u.user_avatar FROM nuke_bbposts p, nuke_bbposts_text t, nuke_users AS u WHERE u.user_id = p.poster_id AND p.post_id = ? AND t.post_id = p.post_id LIMIT 1";
                 
-                    $result = $this->db->query($query);
-                    
-                    if ($result && $result->num_rows == 1) {
-                        $row = $result->fetch_assoc();
-                    }
-                } else {
-                    $query = "SELECT p.*, t.*, u.username, u.user_avatar FROM nuke_bbposts p, nuke_bbposts_text t, nuke_users AS u WHERE u.user_id = p.poster_id AND p.post_id = ? AND t.post_id = p.post_id LIMIT 1";
-                    
-                    $row = $this->db->fetchRow($query, $postid);
-                    $this->Redis->save($this->mckey, $row, strtotime("+12 hours"));
+                $row = $this->db->fetchRow($query, $postid);
+                $this->Redis->save($this->mckey, $row, strtotime("+12 hours"));
                 
-                    if (RP_DEBUG) {
-                        if ($row === false) {
-                            $site_debug[] = "Zend_DB: FAILED select post ID " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-                        } else {
-                            $site_debug[] = "Zend_DB: SUCCESS select post ID " . $this->id . " in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-                        }
-                    } 
-                }
+                Debug::LogEvent("Fetch forum post from database", $timer); 
             } elseif (is_string($postid)) {
                 $query = "SELECT p.*, t.*, u.username, u.user_avatar FROM nuke_bbposts p, nuke_bbposts_text t, nuke_users AS u WHERE u.user_id = p.poster_id AND t.url_slug = ? AND t.post_id = p.post_id LIMIT 1";
                 
@@ -339,9 +320,7 @@ class Post extends Forums {
             $this->makeLinks(); 
         }
         
-        if (RP_DEBUG) {
-            $site_debug[] = __CLASS__ . "::" . __METHOD__ . " completed in " . round(microtime(true) - $post_timer_start, 5) . "s";
-        }
+        Debug::LogEvent(__METHOD__, $post_timer_start); 
     }
     
     /**
@@ -351,11 +330,9 @@ class Post extends Forums {
      * @since Version 3.0.1
      * @version 3.0.1
      * @return boolean
-     * @todo Post validation
      */
     
     public function validate() {
-        //TODO Validation
         
         if (is_null($this->bbcode_uid)) {
             $this->bbcode_uid = "sausages";
@@ -387,6 +364,10 @@ class Post extends Forums {
         
         if (empty($this->ip)) {
             $this->ip = filter_input(INPUT_SERVER, "REMOTE_ADDR", FILTER_SANITIZE_URL); #$_SERVER['REMOTE_ADDR'];
+        }
+        
+        if ($this->ip == null) {
+            $this->ip = "";
         }
         
         if (empty($this->url_slug)) {
@@ -656,9 +637,10 @@ class Post extends Forums {
         
         if (is_array($result)) {
             return count($result);
-        } else {
-            return 0;
         }
+        
+        return 0;
+        
     }
     
     /**

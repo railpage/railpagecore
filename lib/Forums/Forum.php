@@ -14,9 +14,9 @@ use Railpage\Module;
 use Railpage\Url;
 use Railpage\Users\User;
 use Railpage\Users\Factory as UserFactory;
+use Railpage\Debug;
 use Zend_Acl;
 use Zend_Db_Expr;
-
 use DateTime;
 use Exception;
 use InvalidArgumentException;
@@ -153,13 +153,11 @@ class Forum extends Forums {
      * @param object $database
      */
     
-    function __construct($forumid = false, $getParent = true) {
+    public function __construct($forumid = false, $getParent = true) {
+        
         parent::__construct();
         
-        if (RP_DEBUG) {
-            global $site_debug;
-            $debug_timer_start = microtime(true);
-        }
+        $timer = Debug::GetTimer(); 
         
         $this->Module = new Module("forums");
         
@@ -171,9 +169,8 @@ class Forum extends Forums {
             }
         }
         
-        if (RP_DEBUG) {
-            $site_debug[] = __CLASS__ . "::" . __METHOD__ . " completed in " . round(microtime(true) - $debug_timer_start, 5) . "s";
-        }
+        Debug::LogEvent(__METHOD__, $timer); 
+        
     }
     
     /**
@@ -360,31 +357,16 @@ class Forum extends Forums {
             return false;
         }
         
-        /*
-        if ($this->db instanceof \sql_db) {
-            if ($postID != null) {
-                if ($this->db->query("UPDATE nuke_bbforums SET forum_posts=forum_posts+1, forum_last_post_id='".$this->db->real_escape_string($postID)."' WHERE forum_id = '".$this->id."'") === true) { 
-                    return true; 
-                } else { 
-                    return false; 
-                }
-            } else {
-                trigger_error("PhpBB_forum: Class has no data to add post.", E_USER_NOTICE); 
-                return false;
-            }
-        } else {
-        */
-            $data = array(
-                "forum_posts" => new Zend_Db_Expr("forum_posts + 1"),
-                "forum_last_post_id" => $postID
-            );
-            
-            $where = array(
-                "forum_id = ?" => $this->id
-            );
-            
-            return $this->db->update("nuke_bbforums", $data, $where); 
-        //}
+        $data = array(
+            "forum_posts" => new Zend_Db_Expr("forum_posts + 1"),
+            "forum_last_post_id" => $postID
+        );
+        
+        $where = array(
+            "forum_id = ?" => $this->id
+        );
+        
+        return $this->db->update("nuke_bbforums", $data, $where); 
     }
     
     /**
@@ -414,44 +396,20 @@ class Forum extends Forums {
      */
     
     public function refresh() {
-        if ($this->db instanceof \sql_db) {
-            $result = $this->db->query("SELECT * FROM nuke_bbforums WHERE forum_id = '".$this->db->real_escape_string($this->id)."' LIMIT 1");
-            if ($result->num_rows == 1) {
-                $row = $result->fetch_assoc;
-                    
-                foreach ($row as $key => $val) {
-                    $row[$key] = iconv('windows-1256', 'UTF-8', $val);
-                }
-                
-                $this->id           = $this->id;
-                $this->catid        = $row["cat_id"];
-                $this->name         = $row["forum_name"];
-                $this->description  = $row["forum_desc"];
-                $this->status       = $row["forum_status"];
-                $this->order        = $row["forum_order"];
-                $this->posts        = $row["forum_posts"];
-                $this->topics       = $row["forum_topics"];
-                $this->last_post    = $row["forum_last_post_id"];
-                $result->close();
-            } else {
-                trigger_error("PhpBB_forum: Forum ID ".$this->id." does not exist.", E_USER_NOTICE);    
-            }
-        } else {
-            $query = "SELECT * FROM nuke_bbforums WHERE forum_id = ? LIMIT 1";
-            
-            $row = $this->db->fetchRow($query, $this->id); 
-            
-            $this->catid        = $row["cat_id"];
-            $this->name         = $row["forum_name"];
-            $this->description  = $row["forum_desc"];
-            $this->status       = $row["forum_status"];
-            $this->order        = $row["forum_order"];
-            $this->posts        = $row["forum_posts"];
-            $this->topics       = $row["forum_topics"];
-            $this->last_post    = $row["forum_last_post_id"];
-            
-            return true;
-        }
+        $query = "SELECT * FROM nuke_bbforums WHERE forum_id = ? LIMIT 1";
+        
+        $row = $this->db->fetchRow($query, $this->id); 
+        
+        $this->catid        = $row["cat_id"];
+        $this->name         = $row["forum_name"];
+        $this->description  = $row["forum_desc"];
+        $this->status       = $row["forum_status"];
+        $this->order        = $row["forum_order"];
+        $this->posts        = $row["forum_posts"];
+        $this->topics       = $row["forum_topics"];
+        $this->last_post    = $row["forum_last_post_id"];
+        
+        return true;
     }
     
     /**
@@ -508,57 +466,6 @@ class Forum extends Forums {
      */
     
     public function topics($items_per_page = 25, $page_num = 1, $sort = "DESC") {
-        if ($this->db instanceof \sql_db) {
-            $query = "SELECT 
-                            SQL_CALC_FOUND_ROWS 
-                            t.*, 
-                            ufirst.username AS first_post_username, 
-                            ufirst.user_id AS first_post_user_id, 
-                            ulast.username AS last_post_username, 
-                            ulast.user_id AS last_post_user_id,
-                            pfirst_text.post_text AS first_post_text,
-                            pfirst_text.bbcode_uid AS first_post_bbcode_uid,
-                            pfirst.post_time AS first_post_time,
-                            plast_text.post_text AS last_post_text,
-                            plast_text.bbcode_uid AS last_post_bbcode_uid,
-                            plast.post_time AS last_post_time
-                            
-                        FROM nuke_bbtopics AS t
-                        
-                        LEFT JOIN nuke_bbposts AS pfirst ON pfirst.post_id = t.topic_first_post_id
-                        LEFT JOIN nuke_bbposts AS plast ON plast.post_id = t.topic_last_post_id
-                        LEFT JOIN nuke_bbposts_text AS pfirst_text ON pfirst.post_id = pfirst_text.post_id
-                        LEFT JOIN nuke_bbposts_text AS plast_text ON plast.post_id = plast_text.post_id
-                        LEFT JOIN nuke_users AS ufirst ON ufirst.user_id = pfirst.poster_id
-                        LEFT JOIN nuke_users AS ulast ON ulast.user_id = plast.poster_id
-                        
-                        WHERE t.forum_id = ".$this->db->real_escape_string($this->id)." 
-                        ORDER BY t.topic_type DESC, plast.post_time ".$this->db->real_escape_string($sort)." 
-                        LIMIT ".$this->db->real_escape_string(($page_num - 1) * $items_per_page).", ".$this->db->real_escape_string($items_per_page);
-            
-            if ($rs = $this->db->query($query)) {
-                $total = $this->db->query("SELECT FOUND_ROWS() AS total"); 
-                $total = $total->fetch_assoc(); 
-                
-                $topics = array();
-                $topics['total_topics'] = $total['total'];
-                $topics['total_pages'] = ceil($total['total'] / $items_per_page);
-                $topics['page_num'] = $page_num;
-                $topics['items_per_page'] = $items_per_page;
-                
-                while ($row = $rs->fetch_assoc()) {
-                    $topics['topics'][$row['topic_id']] = $row;
-                }
-                
-                return $topics;
-            }
-            
-            trigger_error("phpBB Forum : Unable to fetch topic list for forum id ".$this->id);
-            trigger_error($this->db->error);
-            trigger_error($query);
-            
-            return false;
-        }
         
         $query = "SELECT 
                         SQL_CALC_FOUND_ROWS 
