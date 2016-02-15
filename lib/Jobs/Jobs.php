@@ -149,8 +149,12 @@ class Jobs extends AppCore {
         $jobs = $this->db->fetchAll($query, date("Y-m-d H:i:s"));
 
         $job_id = array_rand($jobs);
-
-        return new Job($jobs[$job_id]['job_id']);
+        
+        if (isset($jobs[$job_id]['job_id'])) {
+            return new Job($jobs[$job_id]['job_id']);
+        }
+        
+        return false;
     }
 
     /**
