@@ -54,9 +54,34 @@
             
             $this->assertEquals($User->id, $Entry->Author->id);
             
+            $Glossary = new Glossary;
+            
+            foreach ($Glossary->getPendingEntries() as $Entry) {
+                // meh
+            }
+            
             $Entry->approve(); 
             
+            foreach ($Glossary->getNewEntries() as $Entry) {
+                
+            }
+            
+            $Entry->slug = null;
+            $Entry->commit(); 
+            
+            $Entry->getArray(); 
+            
             return $Entry;
+            
+        }
+        
+        /**
+         * @depends testAddEntry
+         */
+        
+        public function testAllTheGlossary($Entry) {
+            
+            $Type = new Type; 
             
         }
         
@@ -94,6 +119,8 @@
             foreach ($Type->getEntries() as $Entry) {
                 $this->assertEquals(self::NAME, $Entry->name); 
             }
+            
+            $Entry = new Entry(9999999); 
             
         }
         
@@ -167,6 +194,24 @@
             $Entry->example = NULL;
             $Entry->name = "asdf";
             $Entry->text = "asfdfafadfsaf";
+            $Entry->commit(); 
+            
+        }
+        
+        /**
+         * @depends testAddUser
+         */
+        
+        public function test_break_longname($User) {
+            
+            $this->setExpectedException("Exception", sprintf("The title of this entry is too long: the maximum allowed is %d", Entry::SHORT_MAX_CHARS));
+            
+            $Entry = new Entry;
+            $Entry->Type = new Type(self::TYPE);
+            $Entry->example = NULL;
+            $Entry->name = "asfdfafadfsafasfdfafadfsafasfdfafadfsafasfdfafadfsafasfdfafadfsafasfdfafadfsafasfdfafadfsafasfdfafadfsaf";
+            $Entry->text = "asfdfafadfsaf";
+            $Entry->Author = $User; 
             $Entry->commit(); 
             
         }

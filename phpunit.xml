@@ -11,6 +11,8 @@
 	<filter>
 		<blacklist>
 			<directory>lib/vendor</directory>
+			<directory>lib/ISO</directory>
+			<directory>lib/Radar</directory>
 			<directory>tests</directory>
 			<directory>build</directory>
 			<directory>config</directory>
