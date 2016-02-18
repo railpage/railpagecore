@@ -394,6 +394,16 @@ class Competition extends AppCore {
     
     public function getPhoto($image) {
         
+        if (is_array($image) && !isset($image['status'])) {
+            $query = "SELECT * FROM image_competition_submissions WHERE competition_id = ? AND image_id = ? ORDER BY date_added DESC";
+            $params = array(
+                $this->id,
+                $image['id']
+            );
+            
+            $image = array_merge($this->db->fetchRow($query, $params), $image); 
+        }
+        
         if ($image instanceof Image) {
             $query = "SELECT * FROM image_competition_submissions WHERE competition_id = ? AND image_id = ? ORDER BY date_added DESC";
             $params = array(
@@ -408,9 +418,16 @@ class Competition extends AppCore {
         $Photo->id = $image['id'];
         $Photo->Author = UserFactory::CreateUser($image['user_id']);
         $Photo->Image = ImageFactory::CreateImage(isset($image['image_id']) ? $image['image_id'] : $image['id']);
-        $Photo->DateAdded = new DateTime($image['date_added']);
-        $Photo->Meta = json_decode($image['meta'], true);
+        $Photo->Meta = isset($image['meta']) ? json_decode($image['meta'], true) : [];
         $Photo->status = intval($image['status']); 
+        
+        if (isset($image['date_added'])) {
+            $Photo->DateAdded = new DateTime($image['date_added']);
+        }
+        
+        if (isset($image['dateadded']['absolute'])) {
+            $Photo->DateAdded = new DateTime($image['dateadded']['absolute']);
+        }
         
         $Photo->url = new Url(sprintf("%s/%d", $this->url->url, $Photo->Image->id));
         $Photo->url->vote = sprintf("%s/vote", $Photo->url);
@@ -720,7 +737,9 @@ class Competition extends AppCore {
         
         $result = $tied[0]['image']; 
         
-        if ($result['winner'] == "0") {
+        #print_r($result);die;
+        
+        if (!isset($result['winner']) || $result['winner'] == "0") {
             $data = [ "winner" => 1 ];
             
             $where = [ "id = ?" => $result['id'] ];
@@ -1010,7 +1029,7 @@ class Competition extends AppCore {
                 "dateadded" => array(
                     "absolute" => $Submission->DateAdded->format("Y-m-d H:i:s"),
                     "relative" => function_exists("time2str") ? time2str($Submission->DateAdded->getTimestamp()) : null
-                )
+                ),
             );
         }
         
@@ -1022,7 +1041,7 @@ class Competition extends AppCore {
     /**
      * Get all the photos in this competition and sort them by vote counts
      * @since Version 3.10.0
-     * #return array
+     * @return array
      */
     
     public function getPhotosAsArrayByVotes() {
@@ -1046,8 +1065,11 @@ class Competition extends AppCore {
             return $photos; 
         }
         
+        #print_r($photos);
+        #print_r($votes); die;
+        
         foreach ($photos as $key => $photo) {
-            $photos[$key]['votes'] = $votes[$photo['image']['id']]; 
+            $photos[$key]['votes'] = isset($votes[$photo['image']['id']]) ? $votes[$photo['image']['id']] : []; 
             $photos[$key]['votes_percentage'] = round((count($photos[$key]['votes']) / $totalVotes) * 100);
         }
         

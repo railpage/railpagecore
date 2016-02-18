@@ -14,6 +14,7 @@ use Railpage\Users\User;
 use Railpage\Images\Collage;
 use Railpage\Images\Statistics;
 use Railpage\Images\PhotoOfTheWeek;
+use Railpage\Debug;
 
 class CompetitionTest extends PHPUnit_Framework_TestCase {
     
@@ -23,6 +24,8 @@ class CompetitionTest extends PHPUnit_Framework_TestCase {
         "24567264210",
         "24217963233"
     ];
+    
+    private $winning_id = 0; 
     
     public function test_createUser($username = "photocomp", $email = "phpunit+photocomp@railpage.com.au") {
         
@@ -167,6 +170,7 @@ class CompetitionTest extends PHPUnit_Framework_TestCase {
         foreach ($this->ids as $id) {
             $Image = ImageFactory::CreateImage($id, "flickr"); 
             $photoComp->rejectSubmission($Image); 
+            Debug::LogCLI("Rejected image " . $Image->id); 
             break;
         }
         
@@ -239,6 +243,8 @@ class CompetitionTest extends PHPUnit_Framework_TestCase {
         
         foreach ($photoComp->getPhotos() as $Photo) {
             
+            Debug::LogCLI("Voting for photo ID " . $Photo->Image->id); 
+            
             $this->assertEquals(0, $photoComp->getNumVotesForImage($Photo->Image)); 
             
             $this->assertTrue($photoComp->canUserVote($userObject, $Photo->Image)); 
@@ -246,6 +252,8 @@ class CompetitionTest extends PHPUnit_Framework_TestCase {
             $this->assertfalse($photoComp->canUserVote($userObject, $Photo->Image)); 
             
             $this->assertEquals(1, $photoComp->getNumVotesForImage($Photo->Image)); 
+            
+            $this->winning_id = $Photo->Image->id; 
             
             break;
             
@@ -260,8 +268,10 @@ class CompetitionTest extends PHPUnit_Framework_TestCase {
         
         $photoComp->getVoteCountsPerDay(); 
         
-        $this->assertFalse($photoComp->getWinningPhoto() == false);
+        $winner = $photoComp->getWinningPhoto(); 
         
+        $this->assertFalse($winner == false);
+        $this->assertEquals($this->winning_id, $winner->Image->id); 
         
     }
 
