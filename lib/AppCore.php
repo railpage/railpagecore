@@ -253,6 +253,8 @@
                 try {
                     $this->db_readonly = $Registry->get("db_readonly");
                 } catch (Exception $e) {
+                    $this->db_readonly = $this->db; 
+                    
                     if (isset($ZendDB_ReadOnly)) {
                         $this->db_readonly = $ZendDB_ReadOnly; 
                     } elseif (file_exists("db" . DS . "zend_db.php")) {
