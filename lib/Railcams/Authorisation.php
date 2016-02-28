@@ -57,4 +57,21 @@ class Authorisation {
         
     }
     
+    /**
+     * Get authorisation IP addresses for a railcam
+     * @since Version 3.10.0
+     * @param \Railpage\Railcams\Camera $Camera
+     * @return string
+     */
+    
+    public static function getAuthIPs(Camera $Camera) {
+        
+        if (!isset($Camera->meta['auth_ips'])) {
+            return "";
+        }
+        
+        return $Camera->meta['auth_ips'];
+        
+    }
+    
 }
