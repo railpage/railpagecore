@@ -247,14 +247,14 @@ class Competitions extends AppCore {
         
         $themes = $this->getSuggestedThemes(); 
         
-        $themes[] = array(
-            "user" => array(
+        array_unshift($themes, [
+            "user" => [
                 "id" => $this->Author->id,
                 "username" => $this->Author->username
-            ),
+            ],
             "theme" => $theme,
             "winner" => $winner
-        );
+        ]);
         
         $Config = new Config;
         $Config->set("image.competition.suggestedthemes", json_encode($themes), "Photo competition themes"); 
