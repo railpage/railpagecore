@@ -348,9 +348,7 @@ class Competition extends AppCore {
         $themes = (new Competitions)->getSuggestedThemes(); 
         
         foreach ($themes as $key => $theme) {
-            if (function_exists("format_topictitle")) {
-                $theme['theme'] = format_topictitle($theme['theme']);
-            }
+            $theme['theme'] = ContentUtility::FormatTitle($theme['theme']);
             
             if ((!isset($theme['used']) || $theme['used'] === false) && $theme['theme'] === $this->theme) {
                 $themes[$key]['used'] = true;
