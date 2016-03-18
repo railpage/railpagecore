@@ -18,10 +18,11 @@ To start using the core code, execute `./composer.phar require railpage/railpage
 
 Make sure you're using Composer. 
 
-Assuming you've already included your Composer autoloader in your code, imort the desired modules by placing a `use` operator at the top of your .php file. For example: 
+Assuming you've already included your Composer autoloader in your code, import the desired modules by placing a `use` operator at the top of your .php file. For example: 
 
 ````php
-use Railpage\Locos\Locomotive;
+use Railpage\Locos\Factory as LocosFactory;
 
-$Loco = new Locomotive($id);
+$Loco = LocosFactory::CreateLocomotive($id);
+$Loco = LocosFactory::CreateLocomotive(null, "NR Class", "NR121"); 
 ````
