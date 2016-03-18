@@ -83,7 +83,7 @@ class ImageCache extends AppCore {
             throw new Exception("Config parameters have not been set (hint: setConfiguration()"); 
         }
         
-        $md5name = md5($url); 
+        $md5name   = md5($url); 
         $filepath  = sprintf("%s%s%s", $this->config['cachePathAbsolute'], DIRECTORY_SEPARATOR, $md5name) . "." . pathinfo($url, PATHINFO_EXTENSION); 
         $filepath  = strtolower($filepath); 
         

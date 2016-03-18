@@ -770,7 +770,7 @@ class Competition extends AppCore {
      */
     
     public function getPendingSubmissions() {
-        $query = "SELECT s.* FROM image_competition_submissions AS s LEFT JOIN image AS i ON s.image_id = i.id WHERE s.competition_id = ? AND s.status = ? AND i.photo_id != 0 ORDER BY s.date_added DESC";
+        $query = "SELECT s.* FROM image_competition_submissions AS s LEFT JOIN image AS i ON s.image_id = i.id WHERE s.competition_id = ? AND s.status = ? AND i.photo_id != \"0\" ORDER BY s.date_added DESC";
 
         $where = array(
             $this->id,
