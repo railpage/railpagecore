@@ -11,7 +11,7 @@ namespace Railpage;
 
 use stdClass;
 use Exception;
-use Memcached as MemcachedBlahBlah;
+use Memcached as PhpMemcached;
 use Redis;
 use Railpage\Users\User;
 use Railpage\Images\Image;
@@ -664,7 +664,7 @@ class AppCore {
         try {
             $cacheDriver = $Registry->get("memcached");
         } catch (Exception $e) {
-            $Memcached = new MemcachedBlahBlah;
+            $Memcached = new PhpMemcached;
             $Memcached->addServer($Config->Memcached->Host, 11211);
             
             $cacheDriver = new MemcachedCache;
