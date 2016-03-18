@@ -13,6 +13,7 @@
     
     namespace Railpage;
     use Smarty_CacheResource_KeyValueStore;
+    use Redis;
     
     /**
      * CacheResource
@@ -37,7 +38,12 @@
         
         public function __construct()
         {
-            $this->Cache = AppCore::getRedis(); 
+            $host = /*defined("RP_REDIS_HOST") ? RP_REDIS_HOST :*/ "cache.railpage.com.au";
+            $port = /*defined("RP_REDIS_PORT") ? RP_REDIS_PORT :*/ 6379;
+            
+            $this->Cache = new Redis;
+            $this->Cache->connect($host, $port); 
+            
             $Smarty = AppCore::GetSmarty();
             $Smarty->caching_type = "redis";
             
@@ -61,7 +67,7 @@
                 $lookup[$_k] = $k;
             }
             $_res = array();
-            $res = $this->Cache->fetch($_keys);
+            $res = $this->Cache->mGet($_keys);
             foreach ($res as $k => $v) {
                 $_res[$lookup[$k]] = $v;
             }
@@ -78,11 +84,12 @@
         protected function write(array $keys, $expire=null)
         {
             #echo "writing template to cache";
-            #printArray($keys);
+            
             foreach ($keys as $k => $v) {
                 $k = sha1($k);
-                $rs = $this->Cache->save($k, $v, 0, $expire);
+                $rs = $this->Cache->setEx($k, $expire, $v);
             }
+            
             return true;
         }
     
@@ -98,7 +105,7 @@
             #printArray($keys);
             foreach ($keys as $k) {
                 $k = sha1($k);
-                $this->Cache->fetch($k);
+                $this->Cache->delete($k);
             }
             return true;
         }

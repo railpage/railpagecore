@@ -43,6 +43,11 @@
         
         public function __construct()
         {
+            
+            if (!class_exists("Memcache")) {
+                return;
+            }
+            
             $this->memcache = new Memcache();
             $this->memcache->addServer(RP_MEMCACHE_HOST, RP_MEMCACHE_PORT);
             #$this->Memcached = AppCore::getMemcached(); 
