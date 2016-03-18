@@ -139,7 +139,7 @@
 		"lusitanian/oauth": "~0.3",
         "lcobucci/jwt": "^3.1",
         "textalk/websocket": "^1.2",
-		"tga/simhash-php": "^2.0",
+		"tga/simhash-php": "~2.0",
 		"electrolinux/phpquery": "^0.9.6"
 	},
 	"require-dev" : {
