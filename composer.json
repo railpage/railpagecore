@@ -129,7 +129,7 @@
 		"guzzlehttp/guzzle": "~5.2",
 		"guzzlehttp/oauth-subscriber": "0.2.*",
 		"monolog/monolog": "~1.12",
-		"doctrine/cache": "~1.4",
+		"doctrine/cache": "~1.6",
 		"mibe/feedwriter": "~1.0",
 		"jakeasmith/http_build_url": "^1",
 		"smarty/smarty": "~3.1",
