@@ -16,8 +16,62 @@ use Exception;
 use InvalidArgumentException;
 use GuzzleHttp\Client;
 use phpQuery;
+use Railpage\Formatting\MultimediaUtility;
+use Railpage\Formatting\EmoticonsUtility;
+use Railpage\Formatting\Html;
+use Railpage\Formatting\BbcodeUtility;
 
 class ContentUtility {
+    
+    /**
+     * Process the emoticons, BBCode, rich text, embedded content etc in this object and return as HTML
+     * @since Version 3.10.0
+     * @param string $string
+     * @param array $options
+     * @return string
+     */
+    
+    public static function formatText($string, $options) {
+        
+        $defaultOptions = [
+            "bbcode_uid" => "sausages",
+            "flag_html" => true,
+            "flag_bbcode" => true,
+            "flag_emoticons" => true,
+            "strip_formatting" => false,
+            "editor_version" => 1
+        ];
+        
+        $options = array_merge($defaultOptions, (is_array($options) ? $options : [])); 
+        
+        if (empty(trim($string))) { 
+            throw new InvalidArgumentException("Cannot execute " . __METHOD__ . " as no text was provided!"); 
+        }
+        
+        $cacheKey = md5($string . json_encode($options)); 
+        $cacheProvider = AppCore::getMemcached(); 
+        
+        if ($processedText = $cacheProvider->fetch($cachekey)) {
+            return $processedText; 
+        }
+        
+        /**
+         * @todo
+         * - strip headers
+         * - process bbcode
+         * - make clickable
+         * - convert to UTF8
+         * - process multimedia
+         */
+        
+        $string = EmoticonsUtility::Process($string); 
+        $string = Html::cleanupBadHtml($string, $options['editor_version']); 
+        $string = Html::removeHeaders($string);
+        $string = BbcodeUtility::Process($string, $options['flag_bbcode'], $options['flag_emoticons']); 
+        
+        return (string) $string; 
+        
+    }
     
     /**
      * Format URL slugs for consistency

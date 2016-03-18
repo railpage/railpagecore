@@ -27,15 +27,11 @@ class Recent {
     
     public static function getNewest($num = 5) {
         
-        $host = defined("RP_MEMCACHE_HOST") ? RP_MEMCACHE_HOST : "cache.railpage.com.au";
-        $port = defined("RP_MEMCACHE_PORT") ? RP_MEMCACHE_PORT : 11211;
-        
-        $cacheProvider = new PhpMemcached; 
-        $cacheProvider->addServer($host, $port); 
+        $cacheProvider = AppCore::GetMemcached(); 
         
         $mckey = sprintf("railpage:images.recent=%d;url.cached", $num); 
         
-        if ($newphotos = $cacheProvider->get($mckey)) {
+        if ($newphotos = $cacheProvider->fetch($mckey)) {
             Debug::LogCLI("Fetched new photos from cache provider using cache key " . $mckey); 
             return $newphotos; 
         }
@@ -47,10 +43,10 @@ class Recent {
             $newphotos[$id]['meta']['sizes']['medium']['source'] = ImageCache::cache($newphotos[$id]['meta']['sizes']['medium']['source']);
         }
         
-        $rs = $cacheProvider->set($mckey, $newphotos, strtotime("+15 minutes")); 
+        $rs = $cacheProvider->save($mckey, $newphotos, 900); // save for 15 minutes
         Debug::LogCLI("Saved new photos in cache provider using cache key " . $mckey); 
         
-        if ($res = $cacheProvider->get($mckey)) {
+        if ($res = $cacheProvider->fetch($mckey)) {
             Debug::LogCLI("new photos found in cache, success"); 
         }
         

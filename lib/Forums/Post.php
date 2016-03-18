@@ -281,7 +281,7 @@ class Post extends Forums {
             
         if (isset($row) && is_array($row)) {
             $this->id = $row['post_id'];
-            $this->thread = new Thread($row['topic_id']);
+            $this->thread = ForumsFactory::CreateThread($row['topic_id']);
             $this->uid = $row['poster_id'];
             $this->username = $row['username'];
             $this->user_avatar = $row['user_avatar'];

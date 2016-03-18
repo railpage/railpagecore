@@ -116,9 +116,9 @@ class ForumsFactory {
         
         $key = sprintf("railpage:forums.post=%d", $post_id); 
         
-        if (!$Index = self::load($key)) {
+        if (!$Post = self::load($key)) {
             $Post = new Post($post_id); 
-            self::$Registry->set($key, $Index); 
+            self::$Registry->set($key, $Post); 
         }
         
         return $Post;
@@ -136,10 +136,12 @@ class ForumsFactory {
         
         $key = sprintf("railpage:forums.post=%d", $thread_id); 
         
-        if (!$Index = self::load($key)) {
-            $Thread = new Thread($thread_id); 
-            self::$Registry->set($key, $Index); 
+        if ($Thread = self::load($key)) {
+            return $Thread;
         }
+        
+        $Thread = new Thread($thread_id); 
+        self::$Registry->set($key, $Thread); 
         
         return $Thread;
         
