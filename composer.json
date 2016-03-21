@@ -140,7 +140,8 @@
         "textalk/websocket": "^1.2",
 		"tga/simhash-php": "dev-master",
 		"electrolinux/phpquery": "dev-master",
-		"mjohnson/decoda": "^6.7"
+		"mjohnson/decoda": "^6.7",
+		"emojione/emojione": "^2.1"
 	},
 	"require-dev" : {
 		"codeclimate/php-test-reporter": "dev-master",
