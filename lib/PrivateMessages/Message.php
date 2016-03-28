@@ -260,42 +260,35 @@ class Message extends PrivateMessages {
             $this->Memcached->save($this->mckey, $row);
         }
         
-        if (isset($row) && count($row)) {
-            // Nasty way of doing it, but it should work for now.
-            // Remember to extend BOTH open AND close when adding another bbcode to match
-            $bbcode_preg_open   = "@\[(img|url|list|b|i|u)\:([a-zA-Z0-9]+)\]@";
-            $bbcode_preg_close  = "@\[/(img|url|list|b|i|u)\:([a-zA-Z0-9]+)\]@";
-            
-            $this->id           = $row['privmsgs_id'];
-            $this->date         = $row['privmsgs_date']; 
-            $this->subject      = $row['privmsgs_subject'];
-            $this->body         = trim($row['privmsgs_text']);
-            $this->bbcode_uid   = $row['privmsgs_bbcode_uid'];
-            $this->type         = $row['privmsgs_type'];
-            
-            $this->enable_bbcode    = $row['privmsgs_enable_bbcode']; 
-            $this->enable_html      = $row['privmsgs_enable_html']; 
-            $this->enable_smilies   = $row['privmsgs_enable_smilies']; 
-            $this->enable_signature = $row['privmsgs_attach_sig']; 
-            
-            $this->object_id        = $row['object_id'];
-            
-            $this->hide_from        = $row['hide_from'];
-            $this->hide_to          = $row['hide_to'];
-            
-            $this->setRecipient(UserFactory::CreateUser($row['privmsgs_to_userid']));
-            $this->setAuthor(UserFactory::CreateUser($row['privmsgs_from_userid']));
-            
-            #$this->Author = UserFactory::CreateUser($row['privmsgs_from_userid']);
-            #$this->from_user_id        = $row['privmsgs_from_userid']; 
-            #$this->from_username   = $row['username_from']; 
-            #$this->from_user_avatar    = $row['from_user_avatar']; 
-            #$this->from_user_viewonline    = $row['from_user_viewonline']; 
-            #$this->Recipient = UserFactory::CreateUser($row['privmsgs_to_userid']);
-            #$this->to_user_id      = $row['privmsgs_to_userid']; 
-            #$this->to_username     = $row['username_to']; 
-            #$this->to_user_viewonline  = $row['to_user_viewonline']; 
+        if (!isset($row) || count($row) == 0) {
+            return;
         }
+        
+        // Nasty way of doing it, but it should work for now.
+        // Remember to extend BOTH open AND close when adding another bbcode to match
+        //$bbcode_preg_open   = "@\[(img|url|list|b|i|u)\:([a-zA-Z0-9]+)\]@";
+        //$bbcode_preg_close  = "@\[/(img|url|list|b|i|u)\:([a-zA-Z0-9]+)\]@";
+        
+        $this->id           = $row['privmsgs_id'];
+        $this->date         = $row['privmsgs_date']; 
+        $this->subject      = $row['privmsgs_subject'];
+        $this->body         = trim($row['privmsgs_text']);
+        $this->bbcode_uid   = $row['privmsgs_bbcode_uid'];
+        $this->type         = $row['privmsgs_type'];
+        
+        $this->enable_bbcode    = $row['privmsgs_enable_bbcode']; 
+        $this->enable_html      = $row['privmsgs_enable_html']; 
+        $this->enable_smilies   = $row['privmsgs_enable_smilies']; 
+        $this->enable_signature = $row['privmsgs_attach_sig']; 
+        
+        $this->object_id        = $row['object_id'];
+        
+        $this->hide_from        = $row['hide_from'];
+        $this->hide_to          = $row['hide_to'];
+        
+        $this->setRecipient(UserFactory::CreateUser($row['privmsgs_to_userid']));
+        $this->setAuthor(UserFactory::CreateUser($row['privmsgs_from_userid']));
+        
     }
     
     /**
