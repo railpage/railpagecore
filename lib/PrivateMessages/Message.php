@@ -243,7 +243,6 @@ class Message extends PrivateMessages {
     public function fetch() {
         if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot fetch PM - no message ID provided");
-            return false;
         }
         
         $this->mckey = "railpage:messsages.message_id=" . $this->id;
