@@ -227,11 +227,9 @@ class Message extends PrivateMessages {
     public function __construct($id = false) {
         parent::__construct(); 
         
-        foreach (func_get_args() as $arg) {
-            if (filter_var($arg, FILTER_VALIDATE_INT)) {
-                $this->id = $id; 
-                $this->fetch(); 
-            }
+        if (filter_var($id, FILTER_VALIDATE_INT)) {
+            $this->id = $id; 
+            $this->fetch(); 
         }
     }
     
@@ -243,7 +241,7 @@ class Message extends PrivateMessages {
      */
     
     public function fetch() {
-        if (empty($this->id)) {
+        if (!filter_var($this->id, FILTER_VALIDATE_INT)) {
             throw new Exception("Cannot fetch PM - no message ID provided");
             return false;
         }
