@@ -353,7 +353,7 @@ class Competitions extends AppCore {
             FROM image_competition
             WHERE submissions_date_close >= NOW()
             AND id != ?
-            ORDER BY submissions_date_open DESC
+            ORDER BY submissions_date_open ASC
             LIMIT 0, 1";
         
         $params = [
