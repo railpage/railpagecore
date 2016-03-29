@@ -231,7 +231,7 @@ class Template extends Smarty {
         if (count($this->rp_meta_tags)) {
             
             foreach ($this->rp_meta_tags as $property => $content) {
-                $tag = '<meta property="' . $property . '" content="' . htmlentities(format_post($content, false, false, false, false, true)) . '">';
+                $tag = '<meta property="' . $property . '" content="' . htmlentities(ContentUtility::formatText($content, [ "strip_formatting" => true ])) . '">';
                 
                 if ($property == "og:image" || $property == "twitter:image") {
                     $tag = str_replace("&amp;", "&", $tag);
