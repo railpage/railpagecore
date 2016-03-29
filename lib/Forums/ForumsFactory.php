@@ -55,6 +55,8 @@ class ForumsFactory {
     
     public static function CreateCategory($cat_id) {
         
+        Debug::LogEvent(__METHOD__ . "(" . $cat_id . ")"); 
+        
         $key = sprintf("railpage:forums.category=%d", $cat_id); 
         
         if (!$Category = self::load($key)) {
@@ -75,6 +77,8 @@ class ForumsFactory {
     
     public static function CreateForum($forum_id) {
         
+        Debug::LogEvent(__METHOD__ . "(" . $forum_id . ")"); 
+        
         $key = sprintf("railpage:forums.forum=%d", $forum_id); 
         
         if (!$Forum = self::load($key)) {
@@ -93,6 +97,8 @@ class ForumsFactory {
      */
     
     public static function CreateIndex() {
+        
+        Debug::LogEvent(__METHOD__ . "()"); 
         
         $key = sprintf("railpage:forums.index"); 
         
@@ -114,6 +120,8 @@ class ForumsFactory {
     
     public static function CreatePost($post_id) {
         
+        Debug::LogEvent(__METHOD__ . "(" . $post_id . ")"); 
+        
         $key = sprintf("railpage:forums.post=%d", $post_id); 
         
         if (!$Post = self::load($key)) {
@@ -134,7 +142,9 @@ class ForumsFactory {
     
     public static function CreateThread($thread_id) {
         
-        $key = sprintf("railpage:forums.post=%d", $thread_id); 
+        Debug::LogEvent(__METHOD__ . "(" . $thread_id . ")"); 
+        
+        $key = sprintf("railpage:forums.thread=%d", $thread_id); 
         
         if ($Thread = self::load($key)) {
             return $Thread;
