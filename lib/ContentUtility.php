@@ -20,8 +20,18 @@ use Railpage\Formatting\MultimediaUtility;
 use Railpage\Formatting\EmoticonsUtility;
 use Railpage\Formatting\Html;
 use Railpage\Formatting\BbcodeUtility;
+use Railpage\Formatting\MakeClickable;
 
 class ContentUtility {
+    
+    /**
+     * Text format parser version
+     * Bump this when a change to formatText() has been made to bust previously rendered (and cached) text blocks
+     * @since Version 3.10.0
+     * @var float $formatTextVer
+     */
+    
+    public static $formatTextVer = "0.1b"; 
     
     /**
      * Process the emoticons, BBCode, rich text, embedded content etc in this object and return as HTML
@@ -32,6 +42,8 @@ class ContentUtility {
      */
     
     public static function formatText($string, $options) {
+        
+        AppCore::getSmarty()->addStylesheet("/themes/jiffy_simple/style/opt.embedded.css"); 
         
         $defaultOptions = [
             "bbcode_uid" => "sausages",
@@ -48,28 +60,39 @@ class ContentUtility {
             throw new InvalidArgumentException("Cannot execute " . __METHOD__ . " as no text was provided!"); 
         }
         
-        $cacheKey = md5($string . json_encode($options)); 
+        $cacheKey = "railpage:formatText=" . sha1((string) $string . json_encode($options)) . ";" . self::$formatTextVer; 
         $cacheProvider = AppCore::getMemcached(); 
+        $processedText = false;
         
-        if ($processedText = $cacheProvider->fetch($cachekey)) {
+        if ($processedText = $cacheProvider->fetch($cacheKey)) {
             return $processedText; 
         }
         
         /**
          * @todo
-         * - strip headers
-         * - process bbcode
-         * - make clickable
-         * - convert to UTF8
-         * - process multimedia
+         * - make clickable - doesn't seem to do anything? 24/03/2016
+         * - convert to UTF8 - is this still required? 24/03/2016
          */
         
-        $string = EmoticonsUtility::Process($string); 
+        $string = EmoticonsUtility::Process($string, $options['flag_emoticons']); 
         $string = Html::cleanupBadHtml($string, $options['editor_version']); 
         $string = Html::removeHeaders($string);
-        $string = BbcodeUtility::Process($string, $options['flag_bbcode'], $options['flag_emoticons']); 
+        $string = BbcodeUtility::Process($string, $options['flag_bbcode']); 
+        $string = MultimediaUtility::Process($string); 
+        $string = MakeClickable::Process($string); 
+        $string = Url::offsiteUrl((string) $string); 
         
-        return (string) $string; 
+        if (is_object($string)) {
+            $string = $string->__toString(); 
+        }
+        
+        if ($options['strip_formatting'] == true) {
+            $string = strip_tags($string); 
+        }
+        
+        $rs = $cacheProvider->save($cacheKey, $string, 0); // 3600 * 24 * 30); 
+        
+        return $string; 
         
     }
     

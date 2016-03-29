@@ -9,6 +9,7 @@
 
 namespace Railpage\Formatting;
 
+use Railpage\AppCore;
 use Railpage\Debug;
 use phpQuery;
 use SBBCodeParser\Node_Container_Document;
@@ -21,6 +22,8 @@ use Decoda\Hook\EmoticonHook;
 use Decoda\Hook\ClickableHook;
 use Decoda\Hook\CensorHook;
 use Decoda\Hook\CodeHook;
+use Decoda\Engine\PhpEngine as DecodaPhpEngine;
+use Railpage\Formatting\BbcodeEtc\Filters\ImageFilter as RailpageImageFilter; 
 
 class BbcodeUtility {
     
@@ -31,7 +34,11 @@ class BbcodeUtility {
      * @return DOMDocument
      */
     
-    public static function Process($string) {
+    public static function Process($string, $doBbcode = true) {
+        
+        if (!$doBbcode) {
+            return $string;
+        }
         
         $timer = Debug::getTimer(); 
         
@@ -42,19 +49,27 @@ class BbcodeUtility {
         $string = self::preProcessBBCodeUIDs($string);
         
         $parser = new Decoda($string); 
-        $parser->defaults(); 
-        $parser->setMaxNewlines(2);
-        $parser->addHook(new EmoticonHook);
-        $parser->addHook(new ClickableHook);
-        $parser->addHook(new CodeHook);
+        $parser->addPath(__DIR__ . DIRECTORY_SEPARATOR . 'BbcodeEtc' . DIRECTORY_SEPARATOR);
         
-        $string = $parser->parse(); 
-		
-        /*
-        if (is_string($string)) {
-            $string = phpQuery::newDocumentHTML($string);
-        }
-        */
+        $emoticonConfig = [ 
+            'path' => '//static.railpage.com.au/images/smiles/',
+            'extension' => 'gif'
+        ];
+        
+        $engine = new DecodaPhpEngine;
+        $engine->addPath(__DIR__ . DIRECTORY_SEPARATOR . 'BbcodeEtc' . DIRECTORY_SEPARATOR . 'templates' . DIRECTORY_SEPARATOR);
+        
+        $parser->setEngine($engine);
+        
+        $parser->defaults(); 
+        $parser->setStrict(false); 
+        $parser->setLineBreaks(false);
+        $parser->removeHook('Emoticon');
+        $parser->addFilter(new RailpageImageFilter); 
+        
+        $string = $parser->parse();
+        $string = html_entity_decode($string); // Fix: if I set escapeHtml in the Decoda options, it fails to auto linkify links
+        //$string = wpautop($string);
         
         Debug::LogEvent(__METHOD__, $timer); 
         

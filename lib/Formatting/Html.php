@@ -33,7 +33,7 @@ class Html {
 		
 		// Parse the HTML object, clean it up
 		#require_once("phpQuery.php");
-		$string = phpQuery::newDocumentHTML($string);
+		//$string = phpQuery::newDocumentHTML($string);
 		
 		//phpQuery::selectDocument($doc);
 		
@@ -95,6 +95,8 @@ class Html {
      */
     
     public static function removeHeaders($string) {
+        
+        $timer = Debug::getTimer(); 
 			
         if (is_string($string)) {
             $string = phpQuery::newDocumentHTML($string);
@@ -111,6 +113,8 @@ class Html {
         foreach (pq('h3') as $e) {
             pq($e)->replaceWith("<p><strong>".pq($e)->text()."</strong></p>");
         }
+		
+        Debug::LogEvent(__METHOD__, $timer); 
         
         return $string;
 
