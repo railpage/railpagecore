@@ -354,6 +354,7 @@ class Message extends PrivateMessages {
      */
     
     public function send() {
+        
         $this->validate();
         
         $data = array(
@@ -383,88 +384,61 @@ class Message extends PrivateMessages {
         $rs = $this->db->insert("nuke_bbprivmsgs_text", $data); 
         
         /**
-         * Send an email to the recipient if their settings say so
+         * If the recipient doesn't want to be notified of a new message then return out
          */
         
-        if ($this->Recipient->notify_privmsg == 1) {
-            
-            /**
-             * Send a push notification
-             */
-            
-            $Push = new Notification;
-            $Push->transport = Notifications::TRANSPORT_PUSH;
-            $Push->subject = sprintf("[Private Messages] New message from %s", $this->Author->username);
-            $Push->body = sprintf("%s has sent you a new private message in the conversation titled \"%s\"", $this->Author->username, $this->subject); 
-            $Push->setActionUrl(sprintf("/messages/conversation/%d", $this->id))->addRecipient($this->Recipient->id, $this->Recipient->username, $this->Recipient->username);
-            $Push->commit()->dispatch(); 
-            
-            /**
-             * Template settings
-             */
-            
-            $Smarty = AppCore::getSmarty(); 
-            
-            $Smarty->assign("server_addr", "www.railpage.com.au");
-            $Smarty->assign("message_id", $this->id);
-            $Smarty->assign("pm_from_username", $this->Author->username);
-            $Smarty->assign("userdata_username", $this->Recipient->username);
-            
-            /*
-            if (defined("RP_SITE_ROOT")) {
-                $path = sprintf("%s%scontent%semail_pm.tpl", RP_SITE_ROOT, DS, DS);
-            } else {
-                $path = dirname(dirname(dirname(dirname(dirname(__DIR__))))) . DS ."content" . DS . "email_pm.tpl";
-            }
-            
-            $html = $Smarty->fetch($path);
-            */
-            
-            /**
-             * Create a user notification
-             */
-            
-            $Notification = new Notification;
-            $Notification->transport = Notifications::TRANSPORT_EMAIL;
-            $Notification->status = Notifications::STATUS_QUEUED;
-            $Notification->subject = sprintf("[Private Messages] New message from %s", $this->Author->username);
-            #$Notification->body = $html;
-            $Notification->addRecipient($this->Recipient->id, $this->Recipient->username, $this->Recipient->contact_email);
-            
-            $tpl = $Smarty->ResolveTemplate("template.generic");
-            
-            $email = array(
-                "subject" => sprintf("New message from %s", $this->Author->username),
-                "subtitle" => "Private Messages",
-                "body" => nl2br(sprintf("Hi %s,\n\n<a href='http://www.railpage.com.au%s?utm_medium&email&utm_source=private-messages&utm_campain=user-%d'>%s</a> has sent you a new <a href='http://www.railpage.com.au/messages/conversation/%d?utm_medium=email&utm_source=private-messages&utm_campaign=user-%d#%d'>private message</a> in the conversation titled <em>%s</em>.",
-                            $this->Recipient->username, $this->Author->url->url, $this->Author->id, $this->Author->username, $this->id, $this->Author->id, $this->id, $this->subject))
-                                
-            );
-            
-            $Smarty->Assign("email", $email);
-            
-            $Notification->body = $Smarty->fetch($tpl);
-            
-            /*
-            $message = Swift_Message::newInstance()
-                ->setSubject("New private message on Railpage")
-                ->setFrom(array("rp2@railpage.com.au" => "Railpage"))
-                ->setTo(array($this->Recipient->contact_email => $this->Recipient->username))
-                ->setBody($html, 'text/html');
-            
-            // Mail transport
-            $transport = Swift_SmtpTransport::newInstance($this->Config->SMTP->host, $this->Config->SMTP->port, $this->Config->SMTP->TLS = true ? "tls" : NULL)
-                ->setUsername($this->Config->SMTP->username)
-                ->setPassword($this->Config->SMTP->password);
-            
-            $mailer = Swift_Mailer::newInstance($transport);
-            
-            $result = $mailer->send($message);
-            */
-            
-            $Notification->commit(); 
-            
+        if ($this->Recipient->notify_privmsg != 1) {
+            return;
         }
+            
+        /**
+         * Send a push notification
+         */
+        
+        $Push = new Notification;
+        $Push->transport = Notifications::TRANSPORT_PUSH;
+        $Push->subject = sprintf("[Private Messages] New message from %s", $this->Author->username);
+        $Push->body = sprintf("%s has sent you a new private message in the conversation titled \"%s\"", $this->Author->username, $this->subject); 
+        $Push->setActionUrl(sprintf("/messages/conversation/%d", $this->id))->addRecipient($this->Recipient->id, $this->Recipient->username, $this->Recipient->username);
+        $Push->commit()->dispatch(); 
+        
+        /**
+         * Template settings
+         */
+        
+        $Smarty = AppCore::getSmarty(); 
+        
+        $Smarty->assign("server_addr", "www.railpage.com.au");
+        $Smarty->assign("message_id", $this->id);
+        $Smarty->assign("pm_from_username", $this->Author->username);
+        $Smarty->assign("userdata_username", $this->Recipient->username);
+        
+        /**
+         * Create a user notification
+         */
+        
+        $Notification = new Notification;
+        $Notification->transport = Notifications::TRANSPORT_EMAIL;
+        $Notification->status = Notifications::STATUS_QUEUED;
+        $Notification->subject = sprintf("[Private Messages] New message from %s", $this->Author->username);
+        $Notification->addRecipient($this->Recipient->id, $this->Recipient->username, $this->Recipient->contact_email);
+        
+        $tpl = $Smarty->ResolveTemplate("template.generic");
+        
+        $email = array(
+            "subject" => sprintf("New message from %s", $this->Author->username),
+            "subtitle" => "Private Messages",
+            "body" => nl2br(sprintf("Hi %s,\n\n<a href='http://www.railpage.com.au%s?utm_medium&email&utm_source=private-messages&utm_campain=user-%d'>%s</a> has sent you a new <a href='http://www.railpage.com.au/messages/conversation/%d?utm_medium=email&utm_source=private-messages&utm_campaign=user-%d#%d'>private message</a> in the conversation titled <em>%s</em>.",
+                        $this->Recipient->username, $this->Author->url->url, $this->Author->id, $this->Author->username, $this->id, $this->Author->id, $this->id, $this->subject))
+                            
+        );
+        
+        $Smarty->Assign("email", $email);
+        
+        $Notification->body = $Smarty->fetch($tpl);
+        
+        $Notification->commit(); 
+        
     }
     
     /**
