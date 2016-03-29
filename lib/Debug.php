@@ -18,6 +18,14 @@ use DateInterval;
 use Railpage\Registry;
 
 class Debug {
+    
+    /**
+     * Temporary debug override
+     * @since Version 3.10.0
+     * @var boolean $enable
+     */
+    
+    public static $enable = false;
 
     /**
      * Our debug array
@@ -46,7 +54,7 @@ class Debug {
 
     public static function getTimer() {
 
-        if ((!defined("RP_DEBUG") || !RP_DEBUG) && !defined("PHPUNIT_RAILPAGE_TESTSUITE")) {
+        if (!self::$enable && (!defined("RP_DEBUG") || !RP_DEBUG) && !defined("PHPUNIT_RAILPAGE_TESTSUITE")) {
             return;
         }
 
@@ -66,7 +74,7 @@ class Debug {
 
     public static function logEvent($text, $timer = false) {
 
-        if ((!defined("RP_DEBUG") || !RP_DEBUG) && !defined("PHPUNIT_RAILPAGE_TESTSUITE")) {
+        if (!self::$enable && (!defined("RP_DEBUG") || !RP_DEBUG) && !defined("PHPUNIT_RAILPAGE_TESTSUITE")) {
             return;
         }
 
@@ -146,6 +154,18 @@ class Debug {
 
             echo "<br>";
         }
+    }
+    
+    /**
+     * Alias for PrintPretty
+     * @since Version 3.11.0
+     * @return void
+     */
+    
+    public static function PrettyPrint() {
+        
+        self::PrintPretty(); 
+        
     }
 
     /**
