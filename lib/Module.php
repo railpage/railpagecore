@@ -252,7 +252,7 @@ class Module extends AppCore {
             return $alt_urls[$module];
         }
         
-        return "/" . $module;
+        return "/" . strtolower($module);
         
     }
 
