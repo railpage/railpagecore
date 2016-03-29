@@ -305,22 +305,18 @@ class Message extends PrivateMessages {
         
         if (empty($this->subject)) {
             throw new Exception("PM subject cannot be empty"); 
-            return false;
         }
         
         if (!filter_var($this->id, FILTER_VALIDATE_INT) && empty($this->body)) {
             throw new Exception("PM body cannot be empty"); 
-            return false;
         }
         
         if (empty($this->to_user_id)) {
             throw new Exception("Cannot send PM - recipient user ID is empty"); 
-            return false;
         }
         
         if (empty($this->from_user_id)) {
             throw new Exception("Cannot send PM - sender user ID is empty"); 
-            return false;
         }
         
         if (empty($this->enable_bbcode)) {
