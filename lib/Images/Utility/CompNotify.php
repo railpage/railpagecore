@@ -56,13 +56,13 @@ class CompNotify {
              * Create a news article
              */
             
-            Utility\CompetitionUtility::createNewsArticle_Winner($this); 
+            CompetitionUtility::createNewsArticle_Winner($compObject); 
             
             /**
              * Create a site message
              */
             
-            Utility\CompetitionUtility::createSiteNotificationForWinner($this);
+            CompetitionUtility::createSiteNotificationForWinner($compObject);
             
             /**
              * Create an email
