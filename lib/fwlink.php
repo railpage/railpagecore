@@ -113,13 +113,15 @@ class fwlink extends AppCore {
             
         }
         
-        if (isset($row) && count($row)) {
-            $this->id = $row['id']; 
-            $this->url = $row['url'];
-            $this->title = $row['title'];
-            
-            $this->Memcached->save($this->mckey, $row, strtotime("+1 month"));
+        if (!isset($row) || !count($row)) {
+            return;
         }
+        
+        $this->id = $row['id']; 
+        $this->url = $row['url'];
+        $this->title = $row['title'];
+        
+        $this->Memcached->save($this->mckey, $row, 86400 * 30);
             
         return;
         
