@@ -36,7 +36,7 @@ class Factory {
         } catch (Exception $e) {
             if (!$User = $Redis->fetch(sprintf("railpage:users.user=%d", $id))) {
                 $User = new User($id); 
-                $Redis->save(sprintf("railpage:users.user=%d", $id), $User);
+                $Redis->save(sprintf("railpage:users.user=%d", $id), $User, 60 * 60 * 2);
             }
             
             $Registry->set($regkey, $User); 
