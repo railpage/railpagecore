@@ -3,7 +3,7 @@
 /**
  * Forums API
  * @since Version 3.0.1
- * @version 3.9
+ * @version 3.11.0
  * @package Railpage
  * @author James Morgan, Michael Greenhill
  */
@@ -32,6 +32,14 @@ use Doctrine\Common\Cache\MemcachedCache;
  */
 
 class Post extends Forums {
+    
+    /**
+     * Constant: Cache key for edit lookups
+     * @since Version 3.11.0
+     * @var const CACHEKEY_EDITS
+     */
+    
+    const CACHEKEY_EDITS = "railpage:forums.post=%d;edits";
     
     /**
      * Post ID
@@ -261,21 +269,27 @@ class Post extends Forums {
         
         $this->Memcached = AppCore::getMemcached();  
         
-        if (!$row = $this->Redis->fetch($this->mckey)) {
+        if (!$row = $this->Memcached->fetch($this->mckey)) {
+            Debug::LogEvent("Could not find forum post in Redis using cache key " . $this->mckey); 
+            
             if (filter_var($postid, FILTER_VALIDATE_INT)) {
                 $timer = Debug::GetTimer(); 
                 
                 $query = "SELECT p.*, t.*, u.username, u.user_avatar FROM nuke_bbposts p, nuke_bbposts_text t, nuke_users AS u WHERE u.user_id = p.poster_id AND p.post_id = ? AND t.post_id = p.post_id LIMIT 1";
                 
                 $row = $this->db->fetchRow($query, $postid);
-                $this->Redis->save($this->mckey, $row, strtotime("+12 hours"));
+                $rs = $this->Memcached->save($this->mckey, $row, 43200);
                 
                 Debug::LogEvent("Fetch forum post from database", $timer); 
+                
+                if (!$rs) {
+                    Debug::LogEvent("!! Failed to store forum post in cache provider"); 
+                }
             } elseif (is_string($postid)) {
                 $query = "SELECT p.*, t.*, u.username, u.user_avatar FROM nuke_bbposts p, nuke_bbposts_text t, nuke_users AS u WHERE u.user_id = p.poster_id AND t.url_slug = ? AND t.post_id = p.post_id LIMIT 1";
                 
                 $row = $this->db->fetchRow($query, $postid);
-                $this->Redis->save($this->mckey, $row, strtotime("+12 hours"));
+                $rs = $this->Memcached->save($this->mckey, $row, 43200);
             }
         }
             
@@ -434,7 +448,11 @@ class Post extends Forums {
          * Update this information in Redis
          */
         
-        $this->Redis->save(sprintf("railpage:forums.post=%d", $this->id), $this);
+        $this->mckey = sprintf("railpage:forums;post=%d", $this->id);
+        $this->Memcached->delete(sprintf(self::CACHEKEY_EDITS, $this->id));
+        $this->Redis->delete(sprintf(self::CACHEKEY_EDITS, $this->id));
+        $this->Memcached->delete($this->mckey); 
+        $this->Redis->delete($this->mckey);
         $this->Redis->delete(sprintf("railpage:forums.post=%d;processed_message", $this->id));
         
         /**
@@ -604,11 +622,18 @@ class Post extends Forums {
      */
     
     public function getEdits() {
-        $query = "SELECT editor_id, edit_time, edit_body, bbcode_uid FROM nuke_bbposts_edit WHERE post_id = ? ORDER BY edit_time DESC";
         
+        $cacheKey = sprintf(self::CACHEKEY_EDITS, $this->id); 
+        
+        if (!$edits = AppCore::getMemcached()->fetch($cacheKey)) {
+            $query = "SELECT editor_id, edit_time, edit_body, bbcode_uid FROM nuke_bbposts_edit WHERE post_id = ? ORDER BY edit_time DESC";
+            $edits = $this->db->fetchAll($query, $this->id);
+            AppCore::getMemcached()->save($cacheKey, $edits, 8600 * 7);
+        }
+            
         $return = array(); 
         
-        foreach ($this->db->fetchAll($query, $this->id) as $row) {
+        foreach ($edits as $row) {
             $DateTime = new DateTime;
             $DateTime->setTimestamp($row['edit_time']);
             $return = new stdClass;
@@ -631,6 +656,13 @@ class Post extends Forums {
      */
     
     public function getNumEdits() {
+        
+        $cacheKey = sprintf(self::CACHEKEY_EDITS, $this->id); 
+        
+        if ($edits = AppCore::getMemcached()->fetch($cacheKey)) {
+            return count($edits); 
+        }
+        
         $query = "SELECT editor_id, edit_time, edit_body, bbcode_uid FROM nuke_bbposts_edit WHERE post_id = ? ORDER BY edit_time DESC";
         
         $result = $this->db->fetchAll($query, $this->id);
